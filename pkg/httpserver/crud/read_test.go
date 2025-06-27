@@ -12,8 +12,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestReadHandler_Handle(t *testing.T) {
@@ -22,7 +22,7 @@ func TestReadHandler_Handle(t *testing.T) {
 	config := configMocks.NewConfig(t)
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	transformer := newHandler(t)
-	transformer.Repo.EXPECT().Read(mock.AnythingOfType("context.backgroundCtx"), mdl.Box(uint(1)), model).Run(func(_ context.Context, _ *uint, out db_repo.ModelBased) {
+	transformer.Repo.EXPECT().Read(matcher.Context, mdl.Box(uint(1)), model).Run(func(_ context.Context, _ *uint, out db_repo.ModelBased) {
 		model := out.(*Model)
 		model.Id = mdl.Box(uint(1))
 		model.Name = mdl.Box("foobar")

@@ -107,7 +107,11 @@ func (s *kinsumerTestSuite) SetupTest() {
 			shardReader := mocks.NewShardReader(s.T())
 			s.shardReaders[shardId] = append(s.shardReaders[shardId], shardReader)
 			mockedReader := s.expectedShardReaders[shardId][len(s.shardReaders[shardId])-1]
-			shardReader.EXPECT().Run(matcher.Context, mock.Anything).Run(func(ctx context.Context, handler func([]byte) error) {
+			shardReader.EXPECT().Run(matcher.Context, mock.MatchedBy(func(h any) bool {
+				_, ok := h.(func([]byte) error)
+
+				return ok
+			})).Run(func(ctx context.Context, handler func([]byte) error) {
 				for _, msg := range mockedReader.messages {
 					<-s.clock.NewTimer(msg.delay).Chan()
 					err := handler(msg.data)
@@ -146,7 +150,7 @@ func (s *kinsumerTestSuite) TearDownTest() {
 
 func (s *kinsumerTestSuite) TestRegisterClientFail() {
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 0, fmt.Errorf("fail")).Once()
-	s.metadataRepository.EXPECT().DeregisterClient(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
 	err := s.kinsumer.Run(s.ctx, s.handler)
 	s.EqualError(err, "failed to load first list of shard ids and register as client: failed to register as client: fail")
@@ -154,7 +158,7 @@ func (s *kinsumerTestSuite) TestRegisterClientFail() {
 
 func (s *kinsumerTestSuite) TestRegisterClientDeregisterFailToo() {
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 0, fmt.Errorf("fail")).Once()
-	s.metadataRepository.EXPECT().DeregisterClient(mock.AnythingOfType("*exec.stoppableContext")).Return(fmt.Errorf("also fail")).Once()
+	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(fmt.Errorf("also fail")).Once()
 
 	err := s.kinsumer.Run(s.ctx, s.handler)
 	s.EqualError(err, multierror.Append(
@@ -165,7 +169,7 @@ func (s *kinsumerTestSuite) TestRegisterClientDeregisterFailToo() {
 
 func (s *kinsumerTestSuite) TestInitialListShardsFail() {
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 1, nil).Once()
-	s.metadataRepository.EXPECT().DeregisterClient(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
 	s.logger.EXPECT().Info("we are client %d / %d, refreshing %d shards", 1, 1, 0).Once()
 
@@ -179,7 +183,7 @@ func (s *kinsumerTestSuite) TestInitialListShardsFail() {
 
 func (s *kinsumerTestSuite) TestInitialListShardsNoSuchStream() {
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 1, nil).Once()
-	s.metadataRepository.EXPECT().DeregisterClient(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
 	s.logger.EXPECT().Info("we are client %d / %d, refreshing %d shards", 1, 1, 0).Once()
 
@@ -197,7 +201,7 @@ func (s *kinsumerTestSuite) TestInitialListShardsNoSuchStream() {
 
 func (s *kinsumerTestSuite) TestInitialListShardsResourceInUse() {
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 1, nil).Once()
-	s.metadataRepository.EXPECT().DeregisterClient(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
 	s.logger.EXPECT().Info("we are client %d / %d, refreshing %d shards", 1, 1, 0).Once()
 
@@ -215,7 +219,7 @@ func (s *kinsumerTestSuite) TestInitialListShardsResourceInUse() {
 
 func (s *kinsumerTestSuite) TestInitialListShardsIterate() {
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 1, nil).Once()
-	s.metadataRepository.EXPECT().DeregisterClient(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
 	s.logger.EXPECT().Info("we are client %d / %d, refreshing %d shards", 1, 1, 0).Once()
 
@@ -268,7 +272,7 @@ func (s *kinsumerTestSuite) TestListShardsChangedShardIds() {
 	go func() {
 		s.clock.BlockUntilTickers(2)
 
-		s.metadataRepository.EXPECT().RegisterClient(mock.AnythingOfType("*context.cancelCtx")).Return(0, 1, nil).Once()
+		s.metadataRepository.EXPECT().RegisterClient(matcher.Context).Return(0, 1, nil).Once()
 		s.logger.EXPECT().Info("we are client %d / %d, refreshing %d shards", 1, 1, 2).Once()
 		s.logger.EXPECT().Info("discovered new shards or clients, restarting consumers for %d shards", 2).Once()
 		s.logger.EXPECT().Info("started consuming shard").Twice()
@@ -279,7 +283,7 @@ func (s *kinsumerTestSuite) TestListShardsChangedShardIds() {
 
 		s.mockShardTaskRatio(200)
 
-		s.kinesisClient.EXPECT().ListShards(mock.AnythingOfType("*context.cancelCtx"), &kinesis.ListShardsInput{
+		s.kinesisClient.EXPECT().ListShards(matcher.Context, &kinesis.ListShardsInput{
 			StreamName: aws.String(string(s.stream)),
 		}).Return(&kinesis.ListShardsOutput{
 			NextToken: nil,
@@ -292,8 +296,8 @@ func (s *kinsumerTestSuite) TestListShardsChangedShardIds() {
 				},
 			},
 		}, nil).Once()
-		s.metadataRepository.EXPECT().IsShardFinished(mock.AnythingOfType("*context.cancelCtx"), gosoKinesis.ShardId("shard4")).Return(false, nil).Once()
-		s.metadataRepository.EXPECT().IsShardFinished(mock.AnythingOfType("*context.cancelCtx"), gosoKinesis.ShardId("shard3")).Return(false, nil).Once()
+		s.metadataRepository.EXPECT().IsShardFinished(matcher.Context, gosoKinesis.ShardId("shard4")).Return(false, nil).Once()
+		s.metadataRepository.EXPECT().IsShardFinished(matcher.Context, gosoKinesis.ShardId("shard3")).Return(false, nil).Once()
 
 		s.clock.Advance(time.Second * 15)
 	}()
@@ -304,7 +308,7 @@ func (s *kinsumerTestSuite) TestListShardsChangedShardIds() {
 
 func (s *kinsumerTestSuite) TestShardListFinishedShardHandling() {
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 1, nil).Once()
-	s.metadataRepository.EXPECT().DeregisterClient(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
 	s.logger.EXPECT().Info("we are client %d / %d, refreshing %d shards", 1, 1, 0).Once()
 
@@ -372,10 +376,10 @@ func (s *kinsumerTestSuite) TestListShardsNoChangeThenCancel() {
 	go func() {
 		s.clock.BlockUntilTickers(2)
 
-		s.metadataRepository.EXPECT().RegisterClient(mock.AnythingOfType("*context.cancelCtx")).Return(0, 1, nil).Once()
+		s.metadataRepository.EXPECT().RegisterClient(matcher.Context).Return(0, 1, nil).Once()
 		s.logger.EXPECT().Info("we are client %d / %d, refreshing %d shards", 1, 1, 1).Once()
 
-		s.kinesisClient.EXPECT().ListShards(mock.AnythingOfType("*context.cancelCtx"), &kinesis.ListShardsInput{
+		s.kinesisClient.EXPECT().ListShards(matcher.Context, &kinesis.ListShardsInput{
 			StreamName: aws.String(string(s.stream)),
 		}).Return(&kinesis.ListShardsOutput{
 			NextToken: nil,
@@ -385,14 +389,14 @@ func (s *kinsumerTestSuite) TestListShardsNoChangeThenCancel() {
 				},
 			},
 		}, nil).Run(func(ctx context.Context, params *kinesis.ListShardsInput, optFns ...func(*kinesis.Options)) {
-			s.metadataRepository.EXPECT().RegisterClient(mock.AnythingOfType("*context.cancelCtx")).Return(0, 1, nil).Once()
+			s.metadataRepository.EXPECT().RegisterClient(matcher.Context).Return(0, 1, nil).Once()
 			s.logger.EXPECT().Info("we are client %d / %d, refreshing %d shards", 1, 1, 1).Once()
 
-			s.kinesisClient.EXPECT().ListShards(mock.AnythingOfType("*context.cancelCtx"), &kinesis.ListShardsInput{
+			s.kinesisClient.EXPECT().ListShards(matcher.Context, &kinesis.ListShardsInput{
 				StreamName: aws.String(string(s.stream)),
 			}).Return(nil, context.Canceled).Once()
 
-			s.metadataRepository.EXPECT().IsShardFinished(mock.AnythingOfType("*context.cancelCtx"), gosoKinesis.ShardId("shard1")).Return(false, nil).Once()
+			s.metadataRepository.EXPECT().IsShardFinished(matcher.Context, gosoKinesis.ShardId("shard1")).Return(false, nil).Once()
 
 			s.clock.Advance(time.Second * 15)
 		}).Once()
@@ -412,10 +416,10 @@ func (s *kinsumerTestSuite) TestListShardsFailOnRefresh() {
 	go func() {
 		s.clock.BlockUntilTickers(2)
 
-		s.metadataRepository.EXPECT().RegisterClient(mock.AnythingOfType("*context.cancelCtx")).Return(0, 1, nil).Once()
+		s.metadataRepository.EXPECT().RegisterClient(matcher.Context).Return(0, 1, nil).Once()
 		s.logger.EXPECT().Info("we are client %d / %d, refreshing %d shards", 1, 1, 1).Once()
 
-		s.kinesisClient.EXPECT().ListShards(mock.AnythingOfType("*context.cancelCtx"), &kinesis.ListShardsInput{
+		s.kinesisClient.EXPECT().ListShards(matcher.Context, &kinesis.ListShardsInput{
 			StreamName: aws.String(string(s.stream)),
 		}).Return(nil, fmt.Errorf("fail")).Once()
 
@@ -464,7 +468,7 @@ func (s *kinsumerTestSuite) TestConsumeMessagesFails() {
 
 func (s *kinsumerTestSuite) mockBaseSuccess(shards ...string) {
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 1, nil).Once()
-	s.metadataRepository.EXPECT().DeregisterClient(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
 	s.logger.EXPECT().Info("we are client %d / %d, refreshing %d shards", 1, 1, 0).Once()
 

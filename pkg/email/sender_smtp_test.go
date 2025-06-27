@@ -64,7 +64,11 @@ Content-Type: text/html; charset="utf-8"
 
 	expectedBody = strings.ReplaceAll(expectedBody, "\n", "\r\n")
 
-	s.client.EXPECT().SendMail(s.from, []string{"foo@bar.com"}, mock.Anything).Run(func(_ string, _ []string, r io.Reader) {
+	s.client.EXPECT().SendMail(s.from, []string{"foo@bar.com"}, mock.MatchedBy(func(val any) bool {
+		_, ok := val.(io.Reader)
+
+		return ok
+	})).Run(func(_ string, _ []string, r io.Reader) {
 		bytes, err := io.ReadAll(r)
 		s.Require().NoError(err)
 
@@ -100,7 +104,11 @@ Hello! We're sending you a test email.
 
 	expectedBody = strings.ReplaceAll(expectedBody, "\n", "\r\n")
 
-	s.client.EXPECT().SendMail(s.from, []string{"foo@bar.com"}, mock.Anything).Run(func(_ string, _ []string, r io.Reader) {
+	s.client.EXPECT().SendMail(s.from, []string{"foo@bar.com"}, mock.MatchedBy(func(val any) bool {
+		_, ok := val.(io.Reader)
+
+		return ok
+	})).Run(func(_ string, _ []string, r io.Reader) {
 		bytes, err := io.ReadAll(r)
 		s.Require().NoError(err)
 
@@ -144,7 +152,11 @@ Hello! We're sending you a test email.
 
 	expectedBody = strings.ReplaceAll(expectedBody, "\n", "\r\n")
 
-	s.client.EXPECT().SendMail(s.from, []string{"foo@bar.com"}, mock.Anything).Run(func(_ string, _ []string, r io.Reader) {
+	s.client.EXPECT().SendMail(s.from, []string{"foo@bar.com"}, mock.MatchedBy(func(val any) bool {
+		_, ok := val.(io.Reader)
+
+		return ok
+	})).Run(func(_ string, _ []string, r io.Reader) {
 		bytes, err := io.ReadAll(r)
 		s.Require().NoError(err)
 

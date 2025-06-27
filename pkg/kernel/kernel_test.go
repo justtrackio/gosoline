@@ -46,26 +46,52 @@ type KernelTestSuite struct {
 func (s *KernelTestSuite) SetupTest() {
 	s.ctx = appctx.WithContainer(context.Background())
 
-	s.config = new(cfgMocks.Config)
-	s.config.On("AllSettings").Return(map[string]interface{}{})
-	s.config.On("UnmarshalKey", "kernel", mock.AnythingOfType("*kernel.Settings")).Run(func(args mock.Arguments) {
-		settings := args[1].(*kernel.Settings)
-		settings.KillTimeout = time.Second
-		settings.HealthCheck.Timeout = time.Second
-		settings.HealthCheck.WaitInterval = time.Second
+	s.config = cfgMocks.NewConfig(s.T())
+	s.logger = logMocks.NewLogger(s.T())
+	s.module = kernelMocks.NewFullModule(s.T())
+
+	s.config.EXPECT().UnmarshalKey("kernel", mock.AnythingOfType("*kernel.Settings")).
+		Run(func(key string, val any, _ ...cfg.UnmarshalDefaults) {
+			settings := val.(*kernel.Settings)
+			settings.KillTimeout = time.Second
+			settings.HealthCheck.Timeout = time.Second
+			settings.HealthCheck.WaitInterval = time.Second
+		})
+}
+
+func timeout(t *testing.T, d time.Duration, f func(t *testing.T)) {
+	done := make(chan struct{})
+	errChan := make(chan error)
+	cfn := coffin.New()
+	cfn.Go(func() error {
+		cfn.Go(func() error {
+			defer close(done)
+			f(t)
+
+			return nil
+		})
+		cfn.Go(func() error {
+			timer := time.NewTimer(d)
+			defer timer.Stop()
+			defer close(errChan)
+
+			select {
+			case <-timer.C:
+				errChan <- fmt.Errorf("test timed out after %v", d)
+			case <-done:
+			}
+
+			return nil
+		})
+
+		return nil
 	})
 
-	s.logger = new(logMocks.Logger)
-	s.logger.On("WithChannel", mock.Anything).Return(s.logger)
-	s.logger.On("WithFields", mock.Anything).Return(s.logger)
-	s.logger.On("Info", mock.Anything)
-	s.logger.On("Info", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	s.logger.On("Debug", mock.Anything, mock.Anything)
+	if err := <-errChan; err != nil {
+		assert.FailNow(t, err.Error())
+	}
 
-	s.module = new(kernelMocks.FullModule)
-	s.module.On("IsHealthy", mock.AnythingOfType("*context.cancelCtx")).Return(true, nil)
-	s.module.On("IsEssential").Return(false)
-	s.module.On("IsBackground").Return(false)
+	assert.NoError(t, cfn.Wait())
 }
 
 func (s *KernelTestSuite) TestHangingModule() {
@@ -124,44 +150,11 @@ func (s *KernelTestSuite) TestHangingModule() {
 	})
 }
 
-func timeout(t *testing.T, d time.Duration, f func(t *testing.T)) {
-	done := make(chan struct{})
-	errChan := make(chan error)
-	cfn := coffin.New()
-	cfn.Go(func() error {
-		cfn.Go(func() error {
-			defer close(done)
-			f(t)
-
-			return nil
-		})
-		cfn.Go(func() error {
-			timer := time.NewTimer(d)
-			defer timer.Stop()
-			defer close(errChan)
-
-			select {
-			case <-timer.C:
-				errChan <- fmt.Errorf("test timed out after %v", d)
-			case <-done:
-			}
-
-			return nil
-		})
-
-		return nil
-	})
-
-	if err := <-errChan; err != nil {
-		assert.FailNow(t, err.Error())
-	}
-
-	assert.NoError(t, cfn.Wait())
-}
-
 func (s *KernelTestSuite) TestRunSuccess() {
-	s.module.On("GetStage").Return(kernel.StageApplication)
-	s.module.On("Run", matcher.Context).Return(nil)
+	s.expectStartupLogs()
+
+	s.expectModuleLifecycle(s.module, false, kernel.StageApplication)
+	s.module.EXPECT().Run(matcher.Context).Return(nil).Once()
 
 	s.NotPanics(func() {
 		k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
@@ -175,17 +168,17 @@ func (s *KernelTestSuite) TestRunSuccess() {
 
 		k.Run()
 	})
-
-	s.module.AssertCalled(s.T(), "Run", matcher.Context)
 }
 
 func (s *KernelTestSuite) TestRunFailure() {
-	s.logger.On("Error", "error during the execution of stage %d: %w", kernel.StageApplication, mock.Anything)
+	s.expectStartupLogs()
+	s.logger.EXPECT().Error("error during the execution of stage %d: %w", kernel.StageApplication, mock.Anything).Once()
+	s.logger.EXPECT().Error("error running %s module %s: %w", "foreground", "module", mock.Anything).Once()
 
-	s.module.On("GetStage").Return(kernel.StageApplication)
-	s.module.On("Run", matcher.Context).Run(func(args mock.Arguments) {
+	s.expectModuleLifecycle(s.module, false, kernel.StageApplication)
+	s.module.EXPECT().Run(matcher.Context).Run(func(ctx context.Context) {
 		panic("panic")
-	})
+	}).Once()
 
 	s.NotPanics(func() {
 		k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
@@ -199,23 +192,19 @@ func (s *KernelTestSuite) TestRunFailure() {
 
 		k.Run()
 	})
-
-	s.module.AssertCalled(s.T(), "Run", matcher.Context)
 }
 
 func (s *KernelTestSuite) TestStop() {
 	var err error
 	var k kernel.Kernel
 
-	s.module.On("IsEssential").Return(false)
-	s.module.On("IsBackground").Return(false)
-	s.module.On("GetStage").Return(kernel.StageApplication)
-	s.module.On("Run", matcher.Context).Run(func(args mock.Arguments) {
-		ctx := args.Get(0).(context.Context)
+	s.expectStartupLogs()
 
+	s.expectModuleLifecycle(s.module, false, kernel.StageApplication)
+	s.module.EXPECT().Run(matcher.Context).Run(func(ctx context.Context) {
 		k.Stop("test done")
 		<-ctx.Done()
-	}).Return(nil)
+	}).Return(nil).Once()
 
 	k, err = kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
 		kernel.WithModuleFactory("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -227,25 +216,21 @@ func (s *KernelTestSuite) TestStop() {
 	s.NoError(err)
 
 	k.Run()
-
-	s.module.AssertCalled(s.T(), "Run", matcher.Context)
 }
 
 func (s *KernelTestSuite) TestRunningType() {
-	mf := new(kernelMocks.Module)
+	s.expectStartupLogs()
+	s.logger.EXPECT().Info(mock.Anything, mock.Anything, mock.Anything)
+
 	// type = foreground & stage = application are the defaults for a module
-	mf.On("Run", matcher.Context).Run(func(args mock.Arguments) {}).Return(nil)
+	mf := kernelMocks.NewModule(s.T())
+	mf.EXPECT().Run(matcher.Context).Run(func(ctx context.Context) {}).Return(nil).Once()
 
 	mb := new(kernelMocks.FullModule)
-	mb.On("IsHealthy", mock.AnythingOfType("*context.cancelCtx")).Return(true, nil)
-	mb.On("IsEssential").Return(false)
-	mb.On("IsBackground").Return(true)
-	mb.On("GetStage").Return(kernel.StageApplication)
-	mb.On("Run", matcher.Context).Run(func(args mock.Arguments) {
-		ctx := args.Get(0).(context.Context)
-
+	s.expectModuleLifecycle(mb, true, kernel.StageApplication)
+	mb.EXPECT().Run(matcher.Context).Run(func(ctx context.Context) {
 		<-ctx.Done()
-	}).Return(nil)
+	}).Return(nil).Once()
 
 	k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
 		kernel.WithModuleFactory("foreground", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -260,9 +245,6 @@ func (s *KernelTestSuite) TestRunningType() {
 	s.NoError(err)
 
 	k.Run()
-
-	mf.AssertExpectations(s.T())
-	mb.AssertExpectations(s.T())
 }
 
 func (s *KernelTestSuite) TestMultipleStages() {
@@ -271,7 +253,8 @@ func (s *KernelTestSuite) TestMultipleStages() {
 		s.mockExitHandler(kernel.ExitCodeOk),
 	}
 
-	var allMocks []*kernelMocks.FullModule
+	s.expectStartupLogs()
+
 	var stageStatus []int
 
 	maxStage := 5
@@ -281,14 +264,9 @@ func (s *KernelTestSuite) TestMultipleStages() {
 	for stage := 0; stage < maxStage; stage++ {
 		thisStage := stage
 
-		m := new(kernelMocks.FullModule)
-		m.On("IsHealthy", mock.AnythingOfType("*context.cancelCtx")).Return(true, nil)
-		m.On("IsEssential").Return(true)
-		m.On("IsBackground").Return(false)
-		m.On("GetStage").Return(thisStage)
-		m.On("Run", matcher.Context).Run(func(args mock.Arguments) {
-			ctx := args.Get(0).(context.Context)
-
+		m := kernelMocks.NewFullModule(s.T())
+		s.expectModuleLifecycle(m, false, thisStage)
+		m.EXPECT().Run(matcher.Context).Run(func(ctx context.Context) {
 			stageStatus[thisStage] = 1
 
 			wg.Done()
@@ -305,9 +283,8 @@ func (s *KernelTestSuite) TestMultipleStages() {
 			}
 
 			stageStatus[thisStage] = 2
-		}).Return(nil)
+		}).Return(nil).Once()
 
-		allMocks = append(allMocks, m)
 		stageStatus = append(stageStatus, 0)
 
 		options = append(options, kernel.WithModuleFactory("m", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -322,36 +299,30 @@ func (s *KernelTestSuite) TestMultipleStages() {
 		time.Sleep(time.Millisecond * 300)
 		k.Stop("we are done testing")
 	}()
-	k.Run()
 
-	for _, m := range allMocks {
-		m.AssertExpectations(s.T())
-	}
+	k.Run()
 }
 
 func (s *KernelTestSuite) TestForcedExit() {
-	s.logger.On("Error", mock.Anything, mock.Anything)
+	s.expectStartupLogs()
+	s.logger.EXPECT().Info(mock.Anything, mock.Anything, mock.Anything)
+	s.logger.EXPECT().Error(mock.Anything, mock.Anything)
 
 	mayStop := conc.NewSignalOnce()
 	appStopped := conc.NewSignalOnce()
 
-	app := new(kernelMocks.FullModule)
-	app.On("IsHealthy", mock.AnythingOfType("*context.cancelCtx")).Return(true, nil)
-	app.On("IsEssential").Return(false)
-	app.On("IsBackground").Return(true)
-	app.On("GetStage").Return(kernel.StageApplication)
-	app.On("Run", matcher.Context).Run(func(args mock.Arguments) {
-		ctx := args.Get(0).(context.Context)
-
+	app := kernelMocks.NewFullModule(s.T())
+	s.expectModuleLifecycle(app, true, kernel.StageApplication)
+	app.EXPECT().Run(matcher.Context).Run(func(ctx context.Context) {
 		<-ctx.Done()
 		appStopped.Signal()
-	}).Return(nil)
+	}).Return(nil).Once()
 
-	m := new(kernelMocks.Module)
-	m.On("Run", matcher.Context).Run(func(args mock.Arguments) {
+	m := kernelMocks.NewModule(s.T())
+	m.EXPECT().Run(matcher.Context).Run(func(ctx context.Context) {
 		<-mayStop.Channel()
 		s.True(appStopped.Signaled())
-	}).Return(nil)
+	}).Return(nil).Once()
 
 	k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
 		kernel.WithModuleFactory("m", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -377,25 +348,18 @@ func (s *KernelTestSuite) TestForcedExit() {
 
 	k.Run()
 
-	app.AssertExpectations(s.T())
-	m.AssertExpectations(s.T())
 	s.True(mayStop.Signaled())
 }
 
 func (s *KernelTestSuite) TestStageStopped() {
-	s.logger.On("Errorf", mock.Anything, mock.Anything)
+	s.expectStartupLogs()
 
 	success := false
 	appStopped := conc.NewSignalOnce()
 
-	app := new(kernelMocks.FullModule)
-	app.On("IsHealthy", mock.AnythingOfType("*context.cancelCtx")).Return(true, nil)
-	app.On("IsEssential").Return(false)
-	app.On("IsBackground").Return(false)
-	app.On("GetStage").Return(kernel.StageApplication)
-	app.On("Run", matcher.Context).Run(func(args mock.Arguments) {
-		ctx := args.Get(0).(context.Context)
-
+	app := kernelMocks.NewFullModule(s.T())
+	s.expectModuleLifecycle(app, false, kernel.StageApplication)
+	app.EXPECT().Run(matcher.Context).Run(func(ctx context.Context) {
 		ticker := time.NewTicker(time.Millisecond * 300)
 		defer ticker.Stop()
 
@@ -407,14 +371,11 @@ func (s *KernelTestSuite) TestStageStopped() {
 		}
 
 		appStopped.Signal()
-	}).Return(nil)
+	}).Return(nil).Once()
 
-	m := new(kernelMocks.FullModule)
-	m.On("IsHealthy", mock.AnythingOfType("*context.cancelCtx")).Return(true, nil)
-	m.On("IsEssential").Return(false)
-	m.On("IsBackground").Return(true)
-	m.On("GetStage").Return(777)
-	m.On("Run", matcher.Context).Return(nil)
+	m := kernelMocks.NewFullModule(s.T())
+	s.expectModuleLifecycle(m, true, 777)
+	m.EXPECT().Run(matcher.Context).Return(nil).Once()
 
 	k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
 		kernel.WithModuleFactory("m", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -433,9 +394,6 @@ func (s *KernelTestSuite) TestStageStopped() {
 	k.Run()
 
 	s.True(success)
-
-	app.AssertExpectations(s.T())
-	m.AssertExpectations(s.T())
 }
 
 func (s *KernelTestSuite) Test_RunRealModule() {
@@ -443,7 +401,9 @@ func (s *KernelTestSuite) Test_RunRealModule() {
 	// if this does not work, the next test does not make sense
 	for i := 0; i < 10; i++ {
 		s.T().Run(fmt.Sprintf("fake iteration %d", i), func(t *testing.T) {
-			k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
+			logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+
+			k, err := kernel.BuildKernel(s.ctx, s.config, logger, []kernel.Option{
 				s.mockExitHandler(kernel.ExitCodeOk),
 				kernel.WithModuleFactory("main", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 					return &fakeModule{}, nil
@@ -454,11 +414,14 @@ func (s *KernelTestSuite) Test_RunRealModule() {
 			k.Run()
 		})
 	}
+
 	// test for a race condition on kernel shutdown
 	// in the past, this would panic in a close on closed channel in the tomb module
 	for i := 0; i < 10; i++ {
 		s.T().Run(fmt.Sprintf("real iteration %d", i), func(t *testing.T) {
-			k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
+			logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+
+			k, err := kernel.BuildKernel(s.ctx, s.config, logger, []kernel.Option{
 				s.mockExitHandler(kernel.ExitCodeOk),
 				kernel.WithModuleFactory("main", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 					return &realModule{
@@ -476,6 +439,8 @@ func (s *KernelTestSuite) Test_RunRealModule() {
 func (s *KernelTestSuite) TestModuleFastShutdown() {
 	var err error
 	var k kernel.Kernel
+
+	s.expectStartupLogs()
 
 	options := []kernel.Option{s.mockExitHandler(kernel.ExitCodeOk)}
 
@@ -503,6 +468,19 @@ func (s *KernelTestSuite) mockExitHandler(expectedCode int) kernel.Option {
 	return kernel.WithExitHandler(func(actualCode int) {
 		s.Equal(expectedCode, actualCode, "exit code does not match")
 	})
+}
+
+func (s *KernelTestSuite) expectModuleLifecycle(module *kernelMocks.FullModule, background bool, stage int) {
+	module.EXPECT().GetStage().Return(stage).Once()
+	module.EXPECT().IsEssential().Return(false).Once()
+	module.EXPECT().IsBackground().Return(background).Once()
+	module.EXPECT().IsHealthy(matcher.Context).Return(true, nil).Once()
+}
+
+func (s *KernelTestSuite) expectStartupLogs() {
+	s.logger.EXPECT().WithChannel(mock.AnythingOfType("string")).Return(s.logger)
+	s.logger.EXPECT().Info(mock.Anything)
+	s.logger.EXPECT().Info(mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
 type fakeModule struct{}

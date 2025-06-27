@@ -14,8 +14,8 @@ import (
 	ddbMocks "github.com/justtrackio/gosoline/pkg/ddb/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/uuid"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -357,7 +357,7 @@ func (s *metadataRepositoryTestSuite) mockAcquireShardPutItem(sequenceNumber kin
 	qb.EXPECT().WithCondition(ddb.AttributeNotExists("owningClientId").Or(ddb.Lte("updatedAt", s.clock.Now().Add(-time.Minute)))).Return(qb).Once()
 
 	s.repo.EXPECT().PutItemBuilder().Return(qb).Once()
-	s.repo.EXPECT().PutItem(mock.AnythingOfType("*exec.stoppableContext"), qb, &kinesis.CheckpointRecord{
+	s.repo.EXPECT().PutItem(matcher.Context, qb, &kinesis.CheckpointRecord{
 		BaseRecord: kinesis.BaseRecord{
 			Namespace: s.checkpointNamespace,
 			Resource:  string(s.shardId),

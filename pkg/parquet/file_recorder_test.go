@@ -30,38 +30,36 @@ func TestNopRecorder(t *testing.T) {
 
 func TestS3FileRecorder(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
-	s3Client := new(s3Mocks.Client)
+	s3Client := s3Mocks.NewClient(t)
 
 	r := parquet.NewS3FileRecorderWithInterfaces(logger, s3Client)
 	r.RecordFile("bucket", "my file")
 	r.RecordFile("another bucket", "my other file")
 
-	s3Client.On("DeleteObject", context.Background(), &s3.DeleteObjectInput{
+	s3Client.EXPECT().DeleteObject(context.Background(), &s3.DeleteObjectInput{
 		Bucket: aws.String("bucket"),
 		Key:    aws.String("my file"),
 	}).Return(nil, nil).Once()
-	s3Client.On("DeleteObject", context.Background(), &s3.DeleteObjectInput{
+	s3Client.EXPECT().DeleteObject(context.Background(), &s3.DeleteObjectInput{
 		Bucket: aws.String("another bucket"),
 		Key:    aws.String("my other file"),
 	}).Return(nil, nil).Once()
 
 	err := r.DeleteRecordedFiles(context.Background())
 	assert.NoError(t, err)
-	s3Client.AssertExpectations(t)
 
 	r.RecordFile("new bucket", "last file")
 
-	s3Client.On("CopyObject", context.Background(), &s3.CopyObjectInput{
+	s3Client.EXPECT().CopyObject(context.Background(), &s3.CopyObjectInput{
 		Bucket:     aws.String("new bucket"),
 		Key:        aws.String("prefix/last file"),
 		CopySource: aws.String("new bucket/last file"),
 	}).Return(nil, nil).Once()
-	s3Client.On("DeleteObject", context.Background(), &s3.DeleteObjectInput{
+	s3Client.EXPECT().DeleteObject(context.Background(), &s3.DeleteObjectInput{
 		Bucket: aws.String("new bucket"),
 		Key:    aws.String("last file"),
 	}).Return(nil, nil).Once()
 
 	err = r.RenameRecordedFiles(context.Background(), "prefix")
 	assert.NoError(t, err)
-	s3Client.AssertExpectations(t)
 }

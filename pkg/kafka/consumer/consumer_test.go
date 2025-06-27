@@ -12,7 +12,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/segmentio/kafka-go"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestConsumer_Manager_Batch_Commit(t *testing.T) {
@@ -21,11 +20,15 @@ func TestConsumer_Manager_Batch_Commit(t *testing.T) {
 
 	var (
 		managerBatches = 0
-		manager        = &mocks.OffsetManager{}
+		manager        = mocks.NewOffsetManager(t)
 	)
 
-	manager.On("Start", matcher.Context).Return(func(ctx context.Context) { <-ctx.Done() })
-	manager.On("Batch", matcher.Context).Return(
+	manager.EXPECT().Start(matcher.Context).RunAndReturn(func(ctx context.Context) error {
+		<-ctx.Done()
+
+		return nil
+	})
+	manager.EXPECT().Batch(matcher.Context).RunAndReturn(
 		func(ctx context.Context) []kafka.Message {
 			defer func() {
 				time.Sleep(time.Millisecond)
@@ -33,14 +36,9 @@ func TestConsumer_Manager_Batch_Commit(t *testing.T) {
 			}()
 
 			return []kafka.Message{OnFetch(ctx, managerBatches)}
-		},
-		func(ctx context.Context) error {
-			return nil
-		},
-	)
-	manager.On("Commit", mock.Anything, kafka.Message{Offset: 1, Partition: 1}).Return(nil)
-	manager.On("Commit", mock.Anything, kafka.Message{Offset: 2, Partition: 2}).Return(errors.New("reader: failed"))
-	defer manager.AssertExpectations(t)
+		})
+	manager.EXPECT().Commit(matcher.Context, kafka.Message{Offset: 1, Partition: 1}).Return(nil)
+	manager.EXPECT().Commit(matcher.Context, kafka.Message{Offset: 2, Partition: 2}).Return(errors.New("reader: failed"))
 
 	con, err := consumer.NewConsumerWithInterfaces(&consumer.Settings{
 		BatchSize:    100,

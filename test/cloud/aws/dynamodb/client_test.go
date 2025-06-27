@@ -179,12 +179,19 @@ func (s *ClientTestSuite) TestRetryOnTransactionConflict() {
 		Name: "PutItem",
 	}
 
-	logger := new(logMocks.Logger)
-	logger.On("WithContext", matcher.Context).Return(logger)
-	logger.On("WithFields", mock.AnythingOfType("log.Fields")).Return(logger)
-	logger.On("Warn", "attempt number %d to request resource %s failed after %s cause of error: %s", mock.AnythingOfType("int"), resource, mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*types.TransactionCanceledException")).Once()
-	logger.On("Warn", "sent request to resource %s successful after %d attempts in %s", resource, 2, mock.AnythingOfType("time.Duration")).Once()
-	logger.On("Info", "created new %s client %s", "dynamodb", "retryOnTransactionConflict").Once()
+	logger := logMocks.NewLogger(s.T())
+	logger.EXPECT().WithContext(matcher.Context).Return(logger)
+	logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(logger)
+	logger.EXPECT().
+		Warn(
+			"attempt number %d to request resource %s failed after %s cause of error: %s",
+			mock.AnythingOfType("int"),
+			resource,
+			mock.AnythingOfType("time.Duration"),
+			mock.AnythingOfType("*types.TransactionCanceledException"),
+		).Once()
+	logger.EXPECT().Warn("sent request to resource %s successful after %d attempts in %s", resource, 2, mock.AnythingOfType("time.Duration")).Once()
+	logger.EXPECT().Info("created new %s client %s", "dynamodb", "retryOnTransactionConflict").Once()
 
 	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), logger, "retryOnTransactionConflict")
 	s.NoError(err)

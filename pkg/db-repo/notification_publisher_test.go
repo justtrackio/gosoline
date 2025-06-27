@@ -33,8 +33,8 @@ func Test_Publish_Notifier(t *testing.T) {
 		return in
 	}
 
-	publisher := mdlMocks.Publisher{}
-	publisher.On("Publish", context.Background(), "CREATE", 1, input).Return(nil).Once()
+	publisher := *mdlMocks.NewPublisher(t)
+	publisher.EXPECT().Publish(context.Background(), "CREATE", 1, input).Return(nil).Once()
 
 	modelId := mdl.ModelId{
 		Project:     "testProject",
@@ -57,6 +57,4 @@ func Test_Publish_Notifier(t *testing.T) {
 
 	err := notifier.Send(context.Background(), "CREATE", input)
 	assert.NoError(t, err)
-
-	publisher.AssertExpectations(t)
 }

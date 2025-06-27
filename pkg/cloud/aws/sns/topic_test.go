@@ -12,7 +12,7 @@ import (
 	gosoSnsMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/sns/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
-	"github.com/stretchr/testify/mock"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -42,7 +42,7 @@ func (s *TopicTestSuite) TestPublish() {
 		MessageAttributes: map[string]types.MessageAttributeValue{},
 	}
 
-	s.client.EXPECT().Publish(mock.AnythingOfType("*context.valueCtx"), input).Return(nil, nil).Once()
+	s.client.EXPECT().Publish(matcher.Context, input).Return(nil, nil).Once()
 
 	err := s.topic.Publish(s.ctx, "test", map[string]string{})
 	s.NoError(err)
@@ -54,7 +54,7 @@ func (s *TopicTestSuite) TestPublishError() {
 		Message:  aws.String("test"),
 	}
 
-	s.client.EXPECT().Publish(mock.AnythingOfType("*context.valueCtx"), input).Return(nil, fmt.Errorf("error")).Once()
+	s.client.EXPECT().Publish(matcher.Context, input).Return(nil, fmt.Errorf("error")).Once()
 
 	err := s.topic.Publish(context.Background(), "test")
 	s.Error(err)
@@ -88,7 +88,7 @@ func (s *TopicTestSuite) TestPublishBatch() {
 		PublishBatchRequestEntries: entries,
 	}
 
-	s.client.EXPECT().PublishBatch(mock.AnythingOfType("*context.valueCtx"), firstBatch).Return(nil, nil).Once().Once()
+	s.client.EXPECT().PublishBatch(matcher.Context, firstBatch).Return(nil, nil).Once().Once()
 
 	secondBatch := &awsSns.PublishBatchInput{
 		TopicArn: aws.String("topicArn"),
@@ -101,7 +101,7 @@ func (s *TopicTestSuite) TestPublishBatch() {
 		},
 	}
 
-	s.client.EXPECT().PublishBatch(mock.AnythingOfType("*context.valueCtx"), secondBatch).Return(nil, nil).Once().Once()
+	s.client.EXPECT().PublishBatch(matcher.Context, secondBatch).Return(nil, nil).Once().Once()
 
 	err := s.topic.PublishBatch(s.ctx, messages, attributes)
 	s.NoError(err)

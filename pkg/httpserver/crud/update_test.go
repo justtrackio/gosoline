@@ -15,6 +15,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/validation"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -57,14 +58,15 @@ func (s *updateTestSuite) TestUpdate() {
 		Name: mdl.Box("updated"),
 	}
 
-	s.handler.Repo.On("Update", mock.AnythingOfType("*exec.stoppableContext"), updateModel).Return(nil)
-	s.handler.Repo.On("Read", mock.AnythingOfType("*exec.stoppableContext"), mdl.Box(uint(1)), readModel).Run(func(args mock.Arguments) {
-		model := args.Get(2).(*Model)
-		model.Id = mdl.Box(uint(1))
-		model.Name = mdl.Box("updated")
-		model.UpdatedAt = &time.Time{}
-		model.CreatedAt = &time.Time{}
-	}).Return(nil)
+	s.handler.Repo.EXPECT().Update(matcher.Context, updateModel).Return(nil)
+	s.handler.Repo.EXPECT().Read(matcher.Context, mdl.Box(uint(1)), readModel).
+		Run(func(ctx context.Context, id *uint, out db_repo.ModelBased) {
+			model := out.(*Model)
+			model.Id = mdl.Box(uint(1))
+			model.Name = mdl.Box("updated")
+			model.UpdatedAt = &time.Time{}
+			model.CreatedAt = &time.Time{}
+		}).Return(nil)
 
 	body := `{"name": "updated"}`
 	response := httpserver.HttpTest("PUT", "/:id", "/1", body, s.updateHandler)
@@ -86,10 +88,10 @@ func (s *updateTestSuite) TestUpdate_ValidationError() {
 		Name: mdl.Box("updated"),
 	}
 
-	s.handler.Repo.EXPECT().Update(mock.AnythingOfType("*exec.stoppableContext"), updateModel).Return(&validation.Error{
+	s.handler.Repo.EXPECT().Update(matcher.Context, updateModel).Return(&validation.Error{
 		Errors: []error{fmt.Errorf("invalid foobar")},
 	})
-	s.handler.Repo.EXPECT().Read(mock.AnythingOfType("*exec.stoppableContext"), mdl.Box(uint(1)), readModel).Run(func(_ context.Context, _ *uint, out db_repo.ModelBased) {
+	s.handler.Repo.EXPECT().Read(matcher.Context, mdl.Box(uint(1)), readModel).Run(func(_ context.Context, _ *uint, out db_repo.ModelBased) {
 		model := out.(*Model)
 		model.Id = mdl.Box(uint(1))
 		model.Name = mdl.Box("updated")

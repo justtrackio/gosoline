@@ -36,8 +36,8 @@ func (s *ServerTestSuite) SetupTest() {
 	gin.SetMode(gin.TestMode)
 	s.router = gin.New()
 
-	tracingInstrumentor := new(tracingMocks.Instrumentor)
-	tracingInstrumentor.On("HttpHandler", s.router).Return(s.router)
+	tracingInstrumentor := tracingMocks.NewInstrumentor(s.T())
+	tracingInstrumentor.EXPECT().HttpHandler(s.router).Return(s.router)
 	s.tracingInstrumentor = tracingInstrumentor
 
 	server, err := httpserver.NewWithInterfaces(s.logger, s.router, s.tracingInstrumentor, &httpserver.Settings{})

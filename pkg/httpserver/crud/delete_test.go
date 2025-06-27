@@ -1,6 +1,7 @@
 package crud_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/validation"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -56,14 +58,15 @@ func (s *deleteTestSuite) TestDelete() {
 		Name: mdl.Box("foobar"),
 	}
 
-	s.handler.Repo.On("Read", mock.AnythingOfType("*exec.stoppableContext"), mock.AnythingOfType("*uint"), model).Run(func(args mock.Arguments) {
-		model := args.Get(2).(*Model)
-		model.Id = mdl.Box(uint(1))
-		model.Name = mdl.Box("foobar")
-		model.UpdatedAt = &time.Time{}
-		model.CreatedAt = &time.Time{}
-	}).Return(nil)
-	s.handler.Repo.On("Delete", mock.AnythingOfType("*exec.stoppableContext"), deleteModel).Return(nil)
+	s.handler.Repo.EXPECT().Read(matcher.Context, mock.AnythingOfType("*uint"), model).
+		Run(func(ctx context.Context, id *uint, out db_repo.ModelBased) {
+			model := out.(*Model)
+			model.Id = mdl.Box(uint(1))
+			model.Name = mdl.Box("foobar")
+			model.UpdatedAt = &time.Time{}
+			model.CreatedAt = &time.Time{}
+		}).Return(nil)
+	s.handler.Repo.EXPECT().Delete(matcher.Context, deleteModel).Return(nil)
 
 	response := httpserver.HttpTest("DELETE", "/:id", "/1", "", s.deleteHandler)
 
@@ -84,14 +87,15 @@ func (s *deleteTestSuite) TestDelete_ValidationError() {
 		Name: mdl.Box("foobar"),
 	}
 
-	s.handler.Repo.On("Read", mock.AnythingOfType("*exec.stoppableContext"), mock.AnythingOfType("*uint"), model).Run(func(args mock.Arguments) {
-		model := args.Get(2).(*Model)
-		model.Id = mdl.Box(uint(1))
-		model.Name = mdl.Box("foobar")
-		model.UpdatedAt = &time.Time{}
-		model.CreatedAt = &time.Time{}
-	}).Return(nil)
-	s.handler.Repo.On("Delete", mock.AnythingOfType("*exec.stoppableContext"), deleteModel).Return(&validation.Error{
+	s.handler.Repo.EXPECT().Read(matcher.Context, mock.AnythingOfType("*uint"), model).
+		Run(func(ctx context.Context, id *uint, out db_repo.ModelBased) {
+			model := out.(*Model)
+			model.Id = mdl.Box(uint(1))
+			model.Name = mdl.Box("foobar")
+			model.UpdatedAt = &time.Time{}
+			model.CreatedAt = &time.Time{}
+		}).Return(nil)
+	s.handler.Repo.EXPECT().Delete(matcher.Context, deleteModel).Return(&validation.Error{
 		Errors: []error{fmt.Errorf("invalid foobar")},
 	})
 

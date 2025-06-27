@@ -15,9 +15,9 @@ import (
 	ddbMocks "github.com/justtrackio/gosoline/pkg/ddb/mocks"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 	uuidMocks "github.com/justtrackio/gosoline/pkg/uuid/mocks"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -105,7 +105,7 @@ func (s *ddbLockProviderTestSuite) getReleaseQueryBuilder(result *ddb.DeleteItem
 	qb.EXPECT().WithCondition(ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb).Once()
 
 	s.repo.EXPECT().DeleteItemBuilder().Return(qb).Once()
-	s.repo.EXPECT().DeleteItem(mock.AnythingOfType("*exec.manualCancelContext"), qb, &concDdb.DdbLockItem{
+	s.repo.EXPECT().DeleteItem(matcher.Context, qb, &concDdb.DdbLockItem{
 		Resource: s.resource,
 		Token:    s.token,
 	}).Return(result, err)

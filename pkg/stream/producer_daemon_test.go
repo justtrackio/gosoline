@@ -45,7 +45,7 @@ func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel int, batchSize int, ag
 	logger := logMocks.NewLoggerMock(logMocks.WithMockUntilLevel(maxLogLevel))
 	metric := metricMocks.NewWriterMockedAll()
 
-	s.output = new(streamMocks.Output)
+	s.output = streamMocks.NewOutput(s.T())
 	s.clock = clock.NewFakeClock()
 	s.executor = exec.NewBackoffExecutor(logger, &exec.ExecutableResource{
 		Type: "test",
@@ -92,11 +92,8 @@ func (s *ProducerDaemonTestSuite) expectMessage(messages []stream.WritableMessag
 	expectedJson, err := json.Marshal(messages)
 	s.NoError(err)
 
-	call := s.output.On("Write", context.Background(), mock.Anything)
-	call.Run(func(args mock.Arguments) {
-		ctx := args.Get(0).(context.Context)
-		writtenMsg := args.Get(1)
-
+	call := s.output.EXPECT().Write(context.Background(), mock.AnythingOfType("[]stream.WritableMessage"))
+	call.Run(func(ctx context.Context, writtenMsg []stream.WritableMessage) {
 		writtenJson, err := json.Marshal(writtenMsg)
 		s.NoError(err)
 
@@ -122,7 +119,6 @@ func (s *ProducerDaemonTestSuite) TestRun() {
 	err := s.stop()
 
 	s.NoError(err, "there should be no error on run")
-	s.output.AssertExpectations(s.T())
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteBatch() {
@@ -150,7 +146,6 @@ func (s *ProducerDaemonTestSuite) TestWriteBatch() {
 	err = s.stop()
 
 	s.NoError(err, "there should be no error on run")
-	s.output.AssertExpectations(s.T())
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteBatchOnClose() {
@@ -173,7 +168,6 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnClose() {
 	err = s.stop()
 
 	s.NoError(err, "there should be no error on run")
-	s.output.AssertExpectations(s.T())
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteBatchOnTick() {
@@ -198,7 +192,6 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnTick() {
 	err = s.stop()
 
 	s.NoError(err, "there should be no error on run")
-	s.output.AssertExpectations(s.T())
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteBatchOnTickAfterWrite() {
@@ -229,7 +222,6 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnTickAfterWrite() {
 	err = s.stop()
 
 	s.NoError(err, "there should be no error on run")
-	s.output.AssertExpectations(s.T())
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteAggregate() {
@@ -256,7 +248,6 @@ func (s *ProducerDaemonTestSuite) TestWriteAggregate() {
 	err = s.stop()
 
 	s.NoError(err, "there should be no error on run")
-	s.output.AssertExpectations(s.T())
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteAfterClose() {
@@ -272,8 +263,6 @@ func (s *ProducerDaemonTestSuite) TestWriteAfterClose() {
 
 	err = s.daemon.Write(context.Background(), messages)
 	s.EqualError(err, "can't write messages as the producer daemon testDaemon is not running")
-
-	s.output.AssertExpectations(s.T())
 }
 
 func TestProducerDaemonTestSuite(t *testing.T) {

@@ -15,8 +15,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/exec"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/tracing"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -83,7 +83,7 @@ func (s *RepositoryTestSuite) TestGetItem() {
 		},
 	}
 
-	s.client.EXPECT().GetItem(mock.AnythingOfType("*context.valueCtx"), input).Return(output, nil)
+	s.client.EXPECT().GetItem(matcher.Context, input).Return(output, nil)
 
 	qb := s.repo.GetItemBuilder().WithHash(1).WithRange("0")
 	res, err := s.repo.GetItem(s.ctx, qb, &item)
@@ -117,7 +117,7 @@ func (s *RepositoryTestSuite) TestGetItem_FromItem() {
 		},
 	}
 
-	s.client.EXPECT().GetItem(mock.AnythingOfType("*context.valueCtx"), input).Return(output, nil)
+	s.client.EXPECT().GetItem(matcher.Context, input).Return(output, nil)
 
 	item := model{
 		Id:  5,
@@ -153,7 +153,7 @@ func (s *RepositoryTestSuite) TestGetItemNotFound() {
 		ConsumedCapacity: &types.ConsumedCapacity{},
 	}
 
-	s.client.EXPECT().GetItem(mock.AnythingOfType("*context.valueCtx"), input).Return(output, nil)
+	s.client.EXPECT().GetItem(matcher.Context, input).Return(output, nil)
 
 	qb := s.repo.GetItemBuilder().WithHash(1).WithRange("0")
 	res, err := s.repo.GetItem(s.ctx, qb, &item)
@@ -182,7 +182,7 @@ func (s *RepositoryTestSuite) TestGetItemProjection() {
 		},
 	}
 
-	s.client.EXPECT().GetItem(mock.AnythingOfType("*context.valueCtx"), input).Return(output, nil)
+	s.client.EXPECT().GetItem(matcher.Context, input).Return(output, nil)
 
 	item := projection{}
 
@@ -228,7 +228,7 @@ func (s *RepositoryTestSuite) TestQuery() {
 		},
 	}
 
-	s.client.EXPECT().Query(mock.AnythingOfType("*context.valueCtx"), input).Return(output, nil)
+	s.client.EXPECT().Query(matcher.Context, input).Return(output, nil)
 
 	result := make([]model, 0)
 	expected := []model{
@@ -267,7 +267,7 @@ func (s *RepositoryTestSuite) TestQuery_Canceled() {
 		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 
-	s.client.EXPECT().Query(mock.AnythingOfType("*context.valueCtx"), input).Return(nil, awsErr)
+	s.client.EXPECT().Query(matcher.Context, input).Return(nil, awsErr)
 
 	result := make([]model, 0)
 
@@ -316,7 +316,7 @@ func (s *RepositoryTestSuite) TestBatchGetItems() {
 		UnprocessedKeys: map[string]types.KeysAndAttributes{},
 	}
 
-	s.client.EXPECT().BatchGetItem(mock.AnythingOfType("*context.valueCtx"), input).Return(output, nil)
+	s.client.EXPECT().BatchGetItem(matcher.Context, input).Return(output, nil)
 
 	result := make([]model, 0)
 	expected := []model{
@@ -383,7 +383,7 @@ func (s *RepositoryTestSuite) TestBatchWriteItem() {
 		UnprocessedItems: map[string][]types.WriteRequest{},
 	}
 
-	s.client.EXPECT().BatchWriteItem(mock.AnythingOfType("*context.valueCtx"), input).Return(output, nil)
+	s.client.EXPECT().BatchWriteItem(matcher.Context, input).Return(output, nil)
 
 	_, err := s.repo.BatchPutItems(s.ctx, items)
 
@@ -455,8 +455,8 @@ func (s *RepositoryTestSuite) TestBatchWriteItem_Retry() {
 		UnprocessedItems: map[string][]types.WriteRequest{},
 	}
 
-	s.client.EXPECT().BatchWriteItem(mock.AnythingOfType("*context.valueCtx"), firstInput).Return(firstOutput, nil).Once()
-	s.client.EXPECT().BatchWriteItem(mock.AnythingOfType("*context.valueCtx"), secondInput).Return(secondOutput, nil).Once()
+	s.client.EXPECT().BatchWriteItem(matcher.Context, firstInput).Return(firstOutput, nil).Once()
+	s.client.EXPECT().BatchWriteItem(matcher.Context, secondInput).Return(secondOutput, nil).Once()
 
 	_, err := s.repo.BatchPutItems(s.ctx, items)
 
@@ -483,7 +483,7 @@ func (s *RepositoryTestSuite) TestPutItem() {
 		ConsumedCapacity: &types.ConsumedCapacity{},
 	}
 
-	s.client.EXPECT().PutItem(mock.AnythingOfType("*context.valueCtx"), input).Return(output, nil)
+	s.client.EXPECT().PutItem(matcher.Context, input).Return(output, nil)
 
 	res, err := s.repo.PutItem(s.ctx, nil, item)
 
@@ -517,7 +517,7 @@ func (s *RepositoryTestSuite) TestUpdate() {
 		},
 	}
 
-	s.client.EXPECT().UpdateItem(mock.AnythingOfType("*context.valueCtx"), input).Return(output, nil)
+	s.client.EXPECT().UpdateItem(matcher.Context, input).Return(output, nil)
 
 	updatedItem := &model{
 		Id:  1,
@@ -563,7 +563,7 @@ func (s *RepositoryTestSuite) TestDeleteItem() {
 		},
 	}
 
-	s.client.EXPECT().DeleteItem(mock.AnythingOfType("*context.valueCtx"), input).Return(output, nil)
+	s.client.EXPECT().DeleteItem(matcher.Context, input).Return(output, nil)
 
 	item := model{
 		Id:  1,

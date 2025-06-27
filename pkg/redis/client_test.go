@@ -48,9 +48,9 @@ func (s *ClientWithMiniRedisTestSuite) SetupTest() {
 func (s *ClientWithMiniRedisTestSuite) TestGetNotFound() {
 	// the logger should fail the test as soon as any logger.Warn or anything gets called
 	// because we want to test the executor not doing that
-	logger := new(logMocks.Logger)
-	logger.On("WithFields", mock.Anything).Return(logger).Once()
-	logger.On("WithContext", context.Background()).Return(logger).Once()
+	logger := logMocks.NewLogger(s.T())
+	logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(logger).Once()
+	logger.EXPECT().WithContext(context.Background()).Return(logger).Once()
 	executor := redis.NewBackoffExecutor(logger, exec.BackoffSettings{
 		CancelDelay:     time.Second,
 		InitialInterval: time.Millisecond,

@@ -11,7 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/ses/mocks"
 	"github.com/justtrackio/gosoline/pkg/email"
 	loggerMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
-	"github.com/stretchr/testify/mock"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -62,7 +62,7 @@ func (s *sesSenderTestSuite) TestSendEmail_TextEmail() {
 		},
 	}
 
-	s.client.EXPECT().SendEmail(mock.Anything, expectedEmailInput).Return(&sesv2.SendEmailOutput{}, nil)
+	s.client.EXPECT().SendEmail(matcher.Context, expectedEmailInput).Return(&sesv2.SendEmailOutput{}, nil)
 
 	email := email.Email{
 		Recipients: recipients,
@@ -94,7 +94,7 @@ func (s *sesSenderTestSuite) TestSendEmail_HtmlEmail() {
 		},
 	}
 
-	s.client.EXPECT().SendEmail(mock.Anything, expectedEmailInput).Return(&sesv2.SendEmailOutput{}, nil)
+	s.client.EXPECT().SendEmail(matcher.Context, expectedEmailInput).Return(&sesv2.SendEmailOutput{}, nil)
 
 	email := email.Email{
 		Recipients: recipients,
@@ -128,7 +128,7 @@ func (s *sesSenderTestSuite) TestSendEmail_MultiFormatEmail() {
 		},
 	}
 
-	s.client.EXPECT().SendEmail(mock.Anything, expectedEmailInput).Return(&sesv2.SendEmailOutput{}, nil)
+	s.client.EXPECT().SendEmail(matcher.Context, expectedEmailInput).Return(&sesv2.SendEmailOutput{}, nil)
 
 	email := email.Email{
 		Recipients: recipients,
@@ -167,7 +167,7 @@ func (s *sesSenderTestSuite) TestSendEmail_ErrorFromSES() {
 			},
 		},
 	}
-	s.client.EXPECT().SendEmail(mock.Anything, expectedEmailInput).Return(nil, errors.New("error"))
+	s.client.EXPECT().SendEmail(matcher.Context, expectedEmailInput).Return(nil, errors.New("error"))
 
 	email := email.Email{
 		Recipients: recipients,

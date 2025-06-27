@@ -90,8 +90,8 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 		t.Run(test, func(t *testing.T) {
 			logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
-			queue := new(sqsMocks.Queue)
-			queue.On("Send", context.Background(), &data.expectedSqsMessage).Return(nil).Once()
+			queue := sqsMocks.NewQueue(t)
+			queue.EXPECT().Send(context.Background(), &data.expectedSqsMessage).Return(nil).Once()
 
 			msg, err := stream.MarshalJsonMessage(data.body, data.attributes)
 			assert.NoError(t, err)
@@ -100,7 +100,6 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 			err = output.WriteOne(context.Background(), msg)
 
 			assert.NoError(t, err)
-			queue.AssertExpectations(t)
 		})
 	}
 }
@@ -254,9 +253,9 @@ func TestSqsOutput_Write(t *testing.T) {
 
 			expectedSqsMessageChunks := funk.Chunk(data.expectedSqsMessage, stream.SqsOutputBatchSize)
 
-			queue := new(sqsMocks.Queue)
+			queue := sqsMocks.NewQueue(t)
 			for _, chunk := range expectedSqsMessageChunks {
-				queue.On("SendBatch", context.Background(), chunk).Return(nil).Once()
+				queue.EXPECT().SendBatch(context.Background(), chunk).Return(nil).Once()
 			}
 
 			messages := make([]stream.WritableMessage, len(data.body))
@@ -271,7 +270,6 @@ func TestSqsOutput_Write(t *testing.T) {
 			err := output.Write(context.Background(), messages)
 
 			assert.NoError(t, err)
-			queue.AssertExpectations(t)
 		})
 	}
 }

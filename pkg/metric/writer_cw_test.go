@@ -16,41 +16,39 @@ import (
 
 func TestOutput_Write(t *testing.T) {
 	timestamp := time.Unix(1549283566, 0)
-	cwClient := buildMocksAndWrite(timestamp, timestamp)
-
-	cwClient.AssertExpectations(t)
+	buildMocksAndWrite(t, timestamp, timestamp, true)
 }
 
 func TestOutput_Write_OutOfRange(t *testing.T) {
 	now := time.Unix(1549283566, 0)
 	timestamp := now.Add(-2 * 7 * 24 * time.Hour)
 
-	cwClient := buildMocksAndWrite(now, timestamp)
-
-	cwClient.AssertNotCalled(t, "PutMetricData", "data should be out of range")
+	buildMocksAndWrite(t, now, timestamp, false)
 }
 
-func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudwatchMocks.Client {
+func buildMocksAndWrite(t *testing.T, now time.Time, metricTimeStamp time.Time, shouldPutMetricData bool) {
 	testClock := clock.NewFakeClockAt(now)
 
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll)
-	cwClient := new(cloudwatchMocks.Client)
+	cwClient := cloudwatchMocks.NewClient(t)
 
-	cwClient.On("PutMetricData", context.Background(), &cloudwatch.PutMetricDataInput{
-		Namespace: aws.String("my/test/namespace/grp/app"),
-		MetricData: []types.MetricDatum{{
-			MetricName: aws.String("my-test-metric-name"),
-			Dimensions: []types.Dimension{
-				{
-					Name:  aws.String("d1"),
-					Value: aws.String("a"),
+	if shouldPutMetricData {
+		cwClient.EXPECT().PutMetricData(context.Background(), &cloudwatch.PutMetricDataInput{
+			Namespace: aws.String("my/test/namespace/grp/app"),
+			MetricData: []types.MetricDatum{{
+				MetricName: aws.String("my-test-metric-name"),
+				Dimensions: []types.Dimension{
+					{
+						Name:  aws.String("d1"),
+						Value: aws.String("a"),
+					},
 				},
-			},
-			Timestamp: aws.Time(metricTimeStamp),
-			Value:     aws.Float64(3.4),
-			Unit:      metric.UnitCount,
-		}},
-	}).Return(nil, nil)
+				Timestamp: aws.Time(metricTimeStamp),
+				Value:     aws.Float64(3.4),
+				Unit:      metric.UnitCount,
+			}},
+		}).Return(nil, nil)
+	}
 
 	mo := metric.NewCloudwatchWriterWithInterfaces(logger, testClock, cwClient, "my/test/namespace/grp/app")
 
@@ -68,6 +66,4 @@ func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudwatchMoc
 	}
 
 	mo.Write(data)
-
-	return cwClient
 }

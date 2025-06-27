@@ -25,10 +25,10 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) SetupTest() {
 	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.rand = mocks.NewPartitionerRand(s.T())
 	s.aggregators = []*mocks.ProducerDaemonAggregator{
-		new(mocks.ProducerDaemonAggregator),
-		new(mocks.ProducerDaemonAggregator),
-		new(mocks.ProducerDaemonAggregator),
-		new(mocks.ProducerDaemonAggregator),
+		mocks.NewProducerDaemonAggregator(s.T()),
+		mocks.NewProducerDaemonAggregator(s.T()),
+		mocks.NewProducerDaemonAggregator(s.T()),
+		mocks.NewProducerDaemonAggregator(s.T()),
 	}
 	var err error
 	next := 0
@@ -54,15 +54,9 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) SetupTest() {
 	s.NoError(err)
 }
 
-func (s *producerDaemonPartitionedAggregatorTestSuite) TearDownTest() {
-	for _, aggregator := range s.aggregators {
-		aggregator.AssertExpectations(s.T())
-	}
-}
-
 func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregatePlainMessage() {
-	s.rand.On("Intn", 4).Return(0).Once()
-	s.aggregators[0].On("Write", s.ctx, &stream.Message{}).Return(nil, nil).Once()
+	s.rand.EXPECT().Intn(4).Return(0).Once()
+	s.aggregators[0].EXPECT().Write(s.ctx, &stream.Message{}).Return(nil, nil).Once()
 
 	flush, err := s.aggregator.Write(s.ctx, &stream.Message{})
 	s.NoError(err)
@@ -70,7 +64,7 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregatePlainMessage
 }
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregatePartitionedMessage() {
-	s.aggregators[2].On("Write", s.ctx, &stream.Message{
+	s.aggregators[2].EXPECT().Write(s.ctx, &stream.Message{
 		Attributes: map[string]string{
 			stream.AttributeKinesisPartitionKey: "my partition key",
 		},
@@ -86,7 +80,7 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregatePartitionedM
 }
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregateExplicitHashedMessage() {
-	s.aggregators[2].On("Write", s.ctx, &stream.Message{
+	s.aggregators[2].EXPECT().Write(s.ctx, &stream.Message{
 		Attributes: map[string]string{
 			stream.AttributeKinesisExplicitHashKey: "232045716840113089107413691294511164502",
 		},
@@ -102,7 +96,7 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregateExplicitHash
 }
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregateMixedMessages() {
-	s.aggregators[2].On("Write", s.ctx, &stream.Message{
+	s.aggregators[2].EXPECT().Write(s.ctx, &stream.Message{
 		Attributes: map[string]string{
 			stream.AttributeKinesisPartitionKey:    "not my partition key",
 			stream.AttributeKinesisExplicitHashKey: "232045716840113089107413691294511164502",
@@ -120,9 +114,9 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregateMixedMessage
 }
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) TestGettingExplicitHashKeyFails() {
-	s.logger.On("Error", "failed to determine partition or explicit hash key, will choose one at random: %w", fmt.Errorf("invalid explicit hash key: not a number")).Once()
-	s.rand.On("Intn", 4).Return(3).Once()
-	s.aggregators[3].On("Write", s.ctx, &stream.Message{
+	s.logger.EXPECT().Error("failed to determine partition or explicit hash key, will choose one at random: %w", fmt.Errorf("invalid explicit hash key: not a number")).Once()
+	s.rand.EXPECT().Intn(4).Return(3).Once()
+	s.aggregators[3].EXPECT().Write(s.ctx, &stream.Message{
 		Attributes: map[string]string{
 			stream.AttributeKinesisExplicitHashKey: "not a number",
 		},
@@ -139,7 +133,7 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) TestGettingExplicitHashKe
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) TestFlushSuccess() {
 	for i, aggregator := range s.aggregators {
-		aggregator.On("Flush").Return([]stream.AggregateFlush{
+		aggregator.EXPECT().Flush().Return([]stream.AggregateFlush{
 			{
 				MessageCount: i + 1,
 			},
@@ -165,12 +159,12 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) TestFlushSuccess() {
 }
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) TestFlushFailure() {
-	s.aggregators[0].On("Flush").Return([]stream.AggregateFlush{
+	s.aggregators[0].EXPECT().Flush().Return([]stream.AggregateFlush{
 		{
 			MessageCount: 1,
 		},
 	}, nil).Once()
-	s.aggregators[1].On("Flush").Return(nil, fmt.Errorf("fail")).Once()
+	s.aggregators[1].EXPECT().Flush().Return(nil, fmt.Errorf("fail")).Once()
 
 	flushed, err := s.aggregator.Flush()
 	s.Nil(flushed)

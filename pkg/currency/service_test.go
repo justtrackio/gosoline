@@ -11,7 +11,6 @@ import (
 	kvStoreMock "github.com/justtrackio/gosoline/pkg/kvstore/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -65,7 +64,7 @@ func (s *serviceTestSuite) TestToUsd_Calculation() {
 }
 
 func (s *serviceTestSuite) TestHasCurrency() {
-	s.store.On("Contains", s.ctx, currency.Usd).Return(true, nil).Once()
+	s.store.EXPECT().Contains(s.ctx, currency.Usd).Return(true, nil).Once()
 
 	hasCurrency, err := s.service.HasCurrency(s.ctx, currency.Usd)
 
@@ -74,7 +73,7 @@ func (s *serviceTestSuite) TestHasCurrency() {
 }
 
 func (s *serviceTestSuite) TestHasCurrencyAtDate() {
-	s.store.On("Contains", s.ctx, "2021-01-02-USD").Return(true, nil).Once()
+	s.store.EXPECT().Contains(s.ctx, "2021-01-02-USD").Return(true, nil).Once()
 
 	hasCurrency, err := s.service.HasCurrencyAtDate(s.ctx, currency.Usd, s.clock.Now().AddDate(0, 0, -1))
 
@@ -83,7 +82,7 @@ func (s *serviceTestSuite) TestHasCurrencyAtDate() {
 }
 
 func (s *serviceTestSuite) TestHasCurrencyAtDate_NotThere() {
-	s.store.On("Contains", s.ctx, "2021-01-02-USD").Return(false, nil).Once()
+	s.store.EXPECT().Contains(s.ctx, "2021-01-02-USD").Return(false, nil).Once()
 
 	hasCurrency, err := s.service.HasCurrencyAtDate(s.ctx, currency.Usd, s.clock.Now().AddDate(0, 0, -1))
 
@@ -92,7 +91,7 @@ func (s *serviceTestSuite) TestHasCurrencyAtDate_NotThere() {
 }
 
 func (s *serviceTestSuite) TestHasCurrencyAtDate_Error() {
-	s.store.On("Contains", s.ctx, "2021-01-02-USD").Return(false, errors.New("lookup error")).Once()
+	s.store.EXPECT().Contains(s.ctx, "2021-01-02-USD").Return(false, errors.New("lookup error")).Once()
 
 	hasCurrency, err := s.service.HasCurrencyAtDate(s.ctx, currency.Usd, s.clock.Now().AddDate(0, 0, -1))
 
@@ -184,8 +183,7 @@ func (s *serviceTestSuite) TestToUsdAtDate_ClockSkew() {
 }
 
 func (s *serviceTestSuite) mockCurrencyStoreGet(key string, value float64, found bool) {
-	s.store.On("Get", s.ctx, key, mdl.Box(0.0)).Run(func(args mock.Arguments) {
-		f := args.Get(2).(*float64)
+	s.store.EXPECT().Get(s.ctx, key, mdl.Box(0.0)).Run(func(ctx context.Context, key any, f *float64) {
 		*f = value
 	}).Return(found, nil).Once()
 }

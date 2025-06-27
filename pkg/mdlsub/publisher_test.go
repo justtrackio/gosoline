@@ -23,7 +23,7 @@ type PublisherTestSuite struct {
 
 func (s *PublisherTestSuite) SetupTest() {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
-	s.producer = new(streamMocks.Producer)
+	s.producer = streamMocks.NewProducer(s.T())
 
 	s.publisher = mdlsub.NewPublisherWithInterfaces(logger, s.producer, &mdlsub.PublisherSettings{
 		ModelId: mdl.ModelId{
@@ -54,7 +54,7 @@ func (s *PublisherTestSuite) TestPublish() {
 		"modelId": "gosoline.test.grp.event",
 	}
 
-	s.producer.On("WriteOne", ctx, event, expectedAttributes).Return(nil)
+	s.producer.EXPECT().WriteOne(ctx, event, expectedAttributes).Return(nil)
 
 	err := s.publisher.Publish(ctx, mdlsub.TypeCreate, 0, event)
 	s.NoError(err)
