@@ -12,8 +12,8 @@ import (
 )
 
 func TestCloseOnce(t *testing.T) {
-	closerImpl := new(mocks.ReadSeekerCloser)
-	closerImpl.On("Close").Return(nil).Once()
+	closerImpl := mocks.NewReadSeekerCloser(t)
+	closerImpl.EXPECT().Close().Return(nil).Once()
 
 	closer := blob.CloseOnce(closerImpl)
 
@@ -22,13 +22,11 @@ func TestCloseOnce(t *testing.T) {
 		err := closer.Close()
 		assert.NoError(t, err)
 	}
-
-	closerImpl.AssertExpectations(t)
 }
 
 func TestCloseOnceConcurrently(t *testing.T) {
-	closerImpl := new(mocks.ReadSeekerCloser)
-	closerImpl.On("Close").Return(nil).Once()
+	closerImpl := mocks.NewReadSeekerCloser(t)
+	closerImpl.EXPECT().Close().Return(nil).Once()
 
 	closer := blob.CloseOnce(closerImpl)
 
@@ -57,8 +55,6 @@ func TestCloseOnceConcurrently(t *testing.T) {
 
 	// wait for threads
 	wg.Wait()
-
-	closerImpl.AssertExpectations(t)
 }
 
 func TestStreamBytes(t *testing.T) {
@@ -91,7 +87,7 @@ func TestStreamBytes(t *testing.T) {
 }
 
 func TestStreamReaderWithSeek(t *testing.T) {
-	reader := new(mocks.ReadSeekerCloser)
+	reader := mocks.NewReadSeekerCloser(t)
 
 	stream := blob.StreamReader(reader)
 
@@ -99,33 +95,36 @@ func TestStreamReaderWithSeek(t *testing.T) {
 
 	data := []byte("my data")
 
-	reader.On("Read", mock.Anything).Run(func(args mock.Arguments) {
-		buffer := args.Get(0).([]byte)
+	reader.EXPECT().Read(mock.MatchedBy(func(arg any) bool {
+		_, ok := arg.([]byte)
 
+		return ok
+	})).Run(func(buffer []byte) {
 		assert.GreaterOrEqual(t, len(buffer), len(data))
-
 		copy(buffer, data)
 
-		reader.On("Read", mock.Anything).Return(0, io.EOF).Once()
+		reader.EXPECT().Read(mock.MatchedBy(func(arg any) bool {
+			_, ok := arg.([]byte)
+
+			return ok
+		})).Return(0, io.EOF).Once()
 	}).Return(len(data), nil).Once()
-	reader.On("Close").Return(nil).Once()
+	reader.EXPECT().Close().Return(nil).Once()
 
 	bytes, err := stream.ReadAll()
 	assert.NoError(t, err)
 	assert.Equal(t, data, bytes)
-
-	reader.AssertExpectations(t)
 }
 
 func TestStreamReaderWithoutSeek(t *testing.T) {
-	reader := new(mocks.ReadCloser)
+	reader := mocks.NewReadCloser(t)
 
 	stream := blob.StreamReader(reader)
 	streamReader := stream.AsReader()
 
 	buffer := make([]byte, 1)
 
-	reader.On("Read", buffer).Return(1, nil)
+	reader.EXPECT().Read(buffer).Return(1, nil)
 	n, err := streamReader.Read(buffer)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, n)
@@ -133,31 +132,32 @@ func TestStreamReaderWithoutSeek(t *testing.T) {
 	_, err = streamReader.Seek(0, io.SeekCurrent)
 	assert.Error(t, err)
 
-	reader.On("Close").Return(nil).Once()
+	reader.EXPECT().Close().Return(nil).Once()
 	err = streamReader.Close()
 	assert.NoError(t, err)
-
-	reader.AssertExpectations(t)
 
 	// create the reader again to restore its state
 	stream = blob.StreamReader(reader)
 
 	data := []byte("my data")
 
-	reader.On("Read", mock.Anything).Run(func(args mock.Arguments) {
-		buffer := args.Get(0).([]byte)
+	reader.EXPECT().Read(mock.MatchedBy(func(arg any) bool {
+		_, ok := arg.([]byte)
 
+		return ok
+	})).Run(func(buffer []byte) {
 		assert.GreaterOrEqual(t, len(buffer), len(data))
-
 		copy(buffer, data)
 
-		reader.On("Read", mock.Anything).Return(0, io.EOF).Once()
+		reader.EXPECT().Read(mock.MatchedBy(func(arg any) bool {
+			_, ok := arg.([]byte)
+
+			return ok
+		})).Return(0, io.EOF).Once()
 	}).Return(len(data), nil).Once()
-	reader.On("Close").Return(nil).Once()
+	reader.EXPECT().Close().Return(nil).Once()
 
 	bytes, err := stream.ReadAll()
 	assert.NoError(t, err)
 	assert.Equal(t, data, bytes)
-
-	reader.AssertExpectations(t)
 }

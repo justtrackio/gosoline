@@ -11,7 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/conc/ddb"
 	"github.com/justtrackio/gosoline/pkg/conc/ddb/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
-	"github.com/stretchr/testify/mock"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -51,14 +51,14 @@ func (s *ddbLockTestSuite) TestRenewLockFails() {
 }
 
 func (s *ddbLockTestSuite) TestReleaseLockSuccess() {
-	s.lockManager.EXPECT().ReleaseLock(mock.AnythingOfType("*exec.manualCancelContext"), "resource", "token").Return(nil).Once()
+	s.lockManager.EXPECT().ReleaseLock(matcher.Context, "resource", "token").Return(nil).Once()
 
 	err := s.lock.Release()
 	s.NoError(err)
 }
 
 func (s *ddbLockTestSuite) TestReleaseLockFail() {
-	s.lockManager.EXPECT().ReleaseLock(mock.AnythingOfType("*exec.manualCancelContext"), "resource", "token").Return(fmt.Errorf("fail")).Once()
+	s.lockManager.EXPECT().ReleaseLock(matcher.Context, "resource", "token").Return(fmt.Errorf("fail")).Once()
 
 	err := s.lock.Release()
 	s.EqualError(err, "fail")
@@ -66,7 +66,7 @@ func (s *ddbLockTestSuite) TestReleaseLockFail() {
 
 func (s *ddbLockTestSuite) TestReleaseLockTimeout() {
 	s.lockManager.EXPECT().
-		ReleaseLock(mock.AnythingOfType("*exec.manualCancelContext"), "resource", "token").
+		ReleaseLock(matcher.Context, "resource", "token").
 		Run(func(ctx context.Context, resource string, token string) {
 			s.clock.BlockUntilTimers(1)
 			s.clock.Advance(time.Minute)

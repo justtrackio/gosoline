@@ -8,18 +8,18 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kvstore"
 	kvStoreMocks "github.com/justtrackio/gosoline/pkg/kvstore/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestChainKvStore_Contains(t *testing.T) {
 	ctx := context.Background()
-	store, element0, element1 := buildTestableChainStore[string](false)
+	store, element0, element1 := buildTestableChainStore[string](t, false)
 	item := new(string)
 
 	// missing
-	element0.On("Get", ctx, "foo", item).Return(false, nil).Once()
-	element1.On("Get", ctx, "foo", item).Return(false, nil).Once()
+	element0.EXPECT().Get(matcher.Context, "foo", item).Return(false, nil).Once()
+	element1.EXPECT().Get(matcher.Context, "foo", item).Return(false, nil).Once()
 
 	exists, err := store.Contains(ctx, "foo")
 	assert.NoError(t, err)
@@ -29,13 +29,12 @@ func TestChainKvStore_Contains(t *testing.T) {
 	element1.AssertExpectations(t)
 
 	// available
-	element0.On("Get", ctx, "foo", item).Return(false, nil).Once()
-	element1.On("Get", ctx, "foo", item).Run(func(args mock.Arguments) {
-		item := args[2].(*string)
-		*item = "bar"
+	element0.EXPECT().Get(matcher.Context, "foo", item).Return(false, nil).Once()
+	element1.EXPECT().Get(matcher.Context, "foo", item).Run(func(ctx context.Context, key any, value *string) {
+		*value = "bar"
 	}).Return(true, nil).Once()
 
-	element0.On("Put", ctx, "foo", "bar").Return(nil).Once()
+	element0.EXPECT().Put(matcher.Context, "foo", "bar").Return(nil).Once()
 
 	exists, err = store.Contains(ctx, "foo")
 	assert.NoError(t, err)
@@ -47,12 +46,11 @@ func TestChainKvStore_Contains(t *testing.T) {
 
 func TestChainKvStore_Contains_Early(t *testing.T) {
 	ctx := context.Background()
-	store, element0, element1 := buildTestableChainStore[string](false)
+	store, element0, element1 := buildTestableChainStore[string](t, false)
 	item := new(string)
 
-	element0.On("Get", ctx, "foo", item).Run(func(args mock.Arguments) {
-		item := args[2].(*string)
-		*item = "bar"
+	element0.EXPECT().Get(matcher.Context, "foo", item).Run(func(ctx context.Context, key any, value *string) {
+		*value = "bar"
 	}).Return(true, nil).Once()
 
 	exists, err := store.Contains(ctx, "foo")
@@ -65,11 +63,11 @@ func TestChainKvStore_Contains_Early(t *testing.T) {
 
 func TestChainKvStore_Contains_CacheMissing(t *testing.T) {
 	ctx := context.Background()
-	store, element0, element1 := buildTestableChainStore[string](true)
+	store, element0, element1 := buildTestableChainStore[string](t, true)
 	item := new(string)
 
-	element0.On("Get", ctx, "foo", item).Return(false, nil).Once()
-	element1.On("Get", ctx, "foo", item).Return(false, nil).Once()
+	element0.EXPECT().Get(matcher.Context, "foo", item).Return(false, nil).Once()
+	element1.EXPECT().Get(matcher.Context, "foo", item).Return(false, nil).Once()
 
 	exists, err := store.Contains(ctx, "foo")
 	assert.NoError(t, err)
@@ -86,11 +84,11 @@ func TestChainKvStore_Contains_CacheMissing(t *testing.T) {
 func TestChainKvStore_Get(t *testing.T) {
 	ctx := context.Background()
 	item := &Item{}
-	store, element0, element1 := buildTestableChainStore[Item](false)
+	store, element0, element1 := buildTestableChainStore[Item](t, false)
 
 	// missing
-	element0.On("Get", ctx, "foo", item).Return(false, nil).Once()
-	element1.On("Get", ctx, "foo", item).Return(false, nil).Once()
+	element0.EXPECT().Get(matcher.Context, "foo", item).Return(false, nil).Once()
+	element1.EXPECT().Get(matcher.Context, "foo", item).Return(false, nil).Once()
 
 	found, err := store.Get(ctx, "foo", item)
 
@@ -98,15 +96,14 @@ func TestChainKvStore_Get(t *testing.T) {
 	assert.False(t, found)
 
 	// available
-	element0.On("Get", ctx, "foo", item).Return(false, nil).Once()
+	element0.EXPECT().Get(matcher.Context, "foo", item).Return(false, nil).Once()
 
-	element1.On("Get", ctx, "foo", item).Run(func(args mock.Arguments) {
-		item := args[2].(*Item)
+	element1.EXPECT().Get(matcher.Context, "foo", item).Run(func(ctx context.Context, key any, item *Item) {
 		item.Id = "foo"
 		item.Body = "bar"
 	}).Return(true, nil).Once()
 
-	element0.On("Put", ctx, "foo", Item{Id: "foo", Body: "bar"}).Return(nil).Once()
+	element0.EXPECT().Put(matcher.Context, "foo", Item{Id: "foo", Body: "bar"}).Return(nil).Once()
 
 	found, err = store.Get(ctx, "foo", item)
 
@@ -122,11 +119,11 @@ func TestChainKvStore_Get(t *testing.T) {
 func TestChainKvStore_Get_CacheMissing(t *testing.T) {
 	ctx := context.Background()
 	item := &Item{}
-	store, element0, element1 := buildTestableChainStore[Item](true)
+	store, element0, element1 := buildTestableChainStore[Item](t, true)
 
 	// missing
-	element0.On("Get", ctx, "foo", item).Return(false, nil).Once()
-	element1.On("Get", ctx, "foo", item).Return(false, nil).Once()
+	element0.EXPECT().Get(matcher.Context, "foo", item).Return(false, nil).Once()
+	element1.EXPECT().Get(matcher.Context, "foo", item).Return(false, nil).Once()
 
 	found, err := store.Get(ctx, "foo", item)
 
@@ -135,15 +132,14 @@ func TestChainKvStore_Get_CacheMissing(t *testing.T) {
 	assert.Empty(t, item.Id)
 
 	// available
-	element0.On("Get", ctx, "bar", item).Return(false, nil).Once()
+	element0.EXPECT().Get(matcher.Context, "bar", item).Return(false, nil).Once()
 
-	element1.On("Get", ctx, "bar", item).Run(func(args mock.Arguments) {
-		item := args[2].(*Item)
+	element1.EXPECT().Get(matcher.Context, "bar", item).Run(func(ctx context.Context, key any, item *Item) {
 		item.Id = "bar"
 		item.Body = "bar"
 	}).Return(true, nil).Once()
 
-	element0.On("Put", ctx, "bar", Item{Id: "bar", Body: "bar"}).Return(nil).Once()
+	element0.EXPECT().Put(matcher.Context, "bar", Item{Id: "bar", Body: "bar"}).Return(nil).Once()
 
 	found, err = store.Get(ctx, "bar", item)
 
@@ -161,11 +157,11 @@ func TestChainKvStore_GetBatch(t *testing.T) {
 	keys := []interface{}{"foo", "fuu"}
 	result := make(map[string]Item)
 
-	store, element0, element1 := buildTestableChainStore[Item](false)
+	store, element0, element1 := buildTestableChainStore[Item](t, false)
 
 	// missing all
-	element0.On("GetBatch", ctx, keys, &result).Return(keys, nil).Once()
-	element1.On("GetBatch", ctx, keys, &result).Return(keys, nil).Once()
+	element0.EXPECT().GetBatch(matcher.Context, keys, &result).Return(keys, nil).Once()
+	element1.EXPECT().GetBatch(matcher.Context, keys, &result).Return(keys, nil).Once()
 
 	missing, err := store.GetBatch(ctx, keys, &result)
 
@@ -181,11 +177,11 @@ func TestChainKvStore_GetBatch(t *testing.T) {
 		},
 	}
 
-	element0.On("GetBatch", ctx, keys, &result).Return(keys, nil).Once()
-	element0.On("PutBatch", ctx, existing).Return(nil).Once()
+	element0.EXPECT().GetBatch(matcher.Context, keys, &result).Return(keys, nil).Once()
+	element0.EXPECT().PutBatch(matcher.Context, existing).Return(nil).Once()
 
-	element1.On("GetBatch", ctx, keys, &result).Run(func(args mock.Arguments) {
-		items := args[2].(*map[string]Item)
+	element1.EXPECT().GetBatch(matcher.Context, keys, &result).Run(func(ctx context.Context, keys any, values any) {
+		items := values.(*map[string]Item)
 
 		*items = map[string]Item{
 			"foo": {
@@ -206,8 +202,8 @@ func TestChainKvStore_GetBatch(t *testing.T) {
 	assert.Equal(t, "bar", result["foo"].Body)
 
 	// missing none
-	element0.On("GetBatch", ctx, keys, &result).Run(func(args mock.Arguments) {
-		items := args[2].(*map[string]Item)
+	element0.EXPECT().GetBatch(matcher.Context, keys, &result).Run(func(ctx context.Context, keys any, values any) {
+		items := values.(*map[string]Item)
 
 		*items = map[string]Item{
 			"foo": {
@@ -244,11 +240,11 @@ func TestChainKvStore_GetBatch_CacheMissing_All(t *testing.T) {
 	keys := []interface{}{"foo", "fuu"}
 	result := make(map[string]Item)
 
-	store, element0, element1 := buildTestableChainStore[Item](true)
+	store, element0, element1 := buildTestableChainStore[Item](t, true)
 
 	// missing all
-	element0.On("GetBatch", ctx, keys, result).Return(keys, nil).Once()
-	element1.On("GetBatch", ctx, keys, result).Return(keys, nil).Once()
+	element0.EXPECT().GetBatch(matcher.Context, keys, result).Return(keys, nil).Once()
+	element1.EXPECT().GetBatch(matcher.Context, keys, result).Return(keys, nil).Once()
 
 	missing, err := store.GetBatch(ctx, keys, result)
 
@@ -268,11 +264,11 @@ func TestChainKvStore_GetBatch_CacheMissing_None(t *testing.T) {
 	keys := []interface{}{"foo", "fuu"}
 	result := make(map[string]Item)
 
-	store, element0, element1 := buildTestableChainStore[Item](true)
+	store, element0, element1 := buildTestableChainStore[Item](t, true)
 
 	// missing none
-	element0.On("GetBatch", ctx, keys, result).Run(func(args mock.Arguments) {
-		items := args[2].(map[string]Item)
+	element0.EXPECT().GetBatch(matcher.Context, keys, result).Run(func(ctx context.Context, keys any, values any) {
+		items := values.(map[string]Item)
 
 		items["foo"] = Item{
 			Id:   "foo",
@@ -309,7 +305,7 @@ func TestChainKvStore_GetBatch_CacheMissing_One(t *testing.T) {
 	existingKeys := []interface{}{"foo"}
 	result := make(map[string]Item)
 
-	store, element0, element1 := buildTestableChainStore[Item](true)
+	store, element0, element1 := buildTestableChainStore[Item](t, true)
 
 	// missing one
 	existing := map[interface{}]Item{
@@ -319,10 +315,10 @@ func TestChainKvStore_GetBatch_CacheMissing_One(t *testing.T) {
 		},
 	}
 
-	element0.On("GetBatch", ctx, keys, &result).Return(keys, nil).Once()
+	element0.EXPECT().GetBatch(matcher.Context, keys, &result).Return(keys, nil).Once()
 
-	element1.On("GetBatch", ctx, keys, &result).Run(func(args mock.Arguments) {
-		items := args[2].(*map[string]Item)
+	element1.EXPECT().GetBatch(matcher.Context, keys, &result).Run(func(ctx context.Context, keys any, values any) {
+		items := values.(*map[string]Item)
 
 		*items = map[string]Item{
 			"foo": {
@@ -332,7 +328,7 @@ func TestChainKvStore_GetBatch_CacheMissing_One(t *testing.T) {
 		}
 	}).Return([]interface{}{"fuu"}, nil).Once()
 
-	element0.On("PutBatch", ctx, existing).Return(nil).Once()
+	element0.EXPECT().PutBatch(matcher.Context, existing).Return(nil).Once()
 
 	missing, err := store.GetBatch(ctx, keys, &result)
 
@@ -348,8 +344,8 @@ func TestChainKvStore_GetBatch_CacheMissing_One(t *testing.T) {
 	element0.AssertExpectations(t)
 	element1.AssertExpectations(t)
 
-	element0.On("GetBatch", ctx, existingKeys, &result).Run(func(args mock.Arguments) {
-		items := args[2].(*map[string]Item)
+	element0.EXPECT().GetBatch(matcher.Context, existingKeys, &result).Run(func(ctx context.Context, keys any, values any) {
+		items := values.(*map[string]Item)
 
 		*items = map[string]Item{
 			"foo": {
@@ -380,10 +376,10 @@ func TestChainKvStore_Put(t *testing.T) {
 		Body: "bar",
 	}
 
-	store, element0, element1 := buildTestableChainStore[Item](false)
+	store, element0, element1 := buildTestableChainStore[Item](t, false)
 
-	element0.On("Put", ctx, "foo", item).Return(nil).Once()
-	element1.On("Put", ctx, "foo", item).Return(nil).Once()
+	element0.EXPECT().Put(matcher.Context, "foo", item).Return(nil).Once()
+	element1.EXPECT().Put(matcher.Context, "foo", item).Return(nil).Once()
 
 	err := store.Put(ctx, "foo", item)
 
@@ -409,10 +405,10 @@ func TestChainKvStore_PutBatch(t *testing.T) {
 		itemsII[k] = v
 	}
 
-	store, element0, element1 := buildTestableChainStore[Item](false)
+	store, element0, element1 := buildTestableChainStore[Item](t, false)
 
-	element0.On("PutBatch", ctx, itemsII).Return(nil).Once()
-	element1.On("PutBatch", ctx, itemsII).Return(nil).Once()
+	element0.EXPECT().PutBatch(matcher.Context, itemsII).Return(nil).Once()
+	element1.EXPECT().PutBatch(matcher.Context, itemsII).Return(nil).Once()
 
 	err := store.PutBatch(ctx, items)
 
@@ -424,10 +420,10 @@ func TestChainKvStore_PutBatch(t *testing.T) {
 func TestChainKvStore_Delete(t *testing.T) {
 	ctx := context.Background()
 
-	store, element0, element1 := buildTestableChainStore[string](false)
+	store, element0, element1 := buildTestableChainStore[string](t, false)
 
-	element0.On("Delete", ctx, "foo").Return(nil).Once()
-	element1.On("Delete", ctx, "foo").Return(nil).Once()
+	element0.EXPECT().Delete(matcher.Context, "foo").Return(nil).Once()
+	element1.EXPECT().Delete(matcher.Context, "foo").Return(nil).Once()
 
 	err := store.Delete(ctx, "foo")
 
@@ -440,10 +436,10 @@ func TestChainKvStore_DeleteBatch(t *testing.T) {
 	ctx := context.Background()
 	items := []string{"fuu", "foo"}
 
-	store, element0, element1 := buildTestableChainStore[string](false)
+	store, element0, element1 := buildTestableChainStore[string](t, false)
 
-	element0.On("DeleteBatch", ctx, items).Return(nil).Once()
-	element1.On("DeleteBatch", ctx, items).Return(nil).Once()
+	element0.EXPECT().DeleteBatch(matcher.Context, items).Return(nil).Once()
+	element1.EXPECT().DeleteBatch(matcher.Context, items).Return(nil).Once()
 
 	err := store.DeleteBatch(ctx, items)
 
@@ -456,11 +452,15 @@ func nilFactory[T any](_ kvstore.ElementFactory[T], _ *kvstore.Settings) (kvstor
 	return nil, nil
 }
 
-func buildTestableChainStore[T any](missingCacheEnabled bool) (kvstore.KvStore[T], *kvStoreMocks.KvStore[T], *kvStoreMocks.KvStore[T]) {
+func buildTestableChainStore[T any](t *testing.T, missingCacheEnabled bool) (
+	store kvstore.ChainKvStore[T],
+	element0 *kvStoreMocks.KvStore[T],
+	element1 *kvStoreMocks.KvStore[T],
+) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll)
 
-	element0 := new(kvStoreMocks.KvStore[T])
-	element1 := new(kvStoreMocks.KvStore[T])
+	element0 = kvStoreMocks.NewKvStore[T](t)
+	element1 = kvStoreMocks.NewKvStore[T](t)
 
 	settings := &kvstore.Settings{
 		AppId: cfg.AppId{
@@ -481,7 +481,7 @@ func buildTestableChainStore[T any](missingCacheEnabled bool) (kvstore.KvStore[T
 		missingCache = kvstore.NewEmptyKvStore[T]()
 	}
 
-	store := kvstore.NewChainKvStoreWithInterfaces[T](logger, nilFactory[T], missingCache, settings)
+	store = kvstore.NewChainKvStoreWithInterfaces[T](logger, nilFactory[T], missingCache, settings)
 
 	store.AddStore(element0)
 	store.AddStore(element1)

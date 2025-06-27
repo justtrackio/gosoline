@@ -14,6 +14,7 @@ import (
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/stream/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 	"github.com/stretchr/testify/mock"
@@ -97,7 +98,7 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 
 	s.input.
 		EXPECT().
-		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(matcher.Context).
 		Run(func(ctx context.Context) {
 			s.inputData <- stream.NewJsonMessage(`"foo"`)
 			s.inputData <- stream.NewJsonMessage(`"bar"`)
@@ -109,7 +110,7 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 	acks := []bool{true, false, true}
 	s.input.
 		EXPECT().
-		AckBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
+		AckBatch(matcher.Context, mock.AnythingOfType("[]*stream.Message"), acks).
 		Run(func(ctx context.Context, msgs []*stream.Message, acks []bool) {
 			processed = len(msgs)
 		}).
@@ -117,7 +118,7 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 		Once()
 
 	s.callback.EXPECT().
-		Consume(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
+		Consume(matcher.Context, mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
 		Return(acks, nil).
 		Once()
 
@@ -127,7 +128,7 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 		}).
 		Times(3)
 
-	s.callback.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).
+	s.callback.EXPECT().Run(matcher.Context).
 		Return(nil).
 		Once()
 
@@ -143,7 +144,7 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 
 	s.input.
 		EXPECT().
-		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(matcher.Context).
 		Run(func(ctx context.Context) {
 			s.inputData <- stream.NewJsonMessage(`"foo"`)
 			s.inputData <- stream.NewJsonMessage(`"bar"`)
@@ -157,7 +158,7 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 	acks := []bool{true, false, true, false, true}
 	s.input.
 		EXPECT().
-		AckBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
+		AckBatch(matcher.Context, mock.AnythingOfType("[]*stream.Message"), acks).
 		Run(func(ctx context.Context, msgs []*stream.Message, acks []bool) {
 			processed = len(msgs)
 
@@ -166,7 +167,7 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 		Return(nil)
 
 	s.callback.EXPECT().
-		Consume(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
+		Consume(matcher.Context, mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
 		Return(acks, nil).
 		Once()
 
@@ -176,7 +177,7 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 		}).
 		Times(5)
 
-	s.callback.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).
+	s.callback.EXPECT().Run(matcher.Context).
 		Return(nil).
 		Once()
 
@@ -192,13 +193,13 @@ func (s *BatchConsumerTestSuite) TestRun_InputRunError() {
 
 	s.input.
 		EXPECT().
-		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(matcher.Context).
 		Return(fmt.Errorf("read error")).
 		Once()
 
 	s.callback.
 		EXPECT().
-		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(matcher.Context).
 		Run(func(ctx context.Context) {
 			<-ctx.Done()
 		}).
@@ -215,7 +216,7 @@ func (s *BatchConsumerTestSuite) TestRun_CallbackRunError() {
 	s.input.EXPECT().Stop().Run(s.inputStop).Once()
 
 	s.input.EXPECT().
-		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(matcher.Context).
 		Run(func(ctx context.Context) {
 			<-ctx.Done()
 		}).
@@ -223,7 +224,7 @@ func (s *BatchConsumerTestSuite) TestRun_CallbackRunError() {
 		Once()
 
 	s.callback.EXPECT().
-		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(matcher.Context).
 		Return(fmt.Errorf("consumerCallback run error")).
 		Once()
 
@@ -250,7 +251,7 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 
 	s.input.
 		EXPECT().
-		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(matcher.Context).
 		Run(func(ctx context.Context) {
 			s.inputData <- aggregate
 			s.kernelCancel()
@@ -262,7 +263,7 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 	acks := []bool{true, true}
 	s.input.
 		EXPECT().
-		AckBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
+		AckBatch(matcher.Context, mock.AnythingOfType("[]*stream.Message"), acks).
 		Run(func(ctx context.Context, msgs []*stream.Message, acks []bool) {
 			processed = len(msgs)
 		}).
@@ -270,12 +271,12 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 		Once()
 
 	s.callback.EXPECT().
-		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(matcher.Context).
 		Return(nil).
 		Once()
 
 	s.callback.EXPECT().
-		Consume(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
+		Consume(matcher.Context, mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
 		Return(acks, nil).
 		Once()
 

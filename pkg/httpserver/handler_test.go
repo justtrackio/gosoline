@@ -12,6 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/httpserver/mocks"
 	"github.com/justtrackio/gosoline/pkg/httpserver/testdata"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -114,7 +115,7 @@ func TestHtmlHandler(t *testing.T) {
 
 func TestCreateHandler_RequestCanceled(t *testing.T) {
 	requestHandler := mocks.NewHandlerWithoutInput(t)
-	requestHandler.EXPECT().Handle(mock.AnythingOfType("context.backgroundCtx"), mock.AnythingOfType("*httpserver.Request")).Return(nil, context.Canceled)
+	requestHandler.EXPECT().Handle(matcher.Context, mock.AnythingOfType("*httpserver.Request")).Return(nil, context.Canceled)
 
 	handler := httpserver.CreateHandler(requestHandler)
 	response := httpserver.HttpTest("GET", "/action", "/action", `{"text":"foobar"}`, handler)
@@ -125,7 +126,7 @@ func TestCreateHandler_RequestCanceled(t *testing.T) {
 
 func TestCreateHandler_ValidationError(t *testing.T) {
 	requestHandler := mocks.NewHandlerWithoutInput(t)
-	requestHandler.EXPECT().Handle(mock.AnythingOfType("context.backgroundCtx"), mock.AnythingOfType("*httpserver.Request")).Return(nil, fmt.Errorf("wrap: %w", validation.NewError(fmt.Errorf("error"))))
+	requestHandler.EXPECT().Handle(matcher.Context, mock.AnythingOfType("*httpserver.Request")).Return(nil, fmt.Errorf("wrap: %w", validation.NewError(fmt.Errorf("error"))))
 
 	handler := httpserver.CreateHandler(requestHandler)
 	response := httpserver.HttpTest("GET", "/action", "/action", `{"text":"foobar"}`, handler)

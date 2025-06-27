@@ -24,9 +24,9 @@ type DdbLeaderElectionTestCase struct {
 }
 
 func (s *DdbLeaderElectionTestCase) SetupTest() {
-	s.logger = new(logMocks.Logger)
+	s.logger = logMocks.NewLogger(s.T())
 	s.clock = clock.NewFakeClock()
-	s.repository = new(ddbMocks.Repository)
+	s.repository = ddbMocks.NewRepository(s.T())
 
 	var err error
 	s.election, err = concDdb.NewDdbLeaderElectionWithInterfaces(s.logger, s.clock, s.repository, &concDdb.DdbLeaderElectionSettings{
@@ -42,8 +42,8 @@ func (s *DdbLeaderElectionTestCase) SetupTest() {
 func (s *DdbLeaderElectionTestCase) TestSuccess() {
 	ctx := context.Background()
 
-	builder := new(ddbMocks.PutItemBuilder)
-	builder.On("WithCondition", mock.AnythingOfType("expression.ConditionBuilder")).Return(builder)
+	builder := ddbMocks.NewPutItemBuilder(s.T())
+	builder.EXPECT().WithCondition(mock.AnythingOfType("expression.ConditionBuilder")).Return(builder)
 
 	item := &concDdb.DdbLeaderElectionItem{
 		GroupId:      "test",
@@ -54,8 +54,8 @@ func (s *DdbLeaderElectionTestCase) TestSuccess() {
 		ConditionalCheckFailed: false,
 	}
 
-	s.repository.On("PutItemBuilder").Return(builder)
-	s.repository.On("PutItem", ctx, builder, item).Return(result, nil)
+	s.repository.EXPECT().PutItemBuilder().Return(builder)
+	s.repository.EXPECT().PutItem(ctx, builder, item).Return(result, nil)
 
 	isLeader, err := s.election.IsLeader(ctx, "2693674e-66ec-11eb-8dcd-4b6da059a53a")
 	s.NoError(err)

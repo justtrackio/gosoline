@@ -14,7 +14,6 @@ import (
 	kvStoreMocks "github.com/justtrackio/gosoline/pkg/kvstore/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 type bearer struct {
@@ -33,19 +32,13 @@ type tokenBearerTestCase struct {
 	bearerErr error
 }
 
-type hasExpectations interface {
-	AssertExpectations(t mock.TestingT) bool
-}
+type providerProvider func(test *tokenBearerTestCase) auth.TokenBearerProvider
 
-type providerProvider func(test *tokenBearerTestCase) (auth.TokenBearerProvider, []hasExpectations)
-
-func makeKvStoreProvider(test *tokenBearerTestCase) (auth.TokenBearerProvider, []hasExpectations) {
-	repo := new(kvStoreMocks.KvStore[bearer])
+func makeKvStoreProvider(t *testing.T, test *tokenBearerTestCase) auth.TokenBearerProvider {
+	repo := kvStoreMocks.NewKvStore[bearer](t)
 
 	if test.bearerId != "" && test.token != "" {
-		repo.On("Get", context.Background(), test.bearerId, &bearer{}).Run(func(args mock.Arguments) {
-			m := args.Get(2).(*bearer)
-
+		repo.EXPECT().Get(context.Background(), test.bearerId, &bearer{}).Run(func(ctx context.Context, key any, m *bearer) {
 			if test.bearer != nil {
 				*m = *test.bearer
 			}
@@ -56,22 +49,20 @@ func makeKvStoreProvider(test *tokenBearerTestCase) (auth.TokenBearerProvider, [
 		return repo.Get(ctx, key, value.(*bearer))
 	}, func() auth.TokenBearer {
 		return &bearer{}
-	}), []hasExpectations{repo}
+	})
 }
 
-func makeDdbProvider(test *tokenBearerTestCase) (auth.TokenBearerProvider, []hasExpectations) {
-	repo := new(ddbMocks.Repository)
-	hasExpectation := []hasExpectations{repo}
+func makeDdbProvider(t *testing.T, test *tokenBearerTestCase) auth.TokenBearerProvider {
+	repo := ddbMocks.NewRepository(t)
 
 	if test.bearerId != "" && test.token != "" {
-		builder := new(ddbMocks.GetItemBuilder)
-		builder.On("WithHash", test.bearerId).Return(builder).Once()
-		hasExpectation = append(hasExpectation, builder)
+		builder := ddbMocks.NewGetItemBuilder(t)
+		builder.EXPECT().WithHash(test.bearerId).Return(builder).Once()
 
-		repo.On("GetItemBuilder").Return(builder).Once()
+		repo.EXPECT().GetItemBuilder().Return(builder).Once()
 
-		repo.On("GetItem", context.Background(), builder, &bearer{}).Run(func(args mock.Arguments) {
-			m := args.Get(2).(*bearer)
+		repo.EXPECT().GetItem(context.Background(), builder, &bearer{}).Run(func(ctx context.Context, qb ddb.GetItemBuilder, result any) {
+			m := result.(*bearer)
 
 			if test.bearer != nil {
 				*m = *test.bearer
@@ -83,12 +74,12 @@ func makeDdbProvider(test *tokenBearerTestCase) (auth.TokenBearerProvider, []has
 
 	return auth.ProvideTokenBearerFromDdb(repo, func() auth.TokenBearer {
 		return &bearer{}
-	}), hasExpectation
+	})
 }
 
 func (test *tokenBearerTestCase) run(t *testing.T, providerProvider providerProvider) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
-	provider, hasExpectations := providerProvider(test)
+	provider := providerProvider(test)
 
 	headers := http.Header{}
 	headers.Set("X-BEARER-ID", test.bearerId)
@@ -113,17 +104,17 @@ func (test *tokenBearerTestCase) run(t *testing.T, providerProvider providerProv
 		assert.Error(t, err)
 		assert.Equal(t, auth.InvalidTokenErr{}, err)
 	}
-
-	for _, hasExpectation := range hasExpectations {
-		hasExpectation.AssertExpectations(t)
-	}
 }
 
 func TestTokenBearerAuthenticator_IsValid(t *testing.T) {
 	for name, test := range makeTokenBearerTestCases() {
 		for providerName, provider := range map[string]providerProvider{
-			"kvStore": makeKvStoreProvider,
-			"ddb":     makeDdbProvider,
+			"kvStore": func(test *tokenBearerTestCase) auth.TokenBearerProvider {
+				return makeKvStoreProvider(t, test)
+			},
+			"ddb": func(test *tokenBearerTestCase) auth.TokenBearerProvider {
+				return makeDdbProvider(t, test)
+			},
 		} {
 			t.Run(fmt.Sprintf("%s-%s", name, providerName), func(t *testing.T) {
 				test.run(t, provider)

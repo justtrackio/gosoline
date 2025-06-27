@@ -17,8 +17,8 @@ import (
 // Testing the other functions does not make any sense here, as they're wrapping just manager methods
 
 func TestLadonGuard_GetPolicies(t *testing.T) {
-	manager := new(mocks.Manager)
-	auditLogger := new(mocks.AuditLogger)
+	manager := mocks.NewManager(t)
+	auditLogger := mocks.NewAuditLogger(t)
 	g := guard.NewGuardWithInterfaces(manager, auditLogger)
 
 	pol1 := &ladon.DefaultPolicy{
@@ -31,15 +31,13 @@ func TestLadonGuard_GetPolicies(t *testing.T) {
 
 	ctx := context.Background()
 
-	manager.On("GetAll", ctx, int64(100), int64(0)).Return(ladon.Policies{pol1}, nil).Once()
-	manager.On("GetAll", ctx, int64(100), int64(100)).Return(ladon.Policies{pol2}, nil).Once()
-	manager.On("GetAll", ctx, int64(100), int64(200)).Return(ladon.Policies{}, nil).Once()
+	manager.EXPECT().GetAll(ctx, int64(100), int64(0)).Return(ladon.Policies{pol1}, nil).Once()
+	manager.EXPECT().GetAll(ctx, int64(100), int64(100)).Return(ladon.Policies{pol2}, nil).Once()
+	manager.EXPECT().GetAll(ctx, int64(100), int64(200)).Return(ladon.Policies{}, nil).Once()
 
 	pols, err := g.GetPolicies(context.Background())
 	require.NoError(t, err)
 
 	expected := ladon.Policies{pol1, pol2}
 	assert.Equal(t, expected, pols)
-
-	manager.AssertExpectations(t)
 }

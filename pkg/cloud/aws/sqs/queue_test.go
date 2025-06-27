@@ -9,6 +9,7 @@ import (
 	gosoSqs "github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
 	sqsMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/sqs/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -52,7 +53,7 @@ func (s *queueTestSuite) TestSendBatch_OneMsgRequestTooLongError() {
 	})
 
 	errRequestTooLong := &types.BatchRequestTooLong{}
-	s.client.EXPECT().SendMessageBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*sqs.SendMessageBatchInput")).Once().Return(nil, errRequestTooLong)
+	s.client.EXPECT().SendMessageBatch(matcher.Context, mock.AnythingOfType("*sqs.SendMessageBatchInput")).Once().Return(nil, errRequestTooLong)
 
 	err := s.queue.SendBatch(s.ctx, msgs)
 	s.Equal(errRequestTooLong, err)
@@ -81,8 +82,8 @@ func (s *queueTestSuite) TestSendBatch_ThreeMsgRequestTooLongError() {
 	})
 
 	errRequestTooLong := &types.BatchRequestTooLong{}
-	s.client.EXPECT().SendMessageBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*sqs.SendMessageBatchInput")).Once().Return(nil, errRequestTooLong)
-	s.client.EXPECT().SendMessageBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*sqs.SendMessageBatchInput")).Twice().Return(nil, nil)
+	s.client.EXPECT().SendMessageBatch(matcher.Context, mock.AnythingOfType("*sqs.SendMessageBatchInput")).Once().Return(nil, errRequestTooLong)
+	s.client.EXPECT().SendMessageBatch(matcher.Context, mock.AnythingOfType("*sqs.SendMessageBatchInput")).Twice().Return(nil, nil)
 
 	err := s.queue.SendBatch(s.ctx, msgs)
 	s.Nil(err)

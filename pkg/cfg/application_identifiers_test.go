@@ -9,12 +9,12 @@ import (
 )
 
 func TestGetAppIdFromConfig(t *testing.T) {
-	config := new(cfgMocks.Config)
-	config.On("GetString", "app_project").Return("prj")
-	config.On("GetString", "app_family").Return("fam")
-	config.On("GetString", "app_group").Return("grp")
-	config.On("GetString", "app_name").Return("name")
-	config.On("GetString", "env").Return("test")
+	config := cfgMocks.NewConfig(t)
+	config.EXPECT().GetString("app_project").Return("prj")
+	config.EXPECT().GetString("app_family").Return("fam")
+	config.EXPECT().GetString("app_group").Return("grp")
+	config.EXPECT().GetString("app_name").Return("name")
+	config.EXPECT().GetString("env").Return("test")
 
 	appId := cfg.GetAppIdFromConfig(config)
 
@@ -25,17 +25,15 @@ func TestGetAppIdFromConfig(t *testing.T) {
 		Group:       "grp",
 		Application: "name",
 	}, appId)
-
-	config.AssertExpectations(t)
 }
 
 func TestAppId_PadFromConfig(t *testing.T) {
-	config := new(cfgMocks.Config)
-	config.On("GetString", "app_project").Return("prj")
-	config.On("GetString", "app_family").Return("fam")
-	config.On("GetString", "app_group").Return("grp")
-	config.On("GetString", "app_name").Return("name")
-	config.On("GetString", "env").Return("test")
+	config := cfgMocks.NewConfig(t)
+	config.EXPECT().GetString("app_project").Return("prj")
+	config.EXPECT().GetString("app_family").Return("fam")
+	config.EXPECT().GetString("app_group").Return("grp")
+	config.EXPECT().GetString("app_name").Return("name")
+	config.EXPECT().GetString("env").Return("test")
 
 	appId := cfg.AppId{}
 	appId.PadFromConfig(config)

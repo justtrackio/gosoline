@@ -55,7 +55,7 @@ func Test_Write_WriteOne(t *testing.T) {
 		}
 	)
 
-	writer.On("WriteMessages", matcher.Context, mock.Anything).Return(
+	writer.On("WriteMessages", matcher.Context, mock.AnythingOfType("[]kafka.Message")).Return(
 		func(ctx context.Context, ms ...kafka.Message) error {
 			dead, _ := ctx.Deadline()
 			assert.Less(t, dead, time.Now().Add(time.Minute))
@@ -77,7 +77,7 @@ func Test_Write_WriteOne(t *testing.T) {
 		},
 	).Times(1)
 
-	writer.On("WriteMessages", matcher.Context, mock.Anything).Return(
+	writer.On("WriteMessages", matcher.Context, mock.AnythingOfType("[]kafka.Message")).Return(
 		func(ctx context.Context, ms ...kafka.Message) error {
 			var (
 				i       = 0

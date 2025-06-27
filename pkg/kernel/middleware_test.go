@@ -33,35 +33,33 @@ type MiddleWareTestSuite struct {
 func (s *MiddleWareTestSuite) SetupTest() {
 	s.ctx = appctx.WithContainer(context.Background())
 
-	s.config = new(cfgMocks.Config)
-	s.config.On("AllSettings").Return(map[string]interface{}{})
-	s.config.On("UnmarshalKey", "kernel", mock.AnythingOfType("*kernel.Settings")).Run(func(args mock.Arguments) {
-		settings := args[1].(*kernel.Settings)
-		settings.KillTimeout = time.Second
-		settings.HealthCheck.Timeout = time.Second
-		settings.HealthCheck.WaitInterval = time.Second
-	})
+	s.config = cfgMocks.NewConfig(s.T())
+	s.config.EXPECT().UnmarshalKey("kernel", mock.AnythingOfType("*kernel.Settings")).Run(
+		func(key string, val any, _ ...cfg.UnmarshalDefaults) {
+			settings := val.(*kernel.Settings)
+			settings.KillTimeout = time.Second
+			settings.HealthCheck.Timeout = time.Second
+			settings.HealthCheck.WaitInterval = time.Second
+		})
 
-	s.logger = new(logMocks.Logger)
-	s.logger.On("WithChannel", mock.Anything).Return(s.logger)
-	s.logger.On("WithFields", mock.Anything).Return(s.logger)
-	s.logger.On("Info", mock.Anything)
-	s.logger.On("Info", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	s.logger.On("Debug", mock.Anything, mock.Anything)
+	s.logger = logMocks.NewLogger(s.T())
+	s.logger.EXPECT().WithChannel(mock.AnythingOfType("string")).Return(s.logger)
+	s.logger.EXPECT().Info(mock.Anything)
+	s.logger.EXPECT().Info(mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
-	s.module = new(kernelMocks.FullModule)
-	s.module.On("IsEssential").Return(false)
-	s.module.On("IsBackground").Return(false)
+	s.module = kernelMocks.NewFullModule(s.T())
+	s.module.EXPECT().IsEssential().Return(false).Once()
+	s.module.EXPECT().IsBackground().Return(false).Once()
+	s.module.EXPECT().IsHealthy(matcher.Context).Return(true, nil).Once()
+	s.module.EXPECT().GetStage().Return(kernel.StageApplication).Once()
 }
 
 func (s *MiddleWareTestSuite) TestMiddleware() {
 	callstack := make([]string, 0)
 
-	s.module.On("IsHealthy", mock.AnythingOfType("*context.cancelCtx")).Return(true, nil)
-	s.module.On("GetStage").Return(kernel.StageApplication)
-	s.module.On("Run", matcher.Context).Run(func(args mock.Arguments) {
+	s.module.EXPECT().Run(matcher.Context).Run(func(ctx context.Context) {
 		callstack = append(callstack, "module")
-	}).Return(nil)
+	}).Return(nil).Once()
 
 	k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
 		kernel.WithMiddlewareFactory(kernel.BuildSimpleMiddleware(func(next kernel.MiddlewareHandler) {

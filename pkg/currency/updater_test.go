@@ -109,8 +109,8 @@ func (s *updaterServiceTestSuite) SetupTest() {
 
 func (s *updaterServiceTestSuite) TestEnsureRecentExchangeRates() {
 	s.mockCurrencyStoreGetTime(currency.ExchangeRateDateKey, s.clock.Now().AddDate(-1, 0, 0), true)
-	s.store.On("Put", s.ctx, currency.ExchangeRateDateKey, mock.AnythingOfType("float64")).Return(nil)
-	s.store.On("Put", s.ctx, mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Return(nil)
+	s.store.EXPECT().Put(s.ctx, currency.ExchangeRateDateKey, mock.AnythingOfType("float64")).Return(nil)
+	s.store.EXPECT().Put(s.ctx, mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Return(nil)
 
 	s.mockHttpRequest(response)
 
@@ -133,8 +133,8 @@ func (s *updaterServiceTestSuite) TestEnsureHistoricalExchangeRates() {
 		"2021-05-23-JPY": 132.97,
 	}
 	s.mockCurrencyStoreGetTime(currency.HistoricalExchangeRateDateKey, time.Time{}, false)
-	s.store.On("PutBatch", s.ctx, exchangeRates).Return(nil)
-	s.store.On("Put", s.ctx, currency.HistoricalExchangeRateDateKey, float64(s.clock.Now().Unix())).Return(nil)
+	s.store.EXPECT().PutBatch(s.ctx, exchangeRates).Return(nil)
+	s.store.EXPECT().Put(s.ctx, currency.HistoricalExchangeRateDateKey, float64(s.clock.Now().Unix())).Return(nil)
 
 	s.mockHttpRequest(historicalResponse)
 
@@ -161,8 +161,8 @@ func (s *updaterServiceTestSuite) TestEnsureHistoricalExchangeRatesTwoGapDaysAtE
 		"2021-05-23-JPY": 132.97,
 	}
 	s.mockCurrencyStoreGetTime(currency.HistoricalExchangeRateDateKey, time.Time{}, false)
-	s.store.On("PutBatch", s.ctx, exchangeRates).Return(nil)
-	s.store.On("Put", s.ctx, currency.HistoricalExchangeRateDateKey, float64(s.clock.Now().Unix())).Return(nil)
+	s.store.EXPECT().PutBatch(s.ctx, exchangeRates).Return(nil)
+	s.store.EXPECT().Put(s.ctx, currency.HistoricalExchangeRateDateKey, float64(s.clock.Now().Unix())).Return(nil)
 
 	s.mockHttpRequest(historicalResponse)
 
@@ -172,8 +172,7 @@ func (s *updaterServiceTestSuite) TestEnsureHistoricalExchangeRatesTwoGapDaysAtE
 }
 
 func (s *updaterServiceTestSuite) mockCurrencyStoreGetTime(key string, value time.Time, found bool) {
-	s.store.On("Get", s.ctx, key, new(float64)).Run(func(args mock.Arguments) {
-		f := args.Get(2).(*float64)
+	s.store.EXPECT().Get(s.ctx, key, new(float64)).Run(func(ctx context.Context, key any, f *float64) {
 		*f = float64(value.Unix())
 	}).Return(found, nil).Once()
 }
@@ -183,6 +182,6 @@ func (s *updaterServiceTestSuite) mockHttpRequest(body string) {
 		Body: []byte(body),
 	}
 
-	s.client.On("NewRequest").Return(http.NewRequest(nil)).Once()
-	s.client.On("Get", s.ctx, mock.AnythingOfType("*http.Request")).Return(r, nil).Once()
+	s.client.EXPECT().NewRequest().Return(http.NewRequest(nil)).Once()
+	s.client.EXPECT().Get(s.ctx, mock.AnythingOfType("*http.Request")).Return(r, nil).Once()
 }

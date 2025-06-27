@@ -15,7 +15,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	grpcServerProto "google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/grpc/stats"
 )
 
 type greeter struct {
@@ -77,7 +76,7 @@ func TestGRPCServer_Run_Handler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			testCtx, cancelFunc := context.WithCancel(ctx)
 			defer cancelFunc()
-			g, err := grpcserver.NewWithInterfaces(testCtx, logger, getMockGrpcTracingInstrumentor(), tt.defs, &grpcserver.Settings{Stats: grpcserver.Stats{
+			g, err := grpcserver.NewWithInterfaces(testCtx, logger, getMockGrpcTracingInstrumentor(t), tt.defs, &grpcserver.Settings{Stats: grpcserver.Stats{
 				Enabled:    true,
 				LogPayload: false,
 				Channel:    "grpc_stats",
@@ -142,7 +141,7 @@ func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			testCtx, cancelFunc := context.WithCancel(ctx)
 			defer cancelFunc()
-			g, err := grpcserver.NewWithInterfaces(testCtx, logger, getMockGrpcTracingInstrumentor(), tt.defs, &grpcserver.Settings{
+			g, err := grpcserver.NewWithInterfaces(testCtx, logger, getMockGrpcTracingInstrumentor(t), tt.defs, &grpcserver.Settings{
 				Health: grpcserver.Health{
 					Enabled: true,
 				},
@@ -173,16 +172,13 @@ func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 	}
 }
 
-func getMockGrpcTracingInstrumentor() tracing.Instrumentor {
-	tracingInstrumentor := new(tracingMocks.Instrumentor)
-	tracingInstrumentor.On("GrpcUnaryServerInterceptor").Return(func() grpc.UnaryServerInterceptor {
-		return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+func getMockGrpcTracingInstrumentor(t *testing.T) tracing.Instrumentor {
+	tracingInstrumentor := tracingMocks.NewInstrumentor(t)
+	tracingInstrumentor.EXPECT().GrpcUnaryServerInterceptor().Return(
+		func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 			return handler(ctx, req)
-		}
-	})
-	tracingInstrumentor.On("GrpcServerHandler").Return(func() stats.Handler {
-		return nil
-	})
+		})
+	tracingInstrumentor.EXPECT().GrpcServerHandler().Return(nil)
 
 	return tracingInstrumentor
 }

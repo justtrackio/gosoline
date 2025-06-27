@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getBasicJwtAuthMocks(token string) (*authMocks.JwtTokenHandler, *gin.Context) {
-	jwtTokenHandler := new(authMocks.JwtTokenHandler)
+func getBasicJwtAuthMocks(t *testing.T, token string) (*authMocks.JwtTokenHandler, *gin.Context) {
+	jwtTokenHandler := authMocks.NewJwtTokenHandler(t)
 
 	header := http.Header{}
 	header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
@@ -31,11 +31,11 @@ func getBasicJwtAuthMocks(token string) (*authMocks.JwtTokenHandler, *gin.Contex
 }
 
 func TestJwtAuth_Authenticate_IsValid(t *testing.T) {
-	tokenHandler, ginCtx := getBasicJwtAuthMocks("token")
+	tokenHandler, ginCtx := getBasicJwtAuthMocks(t, "token")
 
 	a := auth.NewJWTAuthAuthenticatorWithInterfaces(tokenHandler)
 
-	tokenHandler.On("Valid", "token").Return(true, &jwt.Token{
+	tokenHandler.EXPECT().Valid("token").Return(true, &jwt.Token{
 		Claims: jwt.MapClaims{
 			"email": "email",
 		},
@@ -48,11 +48,11 @@ func TestJwtAuth_Authenticate_IsValid(t *testing.T) {
 }
 
 func TestJwtAuth_Authenticate_ValidButMissingEmail(t *testing.T) {
-	tokenHandler, ginCtx := getBasicJwtAuthMocks("token")
+	tokenHandler, ginCtx := getBasicJwtAuthMocks(t, "token")
 
 	a := auth.NewJWTAuthAuthenticatorWithInterfaces(tokenHandler)
 
-	tokenHandler.On("Valid", "token").Return(true, &jwt.Token{
+	tokenHandler.EXPECT().Valid("token").Return(true, &jwt.Token{
 		Claims: jwt.MapClaims{
 			"something": "else",
 		},
@@ -65,11 +65,11 @@ func TestJwtAuth_Authenticate_ValidButMissingEmail(t *testing.T) {
 }
 
 func TestJwtAuth_Authenticate_IsValid_Error(t *testing.T) {
-	tokenHandler, ginCtx := getBasicJwtAuthMocks("token")
+	tokenHandler, ginCtx := getBasicJwtAuthMocks(t, "token")
 
 	a := auth.NewJWTAuthAuthenticatorWithInterfaces(tokenHandler)
 
-	tokenHandler.On("Valid", "token").Return(false, &jwt.Token{}, nil)
+	tokenHandler.EXPECT().Valid("token").Return(false, &jwt.Token{}, nil)
 
 	isValid, err := a.IsValid(ginCtx)
 

@@ -14,7 +14,6 @@ import (
 	kernelMocks "github.com/justtrackio/gosoline/pkg/kernel/mocks"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
-	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -34,21 +33,17 @@ type FactoryTestSuite struct {
 func (s *FactoryTestSuite) SetupTest() {
 	s.ctx = appctx.WithContainer(context.Background())
 
-	s.config = new(cfgMocks.Config)
-	s.config.On("AllSettings").Return(map[string]interface{}{})
-	s.config.On("UnmarshalKey", "kernel", mock.AnythingOfType("*kernel.Settings")).Run(func(args mock.Arguments) {
-		settings := args[1].(*kernel.Settings)
-		settings.KillTimeout = time.Second
-		settings.HealthCheck.Timeout = time.Second
-		settings.HealthCheck.WaitInterval = time.Second
-	})
+	s.config = cfgMocks.NewConfig(s.T())
+	s.config.EXPECT().UnmarshalKey("kernel", mock.AnythingOfType("*kernel.Settings")).
+		Run(func(key string, val any, _ ...cfg.UnmarshalDefaults) {
+			settings := val.(*kernel.Settings)
+			settings.KillTimeout = time.Second
+			settings.HealthCheck.Timeout = time.Second
+			settings.HealthCheck.WaitInterval = time.Second
+		})
 
-	s.logger = new(logMocks.Logger)
-	s.logger.On("WithChannel", mock.Anything).Return(s.logger)
-	s.logger.On("WithFields", mock.Anything).Return(s.logger)
-	s.logger.On("Info", mock.Anything)
-	s.logger.On("Info", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	s.logger.On("Debug", mock.Anything, mock.Anything)
+	s.logger = logMocks.NewLogger(s.T())
+	s.logger.EXPECT().WithChannel(mock.AnythingOfType("string")).Return(s.logger)
 }
 
 func (s *FactoryTestSuite) TestNoModules() {
@@ -57,11 +52,10 @@ func (s *FactoryTestSuite) TestNoModules() {
 }
 
 func (s *FactoryTestSuite) TestNoForegroundModules() {
-	module := new(kernelMocks.FullModule)
-	module.On("IsEssential").Return(false)
-	module.On("IsBackground").Return(true)
-	module.On("GetStage").Return(kernel.StageApplication)
-	module.On("Run", matcher.Context).Return(nil)
+	module := kernelMocks.NewFullModule(s.T())
+	module.EXPECT().IsEssential().Return(false).Once()
+	module.EXPECT().IsBackground().Return(true).Once()
+	module.EXPECT().GetStage().Return(kernel.StageApplication).Once()
 
 	_, err := kernel.BuildFactory(s.ctx, s.config, s.logger, []kernel.Option{
 		kernel.WithModuleFactory("background", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -73,7 +67,6 @@ func (s *FactoryTestSuite) TestNoForegroundModules() {
 
 func (s *FactoryTestSuite) TestModuleMultiFactoryError() {
 	factoryErr := fmt.Errorf("error in module factory")
-	s.logger.On("Error", "error building additional modules by multiFactories: %w", factoryErr)
 
 	_, err := kernel.BuildFactory(s.ctx, s.config, s.logger, []kernel.Option{
 		kernel.WithModuleMultiFactory(func(context.Context, cfg.Config, log.Logger) (map[string]kernel.ModuleFactory, error) {

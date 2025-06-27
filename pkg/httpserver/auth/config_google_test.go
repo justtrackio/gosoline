@@ -15,9 +15,9 @@ import (
 	"google.golang.org/api/oauth2/v2"
 )
 
-func getMocks(idToken string) (log.Logger, *authMocks.TokenInfoProvider, *gin.Context) {
-	logger := logMocks.NewLoggerMock(logMocks.WithMockAll)
-	tokenProvider := new(authMocks.TokenInfoProvider)
+func getMocks(t *testing.T, idToken string) (log.Logger, *authMocks.TokenInfoProvider, *gin.Context) {
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+	tokenProvider := authMocks.NewTokenInfoProvider(t)
 
 	ginCtx := getGinCtx(idToken)
 
@@ -41,7 +41,7 @@ func getGinCtx(idToken string) *gin.Context {
 }
 
 func TestAuthGoogle_Authenticate_EmptyIdTokenError(t *testing.T) {
-	logger, tokenProvider, ginCtx := getMocks("")
+	logger, tokenProvider, ginCtx := getMocks(t, "")
 
 	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"c"}, []string{"h"})
 	_, err := a.IsValid(ginCtx)
@@ -52,9 +52,9 @@ func TestAuthGoogle_Authenticate_EmptyIdTokenError(t *testing.T) {
 }
 
 func TestAuthGoogle_Authenticate_IdTokenRequestError(t *testing.T) {
-	logger, tokenProvider, ginCtx := getMocks("test")
+	logger, tokenProvider, ginCtx := getMocks(t, "test")
 
-	tokenProvider.On("GetTokenInfo", "test").Return(nil, errors.New("test"))
+	tokenProvider.EXPECT().GetTokenInfo("test").Return(nil, errors.New("test"))
 	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"c"}, []string{"h"})
 
 	_, err := a.IsValid(ginCtx)
@@ -62,16 +62,15 @@ func TestAuthGoogle_Authenticate_IdTokenRequestError(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Equal(t, "google auth: failed requesting token info: test", err.Error())
 	}
-	tokenProvider.AssertExpectations(t)
 }
 
 func TestAuthGoogle_Authenticate_IdTokenStatusCodeError(t *testing.T) {
-	logger, tokenProvider, ginCtx := getMocks("test")
+	logger, tokenProvider, ginCtx := getMocks(t, "test")
 
 	tokenInfo := &oauth2.Tokeninfo{}
 	tokenInfo.HTTPStatusCode = 301
 
-	tokenProvider.On("GetTokenInfo", "test").Return(tokenInfo, nil)
+	tokenProvider.EXPECT().GetTokenInfo("test").Return(tokenInfo, nil)
 
 	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"c"}, []string{"h"})
 	_, err := a.IsValid(ginCtx)
@@ -79,18 +78,17 @@ func TestAuthGoogle_Authenticate_IdTokenStatusCodeError(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Equal(t, "google auth: invalid status code 301", err.Error())
 	}
-	tokenProvider.AssertExpectations(t)
 }
 
 func TestAuthGoogle_Authenticate_IdTokenInvalidAudienceError(t *testing.T) {
-	logger, tokenProvider, ginCtx := getMocks("test")
+	logger, tokenProvider, ginCtx := getMocks(t, "test")
 
 	tokenInfo := &oauth2.Tokeninfo{
 		Audience: "infiltrator",
 	}
 	tokenInfo.HTTPStatusCode = 200
 
-	tokenProvider.On("GetTokenInfo", "test").Return(tokenInfo, nil)
+	tokenProvider.EXPECT().GetTokenInfo("test").Return(tokenInfo, nil)
 
 	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"c"}, []string{"h"})
 	_, err := a.IsValid(ginCtx)
@@ -98,11 +96,10 @@ func TestAuthGoogle_Authenticate_IdTokenInvalidAudienceError(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Equal(t, "google auth: invalid audience", err.Error())
 	}
-	tokenProvider.AssertExpectations(t)
 }
 
 func TestAuthGoogle_Authenticate_IdTokenInvalidEmailSuffixError(t *testing.T) {
-	logger, tokenProvider, ginCtx := getMocks("test")
+	logger, tokenProvider, ginCtx := getMocks(t, "test")
 
 	tokenInfo := &oauth2.Tokeninfo{
 		Audience: "c.de",
@@ -112,7 +109,7 @@ func TestAuthGoogle_Authenticate_IdTokenInvalidEmailSuffixError(t *testing.T) {
 		},
 	}
 
-	tokenProvider.On("GetTokenInfo", "test").Return(tokenInfo, nil)
+	tokenProvider.EXPECT().GetTokenInfo("test").Return(tokenInfo, nil)
 	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"c.de"}, []string{"^.*c\\.de$"})
 
 	_, err := a.IsValid(ginCtx)
@@ -120,12 +117,10 @@ func TestAuthGoogle_Authenticate_IdTokenInvalidEmailSuffixError(t *testing.T) {
 
 	_, err = a.IsValid(ginCtx)
 	assert.EqualError(t, err, "token from cache invalidated the user")
-
-	tokenProvider.AssertExpectations(t)
 }
 
 func TestAuthGoogle_Authenticate_IdTokenValid(t *testing.T) {
-	logger, tokenProvider, ginCtx := getMocks("test")
+	logger, tokenProvider, ginCtx := getMocks(t, "test")
 
 	tokenInfo := &oauth2.Tokeninfo{
 		Audience: "c.de",
@@ -133,17 +128,16 @@ func TestAuthGoogle_Authenticate_IdTokenValid(t *testing.T) {
 	}
 	tokenInfo.HTTPStatusCode = 200
 
-	tokenProvider.On("GetTokenInfo", "test").Return(tokenInfo, nil)
+	tokenProvider.EXPECT().GetTokenInfo("test").Return(tokenInfo, nil)
 
 	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"c.de"}, []string{"^.*c\\.de$"})
 	_, err := a.IsValid(ginCtx)
 
 	assert.NoError(t, err)
-	tokenProvider.AssertExpectations(t)
 }
 
 func TestAuthGoogle_Authenticate_MultipleAudiences(t *testing.T) {
-	logger, tokenProvider, _ := getMocks("")
+	logger, tokenProvider, _ := getMocks(t, "")
 
 	tokenInfoA := &oauth2.Tokeninfo{
 		Audience: "c.de",
@@ -155,7 +149,7 @@ func TestAuthGoogle_Authenticate_MultipleAudiences(t *testing.T) {
 
 	ginTestACtx := getGinCtx("testA")
 
-	tokenProvider.On("GetTokenInfo", "testA").Return(tokenInfoA, nil)
+	tokenProvider.EXPECT().GetTokenInfo("testA").Return(tokenInfoA, nil)
 
 	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"d.de", "c.de"}, []string{"^.*[cd]\\.de$"})
 	_, err := a.IsValid(ginTestACtx)
@@ -172,7 +166,7 @@ func TestAuthGoogle_Authenticate_MultipleAudiences(t *testing.T) {
 		},
 	}
 
-	tokenProvider.On("GetTokenInfo", "testB").Return(tokenInfoB, nil)
+	tokenProvider.EXPECT().GetTokenInfo("testB").Return(tokenInfoB, nil)
 
 	a = auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"d.de", "c.de"}, []string{"^.*[cd]\\.de$"})
 	_, err = a.IsValid(ginTestBCtx)
@@ -180,5 +174,4 @@ func TestAuthGoogle_Authenticate_MultipleAudiences(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, err)
-	tokenProvider.AssertExpectations(t)
 }

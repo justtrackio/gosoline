@@ -28,7 +28,7 @@ func (s *ProducerTestSuite) SetupTest() {
 	s.encoder = stream.NewMessageEncoder(&stream.MessageEncoderSettings{
 		Encoding: stream.EncodingJson,
 	})
-	s.output = new(mocks.Output)
+	s.output = mocks.NewOutput(s.T())
 	s.producer = stream.NewProducerWithInterfaces(s.encoder, s.output)
 }
 
@@ -45,11 +45,10 @@ func (s *ProducerTestSuite) TestProducer_WriteOne() {
 		Body: `{"id":3,"name":"foobar"}`,
 	}
 
-	s.output.On("WriteOne", s.ctx, expectedMsg).Return(nil)
+	s.output.EXPECT().WriteOne(s.ctx, expectedMsg).Return(nil)
 	err := s.producer.WriteOne(s.ctx, content)
 
 	s.NoError(err)
-	s.output.AssertExpectations(s.T())
 }
 
 func (s *ProducerTestSuite) TestProducer_Write() {
@@ -79,11 +78,10 @@ func (s *ProducerTestSuite) TestProducer_Write() {
 		},
 	}
 
-	s.output.On("Write", s.ctx, expectedMsg).Return(nil)
+	s.output.EXPECT().Write(s.ctx, expectedMsg).Return(nil)
 	err := s.producer.Write(s.ctx, content)
 
 	s.NoError(err)
-	s.output.AssertExpectations(s.T())
 }
 
 func (s *ProducerTestSuite) TestProducer_Write_SliceError() {

@@ -29,9 +29,14 @@ func Test_snsOutput_WriteOne(t *testing.T) {
 		mkTestMessage(t, 11, make(map[string]string)),
 	}
 
-	topic := &mocks.Topic{}
+	topic := mocks.NewTopic(t)
 	for _, m := range messages {
-		topic.On("Publish", context.Background(), fmt.Sprintf(`{"attributes":{"encoding":"application/json"},"body":"%s"}`, m.Body), m.Attributes).Return(nil).Once()
+		//nolint:gocritic // we intentionally avoid %q to prevent double quoting in JSON
+		topic.EXPECT().Publish(
+			context.Background(),
+			fmt.Sprintf(`{"attributes":{"encoding":"application/json"},"body":"%s"}`, m.Body),
+			m.Attributes,
+		).Return(nil).Once()
 	}
 
 	o := stream.NewSnsOutputWithInterfaces(logger, topic)
@@ -40,14 +45,12 @@ func Test_snsOutput_WriteOne(t *testing.T) {
 		err := o.WriteOne(context.Background(), val)
 		assert.NoError(t, err)
 	}
-
-	topic.AssertExpectations(t)
 }
 
 func Test_snsOutput_WriteBatch(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
-	topic := &mocks.Topic{}
-	topic.On("PublishBatch", context.Background(), mock.AnythingOfType("[]string"), mock.AnythingOfType("[]map[string]string")).Return(nil).Once()
+	topic := mocks.NewTopic(t)
+	topic.EXPECT().PublishBatch(context.Background(), mock.AnythingOfType("[]string"), mock.AnythingOfType("[]map[string]string")).Return(nil).Once()
 
 	o := stream.NewSnsOutputWithInterfaces(logger, topic)
 	batch := []stream.WritableMessage{
@@ -66,6 +69,4 @@ func Test_snsOutput_WriteBatch(t *testing.T) {
 
 	err := o.Write(context.Background(), batch)
 	assert.NoError(t, err)
-
-	topic.AssertExpectations(t)
 }

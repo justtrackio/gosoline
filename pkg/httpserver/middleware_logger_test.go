@@ -38,7 +38,7 @@ func TestLoggingMiddlewareTestSuite(t *testing.T) {
 func (s *loggingMiddlewareTestSuite) SetupTest() {
 	s.logger = logMocks.NewLogger(s.T())
 	s.logger.EXPECT().WithContext(matcher.Context).Return(s.logger)
-	s.logger.EXPECT().WithFields(mock.Anything).Return(s.logger)
+	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
 
 	s.handler = httpserver.NewLoggingMiddlewareWithInterfaces(s.logger, httpserver.LoggingSettings{}, clock.Provider)
 }
@@ -158,7 +158,7 @@ func TestLogFields(t *testing.T) {
 		"status":             200,
 	}
 
-	logger.EXPECT().WithFields(mock.Anything).Run(func(fields log.Fields) {
+	logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Run(func(fields log.Fields) {
 		assert.Equal(t, expected, fields)
 	}).Return(logger)
 
@@ -176,7 +176,7 @@ func TestLogEncodedRequestBody(t *testing.T) {
 	logger := logMocks.NewLogger(t)
 	logger.EXPECT().WithContext(matcher.Context).Return(logger)
 
-	logger.EXPECT().WithFields(mock.Anything).Run(func(fields log.Fields) {
+	logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Run(func(fields log.Fields) {
 		requestBody, ok := fields["request_body"]
 		assert.True(t, ok)
 		assert.Equal(t, "e30=", requestBody)

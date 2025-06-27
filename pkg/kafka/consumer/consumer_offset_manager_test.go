@@ -11,9 +11,9 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kafka/consumer"
 	"github.com/justtrackio/gosoline/pkg/kafka/consumer/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/segmentio/kafka-go"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestOffsetManager_NotCommitting(t *testing.T) {
@@ -25,23 +25,18 @@ func TestOffsetManager_NotCommitting(t *testing.T) {
 
 	var (
 		readerFetches = 0
-		reader        = &mocks.Reader{}
+		reader        = mocks.NewReader(t)
 	)
-	reader.On("FetchMessage", mock.AnythingOfType("*context.timerCtx")).Return(
-		func(ctx context.Context) kafka.Message {
+	reader.EXPECT().FetchMessage(matcher.Context).
+		RunAndReturn(func(ctx context.Context) (kafka.Message, error) {
 			defer func() {
 				time.Sleep(time.Millisecond)
 				readerFetches += 1
 			}()
 
-			return OnFetch(ctx, readerFetches)
-		},
-		func(ctx context.Context) error {
-			return nil
-		},
-	)
-	reader.On("Close").Times(1).Return(nil)
-	defer reader.AssertExpectations(t)
+			return OnFetch(ctx, readerFetches), nil
+		})
+	reader.EXPECT().Close().Times(1).Return(nil)
 
 	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
 
@@ -81,24 +76,19 @@ func TestOffsetManager_PartialCommit(t *testing.T) {
 
 	var (
 		readerFetches = 0
-		reader        = &mocks.Reader{}
+		reader        = mocks.NewReader(t)
 	)
-	reader.On("FetchMessage", mock.AnythingOfType("*context.timerCtx")).Return(
-		func(ctx context.Context) kafka.Message {
+	reader.EXPECT().FetchMessage(matcher.Context).RunAndReturn(
+		func(ctx context.Context) (kafka.Message, error) {
 			defer func() {
 				time.Sleep(time.Millisecond)
 				readerFetches += 1
 			}()
 
-			return OnFetch(ctx, readerFetches)
-		},
-		func(ctx context.Context) error {
-			return nil
-		},
-	)
-	reader.On("CommitMessages", mock.AnythingOfType("*context.timerCtx"), kafka.Message{Partition: 1, Offset: 1}).Return(nil).Times(1)
-	reader.On("Close").Times(1).Return(nil)
-	defer reader.AssertExpectations(t)
+			return OnFetch(ctx, readerFetches), nil
+		})
+	reader.EXPECT().CommitMessages(matcher.Context, kafka.Message{Partition: 1, Offset: 1}).Return(nil).Times(1)
+	reader.EXPECT().Close().Times(1).Return(nil)
 
 	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
 
@@ -140,28 +130,23 @@ func TestOffsetManager_DoubleCommit(t *testing.T) {
 
 	var (
 		readerFetches = 0
-		reader        = &mocks.Reader{}
+		reader        = mocks.NewReader(t)
 	)
-	reader.On("FetchMessage", mock.AnythingOfType("*context.timerCtx")).Return(
-		func(ctx context.Context) kafka.Message {
+	reader.EXPECT().FetchMessage(matcher.Context).RunAndReturn(
+		func(ctx context.Context) (kafka.Message, error) {
 			defer func() {
 				time.Sleep(time.Millisecond)
 				readerFetches += 1
 			}()
 
-			return OnFetch(ctx, readerFetches)
-		},
-		func(ctx context.Context) error {
-			return nil
-		},
-	)
-	reader.On("CommitMessages", mock.AnythingOfType("*context.timerCtx"), kafka.Message{Partition: 1, Offset: 1}).Return(nil).Times(1)
-	reader.On("CommitMessages", mock.AnythingOfType("*context.timerCtx"),
+			return OnFetch(ctx, readerFetches), nil
+		})
+	reader.EXPECT().CommitMessages(matcher.Context, kafka.Message{Partition: 1, Offset: 1}).Return(nil).Times(1)
+	reader.EXPECT().CommitMessages(matcher.Context,
 		kafka.Message{Partition: 1, Offset: 1},
 		kafka.Message{Partition: 2, Offset: 2},
 	).Return(nil).Times(1)
-	reader.On("Close").Times(1).Return(nil)
-	defer reader.AssertExpectations(t)
+	reader.EXPECT().Close().Times(1).Return(nil)
 
 	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
 
@@ -213,25 +198,20 @@ func TestOffsetManager_FullCommit(t *testing.T) {
 
 	var (
 		readerFetches = 0
-		reader        = &mocks.Reader{}
+		reader        = mocks.NewReader(t)
 	)
-	reader.On("FetchMessage", mock.AnythingOfType("*context.timerCtx")).Return(
-		func(ctx context.Context) kafka.Message {
+	reader.EXPECT().FetchMessage(matcher.Context).RunAndReturn(
+		func(ctx context.Context) (kafka.Message, error) {
 			defer func() {
 				time.Sleep(time.Millisecond)
 				readerFetches += 1
 			}()
 
-			return OnFetch(ctx, readerFetches)
-		},
-		func(ctx context.Context) error {
-			return nil
-		},
-	)
-	reader.On("CommitMessages", mock.AnythingOfType("*context.timerCtx"), kafka.Message{Partition: 1, Offset: 1}).Return(nil).Times(1)
-	reader.On("CommitMessages", mock.AnythingOfType("*context.timerCtx"), kafka.Message{Partition: 2, Offset: 2}).Return(nil).Times(1)
-	reader.On("Close").Times(1).Return(nil)
-	defer reader.AssertExpectations(t)
+			return OnFetch(ctx, readerFetches), nil
+		})
+	reader.EXPECT().CommitMessages(matcher.Context, kafka.Message{Partition: 1, Offset: 1}).Return(nil).Times(1)
+	reader.EXPECT().CommitMessages(matcher.Context, kafka.Message{Partition: 2, Offset: 2}).Return(nil).Times(1)
+	reader.EXPECT().Close().Times(1).Return(nil)
 
 	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
 
@@ -281,22 +261,16 @@ func TestOffsetManager_FetchMessageErrors(t *testing.T) {
 	ctx := context.Background()
 
 	var (
-		reader    = &mocks.Reader{}
+		reader    = mocks.NewReader(t)
 		readerErr = errors.New("reader: failed")
 	)
 
-	reader.On("FetchMessage", ctx).Return(
-		func(ctx context.Context) kafka.Message {
-			time.Sleep(time.Millisecond)
+	reader.EXPECT().FetchMessage(ctx).RunAndReturn(func(ctx context.Context) (kafka.Message, error) {
+		time.Sleep(time.Millisecond)
 
-			return kafka.Message{}
-		},
-		func(ctx context.Context) error {
-			return readerErr
-		},
-	)
-	reader.On("Close").Times(1).Return(nil)
-	defer reader.AssertExpectations(t)
+		return kafka.Message{}, readerErr
+	})
+	reader.EXPECT().Close().Times(1).Return(nil)
 
 	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
 
@@ -314,22 +288,16 @@ func TestOffsetManager_FlushErrors(t *testing.T) {
 	ctx := context.Background()
 
 	var (
-		reader    = &mocks.Reader{}
+		reader    = mocks.NewReader(t)
 		readerErr = errors.New("reader: failed")
 	)
 
-	reader.On("FetchMessage", ctx).Return(
-		func(ctx context.Context) kafka.Message {
-			time.Sleep(time.Millisecond)
+	reader.EXPECT().FetchMessage(ctx).RunAndReturn(func(ctx context.Context) (kafka.Message, error) {
+		time.Sleep(time.Millisecond)
 
-			return kafka.Message{}
-		},
-		func(ctx context.Context) error {
-			return readerErr
-		},
-	)
-	reader.On("Close").Times(1).Return(readerErr)
-	defer reader.AssertExpectations(t)
+		return kafka.Message{}, readerErr
+	})
+	reader.EXPECT().Close().Times(1).Return(readerErr)
 
 	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
 
@@ -343,7 +311,7 @@ func TestOffsetManager_FlushErrors(t *testing.T) {
 	assert.ErrorIs(t, manager.Start(ctx), readerErr)
 }
 
-func OnFetch(ctx context.Context, call int) kafka.Message {
+func OnFetch(_ context.Context, call int) kafka.Message {
 	return kafka.Message{
 		Partition: call + 1,
 		Offset:    int64(call + 1),

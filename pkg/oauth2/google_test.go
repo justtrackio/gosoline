@@ -39,9 +39,9 @@ func TestGoogleService_GetAuthRefresh(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	httpClient := new(httpMocks.Client)
-	httpClient.On("NewRequest").Return(http.NewRequest(nil))
-	httpClient.On("Post", context.TODO(), httpRequest).Return(response, nil)
+	httpClient := httpMocks.NewClient(t)
+	httpClient.EXPECT().NewRequest().Return(http.NewRequest(nil))
+	httpClient.EXPECT().Post(context.TODO(), httpRequest).Return(response, nil)
 
 	service := NewGoogleServiceWithInterfaces(httpClient)
 	googleAuthResponse, err := service.GetAuthRefresh(context.TODO(), googleAuthRequest)
@@ -50,8 +50,6 @@ func TestGoogleService_GetAuthRefresh(t *testing.T) {
 	assert.Equal(t, expectedGoogleAuthResponse.AccessToken, googleAuthResponse.AccessToken)
 	assert.Equal(t, expectedGoogleAuthResponse.TokenType, googleAuthResponse.TokenType)
 	assert.Equal(t, expectedGoogleAuthResponse.ExpiresIn, googleAuthResponse.ExpiresIn)
-
-	httpClient.AssertExpectations(t)
 }
 
 func TestGoogleService_GetAuthRefresh_Error(t *testing.T) {
@@ -62,9 +60,9 @@ func TestGoogleService_GetAuthRefresh_Error(t *testing.T) {
 		RefreshToken: "RefreshToken",
 	}
 
-	httpClient := new(httpMocks.Client)
-	httpClient.On("NewRequest").Return(http.NewRequest(nil))
-	httpClient.On("Post", context.TODO(), mock.Anything).Return(nil, errors.New("test"))
+	httpClient := httpMocks.NewClient(t)
+	httpClient.EXPECT().NewRequest().Return(http.NewRequest(nil))
+	httpClient.EXPECT().Post(context.TODO(), mock.AnythingOfType("*http.Request")).Return(nil, errors.New("test"))
 
 	service := NewGoogleServiceWithInterfaces(httpClient)
 	_, err := service.GetAuthRefresh(context.TODO(), googleAuthRequest)

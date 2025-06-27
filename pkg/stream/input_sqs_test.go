@@ -12,8 +12,8 @@ import (
 	sqsMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/sqs/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestSqsInput_Run(t *testing.T) {
@@ -26,23 +26,25 @@ func TestSqsInput_Run(t *testing.T) {
 	waitRunDone := make(chan struct{})
 	msg := &stream.Message{}
 
-	queue := new(sqsMocks.Queue)
-	queue.On("Receive", ctx, int32(1), int32(3)).Return(func(_ context.Context, mrc int32, wt int32) []types.Message {
-		newCount := atomic.AddInt32(&count, 1)
+	queue := sqsMocks.NewQueue(t)
+	queue.EXPECT().Receive(ctx, int32(1), int32(3)).
+		RunAndReturn(func(_ context.Context, mrc int32, wt int32) ([]types.Message, error) {
+			newCount := atomic.AddInt32(&count, 1)
 
-		if newCount > mrc {
-			<-waitStopDone
-			return []types.Message{}
-		}
+			if newCount > mrc {
+				<-waitStopDone
 
-		return []types.Message{
-			{
-				Body:          aws.String(`{"body": "foobar"}`),
-				MessageId:     aws.String(""),
-				ReceiptHandle: aws.String(""),
-			},
-		}
-	}, nil)
+				return []types.Message{}, nil
+			}
+
+			return []types.Message{
+				{
+					Body:          aws.String(`{"body": "foobar"}`),
+					MessageId:     aws.String(""),
+					ReceiptHandle: aws.String(""),
+				},
+			}, nil
+		})
 
 	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
 
@@ -76,30 +78,32 @@ func TestSqsInput_Run(t *testing.T) {
 func TestSqsInput_Run_Failure(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
-	count := 0
+	var count int32
 	waitRunDone := make(chan struct{})
 
-	queue := new(sqsMocks.Queue)
-	queue.On("Receive", mock.AnythingOfType("*context.emptyCtx"), int32(10), int32(3)).Return(func(_ context.Context, mrc int32, wt int32) []types.Message {
-		count++
+	queue := sqsMocks.NewQueue(t)
+	queue.EXPECT().Receive(matcher.Context, int32(10), int32(3)).
+		RunAndReturn(func(_ context.Context, mrc int32, wt int32) ([]types.Message, error) {
+			newCount := atomic.AddInt32(&count, 1)
 
-		if count == 1 {
-			return []types.Message{
-				{
-					Body:          aws.String(`{"body": "foobar"}`),
-					ReceiptHandle: nil,
-				},
+			if newCount == 1 {
+				return []types.Message{
+					{
+						Body:          aws.String(`{"body": "foobar"}`),
+						ReceiptHandle: nil,
+					},
+				}, nil
 			}
-		}
 
-		return []types.Message{}
-	}, nil)
+			return []types.Message{}, nil
+		})
 
 	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
 
 	input := stream.NewSqsInputWithInterfaces(logger, queue, stream.MessageUnmarshaller, healthCheckTimer, &stream.SqsInputSettings{
-		WaitTime:    3,
-		RunnerCount: 3,
+		WaitTime:            3,
+		RunnerCount:         3,
+		MaxNumberOfMessages: 10,
 	})
 
 	go func() {

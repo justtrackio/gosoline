@@ -9,8 +9,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestListHandler_Handle(t *testing.T) {
@@ -34,7 +34,7 @@ func TestListHandler_Handle(t *testing.T) {
 			"name": db_repo.NewFieldMapping("name"),
 		},
 	})
-	transformer.Repo.EXPECT().Count(mock.AnythingOfType("context.backgroundCtx"), qb, &Model{}).Return(1, nil)
+	transformer.Repo.EXPECT().Count(matcher.Context, qb, &Model{}).Return(1, nil)
 
 	body := `{"filter":{"matches":[{"values":["foobar"],"dimension":"name","operator":"="}],"bool":"and"},"order":[{"field":"name","direction":"ASC"}],"page":{"offset":0,"limit":2}}`
 	response := httpserver.HttpTest("PUT", "/:id", "/1", body, handler)

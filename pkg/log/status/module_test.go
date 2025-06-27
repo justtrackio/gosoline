@@ -12,14 +12,13 @@ import (
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/log/status"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"golang.org/x/sys/unix"
 )
 
 func TestModule(t *testing.T) {
 	mgr := status.NewManager()
-	logger := new(logMocks.Logger)
-	logger.On("WithChannel", "status").Return(logger).Once()
+	logger := logMocks.NewLogger(t)
+	logger.EXPECT().WithChannel("status").Return(logger).Once()
 	m, err := status.NewModule(mgr)(context.Background(), nil, logger)
 	assert.NoError(t, err)
 
@@ -29,7 +28,7 @@ func TestModule(t *testing.T) {
 	cfn.GoWithContext(ctx, m.Run)
 
 	mgr.StartWork("test", 3).ReportDone()
-	logger.On("Info", "Work item %s: done", "test").Run(func(args mock.Arguments) {
+	logger.EXPECT().Info("Work item %s: done", "test").Run(func(format string, args ...any) {
 		// we can cancel the context as soon as we know that we will be logging stuff
 		// if we do this too early, the module might get a choice between returning and printing logs,
 		// but at this point we are already printing
@@ -41,8 +40,6 @@ func TestModule(t *testing.T) {
 
 	err = cfn.Wait()
 	assert.NoError(t, err)
-
-	logger.AssertExpectations(t)
 }
 
 /*******************/

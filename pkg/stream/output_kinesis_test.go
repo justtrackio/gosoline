@@ -21,7 +21,7 @@ type OutputKinesisTestSuite struct {
 
 func (s *OutputKinesisTestSuite) SetupSuite() {
 	s.ctx = context.Background()
-	s.recordWriter = new(kinesisMocks.RecordWriter)
+	s.recordWriter = kinesisMocks.NewRecordWriter(s.T())
 	s.output = stream.NewKinesisOutputWithInterfaces(s.recordWriter)
 }
 
@@ -31,14 +31,12 @@ func (s *OutputKinesisTestSuite) TestRawMessageSuccess() {
 			Data: []byte(`"body"`),
 		},
 	}
-	s.recordWriter.On("PutRecords", s.ctx, expectedRecords).Return(nil)
+	s.recordWriter.EXPECT().PutRecords(s.ctx, expectedRecords).Return(nil)
 
 	rawMessage := stream.NewRawJsonMessage("body")
 
 	err := s.output.WriteOne(s.ctx, rawMessage)
 	s.NoError(err)
-
-	s.recordWriter.AssertExpectations(s.T())
 }
 
 func (s *OutputKinesisTestSuite) TestStreamMessageSuccess() {
@@ -48,7 +46,7 @@ func (s *OutputKinesisTestSuite) TestStreamMessageSuccess() {
 			PartitionKey: aws.String("bfe5dfdc-0af2-44e5-863d-2c4860cc46d8"),
 		},
 	}
-	s.recordWriter.On("PutRecords", s.ctx, expectedRecords).Return(nil)
+	s.recordWriter.EXPECT().PutRecords(s.ctx, expectedRecords).Return(nil)
 
 	streamMessage := stream.NewJsonMessage("body", map[string]string{
 		stream.AttributeKinesisPartitionKey: "bfe5dfdc-0af2-44e5-863d-2c4860cc46d8",
@@ -56,8 +54,6 @@ func (s *OutputKinesisTestSuite) TestStreamMessageSuccess() {
 
 	err := s.output.WriteOne(s.ctx, streamMessage)
 	s.NoError(err)
-
-	s.recordWriter.AssertExpectations(s.T())
 }
 
 func TestOutputKinesisTestSuite(t *testing.T) {
