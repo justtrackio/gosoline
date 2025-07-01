@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/segmentio/kafka-go"
 )
@@ -101,11 +102,29 @@ func (m *offsetManager) Batch(ctx context.Context) []kafka.Message {
 
 	m.readLock.Lock()
 	defer m.readLock.Unlock()
+
+	batch = funk.Filter(batch, func(msg kafka.Message) bool {
+		return !isControlMessage(msg)
+	})
+
+	if len(batch) == 0 {
+		select {
+		case m.uncomittedEmptyEvent <- true:
+		default:
+		}
+	}
+
 	for _, msg := range batch {
 		m.uncomitted[Offset{Partition: msg.Partition, Index: msg.Offset}] = msg.Offset
 	}
 
 	return batch
+}
+
+func isControlMessage(msg kafka.Message) bool {
+	// this is a control message indicating an aborted transactional message.
+	// the kafka-go library does not support transactions currently and is not handling this correctly (https://github.com/segmentio/kafka-go/issues/1348).
+	return len(msg.Value) == 6 && msg.Value[0] == 0 && msg.Value[1] == 0 && msg.Value[2] == 0 && msg.Value[3] == 0
 }
 
 func (m *offsetManager) Commit(ctx context.Context, msgs ...kafka.Message) error {

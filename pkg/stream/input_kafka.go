@@ -47,12 +47,6 @@ func (i *KafkaInput) Run(ctx context.Context) error {
 	defer close(i.data)
 
 	for msg := range i.consumer.Data() {
-		if len(msg.Value) == 6 && msg.Value[0] == 0 && msg.Value[1] == 0 && msg.Value[2] == 0 && msg.Value[3] == 0 {
-			// this is a control batch indicating an aborted transactional message.
-			// the kafka-go library does not support transactions currently and is not handling this correctly (https://github.com/segmentio/kafka-go/issues/1348).
-			continue
-		}
-
 		i.data <- KafkaToGosoMessage(msg)
 	}
 
