@@ -25,9 +25,9 @@ const (
 	ErrorTypeRetryable
 )
 
-type ErrorChecker func(result interface{}, err error) ErrorType
+type ErrorChecker func(result any, err error) ErrorType
 
-func CheckUsedClosedConnectionError(_ interface{}, err error) ErrorType {
+func CheckUsedClosedConnectionError(_ any, err error) ErrorType {
 	if IsUsedClosedConnectionError(err) {
 		return ErrorTypeRetryable
 	}
@@ -39,7 +39,7 @@ func IsUsedClosedConnectionError(err error) bool {
 	return strings.Contains(err.Error(), net.ErrClosed.Error())
 }
 
-func CheckConnectionError(_ interface{}, err error) ErrorType {
+func CheckConnectionError(_ any, err error) ErrorType {
 	if IsConnectionError(err) {
 		return ErrorTypeRetryable
 	}
@@ -63,7 +63,7 @@ func IsConnectionError(err error) bool {
 	return false
 }
 
-func CheckTimeoutError(_ interface{}, err error) ErrorType {
+func CheckTimeoutError(_ any, err error) ErrorType {
 	if IsTimeoutError(err) {
 		return ErrorTypeRetryable
 	}
@@ -75,7 +75,7 @@ func IsTimeoutError(err error) bool {
 	return errors.Is(err, unix.ETIMEDOUT)
 }
 
-func CheckClientAwaitHeaderTimeoutError(_ interface{}, err error) ErrorType {
+func CheckClientAwaitHeaderTimeoutError(_ any, err error) ErrorType {
 	if IsClientAwaitHeadersTimeoutError(err) {
 		return ErrorTypeRetryable
 	}
@@ -91,7 +91,7 @@ func IsClientAwaitHeadersTimeoutError(err error) bool {
 	return strings.Contains(err.Error(), "(Client.Timeout exceeded while awaiting headers)")
 }
 
-func CheckTlsHandshakeTimeoutError(_ interface{}, err error) ErrorType {
+func CheckTlsHandshakeTimeoutError(_ any, err error) ErrorType {
 	if IsTlsHandshakeTimeoutError(err) {
 		return ErrorTypeRetryable
 	}
@@ -105,4 +105,92 @@ func IsTlsHandshakeTimeoutError(err error) bool {
 	}
 
 	return strings.Contains(err.Error(), "net/http: TLS handshake timeout")
+}
+
+func IsIoTimeoutError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	return strings.Contains(err.Error(), "i/o timeout")
+}
+
+func CheckConnectionRefusedError(_ any, err error) ErrorType {
+	if IsConnectionRefusedError(err) {
+		return ErrorTypeRetryable
+	}
+
+	return ErrorTypeUnknown
+}
+
+func IsConnectionRefusedError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	return strings.Contains(err.Error(), "connection refused")
+}
+
+func CheckConnectionResetByPeerError(_ any, err error) ErrorType {
+	if IsConnectionResetByPeerError(err) {
+		return ErrorTypeRetryable
+	}
+
+	return ErrorTypeUnknown
+}
+
+func IsConnectionResetByPeerError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	return strings.Contains(err.Error(), "connection reset by peer")
+}
+
+func CheckOperationWasCanceledError(_ any, err error) ErrorType {
+	if IsOperationWasCanceledError(err) {
+		return ErrorTypeRetryable
+	}
+
+	return ErrorTypeUnknown
+}
+
+func IsOperationWasCanceledError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	return strings.Contains(err.Error(), "operation was canceled")
+}
+
+func CheckBrokenPipeError(_ any, err error) ErrorType {
+	if IsBrokenPipeError(err) {
+		return ErrorTypeRetryable
+	}
+
+	return ErrorTypeUnknown
+}
+
+func IsBrokenPipeError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	return strings.Contains(err.Error(), "broken pipe")
+}
+
+func CheckHttp2ClientConnectionForceClosedError(_ any, err error) ErrorType {
+	if IsHttp2ClientConnectionForceClosedError(err) {
+		return ErrorTypeRetryable
+	}
+
+	return ErrorTypeUnknown
+}
+
+func IsHttp2ClientConnectionForceClosedError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	return strings.Contains(err.Error(), "http2: client connection force closed")
 }

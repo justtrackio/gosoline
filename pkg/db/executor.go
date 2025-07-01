@@ -4,7 +4,6 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -70,7 +69,7 @@ func CheckBadConnection(result any, err error) exec.ErrorType {
 }
 
 func CheckIoTimeout(result any, err error) exec.ErrorType {
-	if strings.Contains(err.Error(), "i/o timeout") {
+	if exec.IsIoTimeoutError(err) {
 		return exec.ErrorTypeRetryable
 	}
 
