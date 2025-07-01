@@ -4,20 +4,24 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/funk"
 )
 
-var nonCriticalErrors = []string{
-	// the clients metadata might be outdated if the partition leader has meanwhile changed.
-	// the kafka library will log an error in this case before retrying with the proper leader but
-	// this is not critical unless the max retry attempts are exceeded and in that case
-	// the library will actually return the error instead of logging it via the provided logger.
+// various errors related to the kafka clients metadata being outdated or some reorganization being in progress.
+// these are not critical unless the max retry attempts are exceeded and in that case
+// the library will actually return the error instead of logging it via the provided logger.
+var nonCriticalKafkaErrors = []string{
+	"Group Load In Progress",
+	"Group Coordinator Not Available",
 	"Not Leader For Partition",
 	"not the leader",
+	"Not Coordinator For Group",
+	"Rebalance In Progress",
 }
 
-func isNonCriticalError(msg string) bool {
-	return funk.ContainsFunc(nonCriticalErrors, func(nonCriticalError string) bool {
+func isNonCriticalKafkaError(msg string) bool {
+	return funk.ContainsFunc(nonCriticalKafkaErrors, func(nonCriticalError string) bool {
 		return strings.Contains(msg, nonCriticalError)
 	})
 }
@@ -31,9 +35,14 @@ func (logger DebugLoggerWrapper) Printf(msg string, args ...any) {
 type ErrorLoggerWrapper KafkaLogger
 
 func (logger ErrorLoggerWrapper) Printf(format string, args ...any) {
-	msg := fmt.Sprintf(format, args...)
+	err := fmt.Errorf(format, args...)
 
-	if isNonCriticalError(msg) {
+	if isNonCriticalKafkaError(err.Error()) ||
+		exec.IsConnectionError(err) ||
+		exec.IsIoTimeoutError(err) ||
+		exec.IsConnectionRefusedError(err) ||
+		exec.IsUsedClosedConnectionError(err) ||
+		exec.IsOperationWasCanceledError(err) {
 		logger.Info(format, args...)
 
 		return
