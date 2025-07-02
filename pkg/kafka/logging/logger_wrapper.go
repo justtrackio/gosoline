@@ -2,6 +2,7 @@ package logging
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/exec"
@@ -38,9 +39,11 @@ func (logger ErrorLoggerWrapper) Printf(format string, args ...any) {
 	err := fmt.Errorf(format, args...)
 
 	if isNonCriticalKafkaError(err.Error()) ||
+		strings.Contains(err.Error(), io.EOF.Error()) ||
+		strings.Contains(err.Error(), io.ErrUnexpectedEOF.Error()) ||
+		strings.Contains(err.Error(), "connection refused") ||
 		exec.IsConnectionError(err) ||
 		exec.IsIoTimeoutError(err) ||
-		exec.IsConnectionRefusedError(err) ||
 		exec.IsUsedClosedConnectionError(err) ||
 		exec.IsOperationWasCanceledError(err) {
 		logger.Info(format, args...)
