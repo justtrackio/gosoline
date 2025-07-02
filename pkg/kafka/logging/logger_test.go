@@ -21,10 +21,12 @@ func TestKafkaLogger(t *testing.T) {
 	loggerWithChannel.EXPECT().Error("error message").Once()
 	loggerWithChannel.EXPECT().Info("not the leader").Once()
 	loggerWithChannel.EXPECT().Info("error: %s", nonCriticalError).Once()
+	loggerWithChannel.EXPECT().Info("unexpected EOF").Once()
 
 	kLogger := logging.NewKafkaLogger(logger)
 	kLogger.DebugLogger().Printf("debug message")
 	kLogger.ErrorLogger().Printf("error message")
 	kLogger.ErrorLogger().Printf("not the leader")
 	kLogger.ErrorLogger().Printf("error: %s", nonCriticalError)
+	kLogger.ErrorLogger().Printf("unexpected EOF")
 }

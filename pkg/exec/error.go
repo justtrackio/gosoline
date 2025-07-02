@@ -115,38 +115,6 @@ func IsIoTimeoutError(err error) bool {
 	return strings.Contains(err.Error(), "i/o timeout")
 }
 
-func CheckConnectionRefusedError(_ any, err error) ErrorType {
-	if IsConnectionRefusedError(err) {
-		return ErrorTypeRetryable
-	}
-
-	return ErrorTypeUnknown
-}
-
-func IsConnectionRefusedError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	return strings.Contains(err.Error(), "connection refused")
-}
-
-func CheckConnectionResetByPeerError(_ any, err error) ErrorType {
-	if IsConnectionResetByPeerError(err) {
-		return ErrorTypeRetryable
-	}
-
-	return ErrorTypeUnknown
-}
-
-func IsConnectionResetByPeerError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	return strings.Contains(err.Error(), "connection reset by peer")
-}
-
 func CheckOperationWasCanceledError(_ any, err error) ErrorType {
 	if IsOperationWasCanceledError(err) {
 		return ErrorTypeRetryable
@@ -161,22 +129,6 @@ func IsOperationWasCanceledError(err error) bool {
 	}
 
 	return strings.Contains(err.Error(), "operation was canceled")
-}
-
-func CheckBrokenPipeError(_ any, err error) ErrorType {
-	if IsBrokenPipeError(err) {
-		return ErrorTypeRetryable
-	}
-
-	return ErrorTypeUnknown
-}
-
-func IsBrokenPipeError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	return strings.Contains(err.Error(), "broken pipe")
 }
 
 func CheckHttp2ClientConnectionForceClosedError(_ any, err error) ErrorType {
