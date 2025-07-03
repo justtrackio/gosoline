@@ -47,7 +47,7 @@ type bindHandler struct {
 	suite.Suite
 }
 
-func (b bindHandler) Channels() []string {
+func (b bindHandler) Channels() log.Channels {
 	return nil
 }
 

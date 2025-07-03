@@ -65,8 +65,10 @@ This handler struct stores the log `channel`. To use your handler, you must impl
 Create a getter for the log channels:
 
 ```go
-func (h *MyCustomHandler) Channels() []string {
-	return []string{h.channel}
+func (h *MyCustomHandler) Channels() log.Channels {
+	return log.Channels{
+	    h.channel: log.PriorityInfo,
+	}
 }
 ```
 

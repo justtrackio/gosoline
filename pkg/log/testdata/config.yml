@@ -1,7 +1,11 @@
 log:
-  level: warn
   handlers:
     main:
       type: iowriter
       level: debug
+      channels:
+        metrics:
+          level: error
+      formatter: json
+      timestamp_format: 2006-01-02T15:04:05Z07:00
       writer: stdout

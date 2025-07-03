@@ -3,8 +3,8 @@ package log
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
 )
@@ -15,12 +15,16 @@ const (
 	LevelInfo  = "info"
 	LevelWarn  = "warn"
 	LevelError = "error"
+	LevelNone  = "none"
 
 	PriorityTrace = 0
 	PriorityDebug = 1
 	PriorityInfo  = 2
 	PriorityWarn  = 3
 	PriorityError = 4
+	// PriorityNone is used to indicate that no logging should be done.
+	// Value is set to the maximum int value to ensure that it is always greater than any other priority.
+	PriorityNone = math.MaxInt
 )
 
 var levelNames = map[int]string{
@@ -29,6 +33,7 @@ var levelNames = map[int]string{
 	PriorityInfo:  LevelInfo,
 	PriorityWarn:  LevelWarn,
 	PriorityError: LevelError,
+	PriorityNone:  LevelNone,
 }
 
 var levelPriorities = map[string]int{
@@ -37,6 +42,7 @@ var levelPriorities = map[string]int{
 	LevelInfo:  PriorityInfo,
 	LevelWarn:  PriorityWarn,
 	LevelError: PriorityError,
+	LevelNone:  PriorityNone,
 }
 
 func LevelName(level int) string {
@@ -178,13 +184,7 @@ func (l *gosoLogger) log(level int, msg string, args []interface{}, loggedErr er
 	timestamp := l.clock.Now()
 
 	for _, handler := range l.handlers {
-		if handler.Level() > level {
-			continue
-		}
-
-		handlerChannels := handler.Channels()
-
-		if !l.shouldLogToChannels(l.data.Channel, handlerChannels) {
+		if !l.shouldLog(l.data.Channel, level, handler) {
 			continue
 		}
 
@@ -194,32 +194,12 @@ func (l *gosoLogger) log(level int, msg string, args []interface{}, loggedErr er
 	}
 }
 
-func (l *gosoLogger) shouldLogToChannels(current string, channels []string) bool {
-	if len(channels) == 0 {
-		return true
+func (l *gosoLogger) shouldLog(current string, level int, h Handler) bool {
+	if channelLevel, ok := h.Channels()[current]; ok {
+		return channelLevel <= level
 	}
 
-	for _, channel := range channels {
-		if channel == "*" {
-			return true
-		}
-
-		if channel == current {
-			return true
-		}
-
-		if !strings.HasPrefix(channel, "!") {
-			continue
-		}
-
-		channel = strings.TrimPrefix(channel, "!")
-
-		if channel == current {
-			return false
-		}
-	}
-
-	return false
+	return h.Level() <= level
 }
 
 func (l *gosoLogger) err(err error) {
