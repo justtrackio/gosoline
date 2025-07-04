@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -115,4 +116,26 @@ func TestRealTimer_NewTimerWithNegative(t *testing.T) {
 	default:
 		assert.Fail(t, "reading from a timer reset to negative duration should work")
 	}
+}
+
+func TestRealTimerConcurrentResetAndStop(t *testing.T) {
+	timer := clock.NewRealTimer(time.Minute)
+	cfn := coffin.New()
+	for i := 0; i < 100; i++ {
+		cfn.Go(func() error {
+			for j := 0; j < 10000; j++ {
+				timer.Reset(time.Minute)
+			}
+
+			return nil
+		})
+		cfn.Go(func() error {
+			timer.Stop()
+
+			return nil
+		})
+	}
+
+	err := cfn.Wait()
+	assert.NoError(t, err)
 }

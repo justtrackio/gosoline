@@ -2,6 +2,7 @@ package clock
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -22,6 +23,7 @@ type Ticker interface {
 }
 
 type realTicker struct {
+	lck     sync.Mutex
 	ticker  *time.Ticker
 	output  chan time.Time
 	stopped chan struct{}
@@ -52,13 +54,21 @@ func (t *realTicker) Reset(d time.Duration) {
 	if d <= 0 {
 		panic(fmt.Errorf("non-positive interval (%v) for Reset", d))
 	}
+
+	t.lck.Lock()
+	defer t.lck.Unlock()
+
 	t.stopTransformer()
 	t.ticker.Reset(d)
-	t.stopped = make(chan struct{})
-	go t.transformTicks(t.stopped)
+	newStopped := make(chan struct{})
+	t.stopped = newStopped
+	go t.transformTicks(newStopped)
 }
 
 func (t *realTicker) Stop() {
+	t.lck.Lock()
+	defer t.lck.Unlock()
+
 	t.stopTransformer()
 	t.ticker.Stop()
 }
