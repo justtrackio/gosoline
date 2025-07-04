@@ -1,6 +1,7 @@
 package clock
 
 import (
+	"sync"
 	"time"
 )
 
@@ -29,7 +30,7 @@ type Timer interface {
 	//
 	// Note that, unlike the time.Timer's Reset method, this one doesn't return a value as it is not possible to use it correctly.
 	// If you try to drain the channel after calling Reset, the timer might already expire. Thus, you would drain the value
-	// you would afterwards be waiting for. Reset should always be invoked on stopped or expired channels, as described above.
+	// you would afterward be waiting for. Reset should always be invoked on stopped or expired channels, as described above.
 	//
 	// A call to Reset is not thread safe. You should only ever have a single go routine responsible for a Timer or have
 	// some way to coordinate between different go routines.
@@ -48,14 +49,20 @@ type Timer interface {
 	// 		<-t.Chan()
 	// 	}
 	//
-	// This cannot be done concurrent to other receives from the Timer's channel or other calls to the Timer's Stop method.
+	// This cannot be done concurrent to other receives from the Timer's channel. If you have concurrent receives from the Timer,
+	// you must account for the channel already having been read:
 	//
-	// A call to Stop is not thread safe. You should only ever have a single go routine responsible for cleaning up a Timer
-	// or have some way to coordinate between different go routines.
+	// 	if !t.Stop() {
+	//      select {
+	// 		case <-t.Chan():
+	//      default:
+	//      }
+	// 	}
 	Stop() bool
 }
 
 type realTimer struct {
+	lck    sync.Mutex
 	timer  *time.Timer
 	done   chan struct{}
 	output chan time.Time
@@ -94,6 +101,13 @@ func (t *realTimer) Chan() <-chan time.Time {
 }
 
 func (t *realTimer) Stop() bool {
+	t.lck.Lock()
+	defer t.lck.Unlock()
+
+	return t.stop()
+}
+
+func (t *realTimer) stop() bool {
 	if t.done != nil {
 		close(t.done)
 	}
@@ -103,8 +117,11 @@ func (t *realTimer) Stop() bool {
 }
 
 func (t *realTimer) Reset(d time.Duration) {
+	t.lck.Lock()
+	defer t.lck.Unlock()
+
 	// stop the old go routine first (if still running)
-	t.Stop()
+	t.stop()
 	if d <= 0 {
 		t.sendTick(time.Now())
 
