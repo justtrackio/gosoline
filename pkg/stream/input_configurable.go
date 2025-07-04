@@ -91,6 +91,7 @@ func newInMemoryInputFromConfig(_ context.Context, config cfg.Config, _ log.Logg
 
 func newKafkaInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
+
 	return NewKafkaInput(ctx, config, logger, key)
 }
 
