@@ -24,14 +24,14 @@ func init() {
 type SubscriberTestCase interface {
 	GetName() string
 	GetModelId() mdl.ModelId
-	GetInput() interface{}
+	GetInput() any
 	GetVersion() int
 }
 
 type subscriberTestCase struct {
 	Name    string
 	ModelId mdl.ModelId
-	Input   interface{}
+	Input   any
 	Output  mdlsub.Model
 	Version int
 }
@@ -44,7 +44,7 @@ func (s subscriberTestCase) GetModelId() mdl.ModelId {
 	return s.ModelId
 }
 
-func (s subscriberTestCase) GetInput() interface{} {
+func (s subscriberTestCase) GetInput() any {
 	return s.Input
 }
 
@@ -91,23 +91,23 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
 		suite.SetT(t)
 
-		ret := method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})
-		err := ret[1].Interface()
-		if err != nil {
-			assert.FailNow(t, err.(error).Error())
-		}
-
-		tc := ret[0].Interface().(SubscriberTestCase)
-
-		suiteOptions.addAppOption(application.WithConfigMap(map[string]interface{}{
-			"httpserver": map[string]interface{}{
-				"default": map[string]interface{}{
+		suiteOptions.addAppOption(application.WithConfigMap(map[string]any{
+			"httpserver": map[string]any{
+				"default": map[string]any{
 					"port": 0,
 				},
 			},
 		}))
 
 		runTestCaseApplication(t, suite, suiteOptions, environment, func(app *appUnderTest) {
+			ret := method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})
+			err := ret[1].Interface()
+			if err != nil {
+				assert.FailNow(t, err.(error).Error())
+			}
+
+			tc := ret[0].Interface().(SubscriberTestCase)
+
 			attrs := mdlsub.CreateMessageAttributes(tc.GetModelId(), "create", tc.GetVersion())
 
 			sourceModel := mdlsub.UnmarshalSubscriberSourceModel(suite.Env().Config(), tc.GetName())
@@ -158,7 +158,7 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 
 				fetcher := &DdbSubscriberFetcher{
 					t: t,
-					repo: func(model interface{}) (ddb.Repository, error) {
+					repo: func(model any) (ddb.Repository, error) {
 						return ddb.NewRepository(ctx, config, logger, &ddb.Settings{
 							ModelId: ddbSub.ModelIdTarget,
 							Main: ddb.MainSettings{
@@ -221,7 +221,7 @@ type DbSubscriberTestCase struct {
 	Name    string
 	ModelId string
 	Version int
-	Input   interface{}
+	Input   any
 	Assert  DbSubscriberAssertion
 }
 
@@ -238,9 +238,50 @@ type DbSubscriberFetcher struct {
 	name string
 }
 
-func (f DbSubscriberFetcher) ByPrimaryKey(key interface{}, model interface{}) {
+func (f DbSubscriberFetcher) ByPrimaryKey(key any, model any, options ...SubscriptionFetcherOption) {
+	opts := runSubscriptionFetcherOptions(options)
+
 	res := f.orm.First(model, key)
+
+	if gorm.IsRecordNotFoundError(res.Error) {
+		assert.Falsef(f.t, opts.expectFound, "unexpected missing item with key %v when fetching db subscription %s", key, f.name)
+
+		return
+	}
+
 	assert.NoErrorf(f.t, res.Error, "unexpected error on fetching db subscription %s", f.name)
+
+	if res.Error != nil {
+		return
+	}
+
+	assert.Truef(f.t, opts.expectFound, "unexpected found item with key %v when fetching db subscription %s", key, f.name)
+}
+
+type SubscriptionFetcherOption func(*subscriberFetcherOptions)
+
+type subscriberFetcherOptions struct {
+	expectFound bool
+}
+
+func WithExpectFound(o *subscriberFetcherOptions) {
+	o.expectFound = true
+}
+
+func WithExpectNotFound(o *subscriberFetcherOptions) {
+	o.expectFound = false
+}
+
+func runSubscriptionFetcherOptions(options []SubscriptionFetcherOption) subscriberFetcherOptions {
+	opts := subscriberFetcherOptions{
+		expectFound: true,
+	}
+
+	for _, option := range options {
+		option(&opts)
+	}
+
+	return opts
 }
 
 func DdbTestCase(testCase DdbSubscriberTestCase) (SubscriberTestCase, error) {
@@ -272,7 +313,7 @@ type DdbSubscriberTestCase struct {
 	SourceModelId string
 	TargetModelId string
 	Version       int
-	Input         interface{}
+	Input         any
 	Assert        DdbSubscriberAssertion
 }
 
@@ -286,11 +327,13 @@ type DdbSubscriberAssertion func(t *testing.T, fetcher *DdbSubscriberFetcher)
 
 type DdbSubscriberFetcher struct {
 	t    *testing.T
-	repo func(model interface{}) (ddb.Repository, error)
+	repo func(model any) (ddb.Repository, error)
 	name string
 }
 
-func (f DdbSubscriberFetcher) ByHash(hash interface{}, model interface{}) {
+func (f DdbSubscriberFetcher) ByHash(hash any, model any, options ...SubscriptionFetcherOption) {
+	opts := runSubscriptionFetcherOptions(options)
+
 	repo, err := f.repo(model)
 	assert.NoErrorf(f.t, err, "unexpected error on fetching ddb subscription %s", f.name)
 
@@ -303,10 +346,16 @@ func (f DdbSubscriberFetcher) ByHash(hash interface{}, model interface{}) {
 		return
 	}
 
-	assert.True(f.t, res.IsFound)
+	if opts.expectFound {
+		assert.Truef(f.t, res.IsFound, "unexpected missing item with hash %v when fetching ddb subscription %s", hash, f.name)
+	} else {
+		assert.Falsef(f.t, res.IsFound, "unexpected found item with hash %v when fetching ddb subscription %s", hash, f.name)
+	}
 }
 
-func (f DdbSubscriberFetcher) ByHashAndRange(hash interface{}, rangeValue interface{}, model interface{}) {
+func (f DdbSubscriberFetcher) ByHashAndRange(hash any, rangeValue any, model any, options ...SubscriptionFetcherOption) {
+	opts := runSubscriptionFetcherOptions(options)
+
 	repo, err := f.repo(model)
 	assert.NoErrorf(f.t, err, "unexpected error on fetching ddb subscription %s", f.name)
 
@@ -319,7 +368,11 @@ func (f DdbSubscriberFetcher) ByHashAndRange(hash interface{}, rangeValue interf
 		return
 	}
 
-	assert.True(f.t, res.IsFound)
+	if opts.expectFound {
+		assert.Truef(f.t, res.IsFound, "unexpected missing item with hash %v and range %v when fetching ddb subscription %s", hash, rangeValue, f.name)
+	} else {
+		assert.Falsef(f.t, res.IsFound, "unexpected found item with hash %v and range %v when fetching ddb subscription %s", hash, rangeValue, f.name)
+	}
 }
 
 func KvstoreTestCase(testCase KvstoreSubscriberTestCase) (SubscriberTestCase, error) {
@@ -342,7 +395,7 @@ func KvstoreTestCase(testCase KvstoreSubscriberTestCase) (SubscriberTestCase, er
 type KvstoreSubscriberTestCase struct {
 	Name    string
 	ModelId string
-	Input   interface{}
+	Input   any
 	Version int
 	Assert  KvStoreSubscriberAssertion
 }
@@ -360,9 +413,19 @@ type KvstoreSubscriberFetcher struct {
 	name  string
 }
 
-func (f KvstoreSubscriberFetcher) Get(key interface{}, model mdlsub.Model) {
+func (f KvstoreSubscriberFetcher) Get(key any, model mdlsub.Model, options ...SubscriptionFetcherOption) {
+	opts := runSubscriptionFetcherOptions(options)
+
 	ok, err := f.store.Get(context.Background(), key, &model)
 
-	assert.Truef(f.t, ok, "model for subscription %s and key %v should be available in the store", f.name, key)
 	assert.NoErrorf(f.t, err, "unexpected error on fetching kvstore subscription %s", f.name)
+	if err != nil {
+		return
+	}
+
+	if opts.expectFound {
+		assert.Truef(f.t, ok, "unexpected missing item with key %v when fetching kvstore subscription %s", key, f.name)
+	} else {
+		assert.Falsef(f.t, ok, "unexpected found item with key %v when fetching kvstore subscription %s", key, f.name)
+	}
 }
