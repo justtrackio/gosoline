@@ -3,9 +3,9 @@ package retry_handler_sqs
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sync"
 
-	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
@@ -27,8 +27,8 @@ func (c *Callback) Consume(_ context.Context, model DataModel, attributes map[st
 	defer c.lck.Unlock()
 
 	// clone the attributes and remove the sqs specific ones to make for simpler checks later
-	// we need to make a clone because deleting the message idea is a Bad Idea™ as it is needed to acknowledge the message
-	attributes = funk.MergeMaps(attributes)
+	// we need to make a clone because deleting the message id is a Bad Idea™ as it is needed to acknowledge the message
+	attributes = maps.Clone(attributes)
 	delete(attributes, "sqsMessageId")
 	delete(attributes, "sqsReceiptHandle")
 	delete(attributes, "sqsApproximateReceiveCount")
