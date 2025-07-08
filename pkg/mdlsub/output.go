@@ -8,7 +8,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name Output
+//go:generate go run github.com/vektra/mockery/v2 --name Output
 type Output interface {
 	Persist(ctx context.Context, model Model, op string) error
 }

@@ -14,7 +14,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name Client
+//go:generate go run github.com/vektra/mockery/v2 --name Client
 type Client interface {
 	BatchGetItem(ctx context.Context, params *dynamodb.BatchGetItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.BatchGetItemOutput, error)
 	BatchWriteItem(ctx context.Context, params *dynamodb.BatchWriteItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.BatchWriteItemOutput, error)

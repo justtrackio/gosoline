@@ -52,7 +52,7 @@ func (r RecordWriterSettings) GetStreamName() string {
 	return r.StreamName
 }
 
-//go:generate mockery --name RecordWriter
+//go:generate go run github.com/vektra/mockery/v2 --name RecordWriter
 type RecordWriter interface {
 	PutRecord(ctx context.Context, record *Record) error
 	PutRecords(ctx context.Context, batch []*Record) error

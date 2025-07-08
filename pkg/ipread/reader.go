@@ -23,7 +23,7 @@ type GeoCity struct {
 	TimeZone    string `json:"timeZone"`
 }
 
-//go:generate mockery --name Reader
+//go:generate go run github.com/vektra/mockery/v2 --name Reader
 type Reader interface {
 	City(ipString string) (*GeoCity, error)
 }

@@ -21,7 +21,7 @@ const (
 
 type LookupEnv func(key string) (string, bool)
 
-//go:generate mockery --name Config
+//go:generate go run github.com/vektra/mockery/v2 --name Config
 type Config interface {
 	AllKeys() []string
 	AllSettings() map[string]interface{}
@@ -43,7 +43,7 @@ type Config interface {
 	UnmarshalKey(key string, val interface{}, additionalDefaults ...UnmarshalDefaults)
 }
 
-//go:generate mockery --name GosoConf
+//go:generate go run github.com/vektra/mockery/v2 --name GosoConf
 type GosoConf interface {
 	Config
 	Option(options ...Option) error

@@ -9,7 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-//go:generate mockery --name TraceAble
+//go:generate go run github.com/vektra/mockery/v2 --name TraceAble
 type TraceAble interface {
 	GetTrace() *Trace
 }

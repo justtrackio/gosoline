@@ -18,7 +18,7 @@ import (
 
 const ByGoogle = "google"
 
-//go:generate mockery --name TokenInfoProvider
+//go:generate go run github.com/vektra/mockery/v2 --name TokenInfoProvider
 type TokenInfoProvider interface {
 	GetTokenInfo(string) (*oauth2.Tokeninfo, error)
 }

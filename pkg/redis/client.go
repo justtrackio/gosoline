@@ -48,7 +48,7 @@ type ZRangeArgs struct {
 	Count   int64
 }
 
-//go:generate mockery --name Pipeliner
+//go:generate go run github.com/vektra/mockery/v2 --name Pipeliner
 type Pipeliner interface {
 	baseRedis.Pipeliner
 }
@@ -57,7 +57,7 @@ func GetFullyQualifiedKey(appId cfg.AppId, key string) string {
 	return fmt.Sprintf("%s-%s-%s-%s-%s-%s", appId.Project, appId.Environment, appId.Family, appId.Group, appId.Application, key)
 }
 
-//go:generate mockery --name Client
+//go:generate go run github.com/vektra/mockery/v2 --name Client
 type Client interface {
 	Del(ctx context.Context, keys ...string) (int64, error)
 	DBSize(ctx context.Context) (int64, error)

@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-//go:generate mockery --name SignalOnce
+//go:generate go run github.com/vektra/mockery/v2 --name SignalOnce
 type SignalOnce interface {
 	// Signal causes the channel returned by Channel to be closed.
 	// All go routines waiting on that channel thus immediately get a value.

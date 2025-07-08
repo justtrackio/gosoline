@@ -11,7 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name Tracer
+//go:generate go run github.com/vektra/mockery/v2 --name Tracer
 type Tracer interface {
 	StartSpan(name string) (context.Context, Span)
 	StartSpanFromContext(ctx context.Context, name string) (context.Context, Span)

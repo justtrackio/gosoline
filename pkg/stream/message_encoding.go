@@ -25,7 +25,7 @@ type MessageEncoderSettings struct {
 	EncodeHandlers []EncodeHandler
 }
 
-//go:generate mockery --name MessageEncoder
+//go:generate go run github.com/vektra/mockery/v2 --name MessageEncoder
 type MessageEncoder interface {
 	Encode(ctx context.Context, data interface{}, attributeSets ...map[string]string) (*Message, error)
 	Decode(ctx context.Context, msg *Message, out interface{}) (context.Context, map[string]string, error)

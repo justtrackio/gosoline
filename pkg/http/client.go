@@ -36,7 +36,7 @@ const (
 	metricRequestDuration = "HttpRequestDuration"
 )
 
-//go:generate mockery --name Client
+//go:generate go run github.com/vektra/mockery/v2 --name Client
 type Client interface {
 	Delete(ctx context.Context, request *Request) (*Response, error)
 	Get(ctx context.Context, request *Request) (*Response, error)

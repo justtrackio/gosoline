@@ -21,7 +21,7 @@ const (
 	FormatDateTime = "2006-01-02 15:04:05"
 )
 
-//go:generate mockery --name SqlResult
+//go:generate go run github.com/vektra/mockery/v2 --name SqlResult
 type SqlResult interface {
 	LastInsertId() (int64, error)
 	RowsAffected() (int64, error)
@@ -57,7 +57,7 @@ type (
 	Result    []ResultRow
 )
 
-//go:generate mockery --name Client
+//go:generate go run github.com/vektra/mockery/v2 --name Client
 type (
 	Client interface {
 		GetSingleScalarValue(ctx context.Context, query string, args ...any) (int, error)

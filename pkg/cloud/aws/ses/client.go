@@ -14,7 +14,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name Client
+//go:generate go run github.com/vektra/mockery/v2 --name Client
 type Client interface {
 	SendEmail(ctx context.Context, params *sesv2.SendEmailInput, optFns ...func(*sesv2.Options)) (*sesv2.SendEmailOutput, error)
 }

@@ -102,7 +102,7 @@ func (mc moduleConfig) GetType() string {
 // while a daemon writing metrics in the background would be a separate
 // module (see "log").
 //
-//go:generate mockery --name Module
+//go:generate go run github.com/vektra/mockery/v2 --name Module
 type Module interface {
 	// Run the module. If the provided context is canceled you have a few seconds (configurable with kernel.killTimeout)
 	// until your module is killed (via exit(1)). If you return from Run, it is assumed that your module is done
@@ -121,7 +121,7 @@ type Module interface {
 // If you don't implement TypedModule it will default to a non-essential foreground
 // module.
 //
-//go:generate mockery --name TypedModule
+//go:generate go run github.com/vektra/mockery/v2 --name TypedModule
 type TypedModule interface {
 	IsEssential() bool
 	IsBackground() bool
@@ -141,7 +141,7 @@ var (
 // StageApplication constants unless you have very specific needs and know what
 // you are doing.
 //
-//go:generate mockery --name StagedModule
+//go:generate go run github.com/vektra/mockery/v2 --name StagedModule
 type StagedModule interface {
 	GetStage() int
 }
@@ -150,14 +150,14 @@ type StagedModule interface {
 // This health check is used to determine if the module is in a ready state after executing
 // its run method and afterwards to check for the overall application healthyness.
 //
-//go:generate mockery --name HealthCheckedModule
+//go:generate go run github.com/vektra/mockery/v2 --name HealthCheckedModule
 type HealthCheckedModule interface {
 	IsHealthy(ctx context.Context) (bool, error)
 }
 
 // A FullModule provides all the methods a module can have and thus never relies on defaults.
 //
-//go:generate mockery --name FullModule
+//go:generate go run github.com/vektra/mockery/v2 --name FullModule
 type FullModule interface {
 	Module
 	TypedModule

@@ -25,7 +25,7 @@ type Settings struct {
 	WriteTimeout time.Duration `cfg:"write_timeout" default:"10m" validate:"min=1000000000"`
 }
 
-//go:generate mockery --name Repository
+//go:generate go run github.com/vektra/mockery/v2 --name Repository
 type Repository interface {
 	Create(ctx context.Context, value dbRepo.ModelBased) error
 	Read(ctx context.Context, id *uint, out dbRepo.ModelBased) error
@@ -36,49 +36,49 @@ type Repository interface {
 	GetMetadata() dbRepo.Metadata
 }
 
-//go:generate mockery --name BaseHandler
+//go:generate go run github.com/vektra/mockery/v2 --name BaseHandler
 type BaseHandler interface {
 	GetRepository() Repository
 	GetModel() dbRepo.ModelBased
 	TransformOutput(ctx context.Context, model dbRepo.ModelBased, apiView string) (output any, err error)
 }
 
-//go:generate mockery --name BaseCreateHandler
+//go:generate go run github.com/vektra/mockery/v2 --name BaseCreateHandler
 type BaseCreateHandler interface {
 	GetCreateInput() any
 	TransformCreate(ctx context.Context, input any, model dbRepo.ModelBased) (err error)
 }
 
-//go:generate mockery --name CreateHandler
+//go:generate go run github.com/vektra/mockery/v2 --name CreateHandler
 type CreateHandler interface {
 	BaseHandler
 	BaseCreateHandler
 }
 
-//go:generate mockery --name BaseUpdateHandler
+//go:generate go run github.com/vektra/mockery/v2 --name BaseUpdateHandler
 type BaseUpdateHandler interface {
 	GetUpdateInput() any
 	TransformUpdate(ctx context.Context, input any, model dbRepo.ModelBased) (err error)
 }
 
-//go:generate mockery --name UpdateHandler
+//go:generate go run github.com/vektra/mockery/v2 --name UpdateHandler
 type UpdateHandler interface {
 	BaseHandler
 	BaseUpdateHandler
 }
 
-//go:generate mockery --name BaseListHandler
+//go:generate go run github.com/vektra/mockery/v2 --name BaseListHandler
 type BaseListHandler interface {
 	List(ctx context.Context, qb *dbRepo.QueryBuilder, apiView string) (out any, err error)
 }
 
-//go:generate mockery --name ListHandler
+//go:generate go run github.com/vektra/mockery/v2 --name ListHandler
 type ListHandler interface {
 	BaseHandler
 	BaseListHandler
 }
 
-//go:generate mockery --name Handler
+//go:generate go run github.com/vektra/mockery/v2 --name Handler
 type Handler interface {
 	BaseHandler
 	BaseCreateHandler

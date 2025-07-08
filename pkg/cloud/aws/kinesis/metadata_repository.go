@@ -27,7 +27,7 @@ var (
 	ErrShardAlreadyFinished      = fmt.Errorf("shard was alread finished")
 )
 
-//go:generate mockery --name MetadataRepository
+//go:generate go run github.com/vektra/mockery/v2 --name MetadataRepository
 type MetadataRepository interface {
 	// RegisterClient either creates or refreshes our registration and returns our current index as well as the number of
 	// clients working together on the stream.
@@ -44,7 +44,7 @@ type MetadataRepository interface {
 
 // A Checkpoint describes our position in a shard of the stream.
 //
-//go:generate mockery --name Checkpoint
+//go:generate go run github.com/vektra/mockery/v2 --name Checkpoint
 type Checkpoint interface {
 	CheckpointWithoutRelease
 	// Release releases ownership over a shard. Do not use the Checkpoint afterward.
@@ -54,7 +54,7 @@ type Checkpoint interface {
 // CheckpointWithoutRelease consists of the Checkpoint interface without the release method. We only use this internally
 // to ensure Release can only be called when we have taken ownership of the Checkpoint.
 //
-//go:generate mockery --name CheckpointWithoutRelease
+//go:generate go run github.com/vektra/mockery/v2 --name CheckpointWithoutRelease
 type CheckpointWithoutRelease interface {
 	GetSequenceNumber() SequenceNumber
 	GetShardIterator() ShardIterator

@@ -24,7 +24,7 @@ var (
 	_ SmtpClient = &smtp.Client{}
 )
 
-//go:generate mockery --name SmtpClient
+//go:generate go run github.com/vektra/mockery/v2 --name SmtpClient
 type SmtpClient interface {
 	SendMail(from string, to []string, msg io.Reader) (err error)
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-//go:generate mockery --name PutItemBuilder
+//go:generate go run github.com/vektra/mockery/v2 --name PutItemBuilder
 type PutItemBuilder interface {
 	WithCondition(cond expression.ConditionBuilder) PutItemBuilder
 	ReturnNone() PutItemBuilder

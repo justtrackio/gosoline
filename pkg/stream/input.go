@@ -6,7 +6,7 @@ import (
 
 // An Input provides you with a steady stream of messages until you Stop it.
 //
-//go:generate mockery --name Input
+//go:generate go run github.com/vektra/mockery/v2 --name Input
 type Input interface {
 	// Run provides a steady stream of messages, returned via Data. Run does not return until Stop is called and thus
 	// should be called in its own go routine. The only exception to this is if we either fail to produce messages and
@@ -31,7 +31,7 @@ type Input interface {
 // An AcknowledgeableInput is an Input with the additional ability to mark messages as successfully consumed. For example,
 // an SQS queue would provide a message after its visibility timeout a second time if we didn't acknowledge it.
 //
-//go:generate mockery --name AcknowledgeableInput
+//go:generate go run github.com/vektra/mockery/v2 --name AcknowledgeableInput
 type AcknowledgeableInput interface {
 	Input
 	// Ack acknowledges a single message. If possible, prefer calling AckBatch as it is more efficient.

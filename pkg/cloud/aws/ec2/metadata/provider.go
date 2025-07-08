@@ -69,7 +69,7 @@ const (
 // A Provider gives you convenient access to the metadata of your EC2 instance.
 // See also https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html.
 //
-//go:generate mockery --name Provider
+//go:generate go run github.com/vektra/mockery/v2 --name Provider
 type Provider interface {
 	GetMetadata(ctx context.Context, path string) (string, error)
 }

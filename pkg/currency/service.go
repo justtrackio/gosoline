@@ -17,7 +17,7 @@ const (
 	oneDay       = time.Hour * 24
 )
 
-//go:generate mockery --name Service
+//go:generate go run github.com/vektra/mockery/v2 --name Service
 type Service interface {
 	HasCurrency(ctx context.Context, currency string) (bool, error)
 	HasCurrencyAtDate(ctx context.Context, currency string, date time.Time) (bool, error)

@@ -8,14 +8,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-//go:generate mockery --name ReadCloser
+//go:generate go run github.com/vektra/mockery/v2 --name ReadCloser
 type ReadCloser interface {
 	io.ReadCloser
 }
 
 // A reader that we can close and that can seek
 //
-//go:generate mockery --name ReadSeekerCloser
+//go:generate go run github.com/vektra/mockery/v2 --name ReadSeekerCloser
 type ReadSeekerCloser interface {
 	io.ReadSeeker
 	io.Closer
@@ -23,7 +23,7 @@ type ReadSeekerCloser interface {
 
 // A stream is a source of bytes you can either get as a full []byte or stream as a reader.
 //
-//go:generate mockery --name Stream
+//go:generate go run github.com/vektra/mockery/v2 --name Stream
 type Stream interface {
 	// Read all data and close the reader.
 	ReadAll() ([]byte, error)

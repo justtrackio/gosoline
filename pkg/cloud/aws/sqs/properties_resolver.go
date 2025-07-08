@@ -13,7 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name PropertiesResolver
+//go:generate go run github.com/vektra/mockery/v2 --name PropertiesResolver
 type PropertiesResolver interface {
 	GetPropertiesByName(ctx context.Context, name string) (*Properties, error)
 	GetPropertiesByArn(ctx context.Context, arn string) (*Properties, error)

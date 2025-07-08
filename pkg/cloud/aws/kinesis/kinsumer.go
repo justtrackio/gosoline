@@ -85,7 +85,7 @@ func (s Settings) GetStreamName() string {
 	return s.StreamName
 }
 
-//go:generate mockery --name Kinsumer
+//go:generate go run github.com/vektra/mockery/v2 --name Kinsumer
 type Kinsumer interface {
 	Run(ctx context.Context, handler MessageHandler) error
 	Stop()

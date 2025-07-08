@@ -14,7 +14,7 @@ const (
 	AttributeRetryId = "goso.retry.id"
 )
 
-//go:generate mockery --name RetryHandler
+//go:generate go run github.com/vektra/mockery/v2 --name RetryHandler
 type RetryHandler interface {
 	Put(ctx context.Context, msg *Message) error
 }

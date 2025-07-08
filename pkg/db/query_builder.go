@@ -7,7 +7,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/funk"
 )
 
-//go:generate mockery --name QueryBuilder
+//go:generate go run github.com/vektra/mockery/v2 --name QueryBuilder
 type QueryBuilder interface {
 	Table(table string) QueryBuilder
 	Joins(joins []string) QueryBuilder

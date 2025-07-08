@@ -13,7 +13,7 @@ const (
 	LeaderElectionTypeStatic = "static"
 )
 
-//go:generate mockery --name=LeaderElection
+//go:generate go run github.com/vektra/mockery/v2 --name=LeaderElection
 type LeaderElection interface {
 	IsLeader(ctx context.Context, memberId string) (bool, error)
 	Resign(ctx context.Context, memberId string) error

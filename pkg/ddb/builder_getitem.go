@@ -11,7 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
-//go:generate mockery --name GetItemBuilder
+//go:generate go run github.com/vektra/mockery/v2 --name GetItemBuilder
 type GetItemBuilder interface {
 	WithHash(hashValue interface{}) GetItemBuilder
 	WithRange(rangeValue interface{}) GetItemBuilder

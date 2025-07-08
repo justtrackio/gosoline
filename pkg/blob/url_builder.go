@@ -8,7 +8,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 )
 
-//go:generate mockery --name UrlBuilder
+//go:generate go run github.com/vektra/mockery/v2 --name UrlBuilder
 type UrlBuilder interface {
 	GetAbsoluteUrl(path string) (string, error)
 }

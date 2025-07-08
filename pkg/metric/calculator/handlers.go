@@ -20,7 +20,7 @@ func RegisterHandlerFactory(name string, factory HandlerFactory) {
 	factories[name] = factory
 }
 
-//go:generate mockery --name Handler
+//go:generate go run github.com/vektra/mockery/v2 --name Handler
 type Handler interface {
 	GetMetrics(ctx context.Context) (metric.Data, error)
 }

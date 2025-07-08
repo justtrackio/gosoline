@@ -8,7 +8,7 @@ import (
 	"github.com/karlseguin/ccache"
 )
 
-//go:generate mockery --name Cache
+//go:generate go run github.com/vektra/mockery/v2 --name Cache
 type Cache[T any] interface {
 	// Contains checks whether any not yet expired element with key exists in the cache.
 	Contains(key string) bool

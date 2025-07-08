@@ -11,7 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
-//go:generate mockery --name BatchGetItemsBuilder
+//go:generate go run github.com/vektra/mockery/v2 --name BatchGetItemsBuilder
 type BatchGetItemsBuilder interface {
 	WithKeys(values ...interface{}) BatchGetItemsBuilder
 	WithKeyPairs(pairs [][]interface{}) BatchGetItemsBuilder

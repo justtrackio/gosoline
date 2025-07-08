@@ -40,24 +40,24 @@ type Request struct {
 	Url      *url.URL
 }
 
-//go:generate mockery --name HandlerWithoutInput
+//go:generate go run github.com/vektra/mockery/v2 --name HandlerWithoutInput
 type HandlerWithoutInput interface {
 	Handle(requestContext context.Context, request *Request) (response *Response, err error)
 }
 
-//go:generate mockery --name HandlerWithInput
+//go:generate go run github.com/vektra/mockery/v2 --name HandlerWithInput
 type HandlerWithInput interface {
 	HandlerWithoutInput
 	GetInput() any
 }
 
-//go:generate mockery --name HandlerWithMultipleBindings
+//go:generate go run github.com/vektra/mockery/v2 --name HandlerWithMultipleBindings
 type HandlerWithMultipleBindings interface {
 	HandlerWithInput
 	GetBindings() []binding.Binding
 }
 
-//go:generate mockery --name HandlerWithStream
+//go:generate go run github.com/vektra/mockery/v2 --name HandlerWithStream
 type HandlerWithStream interface {
 	GetInput() any
 	Handle(ginContext *gin.Context, requestContext context.Context, request *Request) (err error)

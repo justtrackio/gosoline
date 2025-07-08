@@ -1,7 +1,6 @@
 gofumpt 0.6.0
 golang 1.24.0
-golangci-lint 1.64.6
-mockery 2.53.0
+golangci-lint 2.1.6
 nodejs 20.15.1
 protoc 24.2
 protoc-gen-go 1.26.0

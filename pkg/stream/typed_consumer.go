@@ -8,12 +8,12 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name ConsumerCallback
+//go:generate go run github.com/vektra/mockery/v2 --name ConsumerCallback
 type ConsumerCallback[M any] interface {
 	Consume(ctx context.Context, model M, attributes map[string]string) (bool, error)
 }
 
-//go:generate mockery --name RunnableConsumerCallback
+//go:generate go run github.com/vektra/mockery/v2 --name RunnableConsumerCallback
 type RunnableConsumerCallback[M any] interface {
 	ConsumerCallback[M]
 	RunnableCallback
