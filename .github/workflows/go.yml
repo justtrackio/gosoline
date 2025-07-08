@@ -9,27 +9,6 @@ on:
       - main
 
 jobs:
-  go-fumpt:
-    name: go fumpt v0.7.0
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v4
-
-      - name: Set up Go 1.23
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.23"
-
-      - name: Setup gofumpt
-        run: go install mvdan.cc/gofumpt@v0.7.0
-
-      - name: Execute gofumpt -l .
-        run: gofumpt -l .
-
-      - name: Execute test -z $(gofumpt -l .)
-        run: test -z $(gofumpt -l .)
-
   mockery:
     name: mockery
     runs-on: ubuntu-latest
@@ -37,13 +16,10 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
 
-      - name: Set up Go 1.23
+      - name: Set up Go 1.24
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
-
-      - name: Install mockery
-        run: go install github.com/vektra/mockery/v2@v2.53.0
+          go-version: "1.24"
 
       - name: Execute mockery
         run: go generate -run='mockery' ./...
@@ -68,34 +44,16 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
 
-      - name: Set up Go 1.23
+      - name: Set up Go 1.24
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
 
       - name: Get dependencies
         run: go get -v -t -d ./...
 
       - name: Build
         run: go build -v ./...
-
-  go-vet:
-    name: static code analysis (go vet)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v4
-
-      - name: Set up Go 1.23
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.23"
-
-      - name: Get dependencies
-        run: go get -v -t -d ./...
-
-      - name: Static code analysis
-        run: go vet ./...
 
   golangci-lint:
     name: static code analysis (golangci-lint)
@@ -104,17 +62,17 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
 
-      - name: Set up Go 1.23
+      - name: Set up Go 1.24
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
 
       - name: Static code analysis (golangci-lint)
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: v1.62.2
+          version: v2.1.6
           only-new-issues: true
-          args: -v --build-tags fixtures,integration --timeout 5m --print-issued-lines --print-linter-name --out-format=colored-line-number
+          args: -v
 
   go-test:
     name: go test
@@ -123,10 +81,10 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
 
-      - name: Set up Go 1.23
+      - name: Set up Go 1.24
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
 
       - name: Get dependencies
         run: go get -v -t -d ./...
@@ -141,10 +99,10 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
 
-      - name: Set up Go 1.23
+      - name: Set up Go 1.24
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
 
       - name: Get dependencies
         run: go get -v -t -d ./...
@@ -159,10 +117,10 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
 
-      - name: Set up Go 1.23
+      - name: Set up Go 1.24
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
 
       - name: Get dependencies
         run: go get -v -t -d ./...
@@ -190,10 +148,10 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
 
-      - name: Set up Go 1.23
+      - name: Set up Go 1.24
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
 
       - name: Get dependencies
         run: go get -v -t -d ./...
