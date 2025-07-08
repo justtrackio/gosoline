@@ -26,7 +26,7 @@ type PerRunnerMetricSettings struct {
 	TargetValue        float64       `cfg:"target_value" default:"0"`
 }
 
-//go:generate mockery --name PerRunnerMetricHandler
+//go:generate go run github.com/vektra/mockery/v2 --name PerRunnerMetricHandler
 type PerRunnerMetricHandler interface {
 	CalculatePerRunnerMetrics(ctx context.Context, name string, currentValue float64, settings *PerRunnerMetricSettings) (*metric.Datum, error)
 }

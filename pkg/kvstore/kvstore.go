@@ -30,7 +30,7 @@ type InMemorySettings struct {
 	GetsPerPromote int32
 }
 
-//go:generate mockery --name KvStore
+//go:generate go run github.com/vektra/mockery/v2 --name KvStore
 type KvStore[T any] interface {
 	// Check if a key exists in the store.
 	Contains(ctx context.Context, key any) (bool, error)
@@ -53,7 +53,7 @@ type KvStore[T any] interface {
 	DeleteBatch(ctx context.Context, keys any) error
 }
 
-//go:generate mockery --name SizedStore
+//go:generate go run github.com/vektra/mockery/v2 --name SizedStore
 type SizedStore[T any] interface {
 	KvStore[T]
 	// return an estimate about how many elements are currently in the store

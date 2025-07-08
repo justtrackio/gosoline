@@ -12,7 +12,7 @@ var ErrAlreadyPoisoned = fmt.Errorf("lock was already poisoned")
 // implement something which is available for some time and at some point no longer is available (because it was closed
 // or released and is not automatically reopened, etc.)
 //
-//go:generate mockery --name PoisonedLock
+//go:generate go run github.com/vektra/mockery/v2 --name PoisonedLock
 type PoisonedLock interface {
 	// MustLock is like TryLock, but panics if an error is returned by TryLock
 	MustLock()

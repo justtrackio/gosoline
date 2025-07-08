@@ -26,7 +26,7 @@ type WriterSettings struct {
 	Tags           map[string]string
 }
 
-//go:generate mockery --name Writer
+//go:generate go run github.com/vektra/mockery/v2 --name Writer
 type Writer interface {
 	Write(ctx context.Context, datetime time.Time, items interface{}) error
 	WriteToKey(ctx context.Context, key string, items interface{}) error

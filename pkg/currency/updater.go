@@ -27,7 +27,7 @@ type Settings struct {
 	StartDate time.Time `cfg:"start_date" default:"2015-01-01"`
 }
 
-//go:generate mockery --name UpdaterService
+//go:generate go run github.com/vektra/mockery/v2 --name UpdaterService
 type UpdaterService interface {
 	EnsureRecentExchangeRates(ctx context.Context) error
 	EnsureHistoricalExchangeRates(ctx context.Context) error

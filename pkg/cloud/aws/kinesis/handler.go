@@ -1,6 +1,6 @@
 package kinesis
 
-//go:generate mockery --name MessageHandler
+//go:generate go run github.com/vektra/mockery/v2 --name MessageHandler
 type MessageHandler interface {
 	Handle(rawMessage []byte) error
 	Done()

@@ -37,7 +37,7 @@ type GoogleAuthRequest struct {
 	RefreshToken string
 }
 
-//go:generate mockery --name Service
+//go:generate go run github.com/vektra/mockery/v2 --name Service
 type Service interface {
 	GetAuthRefresh(ctx context.Context, authRequest *GoogleAuthRequest) (*GoogleAuthResponse, error)
 	TokenInfo(ctx context.Context, accessToken string) (*GoogleTokenInfoResponse, error)

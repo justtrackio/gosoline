@@ -20,7 +20,7 @@ import (
 //
 // Enable it by setting task_runner.enabled = true
 //
-//go:generate mockery --name TaskRunner
+//go:generate go run github.com/vektra/mockery/v2 --name TaskRunner
 type TaskRunner interface {
 	kernel.Module
 	RunTask(task kernel.Module) error

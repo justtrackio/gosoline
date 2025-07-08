@@ -8,7 +8,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
-//go:generate mockery --name Span
+//go:generate go run github.com/vektra/mockery/v2 --name Span
 type Span interface {
 	AddAnnotation(key string, value string)
 	AddError(err error)

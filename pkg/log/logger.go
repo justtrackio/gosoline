@@ -62,7 +62,7 @@ type Data struct {
 
 type Fields map[string]interface{}
 
-//go:generate mockery --name Logger
+//go:generate go run github.com/vektra/mockery/v2 --name Logger
 type Logger interface {
 	Debug(format string, args ...interface{})
 	Info(format string, args ...interface{})

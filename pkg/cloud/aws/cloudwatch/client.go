@@ -14,7 +14,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name Client
+//go:generate go run github.com/vektra/mockery/v2 --name Client
 type Client interface {
 	GetMetricData(ctx context.Context, params *cloudwatch.GetMetricDataInput, optFns ...func(options *cloudwatch.Options)) (*cloudwatch.GetMetricDataOutput, error)
 	PutMetricData(ctx context.Context, params *cloudwatch.PutMetricDataInput, optFns ...func(options *cloudwatch.Options)) (*cloudwatch.PutMetricDataOutput, error)

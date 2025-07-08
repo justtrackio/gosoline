@@ -14,7 +14,7 @@ import (
 // Repository is a high level repository implementation to query Athena.
 // The repository is typed to return a slice of structs as a result instead of raw rows.
 //
-//go:generate mockery --name Repository
+//go:generate go run github.com/vektra/mockery/v2 --name Repository
 type Repository[T any] interface {
 	RepositoryRaw
 	// QueryBuilder returns a prepared query builder with prefilled columns and table name

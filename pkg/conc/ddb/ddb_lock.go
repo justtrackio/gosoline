@@ -11,7 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name LockManager
+//go:generate go run github.com/vektra/mockery/v2 --name LockManager
 type LockManager interface {
 	RenewLock(ctx context.Context, lockTime time.Duration, resource string, token string) error
 	ReleaseLock(ctx context.Context, resource string, token string) error

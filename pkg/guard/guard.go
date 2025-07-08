@@ -11,7 +11,7 @@ import (
 
 const fetchLimit = 100
 
-//go:generate mockery --name Guard
+//go:generate go run github.com/vektra/mockery/v2 --name Guard
 type Guard interface {
 	CreatePolicy(ctx context.Context, pol ladon.Policy) error
 	DeletePolicy(ctx context.Context, pol ladon.Policy) error
@@ -22,7 +22,7 @@ type Guard interface {
 	UpdatePolicy(ctx context.Context, pol ladon.Policy) error
 }
 
-//go:generate mockery --name Manager
+//go:generate go run github.com/vektra/mockery/v2 --name Manager
 type Manager interface {
 	ladon.Manager
 }

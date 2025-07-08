@@ -43,7 +43,7 @@ type InitializeableCallback interface {
 	Init(ctx context.Context) error
 }
 
-//go:generate mockery --name RunnableCallback
+//go:generate go run github.com/vektra/mockery/v2 --name RunnableCallback
 type RunnableCallback interface {
 	Run(ctx context.Context) error
 }

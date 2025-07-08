@@ -12,7 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name FileRecorder
+//go:generate go run github.com/vektra/mockery/v2 --name FileRecorder
 type FileRecorder interface {
 	DeleteRecordedFiles(ctx context.Context) error
 	Files() []File

@@ -17,7 +17,7 @@ const (
 	metricNameTaskDelay = "schedulerTaskDelay"
 )
 
-//go:generate mockery --name Scheduler
+//go:generate go run github.com/vektra/mockery/v2 --name Scheduler
 type Scheduler[T any] interface {
 	ScheduleJob(key string, provider func() (T, error)) (T, error)
 	Run(ctx context.Context) error

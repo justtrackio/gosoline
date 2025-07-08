@@ -18,7 +18,7 @@ type ScanOperation struct {
 	result     *ScanResult
 }
 
-//go:generate mockery --name ScanBuilder
+//go:generate go run github.com/vektra/mockery/v2 --name ScanBuilder
 type ScanBuilder interface {
 	WithIndex(name string) ScanBuilder
 	WithFilter(filter expression.ConditionBuilder) ScanBuilder

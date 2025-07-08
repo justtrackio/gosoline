@@ -28,7 +28,7 @@ type PublisherSettings struct {
 	Shared     bool   `cfg:"shared"`
 }
 
-//go:generate mockery --name Publisher
+//go:generate go run github.com/vektra/mockery/v2 --name Publisher
 type Publisher interface {
 	PublishBatch(ctx context.Context, typ string, version int, values []interface{}, customAttributes ...map[string]string) error
 	Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]string) error

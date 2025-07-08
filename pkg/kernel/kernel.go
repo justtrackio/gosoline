@@ -37,7 +37,7 @@ type Settings struct {
 	HealthCheck HealthCheckSettings `cfg:"health_check"`
 }
 
-//go:generate mockery --name Kernel
+//go:generate go run github.com/vektra/mockery/v2 --name Kernel
 type Kernel interface {
 	HealthCheck() HealthCheckResult
 	Running() <-chan struct{}

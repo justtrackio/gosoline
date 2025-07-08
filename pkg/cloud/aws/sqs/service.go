@@ -20,7 +20,7 @@ const (
 	FifoSuffix               = ".fifo"
 )
 
-//go:generate mockery --name Service
+//go:generate go run github.com/vektra/mockery/v2 --name Service
 type Service interface {
 	CreateQueue(ctx context.Context) (*Properties, error)
 	QueueExists(ctx context.Context, name string) (bool, error)

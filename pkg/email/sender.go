@@ -16,7 +16,7 @@ type emailSettings struct {
 	FromAddress string `cfg:"from_address"`
 }
 
-//go:generate mockery --name Sender
+//go:generate go run github.com/vektra/mockery/v2 --name Sender
 type Sender interface {
 	SendEmail(ctx context.Context, email Email) error
 }

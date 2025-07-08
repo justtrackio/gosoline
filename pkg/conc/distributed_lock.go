@@ -15,14 +15,14 @@ var ErrOwnedLock = errors.New("lock owned")
 // you tried to release a lock that you (no longer) own. Make sure you are not releasing a lock twice and are releasing a lock in a timely manner.
 var ErrNotOwned = errors.New("the lock was not (no longer) owned by you")
 
-//go:generate mockery --name DistributedLockProvider
+//go:generate go run github.com/vektra/mockery/v2 --name DistributedLockProvider
 type DistributedLockProvider interface {
 	// Acquire a lock for a duration (given e.g. in a constructor). Aborts the operation if the
 	// context is canceled before the lock can be acquired.
 	Acquire(ctx context.Context, resource string) (DistributedLock, error)
 }
 
-//go:generate mockery --name DistributedLock
+//go:generate go run github.com/vektra/mockery/v2 --name DistributedLock
 type DistributedLock interface {
 	// Extend your lease of the lock to at least the given duration
 	// (so if your lock has 3 seconds remaining and you give a

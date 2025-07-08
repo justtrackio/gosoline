@@ -32,7 +32,7 @@ const (
 	metricNameWaitDuration             = "WaitDuration"
 )
 
-//go:generate mockery --name ShardReader
+//go:generate go run github.com/vektra/mockery/v2 --name ShardReader
 type ShardReader interface {
 	// Run reads records from this shard until we either run out of records to read (i.e., are done with the shard) or our context
 	// is canceled (i.e., we should terminate, maybe, because shards got reassigned, so we need to restart all consumers)

@@ -7,7 +7,7 @@ import (
 
 // A Ticker is similar to a Timer, but it sends the current time continuously to the channel returned by Chan.
 //
-//go:generate mockery --name Ticker
+//go:generate go run github.com/vektra/mockery/v2 --name Ticker
 type Ticker interface {
 	// Chan returns the channel to which the current time will be sent every time the Ticker expires.
 	//

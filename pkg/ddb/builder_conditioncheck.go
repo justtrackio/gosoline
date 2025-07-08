@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-//go:generate mockery --name ConditionCheckBuilder
+//go:generate go run github.com/vektra/mockery/v2 --name ConditionCheckBuilder
 type ConditionCheckBuilder interface {
 	Build(result interface{}) (*types.ConditionCheck, error)
 	ReturnNone() ConditionCheckBuilder

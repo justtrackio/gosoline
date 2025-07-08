@@ -8,7 +8,7 @@ import (
 // A FakeClock provides the functionality of a Clock with the added functionality to Advance said Clock and block until
 // at least a given number of timers, tickers, or channels (Clock.After and Clock.Sleep) wait for the time to Advance.
 //
-//go:generate mockery --name FakeClock
+//go:generate go run github.com/vektra/mockery/v2 --name FakeClock
 type FakeClock interface {
 	Clock
 	// Advance advances the FakeClock to a new point in time as well as any tickers and timers created from it.

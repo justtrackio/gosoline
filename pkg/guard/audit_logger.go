@@ -11,7 +11,7 @@ import (
 	"github.com/selm0/ladon"
 )
 
-//go:generate mockery --name AuditLogger
+//go:generate go run github.com/vektra/mockery/v2 --name AuditLogger
 type AuditLogger interface {
 	ladon.AuditLogger
 }

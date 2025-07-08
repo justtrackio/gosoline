@@ -41,7 +41,7 @@ type Settings struct {
 	ClientName string
 }
 
-//go:generate mockery --name RepositoryReadOnly
+//go:generate go run github.com/vektra/mockery/v2 --name RepositoryReadOnly
 type RepositoryReadOnly interface {
 	Read(ctx context.Context, id *uint, out ModelBased) error
 	Query(ctx context.Context, qb *QueryBuilder, result any) error
@@ -52,7 +52,7 @@ type RepositoryReadOnly interface {
 	GetMetadata() Metadata
 }
 
-//go:generate mockery --name Repository
+//go:generate go run github.com/vektra/mockery/v2 --name Repository
 type Repository interface {
 	RepositoryReadOnly
 	Create(ctx context.Context, value ModelBased) error

@@ -9,12 +9,12 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name BatchConsumerCallback
+//go:generate go run github.com/vektra/mockery/v2 --name BatchConsumerCallback
 type BatchConsumerCallback[M any] interface {
 	Consume(ctx context.Context, models []M, attributes []map[string]string) ([]bool, error)
 }
 
-//go:generate mockery --name RunnableBatchConsumerCallback
+//go:generate go run github.com/vektra/mockery/v2 --name RunnableBatchConsumerCallback
 type RunnableBatchConsumerCallback[M any] interface {
 	BatchConsumerCallback[M]
 	RunnableCallback

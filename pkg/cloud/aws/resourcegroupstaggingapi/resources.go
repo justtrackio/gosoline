@@ -11,7 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name Service
+//go:generate go run github.com/vektra/mockery/v2 --name Service
 type Service interface {
 	GetResources(ctx context.Context, filter Filter) ([]string, error)
 }
