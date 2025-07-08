@@ -18,9 +18,9 @@ import (
 
 func TestSqsInput_Run(t *testing.T) {
 	testCases := []struct {
-		name        string
-		message     types.Message
-		assertions  func(t *testing.T, msg *stream.Message)
+		name       string
+		message    types.Message
+		assertions func(t *testing.T, msg *stream.Message)
 	}{
 		{
 			name: "basic functionality",
@@ -70,7 +70,7 @@ func TestSqsInput_Run(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 			var count int32
@@ -81,7 +81,7 @@ func TestSqsInput_Run(t *testing.T) {
 
 			queue := sqsMocks.NewQueue(t)
 			queue.EXPECT().Receive(ctx, int32(1), int32(3)).
-				RunAndReturn(func(_ context.Context, mrc int32, wt int32) ([]types.Message, error) {
+				RunAndReturn(func(_ context.Context, mrc, wt int32) ([]types.Message, error) {
 					newCount := atomic.AddInt32(&count, 1)
 
 					if newCount > mrc {
@@ -132,7 +132,7 @@ func TestSqsInput_Run_Failure(t *testing.T) {
 
 	queue := sqsMocks.NewQueue(t)
 	queue.EXPECT().Receive(matcher.Context, int32(10), int32(3)).
-		RunAndReturn(func(_ context.Context, mrc int32, wt int32) ([]types.Message, error) {
+		RunAndReturn(func(_ context.Context, mrc, wt int32) ([]types.Message, error) {
 			newCount := atomic.AddInt32(&count, 1)
 
 			if newCount == 1 {
@@ -156,7 +156,7 @@ func TestSqsInput_Run_Failure(t *testing.T) {
 	})
 
 	go func() {
-		err := input.Run(context.TODO())
+		err := input.Run(t.Context())
 		assert.Error(t, err)
 
 		close(waitRunDone)
