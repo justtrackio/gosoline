@@ -12,6 +12,15 @@ kvstore:
   another_test_store:
     type: chain
     elements: [inMemory]
+  redis_test_store:
+    redis:
+      db: 7
+    type: chain
+    elements: [redis]
 
 fixtures:
   enabled: true
+
+redis:
+  default:
+    dialer: tcp
