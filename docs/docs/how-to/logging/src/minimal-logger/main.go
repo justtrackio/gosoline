@@ -10,7 +10,7 @@ import (
 func main() {
 	// 2
 	logHandler := log.NewHandlerIoWriter(
-		log.LevelInfo, []string{}, log.FormatterConsole, "", os.Stdout,
+		log.LevelInfo, log.Channels{}, log.FormatterConsole, "", os.Stdout,
 	)
 
 	// 3
