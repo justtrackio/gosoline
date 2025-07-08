@@ -39,6 +39,7 @@ type (
 	ProfilingApiSettings struct {
 		Port int `cfg:"port" default:"8091"`
 	}
+
 	// Settings structure for an API server.
 	Settings struct {
 		// Port the API listens to.
@@ -68,10 +69,14 @@ type (
 		Shutdown time.Duration `cfg:"shutdown" default:"60s" validate:"min=1000000000"`
 	}
 
-	// TrafficDistributorSettings configures the traffic distributor middleware controlling maximum life of client connections.
-	TrafficDistributorSettings struct {
-		Enabled                   bool          `cfg:"enabled"                   default:"false"`
-		MaxConnectionAge          time.Duration `cfg:"maxConnectionAge"          default:"1m"`
-		MaxConnectionRequestCount int           `cfg:"maxConnectionRequestCount" default:"0"`
+	// ConnectionLifeCycleAdvisorSettings configures the traffic distributor middleware controlling maximum life of client connections.
+	ConnectionLifeCycleAdvisorSettings struct {
+		Enabled                   bool          `cfg:"enabled"           default:"true"`
+		MaxConnectionAge          time.Duration `cfg:"max_age"           default:"1m"`
+		MaxConnectionRequestCount int           `cfg:"max_request_count" default:"0"`
 	}
 )
+
+func HttpserverSettingsKey(name string) string {
+	return "httpserver." + name
+}

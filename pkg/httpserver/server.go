@@ -47,9 +47,8 @@ type HttpServer struct {
 
 func New(name string, definer Definer) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		key := fmt.Sprintf("httpserver.%s", name)
 		settings := &Settings{}
-		config.UnmarshalKey(key, settings)
+		config.UnmarshalKey(HttpserverSettingsKey(name), settings)
 
 		return NewWithSettings(name, definer, settings)(ctx, config, logger)
 	}
@@ -68,7 +67,7 @@ func NewWithSettings(name string, definer Definer, settings *Settings) kernel.Mo
 			definitions                    *Definitions
 			compressionMiddlewares         []gin.HandlerFunc
 			healthChecker                  kernel.HealthChecker
-			trafficDistributionInterceptor gin.HandlerFunc
+			connectionLifeCycleInterceptor gin.HandlerFunc
 		)
 
 		if tracingInstrumentor, err = tracing.ProvideInstrumentor(ctx, config, logger); err != nil {
@@ -81,8 +80,8 @@ func NewWithSettings(name string, definer Definer, settings *Settings) kernel.Mo
 			return nil, fmt.Errorf("could not configure compression: %w", err)
 		}
 
-		if trafficDistributionInterceptor, err = ProvideTrafficDistributionInterceptor(ctx, config, logger); err != nil {
-			return nil, fmt.Errorf("could not provide traffic distribution interceptor: %w", err)
+		if connectionLifeCycleInterceptor, err = ProvideConnectionLifeCycleInterceptor(ctx, config, logger, name); err != nil {
+			return nil, fmt.Errorf("could not provide connection life cycle interceptor: %w", err)
 		}
 
 		router := gin.New()
@@ -91,7 +90,7 @@ func NewWithSettings(name string, definer Definer, settings *Settings) kernel.Mo
 		router.Use(compressionMiddlewares...)
 		router.Use(RecoveryWithSentry(logger))
 		router.Use(location.Default())
-		router.Use(trafficDistributionInterceptor)
+		router.Use(connectionLifeCycleInterceptor)
 
 		if healthChecker, err = kernel.GetHealthChecker(ctx); err != nil {
 			return nil, fmt.Errorf("can not get health checker: %w", err)
