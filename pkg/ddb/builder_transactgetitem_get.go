@@ -6,7 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-//go:generate mockery --name TransactGetItemBuilder
+//go:generate go run github.com/vektra/mockery/v2 --name TransactGetItemBuilder
 type TransactGetItemBuilder interface {
 	Build() (types.TransactGetItem, error)
 	GetItem() interface{}

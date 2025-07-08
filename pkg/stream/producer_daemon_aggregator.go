@@ -42,7 +42,7 @@ type AggregateFlush struct {
 	MessageCount int
 }
 
-//go:generate mockery --name ProducerDaemonAggregator
+//go:generate go run github.com/vektra/mockery/v2 --name ProducerDaemonAggregator
 type ProducerDaemonAggregator interface {
 	Write(ctx context.Context, msg *Message) ([]AggregateFlush, error)
 	Flush() ([]AggregateFlush, error)

@@ -13,7 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name Client
+//go:generate go run github.com/vektra/mockery/v2 --name Client
 type Client interface {
 	ListMessages(ctx context.Context) (*ListMessagesResponse, error)
 	GetMessage(ctx context.Context, id string) (*Message, error)

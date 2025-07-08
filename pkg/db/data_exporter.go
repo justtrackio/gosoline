@@ -25,7 +25,7 @@ type TableData []map[string]any
 //	}
 type DatabaseData map[string]TableData
 
-//go:generate mockery --name DataExporter
+//go:generate go run github.com/vektra/mockery/v2 --name DataExporter
 type DataExporter interface {
 	ExportAllTables(ctx context.Context, dbName string) (DatabaseData, error)
 	ExportTable(ctx context.Context, dbName string, tableName string) ([]map[string]any, error)

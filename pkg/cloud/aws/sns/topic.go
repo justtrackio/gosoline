@@ -21,7 +21,7 @@ const (
 	MetadataKeyTopics = "cloud.aws.sns.topics"
 )
 
-//go:generate mockery --name Topic
+//go:generate go run github.com/vektra/mockery/v2 --name Topic
 type Topic interface {
 	Publish(ctx context.Context, msg string, attributes ...map[string]string) error
 	PublishBatch(ctx context.Context, messages []string, attributes []map[string]string) error

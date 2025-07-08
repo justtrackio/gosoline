@@ -9,7 +9,7 @@ import (
 
 const orchestratorTypeEcs = "ecs"
 
-//go:generate mockery --name KinsumerAutoscaleOrchestrator
+//go:generate go run github.com/vektra/mockery/v2 --name KinsumerAutoscaleOrchestrator
 type KinsumerAutoscaleOrchestrator interface {
 	GetCurrentTaskCount(ctx context.Context) (int32, error)
 	UpdateTaskCount(ctx context.Context, taskCount int32) error

@@ -24,7 +24,7 @@ type ProducerSettings struct {
 	Daemon      ProducerDaemonSettings `cfg:"daemon"`
 }
 
-//go:generate mockery --name Producer
+//go:generate go run github.com/vektra/mockery/v2 --name Producer
 type Producer interface {
 	WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]string) error
 	Write(ctx context.Context, models interface{}, attributeSets ...map[string]string) error

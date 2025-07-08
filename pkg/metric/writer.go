@@ -14,7 +14,7 @@ const (
 	DimensionDefault = "{{default}}"
 )
 
-//go:generate mockery --name Writer
+//go:generate go run github.com/vektra/mockery/v2 --name Writer
 type (
 	Writer interface {
 		GetPriority() int

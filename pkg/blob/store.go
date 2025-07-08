@@ -70,7 +70,7 @@ type Settings struct {
 	Prefix     string `cfg:"prefix"`
 }
 
-//go:generate mockery --name Store
+//go:generate go run github.com/vektra/mockery/v2 --name Store
 type Store interface {
 	BucketName() string
 	Copy(batch CopyBatch)

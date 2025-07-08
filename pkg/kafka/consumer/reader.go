@@ -23,7 +23,7 @@ const (
 	CommitOffsetsSync = time.Duration(0)
 )
 
-//go:generate mockery --name Reader
+//go:generate go run github.com/vektra/mockery/v2 --name Reader
 type Reader interface {
 	FetchMessage(context.Context) (kafka.Message, error)
 	ReadMessage(context.Context) (kafka.Message, error)

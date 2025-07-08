@@ -13,7 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
-//go:generate mockery --name TransactionRepository
+//go:generate go run github.com/vektra/mockery/v2 --name TransactionRepository
 type TransactionRepository interface {
 	TransactWriteItems(ctx context.Context, items []TransactWriteItemBuilder) (*OperationResult, error)
 	TransactGetItems(ctx context.Context, items []TransactGetItemBuilder) (*OperationResult, error)

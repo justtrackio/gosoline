@@ -9,7 +9,7 @@ import (
 
 var _ Batcher = &batcher{}
 
-//go:generate mockery --name Batcher --unroll-variadic=False
+//go:generate go run github.com/vektra/mockery/v2 --name Batcher --unroll-variadic=False
 type Batcher interface {
 	Get(ctx context.Context) []kafka.Message
 }

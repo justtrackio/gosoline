@@ -10,7 +10,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name PartitionerRand
+//go:generate go run github.com/vektra/mockery/v2 --name PartitionerRand
 type PartitionerRand interface {
 	Intn(n int) int
 }

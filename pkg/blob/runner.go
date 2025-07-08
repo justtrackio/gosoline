@@ -54,7 +54,7 @@ func ProvideBatchRunner(name string) kernel.ModuleFactory {
 	}
 }
 
-//go:generate mockery --name BatchRunner
+//go:generate go run github.com/vektra/mockery/v2 --name BatchRunner
 type BatchRunner interface {
 	Run(ctx context.Context) error
 }

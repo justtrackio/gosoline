@@ -21,7 +21,7 @@ type Settings struct {
 
 // RepositoryRaw is a low level repository implementation to query Athena tables.
 //
-//go:generate mockery --name RepositoryRaw
+//go:generate go run github.com/vektra/mockery/v2 --name RepositoryRaw
 type RepositoryRaw interface {
 	// QueryRows accepts a SQL statement and returns the result as *sqlx.Rows
 	QueryRows(ctx context.Context, sql string) (*sqlx.Rows, error)

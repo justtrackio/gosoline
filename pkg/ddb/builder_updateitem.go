@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-//go:generate mockery --name UpdateItemBuilder
+//go:generate go run github.com/vektra/mockery/v2 --name UpdateItemBuilder
 type UpdateItemBuilder interface {
 	WithHash(hashValue interface{}) UpdateItemBuilder
 	WithRange(rangeValue interface{}) UpdateItemBuilder

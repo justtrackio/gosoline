@@ -8,7 +8,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
-//go:generate mockery --name SentryHub
+//go:generate go run github.com/vektra/mockery/v2 --name SentryHub
 type SentryHub interface {
 	ConfigureScope(f func(scope *sentry.Scope))
 	WithScope(f func(scope *sentry.Scope))

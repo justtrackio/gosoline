@@ -32,7 +32,7 @@ type ModelTransformer interface {
 // A TypedTransformer implements a subscriber. For every item it has to transform it into the corresponding persisted model. If it returns nil, the
 // item will not be persisted. However, if the item has been persisted before and nil is returned, the item will not be updated or deleted.
 //
-//go:generate mockery --name TypedTransformer
+//go:generate go run github.com/vektra/mockery/v2 --name TypedTransformer
 type TypedTransformer[I any, M Model] interface {
 	// Transform converts the input into an output model. If Transform returns nil as the output, we don't persist the value.
 	Transform(ctx context.Context, inp I) (out *M, err error)

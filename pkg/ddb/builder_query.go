@@ -20,7 +20,7 @@ type QueryOperation struct {
 
 type keyExprBuilder func() expression.KeyConditionBuilder
 
-//go:generate mockery --name QueryBuilder
+//go:generate go run github.com/vektra/mockery/v2 --name QueryBuilder
 type QueryBuilder interface {
 	WithIndex(name string) QueryBuilder
 	WithHash(value interface{}) QueryBuilder

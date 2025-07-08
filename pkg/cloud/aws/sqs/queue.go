@@ -24,7 +24,7 @@ const (
 	sqsBatchSize = 10
 )
 
-//go:generate mockery --name Queue
+//go:generate go run github.com/vektra/mockery/v2 --name Queue
 type Queue interface {
 	GetName() string
 	GetUrl() string

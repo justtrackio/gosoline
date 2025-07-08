@@ -11,7 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-//go:generate mockery --name SubscriberCore
+//go:generate go run github.com/vektra/mockery/v2 --name SubscriberCore
 type SubscriberCore interface {
 	GetModelIds() []string
 	GetLatestModelIdVersion(modelId mdl.ModelId) (int, error)

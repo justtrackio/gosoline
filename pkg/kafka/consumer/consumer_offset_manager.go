@@ -14,7 +14,7 @@ import (
 
 var _ OffsetManager = &offsetManager{}
 
-//go:generate mockery --name OffsetManager
+//go:generate go run github.com/vektra/mockery/v2 --name OffsetManager
 type OffsetManager interface {
 	Start(ctx context.Context) error
 	Batch(ctx context.Context) []kafka.Message

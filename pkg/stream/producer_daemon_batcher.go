@@ -14,7 +14,7 @@ type producerDaemonBatcher struct {
 	size     int
 }
 
-//go:generate mockery --name ProducerDaemonBatcher
+//go:generate go run github.com/vektra/mockery/v2 --name ProducerDaemonBatcher
 type ProducerDaemonBatcher interface {
 	Append(msg *Message) ([]WritableMessage, error)
 	Flush() []WritableMessage

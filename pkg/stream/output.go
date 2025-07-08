@@ -12,13 +12,13 @@ type WritableMessage interface {
 	MarshalToString() (string, error)
 }
 
-//go:generate mockery --name Output
+//go:generate go run github.com/vektra/mockery/v2 --name Output
 type Output interface {
 	WriteOne(ctx context.Context, msg WritableMessage) error
 	Write(ctx context.Context, batch []WritableMessage) error
 }
 
-//go:generate mockery --name PartitionedOutput
+//go:generate go run github.com/vektra/mockery/v2 --name PartitionedOutput
 type PartitionedOutput interface {
 	Output
 	// IsPartitionedOutput returns true if the output is writing to more than one shard/partition/bucket, and we need to
@@ -26,7 +26,7 @@ type PartitionedOutput interface {
 	IsPartitionedOutput() bool
 }
 
-//go:generate mockery --name SizeRestrictedOutput
+//go:generate go run github.com/vektra/mockery/v2 --name SizeRestrictedOutput
 type SizeRestrictedOutput interface {
 	Output
 	// GetMaxMessageSize returns the maximum size of a message for this output (or nil if there is no limit on message size).

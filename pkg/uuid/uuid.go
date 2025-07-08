@@ -4,7 +4,7 @@ import (
 	"github.com/google/uuid"
 )
 
-//go:generate mockery --name Uuid
+//go:generate go run github.com/vektra/mockery/v2 --name Uuid
 type Uuid interface {
 	NewV4() string
 }

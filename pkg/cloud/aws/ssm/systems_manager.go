@@ -14,7 +14,7 @@ import (
 
 type SsmParameters map[string]string
 
-//go:generate mockery --name SimpleSystemsManager
+//go:generate go run github.com/vektra/mockery/v2 --name SimpleSystemsManager
 type SimpleSystemsManager interface {
 	GetParameters(ctx context.Context, path string) (SsmParameters, error)
 	GetParameter(ctx context.Context, path string) (string, error)

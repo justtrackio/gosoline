@@ -9,7 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name Manager
+//go:generate go run github.com/vektra/mockery/v2 --name Manager
 type Manager interface {
 	// initialize a new work item (e.g. working through the files of a day) with the given number of steps (e.g. days) to do
 	StartWork(key string, steps int) WorkItem
@@ -21,7 +21,7 @@ type Manager interface {
 	MonitorWithContext(key string, f func(ctx context.Context) error) func(ctx context.Context) error
 }
 
-//go:generate mockery --name WorkItem
+//go:generate go run github.com/vektra/mockery/v2 --name WorkItem
 type WorkItem interface {
 	// monitor execution of a method and set the correct result status upon return
 	Monitor(f func() error) func() error

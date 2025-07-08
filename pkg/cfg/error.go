@@ -6,7 +6,7 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
-//go:generate mockery --name Sentry
+//go:generate go run github.com/vektra/mockery/v2 --name Sentry
 type Sentry interface {
 	CaptureException(exception error, hint *sentry.EventHint, scope sentry.EventModifier) *sentry.EventID
 }

@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc/stats"
 )
 
-//go:generate mockery --name Instrumentor
+//go:generate go run github.com/vektra/mockery/v2 --name Instrumentor
 type Instrumentor interface {
 	HttpHandler(h http.Handler) http.Handler
 	HttpClient(baseClient *http.Client) *http.Client

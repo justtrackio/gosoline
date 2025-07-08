@@ -12,17 +12,17 @@ type (
 	FixtureSetsFactory func(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]FixtureSet, error)
 )
 
-//go:generate mockery --name FixtureLoader
+//go:generate go run github.com/vektra/mockery/v2 --name FixtureLoader
 type FixtureLoader interface {
 	Load(ctx context.Context) error
 }
 
-//go:generate mockery --name FixtureSet
+//go:generate go run github.com/vektra/mockery/v2 --name FixtureSet
 type FixtureSet interface {
 	Write(ctx context.Context) error
 }
 
-//go:generate mockery --name FixtureWriter
+//go:generate go run github.com/vektra/mockery/v2 --name FixtureWriter
 type FixtureWriter interface {
 	Write(ctx context.Context, fixtures []any) error
 }

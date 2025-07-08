@@ -15,13 +15,13 @@ import (
 
 type UntypedConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (UntypedConsumerCallback, error)
 
-//go:generate mockery --name UntypedConsumerCallback
+//go:generate go run github.com/vektra/mockery/v2 --name UntypedConsumerCallback
 type UntypedConsumerCallback interface {
 	BaseConsumerCallback
 	Consume(ctx context.Context, model any, attributes map[string]string) (bool, error)
 }
 
-//go:generate mockery --name RunnableUntypedConsumerCallback
+//go:generate go run github.com/vektra/mockery/v2 --name RunnableUntypedConsumerCallback
 type RunnableUntypedConsumerCallback interface {
 	UntypedConsumerCallback
 	RunnableCallback
