@@ -35,6 +35,7 @@ type ChainConfiguration struct {
 	MissingCacheEnabled bool                  `cfg:"missing_cache_enabled" default:"false"`
 	MetricsEnabled      bool                  `cfg:"metrics_enabled" default:"false"`
 	InMemory            InMemoryConfiguration `cfg:"in_memory"`
+	Redis               RedisConfiguration    `cfg:"redis"`
 }
 
 type InMemoryConfiguration struct {
@@ -44,6 +45,10 @@ type InMemoryConfiguration struct {
 	DeleteBuffer   uint32 `cfg:"delete_buffer" default:"1024"`
 	PromoteBuffer  uint32 `cfg:"promote_buffer" default:"1024"`
 	GetsPerPromote int32  `cfg:"gets_per_promote" default:"3"`
+}
+
+type RedisConfiguration struct {
+	DB int `cfg:"db" default:"0"`
 }
 
 type kvStoreAppCtxKey string

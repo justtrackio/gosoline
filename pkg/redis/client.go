@@ -167,6 +167,7 @@ func NewClientWithSettings(ctx context.Context, logger log.Logger, settings *Set
 
 	baseClient, err := appctx.Provide(ctx, redisKey(*settings), func() (*baseRedis.Client, error) {
 		baseClient := baseRedis.NewClient(&baseRedis.Options{
+			DB:     settings.DB,
 			Dialer: dialers[settings.Dialer](logger, settings),
 		})
 

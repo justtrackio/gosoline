@@ -17,8 +17,8 @@ type redisKvStore[T any] struct {
 	settings *Settings
 }
 
-func RedisBasename(settings *Settings) string {
-	return fmt.Sprintf("kvstore-%s", settings.Name)
+func RedisBasename(name string) string {
+	return fmt.Sprintf("kvstore-%s", name)
 }
 
 func NewRedisKvStore[T any](ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (KvStore[T], error) {
@@ -27,7 +27,7 @@ func NewRedisKvStore[T any](ctx context.Context, config cfg.Config, logger log.L
 	}
 
 	settings.PadFromConfig(config)
-	redisName := RedisBasename(settings)
+	redisName := RedisBasename(settings.Name)
 
 	client, err := redis.ProvideClient(ctx, config, logger, redisName)
 	if err != nil {

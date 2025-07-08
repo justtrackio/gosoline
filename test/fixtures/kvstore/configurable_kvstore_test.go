@@ -66,6 +66,18 @@ func (s *ConfigurableKvStoreTestSuite) TestConfigurableKvStore() {
 		Name: "bar",
 		Age:  34,
 	}, res)
+
+	redisStore, err := kvstore.ProvideConfigurableKvStore[KvStoreModel](envContext, envConfig, envLogger, "redis_test_store")
+	s.NoError(err)
+
+	found, err = redisStore.Get(context.Background(), "redis_kvstore_entry_1", &res)
+
+	s.NoError(err)
+	s.True(found)
+	s.Equal(KvStoreModel{
+		Name: "baz",
+		Age:  35,
+	}, res)
 }
 
 func (s *ConfigurableKvStoreTestSuite) provideFixtureDataTestStore(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
@@ -112,9 +124,32 @@ func (s *ConfigurableKvStoreTestSuite) provideFixtureDataAnotherTestStore(ctx co
 	return []fixtures.FixtureSet{fs}, nil
 }
 
+func (s *ConfigurableKvStoreTestSuite) provideFixtureDataRedisTestStore(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
+	writer, err := kvstore.NewConfigurableKvStoreFixtureWriter[KvStoreModel](s.Env().Context(), s.Env().Config(), s.Env().Logger(), "redis_test_store")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kvstore fixture writer: %w", err)
+	}
+
+	fs := fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[*kvstore.KvStoreFixture]{
+		&fixtures.NamedFixture[*kvstore.KvStoreFixture]{
+			Name: "kvstore_entry_1",
+			Value: &kvstore.KvStoreFixture{
+				Key: "redis_kvstore_entry_1",
+				Value: KvStoreModel{
+					Name: "baz",
+					Age:  35,
+				},
+			},
+		},
+	}, writer)
+
+	return []fixtures.FixtureSet{fs}, nil
+}
+
 func (s *ConfigurableKvStoreTestSuite) provideFixtures() []fixtures.FixtureSetsFactory {
 	return []fixtures.FixtureSetsFactory{
 		s.provideFixtureDataTestStore,
 		s.provideFixtureDataAnotherTestStore,
+		s.provideFixtureDataRedisTestStore,
 	}
 }

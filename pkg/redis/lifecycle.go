@@ -14,6 +14,7 @@ const MetadataKey = "redis.connections"
 type Metadata struct {
 	Name    string `json:"name"`
 	Address string `json:"address"`
+	DB      int    `json:"db"`
 }
 
 type lifecycleManager struct {
@@ -55,6 +56,7 @@ func (l *lifecycleManager) Register(ctx context.Context) (key string, metadata a
 	metadata = Metadata{
 		Name:    l.settings.Name,
 		Address: l.settings.Address,
+		DB:      l.settings.DB,
 	}
 
 	return MetadataKey, metadata, nil

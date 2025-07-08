@@ -16,6 +16,7 @@ type Naming struct {
 
 type Settings struct {
 	cfg.AppId
+	DB              int    `cfg:"db" default:"0"`
 	Name            string `cfg:"name"`
 	Dialer          string `cfg:"dialer" default:"tcp"`
 	Address         string `cfg:"address" default:"127.0.0.1:6379"`
@@ -34,8 +35,12 @@ func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, na
 	})
 }
 
+func GetRedisConfigKey(name string) string {
+	return fmt.Sprintf("redis.%s", name)
+}
+
 func ReadSettings(config cfg.Config, name string) *Settings {
-	key := fmt.Sprintf("redis.%s", name)
+	key := GetRedisConfigKey(name)
 
 	// This is a hack to ensure default redis config is populated,
 	// because cfg.UnmarshalWithDefaultsFromKey does only read from already set config but not from env vars
