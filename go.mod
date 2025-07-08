@@ -79,7 +79,7 @@ require (
 	github.com/spf13/cast v1.7.1
 	github.com/stretchr/objx v0.5.2
 	github.com/stretchr/testify v1.10.0
-	github.com/vektra/mockery/v2 v2.53.4
+	github.com/vektra/mockery/v2 v2.53.0
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	github.com/xitongsys/parquet-go v1.6.2
 	github.com/xitongsys/parquet-go-source v0.0.0-20231120172956-e0ff36b2d553
@@ -245,4 +245,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-go 1.23.1
+go 1.24
+
+toolchain go1.24.4
+
+tool github.com/vektra/mockery/v2
