@@ -185,7 +185,6 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 			msg.Attributes[AttributeSqsMessageId] = *sqsMessage.MessageId
 			msg.Attributes[AttributeSqsReceiptHandle] = *sqsMessage.ReceiptHandle
 
-			// Add ApproximateReceiveCount if available
 			if approximateReceiveCount, ok := sqsMessage.Attributes["ApproximateReceiveCount"]; ok {
 				msg.Attributes[AttributeSqsApproximateReceiveCount] = approximateReceiveCount
 			}
