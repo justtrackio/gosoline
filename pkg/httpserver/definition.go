@@ -135,7 +135,6 @@ func removeDuplicates(s string) string {
 
 	for i, r := range s {
 		if i == 0 || r != '/' || r != last {
-			//nolint:errcheck // never returns an error
 			buf.WriteRune(r)
 		}
 

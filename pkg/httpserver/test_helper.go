@@ -15,7 +15,7 @@ type HttpBody interface {
 	string | []byte
 }
 
-func HttpTest[Body HttpBody](method string, path string, requestPath string, body Body, handler gin.HandlerFunc, requestOptions ...func(r *http.Request)) *httptest.ResponseRecorder {
+func HttpTest[Body HttpBody](method, path, requestPath string, body Body, handler gin.HandlerFunc, requestOptions ...func(r *http.Request)) *httptest.ResponseRecorder {
 	gin.SetMode(gin.ReleaseMode)
 
 	r := gin.New()

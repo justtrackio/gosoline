@@ -9,21 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CompressionSettings control gzip support for requests and responses. By default, compressed requests are accepted and compressed responses are returned (if accepted by the client).
-type CompressionSettings struct {
-	Level         string `cfg:"level" default:"default" validate:"oneof=none default best fast 0 1 2 3 4 5 6 7 8 9"`
-	Decompression bool   `cfg:"decompression" default:"true"`
-	// Exclude files by path, extension, or regular expression from being considered for compression. Useful if you are serving a format unknown to Gosoline.
-	Exclude CompressionExcludeSettings `cfg:"exclude"`
-}
-
-// CompressionExcludeSettings allow enabling of gzip support.
-type CompressionExcludeSettings struct {
-	Extension []string `cfg:"extension"`
-	Path      []string `cfg:"path"`
-	PathRegex []string `cfg:"path_regex"`
-}
-
 func configureCompression(settings CompressionSettings) ([]gin.HandlerFunc, error) {
 	middlewares := make([]gin.HandlerFunc, 0)
 

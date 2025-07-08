@@ -84,7 +84,7 @@ func NewStatusResponse(statusCode int, options ...ResponseOption) *Response {
 	return NewResponse(body, contentType, statusCode, make(http.Header), options...)
 }
 
-func (r *Response) AddHeader(key string, value string) {
+func (r *Response) AddHeader(key, value string) {
 	r.Header.Add(key, value)
 }
 

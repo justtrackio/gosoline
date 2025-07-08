@@ -22,9 +22,11 @@ func TestRecoveryWithSentryCaseNil(t *testing.T) {
 	r.Use(httpserver.RecoveryWithSentry(loggerMock))
 
 	var req *http.Request
+	var err error
 	httpRecorder := httptest.NewRecorder()
 
-	req, _ = http.NewRequest(http.MethodGet, "/some/route", nil)
+	req, err = http.NewRequest(http.MethodGet, "/some/route", http.NoBody)
+	assert.NoError(t, err)
 
 	assert.NotPanics(t, func() {
 		r.ServeHTTP(httpRecorder, req)
@@ -40,15 +42,17 @@ func TestRecoveryWithSentryCaseError(t *testing.T) {
 
 	r := gin.New()
 	r.Use(httpserver.RecoveryWithSentry(loggerMock))
-	r.Use(func(c *gin.Context) {
+	r.Use(func(_ *gin.Context) {
 		err := http.ErrServerClosed
 		panic(err)
 	})
 
 	var req *http.Request
+	var err error
 	httpRecorder := httptest.NewRecorder()
 
-	req, _ = http.NewRequest(http.MethodGet, "/some/route", nil)
+	req, err = http.NewRequest(http.MethodGet, "/some/route", http.NoBody)
+	assert.NoError(t, err)
 
 	assert.NotPanics(t, func() {
 		r.ServeHTTP(httpRecorder, req)
@@ -64,15 +68,17 @@ func TestRecoveryWithSentryCaseResponseBodyWriterAndConnectionErrors(t *testing.
 
 	r := gin.New()
 	r.Use(httpserver.RecoveryWithSentry(loggerMock))
-	r.Use(func(c *gin.Context) {
+	r.Use(func(_ *gin.Context) {
 		err := httpserver.ResponseBodyWriterError{Err: unix.EPIPE}
 		panic(err)
 	})
 
 	var req *http.Request
+	var err error
 	httpRecorder := httptest.NewRecorder()
 
-	req, _ = http.NewRequest(http.MethodGet, "/some/route", nil)
+	req, err = http.NewRequest(http.MethodGet, "/some/route", http.NoBody)
+	assert.NoError(t, err)
 
 	assert.NotPanics(t, func() {
 		r.ServeHTTP(httpRecorder, req)
@@ -88,15 +94,17 @@ func TestRecoveryWithSentryCaseResponseBodyWriterErrorButNotConnectionError(t *t
 
 	r := gin.New()
 	r.Use(httpserver.RecoveryWithSentry(loggerMock))
-	r.Use(func(c *gin.Context) {
+	r.Use(func(_ *gin.Context) {
 		err := httpserver.ResponseBodyWriterError{Err: errors.New("an error")}
 		panic(err)
 	})
 
 	var req *http.Request
+	var err error
 	httpRecorder := httptest.NewRecorder()
 
-	req, _ = http.NewRequest(http.MethodGet, "/some/route", nil)
+	req, err = http.NewRequest(http.MethodGet, "/some/route", http.NoBody)
+	assert.NoError(t, err)
 
 	assert.NotPanics(t, func() {
 		r.ServeHTTP(httpRecorder, req)
@@ -112,14 +120,16 @@ func TestRecoveryWithSentryCaseString(t *testing.T) {
 
 	r := gin.New()
 	r.Use(httpserver.RecoveryWithSentry(loggerMock))
-	r.Use(func(c *gin.Context) {
+	r.Use(func(_ *gin.Context) {
 		panic("Panic to test recovery")
 	})
 
 	var req *http.Request
+	var err error
 	httpRecorder := httptest.NewRecorder()
 
-	req, _ = http.NewRequest(http.MethodGet, "/some/route", nil)
+	req, err = http.NewRequest(http.MethodGet, "/some/route", http.NoBody)
+	assert.NoError(t, err)
 
 	assert.NotPanics(t, func() {
 		r.ServeHTTP(httpRecorder, req)

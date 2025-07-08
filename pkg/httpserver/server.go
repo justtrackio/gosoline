@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
-	"time"
 
 	"github.com/gin-contrib/location"
 	"github.com/gin-gonic/gin"
@@ -33,40 +32,6 @@ type HandlerMetadata struct {
 	Method string `json:"method"`
 	// Path is the route path ot this handler.
 	Path string `json:"path"`
-}
-
-// Settings structure for an API server.
-type Settings struct {
-	// Port the API listens to.
-	Port string `cfg:"port" default:"8080"`
-	// Mode is either debug, release, test.
-	Mode string `cfg:"mode" default:"release" validate:"oneof=release debug test"`
-	// Compression settings.
-	Compression CompressionSettings `cfg:"compression"`
-	// Timeout settings.
-	Timeout TimeoutSettings `cfg:"timeout"`
-	// Logging settings
-	Logging LoggingSettings `cfg:"logging"`
-}
-
-// TimeoutSettings configures IO timeouts.
-type TimeoutSettings struct {
-	// You need to give at least 1s as timeout.
-	// Read timeout is the maximum duration for reading the entire request, including the body.
-	Read time.Duration `cfg:"read" default:"60s" validate:"min=1000000000"`
-	// Write timeout is the maximum duration before timing out writes of the response.
-	Write time.Duration `cfg:"write" default:"60s" validate:"min=1000000000"`
-	// Idle timeout is the maximum amount of time to wait for the next request when keep-alives are enabled
-	Idle time.Duration `cfg:"idle" default:"60s" validate:"min=1000000000"`
-	// Drain timeout is the maximum amount of time to wait after receiving the kernel stop signal and actually shutting down the server
-	Drain time.Duration `cfg:"drain" default:"0" validate:"min=0"`
-	// Shutdown timeout is the maximum amount of time to wait for serving active requests before stopping the server
-	Shutdown time.Duration `cfg:"shutdown" default:"60s" validate:"min=1000000000"`
-}
-
-type LoggingSettings struct {
-	RequestBody       bool `cfg:"request_body"`
-	RequestBodyBase64 bool `cfg:"request_body_base64"`
 }
 
 type HttpServer struct {
@@ -97,11 +62,14 @@ func NewWithSettings(name string, definer Definer, settings *Settings) kernel.Mo
 
 		gin.SetMode(settings.Mode)
 
-		var err error
-		var tracingInstrumentor tracing.Instrumentor
-		var definitions *Definitions
-		var compressionMiddlewares []gin.HandlerFunc
-		var healthChecker kernel.HealthChecker
+		var (
+			err                            error
+			tracingInstrumentor            tracing.Instrumentor
+			definitions                    *Definitions
+			compressionMiddlewares         []gin.HandlerFunc
+			healthChecker                  kernel.HealthChecker
+			trafficDistributionInterceptor gin.HandlerFunc
+		)
 
 		if tracingInstrumentor, err = tracing.ProvideInstrumentor(ctx, config, logger); err != nil {
 			return nil, fmt.Errorf("can not create tracingInstrumentor: %w", err)
@@ -113,12 +81,17 @@ func NewWithSettings(name string, definer Definer, settings *Settings) kernel.Mo
 			return nil, fmt.Errorf("could not configure compression: %w", err)
 		}
 
+		if trafficDistributionInterceptor, err = ProvideTrafficDistributionInterceptor(ctx, config, logger); err != nil {
+			return nil, fmt.Errorf("could not provide traffic distribution interceptor: %w", err)
+		}
+
 		router := gin.New()
 		router.Use(metricMiddleware)
 		router.Use(LoggingMiddleware(logger, settings.Logging))
 		router.Use(compressionMiddlewares...)
 		router.Use(RecoveryWithSentry(logger))
 		router.Use(location.Default())
+		router.Use(trafficDistributionInterceptor)
 
 		if healthChecker, err = kernel.GetHealthChecker(ctx); err != nil {
 			return nil, fmt.Errorf("can not get health checker: %w", err)

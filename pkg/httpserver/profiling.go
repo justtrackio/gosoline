@@ -12,15 +12,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-type ProfilingSettings struct {
-	Enabled bool                 `cfg:"enabled" default:"false"`
-	Api     ProfilingApiSettings `cfg:"api"`
-}
-
-type ProfilingApiSettings struct {
-	Port int `cfg:"port" default:"8091"`
-}
-
 type Profiling struct {
 	kernel.BackgroundModule
 	kernel.ServiceStage
