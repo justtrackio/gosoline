@@ -13,12 +13,12 @@ import (
 
 type Settings struct {
 	cfg.AppId
+	InMemorySettings
 	DdbSettings    DdbSettings
 	Name           string
 	Ttl            time.Duration
 	BatchSize      int
 	MetricsEnabled bool
-	InMemorySettings
 }
 
 type InMemorySettings struct {

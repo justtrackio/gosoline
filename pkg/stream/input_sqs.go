@@ -185,6 +185,10 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 			msg.Attributes[AttributeSqsMessageId] = *sqsMessage.MessageId
 			msg.Attributes[AttributeSqsReceiptHandle] = *sqsMessage.ReceiptHandle
 
+			if approximateReceiveCount, ok := sqsMessage.Attributes["ApproximateReceiveCount"]; ok {
+				msg.Attributes[AttributeSqsApproximateReceiveCount] = approximateReceiveCount
+			}
+
 			i.channel <- msg
 
 			// after every message we pushed to the channel, mark us as healthy as we made some progress

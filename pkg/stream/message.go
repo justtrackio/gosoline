@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	AttributeSqsMessageId     = "sqsMessageId"
-	AttributeSqsReceiptHandle = "sqsReceiptHandle"
+	AttributeSqsMessageId               = "sqsMessageId"
+	AttributeSqsReceiptHandle           = "sqsReceiptHandle"
+	AttributeSqsApproximateReceiveCount = "sqsApproximateReceiveCount"
 )
 
 type Message struct {
