@@ -31,6 +31,7 @@ func (c *Callback) Consume(_ context.Context, model DataModel, attributes map[st
 	attributes = funk.MergeMaps(attributes)
 	delete(attributes, "sqsMessageId")
 	delete(attributes, "sqsReceiptHandle")
+	delete(attributes, "sqsApproximateReceiveCount")
 
 	c.receivedModels = append(c.receivedModels, model)
 	c.receivedAttributes = append(c.receivedAttributes, attributes)
