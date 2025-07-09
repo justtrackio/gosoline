@@ -17,12 +17,6 @@ func init() {
 	dx.RegisterRandomizablePortSetting("httpserver.health-check.port")
 }
 
-type HealthCheckSettings struct {
-	Port    int             `cfg:"port" default:"8090"`
-	Path    string          `cfg:"path" default:"/health"`
-	Timeout TimeoutSettings `cfg:"timeout"`
-}
-
 type HttpServerHealthCheck struct {
 	kernel.BackgroundModule
 	kernel.EssentialStage

@@ -78,8 +78,10 @@ func (s *ServerTestSuite) TestBaseProfilingEndpoint() {
 
 func assertRouteReturnsResponse(t *testing.T, router *gin.Engine, httpRecorder *httptest.ResponseRecorder, route string, responseCode int) {
 	var req *http.Request
+	var err error
 
-	req, _ = http.NewRequest(http.MethodGet, route, nil)
+	req, err = http.NewRequest(http.MethodGet, route, http.NoBody)
+	assert.NoError(t, err, "could not create request for route %s", route)
 	router.ServeHTTP(httpRecorder, req)
 
 	assert.Equal(t, responseCode, httpRecorder.Code)
