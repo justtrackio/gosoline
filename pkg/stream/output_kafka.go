@@ -12,7 +12,7 @@ import (
 
 type KafkaOutput struct {
 	producer *kafkaProducer.Producer
-	pool     coffin.Coffin
+	pool     coffin.Graveyard
 }
 
 var _ Output = &KafkaOutput{}
@@ -27,8 +27,8 @@ func NewKafkaOutput(ctx context.Context, config cfg.Config, logger log.Logger, k
 }
 
 func NewKafkaOutputWithInterfaces(ctx context.Context, producer *kafkaProducer.Producer) (*KafkaOutput, error) {
-	pool := coffin.New()
-	pool.GoWithContext(ctx, producer.Run, coffin.Named("kafkaProducer/run"))
+	pool := coffin.NewGraveyard()
+	pool.GoWithContext("kafkaProducer/run", producer.Run, coffin.WithContext(ctx))
 
 	return &KafkaOutput{producer: producer, pool: pool}, nil
 }

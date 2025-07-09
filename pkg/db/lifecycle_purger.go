@@ -100,29 +100,25 @@ func (p LifeCyclePurger) Purge(ctx context.Context) (err error) {
 
 	chunks := funk.Chunk(tables, int(math.Ceil(float64(len(tables))/float64(runtime.NumCPU()))))
 
-	cfn := coffin.New()
-	cfn.GoWithContext(ctx, func(ctx context.Context) error {
-		for _, chunk := range chunks {
-			cfn.GoWithContext(ctx, func(ctx context.Context) error {
-				var table string
-				var sqls []string
+	grave := coffin.NewGraveyard(coffin.WithContext(ctx))
+	for i, chunk := range chunks {
+		grave.GoWithContext(fmt.Sprintf("purge chunk %d", i), func(ctx context.Context) error {
+			var table string
+			var sqls []string
 
-				for _, table = range chunk {
-					sqls = append(sqls, fmt.Sprintf("TRUNCATE TABLE %s;", table))
-				}
+			for _, table = range chunk {
+				sqls = append(sqls, fmt.Sprintf("TRUNCATE TABLE %s;", table))
+			}
 
-				if _, err = p.db.ExecContext(ctx, strings.Join(sqls, " ")); err != nil {
-					return fmt.Errorf("could not truncate tables: %w", err)
-				}
+			if _, err = p.db.ExecContext(ctx, strings.Join(sqls, " ")); err != nil {
+				return fmt.Errorf("could not truncate tables: %w", err)
+			}
 
-				return nil
-			})
-		}
+			return nil
+		})
+	}
 
-		return nil
-	})
-
-	if err = cfn.Wait(); err != nil {
+	if err = grave.Wait(); err != nil {
 		return fmt.Errorf("error while truncating tables: %w", err)
 	}
 

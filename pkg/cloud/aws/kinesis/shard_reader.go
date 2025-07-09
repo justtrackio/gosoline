@@ -115,20 +115,20 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 		return fmt.Errorf("failed to get shard iterator: %w", err)
 	}
 
-	cfn, cfnCtx := coffin.WithContext(ctx)
-	persisterCtx, cancelPersister := exec.WithManualCancelContext(cfnCtx)
+	grave := coffin.NewGraveyard(coffin.WithContext(ctx))
+	persisterCtx, cancelPersister := exec.WithManualCancelContext(grave.Ctx())
 	millisecondsBehindChan := make(chan float64)
-	cfn.Go(func() error {
+	grave.Go("kinsumer/reportMillisecondsBehind", func() error {
 		// we don't use the context here because even when the context gets canceled, we need to keep draining the
 		// millisecondsBehindChan until it is closed - otherwise we might block the producer on the other side
 		s.reportMillisecondsBehind(millisecondsBehindChan)
 
 		return nil
-	}, coffin.Named("kinsumer/reportMillisecondsBehind"))
-	cfn.GoWithContext(persisterCtx, func(ctx context.Context) error {
+	})
+	grave.GoWithContext("kinsumer/persister", func(ctx context.Context) error {
 		return s.runPersister(ctx, releaseCtx)
-	}, coffin.Named("kinsumer/persister"))
-	cfn.GoWithContext(cfnCtx, func(ctx context.Context) (readerErr error) {
+	}, coffin.WithContext(persisterCtx))
+	grave.GoWithContext("kinsumer/shardIterator", func(ctx context.Context) (readerErr error) {
 		// similar to the outer release function, this additionally cancels the persister (and has a different error to append to)
 		// and closes the channel to report how many milliseconds we lag behind
 		defer func() {
@@ -140,14 +140,14 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 		}()
 
 		return s.iterateRecords(ctx, millisecondsBehindChan, iterator, sequenceNumber, handler)
-	}, coffin.Named("kinsumer/shardIterator"))
+	})
 
 	// if we get a canceled error, drop it here. We used to do this at our caller, but this makes a test harder:
 	// if the context of the coffin gets canceled, we propagate the canceled error from the context to the coffin.
 	// however, if already all tasks in the coffin have exited, the coffin is already dead, and we don't propagate
 	// the error. Thus, it is impossible in the test to specify whether we expect the error or no error, so we just
 	// clean up here.
-	if err := cfn.Wait(); err != nil && !exec.IsRequestCanceled(err) {
+	if err := grave.Wait(); err != nil && !exec.IsRequestCanceled(err) {
 		return err
 	}
 

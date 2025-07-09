@@ -22,7 +22,7 @@ type Consumer struct {
 	logger   log.Logger
 	settings *Settings
 
-	pool    coffin.Coffin
+	pool    coffin.Graveyard
 	backlog chan kafka.Message
 	manager OffsetManager
 }
@@ -67,7 +67,7 @@ func NewConsumerWithInterfaces(settings *Settings, logger log.Logger, manager Of
 	return &Consumer{
 		settings: settings,
 		logger:   logging.NewKafkaLogger(logger),
-		pool:     coffin.New(),
+		pool:     coffin.NewGraveyard(),
 		backlog:  make(chan kafka.Message, settings.BatchSize),
 		manager:  manager,
 	}, nil
@@ -77,7 +77,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 	c.logger.Info("starting consumer")
 	defer c.logger.Info("shutdown consumer")
 
-	c.pool.GoWithContext(ctx, c.run, coffin.Named("kafka/run"))
+	c.pool.GoWithContext("kafka/run", c.run, coffin.WithContext(ctx))
 
 	return c.pool.Wait()
 }
@@ -95,7 +95,7 @@ func (c *Consumer) Commit(ctx context.Context, msgs ...kafka.Message) error {
 }
 
 func (c *Consumer) run(ctx context.Context) error {
-	c.pool.GoWithContext(ctx, c.manager.Start, coffin.Named("kafka/manager.Start"))
+	c.pool.GoWithContext("kafka/manager.Start", c.manager.Start, coffin.WithContext(ctx))
 
 	defer close(c.backlog)
 

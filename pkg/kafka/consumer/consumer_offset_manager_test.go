@@ -18,7 +18,7 @@ import (
 
 func TestOffsetManager_NotCommitting(t *testing.T) {
 	var (
-		pool        = coffin.New()
+		pool        = coffin.NewGraveyard()
 		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
 	)
 	defer cancel()
@@ -47,7 +47,7 @@ func TestOffsetManager_NotCommitting(t *testing.T) {
 		time.Second,
 		healthCheckTimer,
 	)
-	pool.GoWithContext(ctx, manager.Start)
+	pool.GoWithContext("manager", manager.Start, coffin.WithContext(ctx))
 
 	// 1st call to batch() should return a non-empty batch.
 	assert.Equal(t, []kafka.Message{
@@ -69,7 +69,7 @@ func TestOffsetManager_NotCommitting(t *testing.T) {
 
 func TestOffsetManager_PartialCommit(t *testing.T) {
 	var (
-		pool        = coffin.New()
+		pool        = coffin.NewGraveyard()
 		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
 	)
 	defer cancel()
@@ -99,7 +99,7 @@ func TestOffsetManager_PartialCommit(t *testing.T) {
 		time.Second,
 		healthCheckTimer,
 	)
-	pool.GoWithContext(ctx, manager.Start)
+	pool.GoWithContext("manager", manager.Start, coffin.WithContext(ctx))
 
 	// 1st call to batch() should return a non-empty batch.
 	assert.Equal(t, []kafka.Message{
@@ -123,7 +123,7 @@ func TestOffsetManager_PartialCommit(t *testing.T) {
 
 func TestOffsetManager_DoubleCommit(t *testing.T) {
 	var (
-		pool        = coffin.New()
+		pool        = coffin.NewGraveyard()
 		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
 	)
 	defer cancel()
@@ -157,7 +157,7 @@ func TestOffsetManager_DoubleCommit(t *testing.T) {
 		time.Second,
 		healthCheckTimer,
 	)
-	pool.GoWithContext(ctx, manager.Start)
+	pool.GoWithContext("manager", manager.Start, coffin.WithContext(ctx))
 
 	// 1st call to batch() should return a non-empty batch.
 	assert.Equal(t, []kafka.Message{
@@ -191,7 +191,7 @@ func TestOffsetManager_DoubleCommit(t *testing.T) {
 
 func TestOffsetManager_FullCommit(t *testing.T) {
 	var (
-		pool        = coffin.New()
+		pool        = coffin.NewGraveyard()
 		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
 	)
 	defer cancel()
@@ -222,7 +222,7 @@ func TestOffsetManager_FullCommit(t *testing.T) {
 		time.Second,
 		healthCheckTimer,
 	)
-	pool.GoWithContext(ctx, manager.Start)
+	pool.GoWithContext("manager", manager.Start, coffin.WithContext(ctx))
 
 	// 1st call to batch() should return a non-empty batch.
 	assert.Equal(t, []kafka.Message{

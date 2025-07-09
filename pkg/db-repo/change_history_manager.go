@@ -61,23 +61,19 @@ func (c *ChangeHistoryManager) addModels(models ...ModelBased) {
 }
 
 func (c *ChangeHistoryManager) RunMigrations() error {
-	cfn := coffin.New()
+	grave := coffin.NewGraveyard()
 
-	cfn.Go(func() error {
-		for _, model := range funk.UniqByType(c.models) {
-			cfn.Go(func() error {
-				if err := c.RunMigration(model); err != nil {
-					return fmt.Errorf("can not run migration for model %T: %w", model, err)
-				}
+	for _, model := range funk.UniqByType(c.models) {
+		grave.Go(fmt.Sprintf("changeHistoryManager/migration-%s", model), func() error {
+			if err := c.RunMigration(model); err != nil {
+				return fmt.Errorf("can not run migration for model %T: %w", model, err)
+			}
 
-				return nil
-			}, coffin.Named("changeHistoryManager/migration-%s", model))
-		}
+			return nil
+		})
+	}
 
-		return nil
-	}, coffin.Named("changeHistoryManager/launcher"))
-
-	return cfn.Wait()
+	return grave.Wait()
 }
 
 func (c *ChangeHistoryManager) RunMigration(model ModelBased) error {

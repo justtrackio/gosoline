@@ -115,9 +115,9 @@ func (s scheduler[T]) Run(ctx context.Context) error {
 	for i := 0; i < s.runnerCount; i++ {
 		grave.Go("batchExecutor", func() error {
 			return s.executeBatches(ctx, batchQueue)
-		}, map[string]string{
+		}, coffin.WithLabels(map[string]string{
 			"instance": strconv.Itoa(i),
-		})
+		}))
 	}
 
 	return grave.Wait()

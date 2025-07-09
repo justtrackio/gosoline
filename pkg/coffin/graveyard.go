@@ -3,7 +3,10 @@ package coffin
 import (
 	"context"
 	"errors"
+	"fmt"
+	"runtime"
 	"runtime/pprof"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -16,6 +19,8 @@ import (
 type Graveyard interface {
 	// Err returns the error from the graveyard if any spawned goroutine panicked or returned an error
 	Err() error
+	// Ctx returns the context which would be passed to a function in GoWithContext.
+	Ctx() context.Context
 	// Go spawns a new goroutine and runs the given function. If the go routine panics or returns an error, Err will return it.
 	Go(name string, f func() error, options ...GraveyardOption)
 	// GoWithContext is the same as Go, but passes the context from the Graveyard to the function.
@@ -30,12 +35,16 @@ type Graveyard interface {
 	// Terminated returns the number of goroutines that have already returned.
 	Terminated() int
 	// Entomb returns a Coffin for the current state of the Graveyard. You can use it to wait on a channel until all goroutines are finished, or
-	// kill the currently running goroutines.
+	// kill the currently running goroutines. If you kill a Coffin, you can no longer reuse the Graveyard.
 	//
 	// Calling Entomb always returns the same Coffin as long as there are running goroutines (or the Graveyard is freshly created). Once all
 	// goroutines inside your Graveyard finish, and you start another one with Go, a new Coffin will be returned by Entomb from that point on.
 	// Thus, you should first schedule all goroutines (even if they immediately finish running) and the call Entomb.
 	Entomb() Coffin
+	// Kill cancels the context of the Graveyard with the given reason.
+	//
+	// Although Kill may be called multiple times, only the first non-nil error is recorded as the death reason.
+	Kill(err error)
 }
 
 type graveyard struct {
@@ -122,16 +131,59 @@ func (g *graveyard) Err() error {
 	return g.err
 }
 
+func (g *graveyard) Ctx() context.Context {
+	return g.initCoffin()
+}
+
 func (g *graveyard) Go(name string, f func() error, options ...GraveyardOption) {
-	g.GoWithContext(name, func(ctx context.Context) error { return f() }, options...)
+	pkg := g.callerPackage()
+
+	g.goWithContext(name, pkg, func(ctx context.Context) error { return f() }, options...)
 }
 
 func (g *graveyard) GoWithContext(name string, f func(ctx context.Context) error, options ...GraveyardOption) {
+	pkg := g.callerPackage()
+
+	g.goWithContext(name, pkg, f, options...)
+}
+
+// returns the package path of the function that called this function.
+func (g *graveyard) callerPackage() string {
+	pc, _, _, ok := runtime.Caller(2) // 1 = skip this function
+	if !ok {
+		return ""
+	}
+
+	fn := runtime.FuncForPC(pc)
+	if fn == nil {
+		return ""
+	}
+
+	fullFuncName := fn.Name() // e.g., "github.com/user/project/pkg.MyFunc"
+	lastSlash := strings.LastIndex(fullFuncName, "/")
+	if lastSlash == -1 {
+		lastSlash = 0
+	} else {
+		lastSlash++ // move past the slash
+	}
+
+	// trim to package.function
+	pkgAndFunc := fullFuncName[lastSlash:]
+	firstDot := strings.Index(pkgAndFunc, ".")
+	if firstDot == -1 {
+		return ""
+	}
+
+	// return just the package part
+	return pkgAndFunc[:firstDot]
+}
+
+func (g *graveyard) goWithContext(name string, pkg string, f func(ctx context.Context) error, options ...GraveyardOption) {
+	g.initCoffin()
+
 	opts := graveyardOptions{
-		ctx: g.ctx,
-		errorWrapper: func(err error) error {
-			return err
-		},
+		ctx:          g.ctx,
+		errorWrapper: defaultErrorWrapper,
 	}
 	for _, option := range options {
 		option(&opts)
@@ -141,9 +193,7 @@ func (g *graveyard) GoWithContext(name string, f func(ctx context.Context) error
 	atomic.AddInt64(&g.running, 1)
 	g.wg.Add(1)
 
-	g.initCoffin()
-
-	go g.runLabeled(opts.ctx, name, opts.labels, func() {
+	go g.runLabeled(opts.ctx, name, pkg, opts.labels, func() {
 		defer g.done()
 		defer func() {
 			panicErr := ResolveRecovery(recover())
@@ -182,25 +232,45 @@ func (g *graveyard) Entomb() Coffin {
 
 	return coffin{
 		Graveyard: g,
-		kill:      g.kill,
 		dead:      g.dead,
 		dying:     g.dying,
 		alive:     g.alive,
 	}
 }
 
-func (g *graveyard) initCoffin() {
+func (g *graveyard) initCoffin() context.Context {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
 	if g.ctx != nil {
-		return
+		return g.ctx
 	}
 
 	g.ctx, g.cancelCtx = context.WithCancelCause(g.baseCtx)
 	g.dead = make(chan Void)
 	g.dying = make(chan Void)
 	g.alive = mdl.Box[int32](1)
+
+	ctx := g.ctx
+	dying := g.dying
+
+	go g.runLabeled(ctx, "context watcher", "coffin", nil, func() {
+		select {
+		case <-dying:
+			return
+		case <-ctx.Done():
+		}
+
+		g.mu.Lock()
+		defer g.mu.Unlock()
+
+		// if we are still using the same dying channel, no new coffin was created in the meantime
+		if g.dying == dying {
+			g.kill(ctx.Err())
+		}
+	})
+
+	return g.ctx
 }
 
 func (g *graveyard) done() {
@@ -215,9 +285,8 @@ func (g *graveyard) done() {
 		// nothing is running anymore, close all channels and stop anything
 		atomic.StoreInt32(g.alive, 0)
 
-		// TODO: make sure they are not closed yet
-		close(g.dying)
-		close(g.dead)
+		g.closeIfOpen(g.dying)
+		g.closeIfOpen(g.dead)
 		g.dying = nil
 		g.dead = nil
 		g.ctx = nil
@@ -225,14 +294,48 @@ func (g *graveyard) done() {
 	}
 }
 
+func (g *graveyard) Kill(reason error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	g.kill(reason)
+}
+
 func (g *graveyard) kill(reason error) {
-	// TODO implement
+	if g.cancelCtx != nil {
+		g.cancelCtx(reason)
+		g.cancelCtx = nil
+	}
+
+	g.closeIfOpen(g.dying)
+
+	if reason != nil && g.err == nil {
+		g.setErrLocked(reason)
+	}
+}
+
+func (g *graveyard) closeIfOpen(c chan Void) {
+	if c == nil {
+		return
+	}
+
+	// close c if it is still open. As we never write to a channel, being able to read from it means it is already closed.
+	// this method assumes we hold a lock and thus can't be called concurrently.
+	select {
+	case <-c:
+	default:
+		close(c)
+	}
 }
 
 func (g *graveyard) setErr(err error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	g.setErrLocked(err)
+}
+
+func (g *graveyard) setErrLocked(err error) {
 	if g.err == nil {
 		g.err = err
 	} else {
@@ -240,10 +343,10 @@ func (g *graveyard) setErr(err error) {
 	}
 }
 
-func (g *graveyard) runLabeled(ctx context.Context, name string, labels []map[string]string, f func()) {
+func (g *graveyard) runLabeled(ctx context.Context, name string, pkg string, labels []map[string]string, f func()) {
 	labelArgs := []string{
 		"name",
-		name,
+		fmt.Sprintf("%s/%s", pkg, name),
 	}
 
 	for _, labelsMap := range labels {
@@ -256,4 +359,8 @@ func (g *graveyard) runLabeled(ctx context.Context, name string, labels []map[st
 	pprof.Do(ctx, labelSet, func(ctx context.Context) {
 		f()
 	})
+}
+
+func defaultErrorWrapper(err error) error {
+	return err
 }

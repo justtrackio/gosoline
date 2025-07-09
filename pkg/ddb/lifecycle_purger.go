@@ -98,24 +98,20 @@ func (s *LifeCyclePurger) purgeDropTable(ctx context.Context, table *types.Table
 }
 
 func (s *LifeCyclePurger) purgeScan(ctx context.Context, keyFields []types.KeySchemaElement) error {
-	cfn := coffin.New()
+	grave := coffin.NewGraveyard(coffin.WithContext(ctx))
 
 	totalSegments := s.clientSettings.PurgeParallelism
 	if totalSegments == 0 {
 		totalSegments = runtime.NumCPU()
 	}
 
-	cfn.GoWithContext(ctx, func(ctx context.Context) error {
-		for i := range totalSegments {
-			cfn.GoWithContext(ctx, func(ctx context.Context) error {
-				return s.doPurgeScan(ctx, keyFields, i, totalSegments)
-			})
-		}
+	for i := range totalSegments {
+		grave.GoWithContext(fmt.Sprintf("purge segments %d", i), func(ctx context.Context) error {
+			return s.doPurgeScan(ctx, keyFields, i, totalSegments)
+		})
+	}
 
-		return nil
-	})
-
-	if err := cfn.Wait(); err != nil {
+	if err := grave.Wait(); err != nil {
 		return fmt.Errorf("could not purge table %s: %w", s.tableName, err)
 	}
 

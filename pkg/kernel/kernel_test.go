@@ -62,27 +62,23 @@ func (s *KernelTestSuite) SetupTest() {
 func timeout(t *testing.T, d time.Duration, f func(t *testing.T)) {
 	done := make(chan struct{})
 	errChan := make(chan error)
-	cfn := coffin.New()
-	cfn.Go(func() error {
-		cfn.Go(func() error {
-			defer close(done)
-			f(t)
+	grave := coffin.NewGraveyard()
+	grave.Go("task runner", func() error {
+		defer close(done)
+		f(t)
 
-			return nil
-		})
-		cfn.Go(func() error {
-			timer := time.NewTimer(d)
-			defer timer.Stop()
-			defer close(errChan)
+		return nil
+	})
+	grave.Go("timeout task", func() error {
+		timer := time.NewTimer(d)
+		defer timer.Stop()
+		defer close(errChan)
 
-			select {
-			case <-timer.C:
-				errChan <- fmt.Errorf("test timed out after %v", d)
-			case <-done:
-			}
-
-			return nil
-		})
+		select {
+		case <-timer.C:
+			errChan <- fmt.Errorf("test timed out after %v", d)
+		case <-done:
+		}
 
 		return nil
 	})
@@ -91,7 +87,7 @@ func timeout(t *testing.T, d time.Duration, f func(t *testing.T)) {
 		assert.FailNow(t, err.Error())
 	}
 
-	assert.NoError(t, cfn.Wait())
+	assert.NoError(t, grave.Wait())
 }
 
 func (s *KernelTestSuite) TestHangingModule() {
@@ -494,9 +490,9 @@ type realModule struct {
 }
 
 func (m *realModule) Run(ctx context.Context) error {
-	cfn, cfnCtx := coffin.WithContext(ctx)
+	grave := coffin.NewGraveyard(coffin.WithContext(ctx))
 
-	cfn.GoWithContext(cfnCtx, func(ctx context.Context) error {
+	grave.GoWithContext("task", func(ctx context.Context) error {
 		ticker := time.NewTicker(time.Millisecond * 2)
 		defer ticker.Stop()
 
@@ -516,7 +512,7 @@ func (m *realModule) Run(ctx context.Context) error {
 		}
 	})
 
-	err := cfn.Wait()
+	err := grave.Wait()
 	if !errors.Is(err, context.Canceled) {
 		assert.NoError(m.t, err)
 	}
