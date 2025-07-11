@@ -316,7 +316,8 @@ func (_c *RepositoryReadOnly_Read_Call) RunAndReturn(run func(context.Context, *
 func NewRepositoryReadOnly(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *RepositoryReadOnly {
+},
+) *RepositoryReadOnly {
 	mock := &RepositoryReadOnly{}
 	mock.Mock.Test(t)
 

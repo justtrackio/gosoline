@@ -941,7 +941,8 @@ func (_c *Repository_UpdateItemBuilder_Call) RunAndReturn(run func() ddb.UpdateI
 func NewRepository(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Repository {
+},
+) *Repository {
 	mock := &Repository{}
 	mock.Mock.Test(t)
 

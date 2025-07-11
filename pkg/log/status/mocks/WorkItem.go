@@ -169,7 +169,8 @@ func (_c *WorkItem_ReportProgress_Call) RunAndReturn(run func(int, float64)) *Wo
 func NewWorkItem(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *WorkItem {
+},
+) *WorkItem {
 	mock := &WorkItem{}
 	mock.Mock.Test(t)
 

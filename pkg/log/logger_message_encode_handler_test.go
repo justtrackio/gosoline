@@ -1,7 +1,6 @@
 package log_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -27,7 +26,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) SetupTest() {
 }
 
 func (s *LoggerMessageEncodeHandlerTestSuite) TestEncodeEmpty() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 	attributes := make(map[string]string)
 
 	_, attributes, err := s.encoder.Encode(ctx, nil, attributes)
@@ -39,8 +38,8 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestEncodeEmpty() {
 func (s *LoggerMessageEncodeHandlerTestSuite) TestEncodeSuccess() {
 	s.logger.EXPECT().Warn("omitting logger context field %s of type %T during message encoding", "fieldC", mock.Anything)
 
-	ctx := context.Background()
-	ctx = log.AppendGlobalContextFields(ctx, map[string]interface{}{
+	ctx := s.T().Context()
+	ctx = log.AppendGlobalContextFields(ctx, map[string]any{
 		"fieldA": "text",
 		"fieldB": "1",
 		"fieldC": struct{}{},
@@ -56,7 +55,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestEncodeSuccess() {
 }
 
 func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeEmpty() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 	attributes := map[string]string{}
 
 	_, _, err := s.encoder.Decode(ctx, nil, attributes)
@@ -67,7 +66,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeEmpty() {
 func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeJsonError() {
 	s.logger.EXPECT().Warn("can not json unmarshal logger context fields during message decoding")
 
-	ctx := context.Background()
+	ctx := s.T().Context()
 	attributes := map[string]string{
 		log.MessageAttributeLoggerContext: `broken`,
 	}
@@ -78,7 +77,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeJsonError() {
 }
 
 func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeSuccess() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 	attributes := map[string]string{
 		log.MessageAttributeLoggerContext: `{"fieldA":"text","fieldB":1}`,
 	}

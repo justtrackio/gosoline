@@ -45,7 +45,7 @@ func TestShardReader(t *testing.T) {
 }
 
 func (s *shardReaderTestSuite) SetupTest() {
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.stream = "testStream"
 	s.shardId = "shard-007"
 	s.metadataRepository = mocks.NewMetadataRepository(s.T())

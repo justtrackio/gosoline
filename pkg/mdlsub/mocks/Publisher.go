@@ -154,7 +154,8 @@ func (_c *Publisher_PublishBatch_Call) RunAndReturn(run func(context.Context, st
 func NewPublisher(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Publisher {
+},
+) *Publisher {
 	mock := &Publisher{}
 	mock.Mock.Test(t)
 

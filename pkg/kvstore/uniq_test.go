@@ -7,7 +7,7 @@ import (
 )
 
 func TestUniqKeys_StringKeys(t *testing.T) {
-	keys := []interface{}{"a", "b", "b"}
+	keys := []any{"a", "b", "b"}
 
 	uniqKeys, err := UniqKeys(keys)
 
@@ -18,7 +18,7 @@ func TestUniqKeys_StringKeys(t *testing.T) {
 }
 
 func TestUniqKeys_IntegerKeys(t *testing.T) {
-	keys := []interface{}{1, 2, 1}
+	keys := []any{1, 2, 1}
 
 	uniqKeys, err := UniqKeys(keys)
 
@@ -29,7 +29,7 @@ func TestUniqKeys_IntegerKeys(t *testing.T) {
 }
 
 func TestUniqKeys_MixedKeys(t *testing.T) {
-	keys := []interface{}{1, "2", "1"}
+	keys := []any{1, "2", "1"}
 
 	uniqKeys, err := UniqKeys(keys)
 

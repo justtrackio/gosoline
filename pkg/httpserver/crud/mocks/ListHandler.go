@@ -243,7 +243,8 @@ func (_c *ListHandler_TransformOutput_Call) RunAndReturn(run func(context.Contex
 func NewListHandler(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *ListHandler {
+},
+) *ListHandler {
 	mock := &ListHandler{}
 	mock.Mock.Test(t)
 

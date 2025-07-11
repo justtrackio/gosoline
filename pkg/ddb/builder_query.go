@@ -14,7 +14,7 @@ import (
 type QueryOperation struct {
 	input      *dynamodb.QueryInput
 	iterator   *pageIterator
-	targetType interface{}
+	targetType any
 	result     *QueryResult
 }
 
@@ -23,22 +23,22 @@ type keyExprBuilder func() expression.KeyConditionBuilder
 //go:generate go run github.com/vektra/mockery/v2 --name QueryBuilder
 type QueryBuilder interface {
 	WithIndex(name string) QueryBuilder
-	WithHash(value interface{}) QueryBuilder
-	WithRangeBetween(lower interface{}, upper interface{}) QueryBuilder
+	WithHash(value any) QueryBuilder
+	WithRangeBetween(lower any, upper any) QueryBuilder
 	WithRangeBeginsWith(prefix string) QueryBuilder
-	WithRangeEq(value interface{}) QueryBuilder
-	WithRangeGt(value interface{}) QueryBuilder
-	WithRangeGte(value interface{}) QueryBuilder
-	WithRangeLt(value interface{}) QueryBuilder
-	WithRangeLte(value interface{}) QueryBuilder
+	WithRangeEq(value any) QueryBuilder
+	WithRangeGt(value any) QueryBuilder
+	WithRangeGte(value any) QueryBuilder
+	WithRangeLt(value any) QueryBuilder
+	WithRangeLte(value any) QueryBuilder
 	WithFilter(filter expression.ConditionBuilder) QueryBuilder
 	DisableTtlFilter() QueryBuilder
-	WithProjection(projection interface{}) QueryBuilder
+	WithProjection(projection any) QueryBuilder
 	WithLimit(limit int) QueryBuilder
 	WithPageSize(size int) QueryBuilder
 	WithDescendingOrder() QueryBuilder
 	WithConsistentRead(consistentRead bool) QueryBuilder
-	Build(result interface{}) (*QueryOperation, error)
+	Build(result any) (*QueryOperation, error)
 }
 
 type queryBuilder struct {
@@ -50,7 +50,7 @@ type queryBuilder struct {
 
 	hashExprBuilder  keyExprBuilder
 	rangeExprBuilder keyExprBuilder
-	projection       interface{}
+	projection       any
 	limit            *int32
 	pageSize         *int32
 	scanIndexForward *bool
@@ -70,6 +70,7 @@ func (b *queryBuilder) WithIndex(name string) QueryBuilder {
 
 	if index == nil {
 		b.err = multierror.Append(b.err, fmt.Errorf("no index [%s] defined for table [%s]", name, b.metadata.TableName))
+
 		return b
 	}
 
@@ -79,7 +80,7 @@ func (b *queryBuilder) WithIndex(name string) QueryBuilder {
 	return b
 }
 
-func (b *queryBuilder) WithHash(value interface{}) QueryBuilder {
+func (b *queryBuilder) WithHash(value any) QueryBuilder {
 	b.hashExprBuilder = func() expression.KeyConditionBuilder {
 		return expression.KeyEqual(expression.Key(*b.selected.GetHashKey()), expression.Value(value))
 	}
@@ -87,7 +88,7 @@ func (b *queryBuilder) WithHash(value interface{}) QueryBuilder {
 	return b
 }
 
-func (b *queryBuilder) WithRangeBetween(lower interface{}, upper interface{}) QueryBuilder {
+func (b *queryBuilder) WithRangeBetween(lower any, upper any) QueryBuilder {
 	b.rangeExprBuilder = func() expression.KeyConditionBuilder {
 		return expression.KeyBetween(expression.Key(*b.selected.GetRangeKey()), expression.Value(lower), expression.Value(upper))
 	}
@@ -103,7 +104,7 @@ func (b *queryBuilder) WithRangeBeginsWith(prefix string) QueryBuilder {
 	return b
 }
 
-func (b *queryBuilder) WithRangeEq(value interface{}) QueryBuilder {
+func (b *queryBuilder) WithRangeEq(value any) QueryBuilder {
 	b.rangeExprBuilder = func() expression.KeyConditionBuilder {
 		return expression.KeyEqual(expression.Key(*b.selected.GetRangeKey()), expression.Value(value))
 	}
@@ -111,7 +112,7 @@ func (b *queryBuilder) WithRangeEq(value interface{}) QueryBuilder {
 	return b
 }
 
-func (b *queryBuilder) WithRangeGt(value interface{}) QueryBuilder {
+func (b *queryBuilder) WithRangeGt(value any) QueryBuilder {
 	b.rangeExprBuilder = func() expression.KeyConditionBuilder {
 		return expression.KeyGreaterThan(expression.Key(*b.selected.GetRangeKey()), expression.Value(value))
 	}
@@ -119,7 +120,7 @@ func (b *queryBuilder) WithRangeGt(value interface{}) QueryBuilder {
 	return b
 }
 
-func (b *queryBuilder) WithRangeGte(value interface{}) QueryBuilder {
+func (b *queryBuilder) WithRangeGte(value any) QueryBuilder {
 	b.rangeExprBuilder = func() expression.KeyConditionBuilder {
 		return expression.KeyGreaterThanEqual(expression.Key(*b.selected.GetRangeKey()), expression.Value(value))
 	}
@@ -127,7 +128,7 @@ func (b *queryBuilder) WithRangeGte(value interface{}) QueryBuilder {
 	return b
 }
 
-func (b *queryBuilder) WithRangeLt(value interface{}) QueryBuilder {
+func (b *queryBuilder) WithRangeLt(value any) QueryBuilder {
 	b.rangeExprBuilder = func() expression.KeyConditionBuilder {
 		return expression.KeyLessThan(expression.Key(*b.selected.GetRangeKey()), expression.Value(value))
 	}
@@ -135,7 +136,7 @@ func (b *queryBuilder) WithRangeLt(value interface{}) QueryBuilder {
 	return b
 }
 
-func (b *queryBuilder) WithRangeLte(value interface{}) QueryBuilder {
+func (b *queryBuilder) WithRangeLte(value any) QueryBuilder {
 	b.rangeExprBuilder = func() expression.KeyConditionBuilder {
 		return expression.KeyLessThanEqual(expression.Key(*b.selected.GetRangeKey()), expression.Value(value))
 	}
@@ -155,7 +156,7 @@ func (b *queryBuilder) DisableTtlFilter() QueryBuilder {
 	return b
 }
 
-func (b *queryBuilder) WithProjection(projection interface{}) QueryBuilder {
+func (b *queryBuilder) WithProjection(projection any) QueryBuilder {
 	b.projection = projection
 
 	return b
@@ -185,7 +186,7 @@ func (b *queryBuilder) WithConsistentRead(consistentRead bool) QueryBuilder {
 	return b
 }
 
-func (b *queryBuilder) Build(result interface{}) (*QueryOperation, error) {
+func (b *queryBuilder) Build(result any) (*QueryOperation, error) {
 	var err error
 	var keyCondition expression.KeyConditionBuilder
 	var projectionExpr *expression.ProjectionBuilder

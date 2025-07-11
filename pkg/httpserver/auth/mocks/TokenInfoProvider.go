@@ -83,7 +83,8 @@ func (_c *TokenInfoProvider_GetTokenInfo_Call) RunAndReturn(run func(string) (*o
 func NewTokenInfoProvider(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *TokenInfoProvider {
+},
+) *TokenInfoProvider {
 	mock := &TokenInfoProvider{}
 	mock.Mock.Test(t)
 

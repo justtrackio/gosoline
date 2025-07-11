@@ -75,7 +75,8 @@ func (_c *Batcher_Get_Call) RunAndReturn(run func(context.Context) []kafka.Messa
 func NewBatcher(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Batcher {
+},
+) *Batcher {
 	mock := &Batcher{}
 	mock.Mock.Test(t)
 

@@ -10,7 +10,7 @@ func NewMultiProducer(producers ...Producer) Producer {
 	return multiProducer(producers)
 }
 
-func (mp multiProducer) WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]string) error {
+func (mp multiProducer) WriteOne(ctx context.Context, model any, attributeSets ...map[string]string) error {
 	for _, p := range mp {
 		err := p.WriteOne(ctx, model, attributeSets...)
 		if err != nil {
@@ -21,7 +21,7 @@ func (mp multiProducer) WriteOne(ctx context.Context, model interface{}, attribu
 	return nil
 }
 
-func (mp multiProducer) Write(ctx context.Context, models interface{}, attributeSets ...map[string]string) error {
+func (mp multiProducer) Write(ctx context.Context, models any, attributeSets ...map[string]string) error {
 	for _, p := range mp {
 		err := p.Write(ctx, models, attributeSets...)
 		if err != nil {

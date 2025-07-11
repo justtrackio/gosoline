@@ -239,7 +239,7 @@ Adds additional handlers to the logger.
 type Handler interface {
 	Channels() []string
 	Level() int
-	Log(timestamp time.Time, level int, msg string, args []interface{}, err error, data Data) error
+	Log(timestamp time.Time, level int, msg string, args []any, err error, data Data) error
 }
 ```
 

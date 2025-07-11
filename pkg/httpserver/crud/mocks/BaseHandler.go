@@ -183,7 +183,8 @@ func (_c *BaseHandler_TransformOutput_Call) RunAndReturn(run func(context.Contex
 func NewBaseHandler(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *BaseHandler {
+},
+) *BaseHandler {
 	mock := &BaseHandler{}
 	mock.Mock.Test(t)
 

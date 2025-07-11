@@ -119,7 +119,8 @@ func (_c *TaskRunner_RunTask_Call) RunAndReturn(run func(kernel.Module) error) *
 func NewTaskRunner(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *TaskRunner {
+},
+) *TaskRunner {
 	mock := &TaskRunner{}
 	mock.Mock.Test(t)
 

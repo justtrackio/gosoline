@@ -29,7 +29,7 @@ func NewBackoffExecutor(logger log.Logger, settings exec.BackoffSettings, name s
 	return exec.NewBackoffExecutor(logger, executableResource, &settings, checks)
 }
 
-func NilChecker(_ interface{}, err error) exec.ErrorType {
+func NilChecker(_ any, err error) exec.ErrorType {
 	if errors.Is(err, Nil) {
 		return exec.ErrorTypeOk
 	}
@@ -37,7 +37,7 @@ func NilChecker(_ interface{}, err error) exec.ErrorType {
 	return exec.ErrorTypeUnknown
 }
 
-func OOMChecker(_ interface{}, err error) exec.ErrorType {
+func OOMChecker(_ any, err error) exec.ErrorType {
 	if strings.HasPrefix(err.Error(), "OOM") {
 		return exec.ErrorTypeRetryable
 	}
@@ -45,7 +45,7 @@ func OOMChecker(_ interface{}, err error) exec.ErrorType {
 	return exec.ErrorTypeUnknown
 }
 
-func RetryableErrorChecker(_ interface{}, err error) exec.ErrorType {
+func RetryableErrorChecker(_ any, err error) exec.ErrorType {
 	if IsRetryableError(err) {
 		return exec.ErrorTypeRetryable
 	}

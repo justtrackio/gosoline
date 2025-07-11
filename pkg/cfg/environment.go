@@ -69,5 +69,6 @@ func (o *memoryEnvProvider) PrefixExists(prefix string) bool {
 
 func (m *memoryEnvProvider) SetEnv(key string, value string) error {
 	m.values[key] = value
+
 	return nil
 }

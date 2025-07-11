@@ -381,7 +381,8 @@ func (_c *BatchGetItemsBuilder_WithProjection_Call) RunAndReturn(run func(interf
 func NewBatchGetItemsBuilder(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *BatchGetItemsBuilder {
+},
+) *BatchGetItemsBuilder {
 	mock := &BatchGetItemsBuilder{}
 	mock.Mock.Test(t)
 

@@ -45,7 +45,7 @@ func (*MyEntityRepository) Delete(ctx context.Context, value db_repo.ModelBased)
 	return nil
 }
 
-func (*MyEntityRepository) Query(ctx context.Context, qb *db_repo.QueryBuilder, result interface{}) error {
+func (*MyEntityRepository) Query(ctx context.Context, qb *db_repo.QueryBuilder, result any) error {
 	r := result.(*[]*MyEntity)
 
 	*r = append(*r, &MyEntity{
@@ -56,7 +56,6 @@ func (*MyEntityRepository) Query(ctx context.Context, qb *db_repo.QueryBuilder, 
 		Id:    2,
 		Prop1: "text",
 	})
-	result = r
 
 	return nil
 }

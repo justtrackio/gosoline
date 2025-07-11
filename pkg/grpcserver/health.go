@@ -151,6 +151,7 @@ func (s *healthServer) SetServingStatus(service string, servingStatus protobuf.H
 	defer s.mu.Unlock()
 	if s.shutdown {
 		s.logger.Info("health: status changing for %s to %v is ignored because health service is shutdown", service, servingStatus)
+
 		return
 	}
 

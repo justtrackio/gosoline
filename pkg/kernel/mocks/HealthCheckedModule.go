@@ -82,7 +82,8 @@ func (_c *HealthCheckedModule_IsHealthy_Call) RunAndReturn(run func(context.Cont
 func NewHealthCheckedModule(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *HealthCheckedModule {
+},
+) *HealthCheckedModule {
 	mock := &HealthCheckedModule{}
 	mock.Mock.Test(t)
 

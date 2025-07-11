@@ -43,5 +43,6 @@ func (c Content) GetTime() (time.Time, error) {
 	if err != nil {
 		return time.Time{}, err
 	}
+
 	return t, nil
 }

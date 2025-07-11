@@ -1,7 +1,6 @@
 package stream_test
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"regexp"
@@ -16,7 +15,10 @@ import (
 func TestOutputFile_ConcurrentWrite(t *testing.T) {
 	fileName := "testdata/output_file_test.output.txt"
 
-	_ = os.Remove(fileName)
+	err := os.Remove(fileName)
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatalf("could not remove file: %v", err)
+	}
 
 	logger := new(logMocks.Logger)
 	output := stream.NewFileOutput(nil, logger, &stream.FileOutputSettings{
@@ -30,7 +32,7 @@ func TestOutputFile_ConcurrentWrite(t *testing.T) {
 	for i := 0; i < count; i++ {
 		go func(i int) {
 			defer waitGroup.Done()
-			err := output.WriteOne(context.Background(), &stream.Message{
+			err := output.WriteOne(t.Context(), &stream.Message{
 				Attributes: nil,
 				Body:       fmt.Sprintf("%d", i),
 			})

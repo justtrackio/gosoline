@@ -10,7 +10,7 @@ import (
 type Handler interface {
 	Channels() Channels
 	Level() int
-	Log(timestamp time.Time, level int, msg string, args []interface{}, err error, data Data) error
+	Log(timestamp time.Time, level int, msg string, args []any, err error, data Data) error
 }
 
 type Channels map[string]int
@@ -25,7 +25,9 @@ func AddHandlerFactory(typ string, factory HandlerFactory) {
 
 func NewHandlersFromConfig(config cfg.Config) ([]Handler, error) {
 	settings := &LoggerSettings{}
-	config.UnmarshalKey("log", settings)
+	if err := config.UnmarshalKey("log", settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal logger settings: %w", err)
+	}
 
 	var i int
 	var ok bool
@@ -48,9 +50,13 @@ func NewHandlersFromConfig(config cfg.Config) ([]Handler, error) {
 	return handlers, nil
 }
 
-func UnmarshalHandlerSettingsFromConfig(config cfg.Config, name string, settings interface{}) {
+func UnmarshalHandlerSettingsFromConfig(config cfg.Config, name string, settings any) error {
 	handlerConfigKey := getHandlerConfigKey(name)
-	config.UnmarshalKey(handlerConfigKey, settings, cfg.UnmarshalWithDefaultsFromKey("log.level", "level"))
+	if err := config.UnmarshalKey(handlerConfigKey, settings, cfg.UnmarshalWithDefaultsFromKey("log.level", "level")); err != nil {
+		return fmt.Errorf("failed to unmarshal handler settings for key %q: %w", handlerConfigKey, err)
+	}
+
+	return nil
 }
 
 func getHandlerConfigKey(name string) string {

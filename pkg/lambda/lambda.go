@@ -11,7 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
-type HandlerFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (interface{}, error)
+type HandlerFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (any, error)
 
 func Start(handlerFactory HandlerFactory, configOptions ...cfg.Option) {
 	var err error

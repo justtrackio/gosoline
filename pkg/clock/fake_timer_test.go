@@ -16,6 +16,7 @@ func TestFakeClock_NewTimer(t *testing.T) {
 	select {
 	case <-timer.Chan():
 		assert.Fail(t, "timer should not have fired")
+
 		return
 	default:
 		break
@@ -36,6 +37,7 @@ func TestFakeClock_NewTimer(t *testing.T) {
 	select {
 	case <-timer.Chan():
 		assert.Fail(t, "timer should not have fired")
+
 		return
 	default:
 		break
@@ -55,6 +57,7 @@ func TestFakeClock_NewTimer(t *testing.T) {
 	select {
 	case <-timer.Chan():
 		assert.Fail(t, "timer should not have fired again")
+
 		return
 	default:
 		break

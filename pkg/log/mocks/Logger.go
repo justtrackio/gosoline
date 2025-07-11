@@ -347,7 +347,8 @@ func (_c *Logger_WithFields_Call) RunAndReturn(run func(log.Fields) log.Logger) 
 func NewLogger(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Logger {
+},
+) *Logger {
 	mock := &Logger{}
 	mock.Mock.Test(t)
 

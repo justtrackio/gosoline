@@ -1,7 +1,6 @@
 package reqctx_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/reqctx"
@@ -17,7 +16,7 @@ type typeB struct {
 }
 
 func TestReqCtx(t *testing.T) {
-	ctx := reqctx.New(context.Background())
+	ctx := reqctx.New(t.Context())
 
 	a := reqctx.Get[typeA](ctx)
 	b := reqctx.Get[typeB](ctx)

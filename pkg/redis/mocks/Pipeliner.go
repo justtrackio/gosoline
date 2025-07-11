@@ -15709,7 +15709,8 @@ func (_c *Pipeliner_ZUnionWithScores_Call) RunAndReturn(run func(context.Context
 func NewPipeliner(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Pipeliner {
+},
+) *Pipeliner {
 	mock := &Pipeliner{}
 	mock.Mock.Test(t)
 

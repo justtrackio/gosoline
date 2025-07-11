@@ -72,7 +72,8 @@ func (_c *Module_Run_Call) RunAndReturn(run func(context.Context) error) *Module
 func NewModule(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Module {
+},
+) *Module {
 	mock := &Module{}
 	mock.Mock.Test(t)
 

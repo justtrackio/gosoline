@@ -139,7 +139,8 @@ func (_c *ModelBased_SetUpdatedAt_Call) RunAndReturn(run func(*time.Time)) *Mode
 func NewModelBased(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *ModelBased {
+},
+) *ModelBased {
 	mock := &ModelBased{}
 	mock.Mock.Test(t)
 

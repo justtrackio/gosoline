@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -54,7 +55,9 @@ func ProvideConnectionLifeCycleAdvisor(ctx context.Context, config cfg.Config, _
 func NewConnectionLifeCycleAdvisor(config cfg.Config, serverName string) (ConnectionLifeCycleAdvisor, error) {
 	settings := ConnectionLifeCycleAdvisorSettings{}
 	key := HttpserverSettingsKey(serverName) + ".connection_lifecycle"
-	config.UnmarshalKey(key, &settings)
+	if err := config.UnmarshalKey(key, &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal connection lifecycle advisor settings: %w", err)
+	}
 
 	return NewConnectionLifeCycleAdvisorWithInterfaces(clock.Provider, settings), nil
 }

@@ -73,7 +73,8 @@ func (_m *Writer) WriteMessages(ctx context.Context, msgs ...kafka.Message) erro
 func NewWriter(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Writer {
+},
+) *Writer {
 	mock := &Writer{}
 	mock.Mock.Test(t)
 

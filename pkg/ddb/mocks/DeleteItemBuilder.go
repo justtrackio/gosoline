@@ -325,7 +325,8 @@ func (_c *DeleteItemBuilder_WithRange_Call) RunAndReturn(run func(interface{}) d
 func NewDeleteItemBuilder(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *DeleteItemBuilder {
+},
+) *DeleteItemBuilder {
 	mock := &DeleteItemBuilder{}
 	mock.Mock.Test(t)
 

@@ -693,7 +693,8 @@ func (_c *Client_Unsubscribe_Call) RunAndReturn(run func(context.Context, *sns.U
 func NewClient(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Client {
+},
+) *Client {
 	mock := &Client{}
 	mock.Mock.Test(t)
 

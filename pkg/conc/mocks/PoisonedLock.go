@@ -222,7 +222,8 @@ func (_c *PoisonedLock_Unlock_Call) RunAndReturn(run func()) *PoisonedLock_Unloc
 func NewPoisonedLock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *PoisonedLock {
+},
+) *PoisonedLock {
 	mock := &PoisonedLock{}
 	mock.Mock.Test(t)
 

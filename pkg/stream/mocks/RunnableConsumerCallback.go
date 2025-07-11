@@ -130,7 +130,8 @@ func (_c *RunnableConsumerCallback_Run_Call[M]) RunAndReturn(run func(context.Co
 func NewRunnableConsumerCallback[M interface{}](t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *RunnableConsumerCallback[M] {
+},
+) *RunnableConsumerCallback[M] {
 	mock := &RunnableConsumerCallback[M]{}
 	mock.Mock.Test(t)
 

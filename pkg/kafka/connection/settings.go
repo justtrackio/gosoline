@@ -17,9 +17,12 @@ type Settings struct {
 	Password string `cfg:"password"`
 }
 
-func ParseSettings(c cfg.Config, name string) *Settings {
+func ParseSettings(c cfg.Config, name string) (*Settings, error) {
 	settings := &Settings{}
-	c.UnmarshalKey(fmt.Sprintf("kafka.connection.%s", name), settings)
+	key := fmt.Sprintf("kafka.connection.%s", name)
+	if err := c.UnmarshalKey(key, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal kafka connection settings for key %q in ParseSettings: %w", key, err)
+	}
 
-	return settings
+	return settings, nil
 }

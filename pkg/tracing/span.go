@@ -12,7 +12,7 @@ import (
 type Span interface {
 	AddAnnotation(key string, value string)
 	AddError(err error)
-	AddMetadata(key string, value interface{})
+	AddMetadata(key string, value any)
 	Finish()
 	GetId() string
 	GetTrace() *Trace
@@ -61,7 +61,7 @@ func (s awsSpan) AddError(err error) {
 	_ = s.segment.AddError(err)
 }
 
-func (s awsSpan) AddMetadata(key string, value interface{}) {
+func (s awsSpan) AddMetadata(key string, value any) {
 	if !s.enabled {
 		return
 	}

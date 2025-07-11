@@ -53,14 +53,14 @@ var schemaTypeMap = map[reflect.Type]logicalType{
 	reflect.TypeOf(uint64(0)):   {"INT64", mdl.Box("UINT_64")},
 }
 
-func mapFieldsToTags(value interface{}) (map[string]interface{}, error) {
+func mapFieldsToTags(value any) (map[string]any, error) {
 	rt, rv := refl.ResolveBaseTypeAndValue(value)
 
 	if rt.Kind() != reflect.Struct {
 		panic(fmt.Sprintf("Cannot map %T to struct tags", value))
 	}
 
-	result := make(map[string]interface{}, rt.NumField())
+	result := make(map[string]any, rt.NumField())
 
 	for i := 0; i < rt.NumField(); i++ {
 		tField := rt.Field(i)
@@ -103,7 +103,7 @@ func mapFieldsToTags(value interface{}) (map[string]interface{}, error) {
 	return result, nil
 }
 
-func parseSchema(items interface{}) (string, error) {
+func parseSchema(items any) (string, error) {
 	baseType, _ := refl.ResolveBaseTypeAndValue(items)
 
 	rootTag := createTag(tagProps{
@@ -175,7 +175,7 @@ func createTag(props map[string]string) string {
 	tag := ""
 
 	for key, value := range props {
-		if len(tag) > 0 {
+		if tag != "" {
 			tag += ", "
 		}
 
@@ -186,7 +186,7 @@ func createTag(props map[string]string) string {
 }
 
 // Note: firehose stores timestamp_millis as nano + julian date little endian int96 values (old parquet format)
-// the corresponding go type would be a 12 byte byte array, with
+// the corresponding go type would be a 12 byte array, with
 // - the first 8 bytes are the nanoseconds within the day
 // - the following four bytes represent the julian date
 
@@ -232,9 +232,9 @@ func parseInt96Timestamp(t string) time.Time {
 
 	l := dt + 68569
 	n := 4 * l / 146097
-	l = l - (146097*n+3)/4
+	l -= (146097*n + 3) / 4
 	i := 4000 * (l + 1) / 1461001
-	l = l - 1461*i/4 + 31
+	l -= 1461*i/4 + 31
 	j := 80 * l / 2447
 	k := l - 2447*j/80
 	l = j / 11

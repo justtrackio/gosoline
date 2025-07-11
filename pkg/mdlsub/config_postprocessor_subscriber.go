@@ -35,13 +35,18 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	var inputPostProcessor SubscriberInputConfigPostProcessor
 	var outputPostProcessor SubscriberOutputConfigPostProcessor
 
-	settings := unmarshalSettings(config)
+	settings, err := unmarshalSettings(config)
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal mdlsub settings: %w", err)
+	}
 
 	for name, subscriberSettings := range settings.Subscribers {
 		subscriberKey := GetSubscriberConfigKey(name)
 
 		consumerSettings := &stream.ConsumerSettings{}
-		config.UnmarshalDefaults(consumerSettings)
+		if err := config.UnmarshalDefaults(consumerSettings); err != nil {
+			return false, fmt.Errorf("can not unmarshal consumer settings for subscriber %s: %w", name, err)
+		}
 
 		consumerSettings.Input = GetSubscriberFQN(name, subscriberSettings.SourceModel)
 		consumerName := GetSubscriberFQN(name, subscriberSettings.SourceModel)
@@ -84,7 +89,9 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 	}
 
 	inputSettings := &stream.SnsInputConfiguration{}
-	config.UnmarshalDefaults(inputSettings)
+	if err := config.UnmarshalDefaults(inputSettings); err != nil {
+		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
+	}
 
 	inputSettings.ConsumerId = consumerId
 	inputSettings.Targets = []stream.SnsInputTargetConfiguration{
@@ -108,7 +115,9 @@ func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string,
 	}
 
 	inputSettings := &stream.KinesisInputConfiguration{}
-	config.UnmarshalDefaults(inputSettings)
+	if err := config.UnmarshalDefaults(inputSettings); err != nil {
+		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
+	}
 
 	inputSettings.Project = subscriberSettings.SourceModel.Project
 	inputSettings.Family = subscriberSettings.SourceModel.Family
@@ -123,7 +132,9 @@ func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string
 	kvstoreKey := kvstore.GetConfigurableKey(name)
 
 	kvstoreSettings := &kvstore.ChainConfiguration{}
-	config.UnmarshalDefaults(kvstoreSettings)
+	if err := config.UnmarshalDefaults(kvstoreSettings); err != nil {
+		return cfg.WithConfigSetting(kvstoreKey, nil, cfg.SkipExisting)
+	}
 
 	kvstoreSettings.Project = subscriberSettings.TargetModel.Project
 	kvstoreSettings.Family = subscriberSettings.TargetModel.Family
@@ -156,14 +167,16 @@ func GetSubscriberOutputConfigKey(name string) string {
 	return fmt.Sprintf("%s.output", GetSubscriberConfigKey(name))
 }
 
-func UnmarshalSubscriberSourceModel(config cfg.Config, name string) SubscriberModel {
+func UnmarshalSubscriberSourceModel(config cfg.Config, name string) (SubscriberModel, error) {
 	key := fmt.Sprintf("%s.source", GetSubscriberConfigKey(name))
 	sourceModel := &SubscriberModel{}
-	config.UnmarshalKey(key, sourceModel)
+	if err := config.UnmarshalKey(key, sourceModel); err != nil {
+		return SubscriberModel{}, fmt.Errorf("failed to unmarshal subscriber source model: %w", err)
+	}
 
 	if sourceModel.Name == "" {
 		sourceModel.Name = name
 	}
 
-	return *sourceModel
+	return *sourceModel, nil
 }

@@ -5,7 +5,7 @@ import (
 )
 
 type ConfigProvider interface {
-	AllSettings() map[string]interface{}
+	AllSettings() map[string]any
 }
 
 type SentryContextProvider func(config ConfigProvider, sentryHook *HandlerSentry) error

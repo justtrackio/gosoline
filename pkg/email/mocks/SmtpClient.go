@@ -74,7 +74,8 @@ func (_c *SmtpClient_SendMail_Call) RunAndReturn(run func(string, []string, io.R
 func NewSmtpClient(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *SmtpClient {
+},
+) *SmtpClient {
 	mock := &SmtpClient{}
 	mock.Mock.Test(t)
 

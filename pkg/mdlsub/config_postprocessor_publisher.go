@@ -15,7 +15,7 @@ func init() {
 
 const sharedName = "publisher"
 
-type publisherOutputTypeHandler func(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings, clientName string) stream.BaseOutputConfigurationAware
+type publisherOutputTypeHandler func(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings, clientName string) (stream.BaseOutputConfigurationAware, error)
 
 var publisherOutputTypeHandlers = map[string]publisherOutputTypeHandler{
 	stream.OutputTypeInMemory: handlePublisherOutputTypeInMemory,
@@ -33,22 +33,28 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 
 	for name := range publishers {
 		publisherKey := getPublisherConfigKey(name)
-		publisherSettings := readPublisherSetting(config, name)
+
+		publisherSettings, err := readPublisherSetting(config, name)
+		if err != nil {
+			return false, fmt.Errorf("can not read publisher settings for %s: %w", name, err)
+		}
 
 		producerName := fmt.Sprintf("publisher-%s", name)
 		outputName := fmt.Sprintf("publisher-%s", name)
 
-		if len(publisherSettings.Producer) != 0 {
+		if publisherSettings.Producer != "" {
 			producerName = publisherSettings.Producer
 		} else {
 			publisherSettings.Producer = producerName
 		}
 
 		producerSettings := &stream.ProducerSettings{}
-		config.UnmarshalDefaults(producerSettings)
+		if err := config.UnmarshalDefaults(producerSettings); err != nil {
+			return false, fmt.Errorf("can not unmarshal producer settings for publisher %s: %w", publisherSettings.Name, err)
+		}
 
 		producerSettings.Output = outputName
-		producerSettings.Daemon.MessageAttributes[AttributeModelId] = publisherSettings.ModelId.String()
+		producerSettings.Daemon.MessageAttributes[AttributeModelId] = publisherSettings.String()
 
 		var ok bool
 		var outputTypeHandler publisherOutputTypeHandler
@@ -58,7 +64,12 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		}
 
 		clientName := producerName
-		outputSettings := outputTypeHandler(config, publisherSettings, producerSettings, clientName)
+
+		outputSettings, err := outputTypeHandler(config, publisherSettings, producerSettings, clientName)
+		if err != nil {
+			return false, fmt.Errorf("can not handle publisher output type %s for publisher %s: %w", publisherSettings.OutputType, publisherSettings.Name, err)
+		}
+
 		producerKey := stream.ConfigurableProducerKey(producerName)
 		outputKey := stream.ConfigurableOutputKey(outputName)
 
@@ -85,14 +96,16 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	return true, nil
 }
 
-func handlePublisherOutputTypeInMemory(config cfg.Config, _ *PublisherSettings, _ *stream.ProducerSettings, _ string) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeInMemory(config cfg.Config, _ *PublisherSettings, _ *stream.ProducerSettings, _ string) (stream.BaseOutputConfigurationAware, error) {
 	outputSettings := &stream.InMemoryOutputConfiguration{}
-	config.UnmarshalDefaults(outputSettings)
+	if err := config.UnmarshalDefaults(outputSettings); err != nil {
+		return nil, fmt.Errorf("can not unmarshal in-memory output settings: %w", err)
+	}
 
-	return outputSettings
+	return outputSettings, nil
 }
 
-func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings, clientName string) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings, clientName string) (stream.BaseOutputConfigurationAware, error) {
 	producerSettings.Daemon.Enabled = true
 	producerSettings.Daemon.Interval = time.Second
 	// kinesis batches have a max size of 5mb. we're using 4.5mb to give it some headroom
@@ -103,7 +116,9 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 	producerSettings.Daemon.AggregationMaxSize = 950_000
 
 	outputSettings := &stream.KinesisOutputConfiguration{}
-	config.UnmarshalDefaults(outputSettings)
+	if err := config.UnmarshalDefaults(outputSettings); err != nil {
+		return nil, fmt.Errorf("can not unmarshal kinesis output settings for publisher %s: %w", publisherSettings.Name, err)
+	}
 
 	outputSettings.Project = publisherSettings.Project
 	outputSettings.Family = publisherSettings.Family
@@ -113,12 +128,14 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 	outputSettings.StreamName = publisherSettings.Name
 	outputSettings.Tracing.Enabled = false
 
-	return outputSettings
+	return outputSettings, nil
 }
 
-func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings, clientName string) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings, clientName string) (stream.BaseOutputConfigurationAware, error) {
 	outputSettings := &stream.SnsOutputConfiguration{}
-	config.UnmarshalDefaults(outputSettings)
+	if err := config.UnmarshalDefaults(outputSettings); err != nil {
+		return nil, fmt.Errorf("can not unmarshal sns output settings for publisher %s: %w", publisherSettings.Name, err)
+	}
 
 	outputSettings.Project = publisherSettings.Project
 	outputSettings.Family = publisherSettings.Family
@@ -131,12 +148,14 @@ func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *Publishe
 		outputSettings.TopicId = sharedName
 	}
 
-	return outputSettings
+	return outputSettings, nil
 }
 
-func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings, clientName string) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings, clientName string) (stream.BaseOutputConfigurationAware, error) {
 	outputSettings := &stream.SqsOutputConfiguration{}
-	config.UnmarshalDefaults(outputSettings)
+	if err := config.UnmarshalDefaults(outputSettings); err != nil {
+		return nil, fmt.Errorf("can not unmarshal sqs output settings for publisher %s: %w", publisherSettings.Name, err)
+	}
 
 	outputSettings.Project = publisherSettings.Project
 	outputSettings.Family = publisherSettings.Family
@@ -149,22 +168,24 @@ func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *Publishe
 		outputSettings.QueueId = sharedName
 	}
 
-	return outputSettings
+	return outputSettings, nil
 }
 
 func getPublisherConfigKey(name string) string {
 	return fmt.Sprintf("%s.%s", ConfigKeyMdlSubPublishers, name)
 }
 
-func readPublisherSetting(config cfg.Config, name string) *PublisherSettings {
+func readPublisherSetting(config cfg.Config, name string) (*PublisherSettings, error) {
 	publisherKey := getPublisherConfigKey(name)
 
 	settings := &PublisherSettings{}
-	config.UnmarshalKey(publisherKey, settings)
+	if err := config.UnmarshalKey(publisherKey, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal publisher settings for %s: %w", name, err)
+	}
 
 	if settings.Name == "" {
 		settings.Name = name
 	}
 
-	return settings
+	return settings, nil
 }

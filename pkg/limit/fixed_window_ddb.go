@@ -102,6 +102,7 @@ func (f fixedWindowDdb) Increment(ctx context.Context, prefix string) (incr *int
 	}
 
 	t := time.Duration(item.Ttl-now().Unix()) * time.Second
+
 	return &item.Val, &t, nil
 }
 

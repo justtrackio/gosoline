@@ -59,13 +59,15 @@ type Settings struct {
 	MaxBatchSize int           `cfg:"max_batch_size" default:"25"`
 }
 
-func NewScheduler[T any](config cfg.Config, batchRunner BatchRunner[T], name string) Scheduler[T] {
+func NewScheduler[T any](config cfg.Config, batchRunner BatchRunner[T], name string) (Scheduler[T], error) {
 	var settings Settings
-	config.UnmarshalKey(fmt.Sprintf("scheduler.%s", name), &settings)
+	if err := config.UnmarshalKey(fmt.Sprintf("scheduler.%s", name), &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal scheduler settings for %s: %w", name, err)
+	}
 
 	metricWriter := metric.NewWriter(getDefaultMetrics(name)...)
 
-	return NewSchedulerWithSettings[T](batchRunner, metricWriter, name, settings)
+	return NewSchedulerWithSettings[T](batchRunner, metricWriter, name, settings), nil
 }
 
 func NewSchedulerWithSettings[T any](batchRunner BatchRunner[T], metricWriter metric.Writer, name string, settings Settings) Scheduler[T] {

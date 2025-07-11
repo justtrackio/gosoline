@@ -151,7 +151,8 @@ func (_c *Timer_Stop_Call) RunAndReturn(run func() bool) *Timer_Stop_Call {
 func NewTimer(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Timer {
+},
+) *Timer {
 	mock := &Timer{}
 	mock.Mock.Test(t)
 

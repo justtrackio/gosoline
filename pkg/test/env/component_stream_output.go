@@ -32,7 +32,7 @@ func (s *streamOutputComponent) Get(i int) (*stream.Message, bool) {
 	return s.output.Get(i)
 }
 
-func (s *streamOutputComponent) Unmarshal(i int, output interface{}) map[string]string {
+func (s *streamOutputComponent) Unmarshal(i int, output any) map[string]string {
 	msg, ok := s.Get(i)
 
 	if !ok {
@@ -47,7 +47,7 @@ func (s *streamOutputComponent) Unmarshal(i int, output interface{}) map[string]
 	return msg.Attributes
 }
 
-func (s *streamOutputComponent) UnmarshalAggregate(i int, output interface{}) []map[string]string {
+func (s *streamOutputComponent) UnmarshalAggregate(i int, output any) []map[string]string {
 	msg, ok := s.Get(i)
 
 	if !ok {

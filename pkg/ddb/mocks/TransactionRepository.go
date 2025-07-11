@@ -145,7 +145,8 @@ func (_c *TransactionRepository_TransactWriteItems_Call) RunAndReturn(run func(c
 func NewTransactionRepository(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *TransactionRepository {
+},
+) *TransactionRepository {
 	mock := &TransactionRepository{}
 	mock.Mock.Test(t)
 

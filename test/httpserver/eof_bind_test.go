@@ -55,7 +55,7 @@ func (b bindHandler) Level() int {
 	return log.LevelPriority(log.LevelWarn)
 }
 
-func (b bindHandler) Log(_ time.Time, _ int, msg string, args []interface{}, _ error, _ log.Data) error {
+func (b bindHandler) Log(_ time.Time, _ int, msg string, args []any, _ error, _ log.Data) error {
 	formattedMsg := fmt.Sprintf(msg, args...)
 
 	b.NotEqual("POST /bind HTTP/1.1 - bind error - EOF", formattedMsg)
@@ -118,12 +118,12 @@ func (s *EofBindTestSuite) TestUnexpectedEofBind() *suite.HttpserverTestCase {
 	}
 }
 
-func (h eofBindHandler) GetInput() interface{} {
-	return &map[string]interface{}{}
+func (h eofBindHandler) GetInput() any {
+	return &map[string]any{}
 }
 
 func (h eofBindHandler) Handle(_ context.Context, request *httpserver.Request) (*httpserver.Response, error) {
-	body := request.Body.(*map[string]interface{})
+	body := request.Body.(*map[string]any)
 
 	return httpserver.NewJsonResponse(*body), nil
 }

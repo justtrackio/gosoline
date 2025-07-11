@@ -35,7 +35,7 @@ func (s *RedisTestSuite) SetupSuite() []suite.Option {
 func (s *RedisTestSuite) TestRedis() {
 	// ensure clean start
 	redisClient := s.Env().Redis("default").Client()
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	if err := s.Env().LoadFixtureSets([]fixtures.FixtureSetsFactory{
 		s.provideRedisOpSetFixtureSet(),
@@ -63,7 +63,7 @@ func (s *RedisTestSuite) TestRedis() {
 func (s *RedisTestSuite) TestRedisKvStore() {
 	// ensure clean start
 	redisClient := s.Env().Redis("default").Client()
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	if err := s.Env().LoadFixtureSet(s.provideKvStoreFixtureSet()); err != nil {
 		s.FailNow(err.Error())

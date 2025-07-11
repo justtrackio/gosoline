@@ -1,7 +1,6 @@
 package stream_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
@@ -91,13 +90,13 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 			logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 			queue := sqsMocks.NewQueue(t)
-			queue.EXPECT().Send(context.Background(), &data.expectedSqsMessage).Return(nil).Once()
+			queue.EXPECT().Send(t.Context(), &data.expectedSqsMessage).Return(nil).Once()
 
 			msg, err := stream.MarshalJsonMessage(data.body, data.attributes)
 			assert.NoError(t, err)
 
 			output := stream.NewSqsOutputWithInterfaces(logger, queue, &stream.SqsOutputSettings{})
-			err = output.WriteOne(context.Background(), msg)
+			err = output.WriteOne(t.Context(), msg)
 
 			assert.NoError(t, err)
 		})
@@ -255,7 +254,7 @@ func TestSqsOutput_Write(t *testing.T) {
 
 			queue := sqsMocks.NewQueue(t)
 			for _, chunk := range expectedSqsMessageChunks {
-				queue.EXPECT().SendBatch(context.Background(), chunk).Return(nil).Once()
+				queue.EXPECT().SendBatch(t.Context(), chunk).Return(nil).Once()
 			}
 
 			messages := make([]stream.WritableMessage, len(data.body))
@@ -267,7 +266,7 @@ func TestSqsOutput_Write(t *testing.T) {
 			}
 
 			output := stream.NewSqsOutputWithInterfaces(logger, queue, &stream.SqsOutputSettings{})
-			err := output.Write(context.Background(), messages)
+			err := output.Write(t.Context(), messages)
 
 			assert.NoError(t, err)
 		})

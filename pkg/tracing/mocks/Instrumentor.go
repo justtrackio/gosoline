@@ -220,7 +220,8 @@ func (_c *Instrumentor_HttpHandler_Call) RunAndReturn(run func(http.Handler) htt
 func NewInstrumentor(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Instrumentor {
+},
+) *Instrumentor {
 	mock := &Instrumentor{}
 	mock.Mock.Test(t)
 

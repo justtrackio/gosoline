@@ -88,7 +88,8 @@ func (_c *BaseListHandler_List_Call) RunAndReturn(run func(context.Context, *db_
 func NewBaseListHandler(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *BaseListHandler {
+},
+) *BaseListHandler {
 	mock := &BaseListHandler{}
 	mock.Mock.Test(t)
 

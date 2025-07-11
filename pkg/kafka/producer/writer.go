@@ -101,7 +101,7 @@ func NewWriter(
 		Balancer:     conf.Balancer,
 		RequiredAcks: kafka.RequiredAcks(conf.RequiredAcks),
 
-		Compression: kafka.Compression(conf.CompressionCodec.Code()),
+		Compression: kafka.Compression(conf.Code()),
 
 		Logger:      conf.Logger,
 		ErrorLogger: conf.ErrorLogger,

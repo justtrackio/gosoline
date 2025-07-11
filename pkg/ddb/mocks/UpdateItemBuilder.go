@@ -819,7 +819,8 @@ func (_c *UpdateItemBuilder_WithRange_Call) RunAndReturn(run func(interface{}) d
 func NewUpdateItemBuilder(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *UpdateItemBuilder {
+},
+) *UpdateItemBuilder {
 	mock := &UpdateItemBuilder{}
 	mock.Mock.Test(t)
 

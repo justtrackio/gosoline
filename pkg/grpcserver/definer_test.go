@@ -91,7 +91,7 @@ func TestDefinitions_AddWithHealthCheckCallback(t *testing.T) {
 			defs := tt.s.AddWithHealthCheckCallback(tt.args.name, tt.args.registrant, tt.args.healthCheckCallback)
 
 			assert.Equal(t, tt.args.name, (*defs)[0].ServiceName)
-			assert.Equal(t, (*defs)[0].HealthCheckCallback(context.Background()), protobuf.HealthCheckResponse_SERVING)
+			assert.Equal(t, (*defs)[0].HealthCheckCallback(t.Context()), protobuf.HealthCheckResponse_SERVING)
 		})
 	}
 }

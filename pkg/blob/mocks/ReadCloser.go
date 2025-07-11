@@ -123,7 +123,8 @@ func (_c *ReadCloser_Read_Call) RunAndReturn(run func([]byte) (int, error)) *Rea
 func NewReadCloser(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *ReadCloser {
+},
+) *ReadCloser {
 	mock := &ReadCloser{}
 	mock.Mock.Test(t)
 

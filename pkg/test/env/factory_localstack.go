@@ -65,7 +65,9 @@ func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigM
 	}
 
 	settings := &localstackSettings{}
-	UnmarshalSettings(config, settings, ComponentLocalstack, "default")
+	if err := UnmarshalSettings(config, settings, ComponentLocalstack, "default"); err != nil {
+		return fmt.Errorf("can not detect localstack settings: %w", err)
+	}
 	settings.Type = ComponentLocalstack
 	settings.Services = services
 
@@ -80,7 +82,7 @@ func (f *localstackFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &localstackSettings{}
 }
 
-func (f *localstackFactory) DescribeContainers(settings interface{}) componentContainerDescriptions {
+func (f *localstackFactory) DescribeContainers(settings any) componentContainerDescriptions {
 	return componentContainerDescriptions{
 		"main": {
 			containerConfig: f.configureContainer(settings),
@@ -89,7 +91,7 @@ func (f *localstackFactory) DescribeContainers(settings interface{}) componentCo
 	}
 }
 
-func (f *localstackFactory) configureContainer(settings interface{}) *containerConfig {
+func (f *localstackFactory) configureContainer(settings any) *containerConfig {
 	s := settings.(*localstackSettings)
 
 	return &containerConfig{
@@ -104,7 +106,7 @@ func (f *localstackFactory) configureContainer(settings interface{}) *containerC
 	}
 }
 
-func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthCheck {
+func (f *localstackFactory) healthCheck(settings any) ComponentHealthCheck {
 	s := settings.(*localstackSettings)
 
 	return func(container *container) error {
@@ -151,7 +153,7 @@ func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthChe
 	}
 }
 
-func (f *localstackFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings interface{}) (Component, error) {
+func (f *localstackFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings any) (Component, error) {
 	s := settings.(*localstackSettings)
 
 	component := &localstackComponent{

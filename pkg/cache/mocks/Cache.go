@@ -530,7 +530,8 @@ func (_c *Cache_Stop_Call[T]) RunAndReturn(run func()) *Cache_Stop_Call[T] {
 func NewCache[T interface{}](t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Cache[T] {
+},
+) *Cache[T] {
 	mock := &Cache[T]{}
 	mock.Mock.Test(t)
 

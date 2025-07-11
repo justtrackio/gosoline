@@ -1,7 +1,6 @@
 package tracing_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
@@ -48,7 +47,7 @@ func TestAwsTracer_StartSpanFromContextWithTrace(t *testing.T) {
 		Sampled:  true,
 	}
 
-	ctx := tracing.ContextWithTrace(context.Background(), trace)
+	ctx := tracing.ContextWithTrace(t.Context(), trace)
 	_, transChild := tracer.StartSpanFromContext(ctx, "another_trace")
 
 	assert.Equal(t, trace.TraceId, transChild.GetTrace().TraceId, "the trace ids should match")

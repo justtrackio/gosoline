@@ -6,14 +6,14 @@ import (
 	"time"
 )
 
-type Sanitizer func(in interface{}) (interface{}, error)
+type Sanitizer func(in any) (any, error)
 
-func Sanitize(key string, value interface{}, sanitizers []Sanitizer) (interface{}, error) {
+func Sanitize(key string, value any, sanitizers []Sanitizer) (any, error) {
 	switch val := value.(type) {
-	case []interface{}:
+	case []any:
 		return sanitizeSlice(key, val, sanitizers)
 
-	case map[string]interface{}:
+	case map[string]any:
 		return sanitizeMap(key, val, sanitizers)
 
 	default:
@@ -21,7 +21,7 @@ func Sanitize(key string, value interface{}, sanitizers []Sanitizer) (interface{
 	}
 }
 
-func sanitizeValue(key string, val interface{}, sanitizers []Sanitizer) (interface{}, error) {
+func sanitizeValue(key string, val any, sanitizers []Sanitizer) (any, error) {
 	var err error
 	san := val
 
@@ -34,9 +34,9 @@ func sanitizeValue(key string, val interface{}, sanitizers []Sanitizer) (interfa
 	return san, nil
 }
 
-func sanitizeSlice(key string, values []interface{}, sanitizers []Sanitizer) ([]interface{}, error) {
+func sanitizeSlice(key string, values []any, sanitizers []Sanitizer) ([]any, error) {
 	var err error
-	var san interface{}
+	var san any
 
 	for i, val := range values {
 		k := fmt.Sprintf("%s.%d", key, i)
@@ -51,9 +51,9 @@ func sanitizeSlice(key string, values []interface{}, sanitizers []Sanitizer) ([]
 	return values, nil
 }
 
-func sanitizeMap(rootKey string, values map[string]interface{}, sanitizers []Sanitizer) (map[string]interface{}, error) {
+func sanitizeMap(rootKey string, values map[string]any, sanitizers []Sanitizer) (map[string]any, error) {
 	var err error
-	var san interface{}
+	var san any
 
 	for key, val := range values {
 		k := fmt.Sprintf("%s.%s", rootKey, key)
@@ -68,7 +68,7 @@ func sanitizeMap(rootKey string, values map[string]interface{}, sanitizers []San
 	return values, nil
 }
 
-func TimeSanitizer(in interface{}) (interface{}, error) {
+func TimeSanitizer(in any) (any, error) {
 	if reflect.TypeOf(in) != reflect.TypeOf(time.Time{}) {
 		return in, nil
 	}

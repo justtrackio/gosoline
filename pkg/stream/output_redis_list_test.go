@@ -50,7 +50,7 @@ func TestRedisListOutput_Write_Chunked(t *testing.T) {
 }
 
 func setup(batchSize int, t *testing.T) (context.Context, stream.Output, *redisMocks.Client) {
-	ctx := context.Background()
+	ctx := t.Context()
 	loggerMock := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	mw := metricMocks.NewWriterMockedAll()
 

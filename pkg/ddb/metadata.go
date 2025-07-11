@@ -17,7 +17,7 @@ type KeyAware interface {
 
 type FieldAware interface {
 	KeyAware
-	GetModel() interface{}
+	GetModel() any
 	ContainsField(field string) bool
 	GetFields() []string
 }
@@ -53,13 +53,13 @@ type metadataTtl struct {
 }
 
 type metadataFields struct {
-	Model    interface{}
+	Model    any
 	Fields   []string
 	HashKey  *string
 	RangeKey *string
 }
 
-func (f metadataFields) GetModel() interface{} {
+func (f metadataFields) GetModel() any {
 	return f.Model
 }
 

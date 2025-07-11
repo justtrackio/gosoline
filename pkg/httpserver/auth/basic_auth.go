@@ -43,7 +43,7 @@ func NewBasicAuthHandler(config cfg.Config, logger log.Logger) (gin.HandlerFunc,
 			err = fmt.Errorf("the user credentials weren't valid nor was there an error")
 		}
 
-		ginCtx.Header("www-authenticate", fmt.Sprintf("Basic realm=\"%s\"", appName))
+		ginCtx.Header("www-authenticate", fmt.Sprintf("Basic realm=%q", appName))
 		ginCtx.JSON(http.StatusUnauthorized, gin.H{"err": err.Error()})
 		ginCtx.Abort()
 	}, nil
@@ -108,7 +108,7 @@ func (a *basicAuthAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 			Name:            Anonymous,
 			Anonymous:       true,
 			AuthenticatedBy: ByBasicAuth,
-			Attributes: map[string]interface{}{
+			Attributes: map[string]any{
 				AttributeUser: split[0],
 			},
 		}
@@ -116,7 +116,6 @@ func (a *basicAuthAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 		RequestWithSubject(ginCtx, user)
 
 		return true, nil
-
 	}
 
 	return false, fmt.Errorf("invalid credentials provided")

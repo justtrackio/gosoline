@@ -1,7 +1,6 @@
 package stream_test
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -33,7 +32,7 @@ func Test_snsOutput_WriteOne(t *testing.T) {
 	for _, m := range messages {
 		//nolint:gocritic // we intentionally avoid %q to prevent double quoting in JSON
 		topic.EXPECT().Publish(
-			context.Background(),
+			t.Context(),
 			fmt.Sprintf(`{"attributes":{"encoding":"application/json"},"body":"%s"}`, m.Body),
 			m.Attributes,
 		).Return(nil).Once()
@@ -42,7 +41,7 @@ func Test_snsOutput_WriteOne(t *testing.T) {
 	o := stream.NewSnsOutputWithInterfaces(logger, topic)
 
 	for _, val := range messages {
-		err := o.WriteOne(context.Background(), val)
+		err := o.WriteOne(t.Context(), val)
 		assert.NoError(t, err)
 	}
 }
@@ -50,7 +49,7 @@ func Test_snsOutput_WriteOne(t *testing.T) {
 func Test_snsOutput_WriteBatch(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	topic := mocks.NewTopic(t)
-	topic.EXPECT().PublishBatch(context.Background(), mock.AnythingOfType("[]string"), mock.AnythingOfType("[]map[string]string")).Return(nil).Once()
+	topic.EXPECT().PublishBatch(t.Context(), mock.AnythingOfType("[]string"), mock.AnythingOfType("[]map[string]string")).Return(nil).Once()
 
 	o := stream.NewSnsOutputWithInterfaces(logger, topic)
 	batch := []stream.WritableMessage{
@@ -67,6 +66,6 @@ func Test_snsOutput_WriteBatch(t *testing.T) {
 		mkTestMessage(t, 11, make(map[string]string)),
 	}
 
-	err := o.Write(context.Background(), batch)
+	err := o.Write(t.Context(), batch)
 	assert.NoError(t, err)
 }

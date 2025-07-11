@@ -259,7 +259,8 @@ func (_c *PropertiesResolver_GetUrl_Call) RunAndReturn(run func(context.Context,
 func NewPropertiesResolver(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *PropertiesResolver {
+},
+) *PropertiesResolver {
 	mock := &PropertiesResolver{}
 	mock.Mock.Test(t)
 

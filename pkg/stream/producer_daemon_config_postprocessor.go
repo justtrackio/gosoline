@@ -11,7 +11,10 @@ func init() {
 }
 
 func producerDaemonConfigPostprocessor(config cfg.GosoConf) (bool, error) {
-	producerDaemonSettings := readAllProducerDaemonSettings(config)
+	producerDaemonSettings, err := readAllProducerDaemonSettings(config)
+	if err != nil {
+		return false, fmt.Errorf("failed to read all producer daemon settings in producerDaemonConfigPostprocessor: %w", err)
+	}
 
 	if len(producerDaemonSettings) == 0 {
 		return false, nil
@@ -21,7 +24,9 @@ func producerDaemonConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 		outputKey := ConfigurableOutputKey(settings.Output)
 		outputSettings := &BaseOutputConfiguration{}
 
-		config.UnmarshalKey(outputKey, outputSettings)
+		if err := config.UnmarshalKey(outputKey, outputSettings); err != nil {
+			return false, fmt.Errorf("failed to unmarshal output settings for key %q in producerDaemonConfigPostprocessor: %w", outputKey, err)
+		}
 		outputSettings.Tracing.Enabled = false
 
 		configOptions := []cfg.Option{

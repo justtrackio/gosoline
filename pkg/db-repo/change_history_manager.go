@@ -43,7 +43,9 @@ func NewChangeHistoryManager(ctx context.Context, config cfg.Config, logger log.
 	}
 
 	settings := &ChangeHistoryManagerSettings{}
-	config.UnmarshalKey("change_history", settings)
+	if err := config.UnmarshalKey("change_history", settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal change history manager settings: %w", err)
+	}
 
 	return NewChangeHistoryManagerWithInterfaces(logger, orm, settings), nil
 }
@@ -182,7 +184,9 @@ func (c *ChangeHistoryManager) buildHistoryTableMetadata(model ModelBased, origi
 		// filter out history author id, it may be added twice; once by ChangeAuthorEmbeddable, once by HistoryEmbeddable
 		return field.DBName != changeHistoryAuthorField
 	})
-	fields := append(historyScope.GetModelStruct().StructFields, modelFields...)
+
+	fields := historyScope.GetModelStruct().StructFields
+	fields = append(fields, modelFields...)
 
 	return newTableMetadata(historyScope, tableName, fields)
 }
@@ -275,6 +279,7 @@ func (c *ChangeHistoryManager) primaryKeysMatchCondition(originalTable *tableMet
 		condition := fmt.Sprintf("d.%s = %s.%s", columnName, record, columnName)
 		conditions = append(conditions, condition)
 	}
+
 	return strings.Join(conditions, " AND ")
 }
 
@@ -285,6 +290,7 @@ func (c *ChangeHistoryManager) rowUpdatedCondition(originalTable *tableMetadata)
 		condition := fmt.Sprintf("NOT (OLD.%s <=> NEW.%s)", columnName, columnName)
 		conditions = append(conditions, condition)
 	}
+
 	return strings.Join(conditions, " OR ")
 }
 

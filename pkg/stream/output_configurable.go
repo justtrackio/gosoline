@@ -72,7 +72,9 @@ func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Lo
 func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 	settings := &FileOutputSettings{}
-	config.UnmarshalKey(key, settings)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal file output settings for key %q in newFileOutputFromConfig: %w", key, err)
+	}
 
 	if settings.Filename == "" {
 		settings.Filename = fmt.Sprintf("stream-output-%s", name)
@@ -83,6 +85,7 @@ func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Lo
 
 func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
+
 	return NewKafkaOutput(ctx, config, logger, key)
 }
 
@@ -109,7 +112,9 @@ type KinesisOutputConfiguration struct {
 func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 	configuration := &KinesisOutputConfiguration{}
-	config.UnmarshalKey(key, configuration)
+	if err := config.UnmarshalKey(key, configuration); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal kinesis output settings for key %q in newKinesisOutputFromConfig: %w", key, err)
+	}
 
 	return NewKinesisOutput(ctx, config, logger, &KinesisOutputSettings{
 		AppId: cfg.AppId{
@@ -137,7 +142,9 @@ func newRedisListOutputFromConfig(ctx context.Context, config cfg.Config, logger
 	key := ConfigurableOutputKey(name)
 
 	configuration := redisListOutputConfiguration{}
-	config.UnmarshalKey(key, &configuration)
+	if err := config.UnmarshalKey(key, &configuration); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal redis list output settings for key %q in newRedisListOutputFromConfig: %w", key, err)
+	}
 
 	return NewRedisListOutput(ctx, config, logger, &RedisListOutputSettings{
 		AppId: cfg.AppId{
@@ -166,7 +173,9 @@ type SnsOutputConfiguration struct {
 func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 	configuration := SnsOutputConfiguration{}
-	config.UnmarshalKey(key, &configuration)
+	if err := config.UnmarshalKey(key, &configuration); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal sns output settings for key %q in newSnsOutputFromConfig: %w", key, err)
+	}
 
 	return NewSnsOutput(ctx, config, logger, &SnsOutputSettings{
 		AppId: cfg.AppId{
@@ -197,7 +206,9 @@ type SqsOutputConfiguration struct {
 func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 	configuration := SqsOutputConfiguration{}
-	config.UnmarshalKey(key, &configuration)
+	if err := config.UnmarshalKey(key, &configuration); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal sqs output settings for key %q in newSqsOutputFromConfig: %w", key, err)
+	}
 
 	return NewSqsOutput(ctx, config, logger, &SqsOutputSettings{
 		AppId: cfg.AppId{

@@ -51,13 +51,12 @@ func (o *fileOutput) Write(_ context.Context, batch []WritableMessage) error {
 	switch o.settings.Mode {
 	case FileOutputModeSingle:
 		filename = fmt.Sprintf("%s-%d", filename, o.cnt)
-		flags = flags | os.O_TRUNC
+		flags |= os.O_TRUNC
 		o.cnt++
 	case FileOutputModeTruncate:
-		flags = flags | os.O_TRUNC
+		flags |= os.O_TRUNC
 	default:
-		flags = flags | os.O_APPEND
-
+		flags |= os.O_APPEND
 	}
 
 	file, err := os.OpenFile(filename, flags, 0o644)
@@ -77,7 +76,7 @@ func (o *fileOutput) Write(_ context.Context, batch []WritableMessage) error {
 		}
 	}
 
-	if err = file.Close(); err != nil {
+	if err := file.Close(); err != nil {
 		return err
 	}
 

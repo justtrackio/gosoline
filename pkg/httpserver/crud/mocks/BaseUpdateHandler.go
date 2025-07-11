@@ -123,7 +123,8 @@ func (_c *BaseUpdateHandler_TransformUpdate_Call) RunAndReturn(run func(context.
 func NewBaseUpdateHandler(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *BaseUpdateHandler {
+},
+) *BaseUpdateHandler {
 	mock := &BaseUpdateHandler{}
 	mock.Mock.Test(t)
 

@@ -191,7 +191,8 @@ func (_c *DataExporter_ExportTable_Call) RunAndReturn(run func(context.Context, 
 func NewDataExporter(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *DataExporter {
+},
+) *DataExporter {
 	mock := &DataExporter{}
 	mock.Mock.Test(t)
 

@@ -30,7 +30,7 @@ func TestService(t *testing.T) {
 }
 
 func (s *serviceTestSuite) SetupTest() {
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 
 	s.logger = logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	s.store = kvStoreMock.NewKvStore[float64](s.T())

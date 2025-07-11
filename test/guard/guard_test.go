@@ -65,7 +65,7 @@ func (s *GuardTestSuite) TestCrud() {
 		Actions:     []string{"<.+>"},
 	}
 
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	err := s.guard.CreatePolicy(ctx, &pol)
 	if !s.NoError(err) {
@@ -84,7 +84,7 @@ func (s *GuardTestSuite) TestCrud() {
 }
 
 func (s *GuardTestSuite) TestGetPolicies() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	policies, err := s.guard.GetPolicies(ctx)
 	if !s.NoError(err) {
@@ -108,7 +108,7 @@ func (s *GuardTestSuite) TestIsAllowed() {
 		Subject:  "r:1",
 	}
 
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	err := s.guard.IsAllowed(ctx, &req)
 	s.NoError(err)

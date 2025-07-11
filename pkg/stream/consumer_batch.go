@@ -53,7 +53,9 @@ func NewUntypedBatchConsumer(name string, callbackFactory UntypedBatchConsumerCa
 
 		settings := &BatchConsumerSettings{}
 		key := ConfigurableConsumerKey(name)
-		config.UnmarshalKey(key, settings)
+		if err := config.UnmarshalKey(key, settings); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal batch consumer settings for key %q in NewUntypedBatchConsumer: %w", key, err)
+		}
 
 		ticker := time.NewTicker(settings.IdleTimeout)
 
@@ -80,7 +82,7 @@ func NewUntypedBatchConsumerWithInterfaces(base *baseConsumer, callback UntypedB
 }
 
 func (c *BatchConsumer) Run(kernelCtx context.Context) error {
-	return c.baseConsumer.run(kernelCtx, c.readFromInput)
+	return c.run(kernelCtx, c.readFromInput)
 }
 
 func (c *BatchConsumer) readFromInput(ctx context.Context) error {

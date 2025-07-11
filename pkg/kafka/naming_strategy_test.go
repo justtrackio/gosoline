@@ -39,15 +39,21 @@ func (s *KafkaNamingTestSuite) setupConfig(settings map[string]any) {
 }
 
 func (s *KafkaNamingTestSuite) TestDefaultTopicId() {
-	s.Equal(kafka.FQTopicName(s.config, s.appID, s.topicId), "test-topic-a")
+	topic, err := kafka.FQTopicName(s.config, s.appID, s.topicId)
+	s.NoError(err, "there should be no error")
+	s.Equal(topic, "test-topic-a")
 }
 
 func (s *KafkaNamingTestSuite) TestDefaultGroupId() {
-	s.Equal(kafka.FQGroupId(s.config, s.appID, s.groupId), "test-producer-c-group-1")
+	group, err := kafka.FQGroupId(s.config, s.appID, s.groupId)
+	s.NoError(err, "there should be no error")
+	s.Equal(group, "test-producer-c-group-1")
 }
 
 func (s *KafkaNamingTestSuite) TestLegacyGroupId() {
-	s.Equal(kafka.FQGroupId(s.config, s.appID, ""), "producer")
+	group, err := kafka.FQGroupId(s.config, s.appID, "")
+	s.NoError(err, "there should be no error")
+	s.Equal(group, "producer")
 }
 
 func (s *KafkaNamingTestSuite) TestTopicIdWithPattern() {
@@ -55,7 +61,9 @@ func (s *KafkaNamingTestSuite) TestTopicIdWithPattern() {
 		"kafka.naming.topic_pattern": "{app}-{topicId}",
 	})
 
-	s.Equal(kafka.FQTopicName(s.config, s.appID, s.topicId), "producer-topic-a")
+	topic, err := kafka.FQTopicName(s.config, s.appID, s.topicId)
+	s.NoError(err, "there should be no error")
+	s.Equal(topic, "producer-topic-a")
 }
 
 func (s *KafkaNamingTestSuite) TestGroupIdWithPattern() {
@@ -63,5 +71,7 @@ func (s *KafkaNamingTestSuite) TestGroupIdWithPattern() {
 		"kafka.naming.group_pattern": "{app}-{groupId}",
 	})
 
-	s.Equal(kafka.FQGroupId(s.config, s.appID, s.groupId), "producer-c-group-1")
+	group, err := kafka.FQGroupId(s.config, s.appID, s.groupId)
+	s.NoError(err, "there should be no error")
+	s.Equal(group, "producer-c-group-1")
 }

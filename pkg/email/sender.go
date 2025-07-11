@@ -23,7 +23,9 @@ type Sender interface {
 
 func NewSender(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Sender, error) {
 	settings := &SenderSetting{}
-	config.UnmarshalKey(fmt.Sprintf("email.%s", name), settings)
+	if err := config.UnmarshalKey(fmt.Sprintf("email.%s", name), settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal sender settings: %w", err)
+	}
 
 	switch settings.Type {
 	case "ses":

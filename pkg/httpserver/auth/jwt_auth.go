@@ -19,8 +19,11 @@ type jwtAuthenticator struct {
 	jwtTokenHandler JwtTokenHandler
 }
 
-func NewJwtAuthHandler(config cfg.Config, name string) gin.HandlerFunc {
-	auth := NewJWTAuthAuthenticator(config, name)
+func NewJwtAuthHandler(config cfg.Config, name string) (gin.HandlerFunc, error) {
+	auth, err := NewJWTAuthAuthenticator(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("can not create jwt authenticator for %s: %w", name, err)
+	}
 
 	return func(ginCtx *gin.Context) {
 		valid, err := auth.IsValid(ginCtx)
@@ -35,13 +38,16 @@ func NewJwtAuthHandler(config cfg.Config, name string) gin.HandlerFunc {
 
 		ginCtx.JSON(http.StatusUnauthorized, gin.H{"err": err.Error()})
 		ginCtx.Abort()
-	}
+	}, nil
 }
 
-func NewJWTAuthAuthenticator(config cfg.Config, name string) Authenticator {
-	jwtTokenHandler := NewJwtTokenHandler(config, name)
+func NewJWTAuthAuthenticator(config cfg.Config, name string) (Authenticator, error) {
+	jwtTokenHandler, err := NewJwtTokenHandler(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("can not create jwt token handler for authenticator %s: %w", name, err)
+	}
 
-	return NewJWTAuthAuthenticatorWithInterfaces(jwtTokenHandler)
+	return NewJWTAuthAuthenticatorWithInterfaces(jwtTokenHandler), nil
 }
 
 func NewJWTAuthAuthenticatorWithInterfaces(jwtTokenHandler JwtTokenHandler) Authenticator {

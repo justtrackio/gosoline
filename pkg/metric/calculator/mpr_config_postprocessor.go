@@ -14,7 +14,10 @@ func init() {
 }
 
 func calculatorConfigPostprocessor(config cfg.GosoConf) (bool, error) {
-	settings := readCalculatorSettings(config)
+	settings, err := readCalculatorSettings(config)
+	if err != nil {
+		return false, fmt.Errorf("can not read calculator settings: %w", err)
+	}
 
 	if !settings.Enabled {
 		return false, nil

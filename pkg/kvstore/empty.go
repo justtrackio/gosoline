@@ -25,10 +25,10 @@ func (s *emptyKvStore[T]) Get(_ context.Context, _ any, _ *T) (bool, error) {
 	return false, nil
 }
 
-func (s *emptyKvStore[T]) GetBatch(_ context.Context, keys any, _ any) ([]interface{}, error) {
+func (s *emptyKvStore[T]) GetBatch(_ context.Context, keys any, _ any) ([]any, error) {
 	missing, err := refl.InterfaceToInterfaceSlice(keys)
 	if err != nil {
-		return nil, fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
+		return nil, fmt.Errorf("could not convert keys from %T to []any: %w", keys, err)
 	}
 
 	return missing, nil

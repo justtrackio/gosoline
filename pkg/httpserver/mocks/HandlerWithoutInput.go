@@ -86,7 +86,8 @@ func (_c *HandlerWithoutInput_Handle_Call) RunAndReturn(run func(context.Context
 func NewHandlerWithoutInput(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *HandlerWithoutInput {
+},
+) *HandlerWithoutInput {
 	mock := &HandlerWithoutInput{}
 	mock.Mock.Test(t)
 

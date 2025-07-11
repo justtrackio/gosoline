@@ -121,7 +121,8 @@ func (_c *Output_WriteOne_Call) RunAndReturn(run func(context.Context, stream.Wr
 func NewOutput(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Output {
+},
+) *Output {
 	mock := &Output{}
 	mock.Mock.Test(t)
 

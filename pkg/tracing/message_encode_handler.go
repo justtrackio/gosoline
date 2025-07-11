@@ -15,7 +15,7 @@ func NewMessageWithTraceEncoder(strategy TraceIdErrorStrategy) *MessageWithTrace
 	}
 }
 
-func (m MessageWithTraceEncoder) Encode(ctx context.Context, _ interface{}, attributes map[string]string) (context.Context, map[string]string, error) {
+func (m MessageWithTraceEncoder) Encode(ctx context.Context, _ any, attributes map[string]string) (context.Context, map[string]string, error) {
 	if traceId := GetTraceIdFromContext(ctx); traceId != nil {
 		attributes["traceId"] = *traceId
 	}
@@ -23,7 +23,7 @@ func (m MessageWithTraceEncoder) Encode(ctx context.Context, _ interface{}, attr
 	return ctx, attributes, nil
 }
 
-func (m MessageWithTraceEncoder) Decode(ctx context.Context, _ interface{}, attributes map[string]string) (context.Context, map[string]string, error) {
+func (m MessageWithTraceEncoder) Decode(ctx context.Context, _ any, attributes map[string]string) (context.Context, map[string]string, error) {
 	var ok bool
 
 	if _, ok = attributes["traceId"]; !ok {

@@ -14,31 +14,31 @@ func Or(left, right expression.ConditionBuilder, other ...expression.ConditionBu
 	return expression.Or(left, right, other...)
 }
 
-func Eq(attribute string, value interface{}) expression.ConditionBuilder {
+func Eq(attribute string, value any) expression.ConditionBuilder {
 	return expression.Equal(expression.Name(attribute), expression.Value(value))
 }
 
-func NotEq(attribute string, value interface{}) expression.ConditionBuilder {
+func NotEq(attribute string, value any) expression.ConditionBuilder {
 	return expression.NotEqual(expression.Name(attribute), expression.Value(value))
 }
 
-func Gt(attribute string, value interface{}) expression.ConditionBuilder {
+func Gt(attribute string, value any) expression.ConditionBuilder {
 	return expression.GreaterThan(expression.Name(attribute), expression.Value(value))
 }
 
-func Gte(attribute string, value interface{}) expression.ConditionBuilder {
+func Gte(attribute string, value any) expression.ConditionBuilder {
 	return expression.GreaterThanEqual(expression.Name(attribute), expression.Value(value))
 }
 
-func Lt(attribute string, value interface{}) expression.ConditionBuilder {
+func Lt(attribute string, value any) expression.ConditionBuilder {
 	return expression.LessThan(expression.Name(attribute), expression.Value(value))
 }
 
-func Lte(attribute string, value interface{}) expression.ConditionBuilder {
+func Lte(attribute string, value any) expression.ConditionBuilder {
 	return expression.LessThanEqual(expression.Name(attribute), expression.Value(value))
 }
 
-func Between(attribute string, lower interface{}, upper interface{}) expression.ConditionBuilder {
+func Between(attribute string, lower any, upper any) expression.ConditionBuilder {
 	return expression.Between(expression.Name(attribute), expression.Value(lower), expression.Value(upper))
 }
 

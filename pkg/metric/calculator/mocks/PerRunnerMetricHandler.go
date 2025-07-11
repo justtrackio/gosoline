@@ -91,7 +91,8 @@ func (_c *PerRunnerMetricHandler_CalculatePerRunnerMetrics_Call) RunAndReturn(ru
 func NewPerRunnerMetricHandler(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *PerRunnerMetricHandler {
+},
+) *PerRunnerMetricHandler {
 	mock := &PerRunnerMetricHandler{}
 	mock.Mock.Test(t)
 

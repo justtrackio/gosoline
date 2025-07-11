@@ -129,7 +129,8 @@ func (_c *Stream_ReadAll_Call) RunAndReturn(run func() ([]byte, error)) *Stream_
 func NewStream(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Stream {
+},
+) *Stream {
 	mock := &Stream{}
 	mock.Mock.Test(t)
 

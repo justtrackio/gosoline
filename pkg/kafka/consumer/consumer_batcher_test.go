@@ -28,7 +28,7 @@ func TestBatcher(t *testing.T) {
 			args: args{
 				batchSize:    10,
 				batchTimeout: time.Second,
-				ctx:          func() (context.Context, func()) { return context.Background(), func() {} },
+				ctx:          func() (context.Context, func()) { return t.Context(), func() {} },
 				input: func() chan kafka.Message {
 					c := make(chan kafka.Message, 5)
 					c <- kafka.Message{Partition: 0, Offset: 0}
@@ -53,7 +53,7 @@ func TestBatcher(t *testing.T) {
 			args: args{
 				batchSize:    10,
 				batchTimeout: 100 * time.Millisecond,
-				ctx:          func() (context.Context, func()) { return context.Background(), func() {} },
+				ctx:          func() (context.Context, func()) { return t.Context(), func() {} },
 				input: func() chan kafka.Message {
 					c := make(chan kafka.Message, 5)
 
@@ -85,7 +85,7 @@ func TestBatcher(t *testing.T) {
 			args: args{
 				batchSize:    5,
 				batchTimeout: time.Hour,
-				ctx:          func() (context.Context, func()) { return context.Background(), func() {} },
+				ctx:          func() (context.Context, func()) { return t.Context(), func() {} },
 				input: func() chan kafka.Message {
 					c := make(chan kafka.Message, 5)
 					c <- kafka.Message{Partition: 0, Offset: 0}
@@ -110,7 +110,7 @@ func TestBatcher(t *testing.T) {
 			args: args{
 				batchSize:    10,
 				batchTimeout: time.Microsecond,
-				ctx:          func() (context.Context, func()) { return context.Background(), func() {} },
+				ctx:          func() (context.Context, func()) { return t.Context(), func() {} },
 				input: func() chan kafka.Message {
 					c := make(chan kafka.Message, 5)
 					c <- kafka.Message{Partition: 0, Offset: 0}
@@ -136,10 +136,11 @@ func TestBatcher(t *testing.T) {
 				batchSize:    10,
 				batchTimeout: time.Hour,
 				ctx: func() (context.Context, func()) {
-					return context.WithTimeout(context.Background(), time.Second) //nolint
+					return context.WithTimeout(t.Context(), time.Second)
 				},
 				input: func() chan kafka.Message {
 					c := make(chan kafka.Message, 5)
+
 					return c
 				},
 			},
@@ -151,7 +152,7 @@ func TestBatcher(t *testing.T) {
 				batchSize:    4,
 				batchTimeout: time.Hour,
 				ctx: func() (context.Context, func()) {
-					return context.WithTimeout(context.Background(), time.Second) //nolint
+					return context.WithTimeout(t.Context(), time.Second)
 				},
 				input: func() chan kafka.Message {
 					c := make(chan kafka.Message, 5)
@@ -171,7 +172,7 @@ func TestBatcher(t *testing.T) {
 			args: args{
 				batchSize:    1,
 				batchTimeout: time.Hour,
-				ctx:          func() (context.Context, func()) { return context.Background(), func() {} },
+				ctx:          func() (context.Context, func()) { return t.Context(), func() {} },
 				input: func() chan kafka.Message {
 					c := make(chan kafka.Message, 5)
 					c <- kafka.Message{Partition: 0, Offset: 0}

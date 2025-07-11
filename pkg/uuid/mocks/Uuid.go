@@ -67,7 +67,8 @@ func (_c *Uuid_NewV4_Call) RunAndReturn(run func() string) *Uuid_NewV4_Call {
 func NewUuid(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Uuid {
+},
+) *Uuid {
 	mock := &Uuid{}
 	mock.Mock.Test(t)
 

@@ -15,7 +15,9 @@ type ComponentsConfigManagerTestSuite struct {
 
 func (s *ComponentsConfigManagerTestSuite) SetupTest() {
 	config := cfg.New()
-	s.manager = env.NewComponentsConfigManager(config)
+	manager, err := env.NewComponentsConfigManager(config)
+	s.NoError(err)
+	s.manager = manager
 }
 
 func (s *ComponentsConfigManagerTestSuite) TestAdd() {

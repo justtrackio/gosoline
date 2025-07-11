@@ -72,7 +72,8 @@ func (_c *FixtureSet_Write_Call) RunAndReturn(run func(context.Context) error) *
 func NewFixtureSet(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *FixtureSet {
+},
+) *FixtureSet {
 	mock := &FixtureSet{}
 	mock.Mock.Test(t)
 

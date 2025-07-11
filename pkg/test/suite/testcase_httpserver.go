@@ -113,9 +113,9 @@ func runTestCaseHttpserver(suite TestingSuite, testCase func(suite TestingSuite,
 			return server, nil
 		}
 
-		suiteOptions.addAppOption(application.WithConfigMap(map[string]interface{}{
-			"httpserver": map[string]interface{}{
-				"default": map[string]interface{}{
+		suiteOptions.addAppOption(application.WithConfigMap(map[string]any{
+			"httpserver": map[string]any{
+				"default": map[string]any{
 					"port": 0,
 				},
 			},

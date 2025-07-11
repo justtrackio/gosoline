@@ -263,7 +263,8 @@ func (_c *FullModule_Run_Call) RunAndReturn(run func(context.Context) error) *Fu
 func NewFullModule(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *FullModule {
+},
+) *FullModule {
 	mock := &FullModule{}
 	mock.Mock.Test(t)
 

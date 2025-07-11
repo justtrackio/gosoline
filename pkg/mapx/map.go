@@ -161,7 +161,7 @@ func (m *MapX) prepareInput(value any) any {
 // access accesses the object using the selector and performs the
 // appropriate action.
 //
-//nolint:gocognit // trying to split it up made it even harder to read
+
 func (m *MapX) access(current any, selector string, value any, mode *OpMode) any {
 	selector = strings.Trim(selector, ".")
 	selSegs := strings.SplitN(selector, PathSeparator, 2)
@@ -420,7 +420,7 @@ func getIndex(s string) (index int, selector string) {
 		// Get the key into the map
 		selector = arrayMatches[1]
 		// Get the index into the array at the key
-		// nolint:errcheck // We know this cannot fail because arrayMatches[2] is an int for sure
+		//nolint:errcheck // We know this cannot fail because arrayMatches[2] is an int for sure
 		index, _ = strconv.Atoi(arrayMatches[2])
 
 		return index, selector

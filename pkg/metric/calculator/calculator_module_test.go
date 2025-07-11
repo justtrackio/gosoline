@@ -104,7 +104,7 @@ type CalculatorModuleTestSuite struct {
 }
 
 func (s *CalculatorModuleTestSuite) SetupTestCase() {
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx, s.cancel = context.WithCancel(s.T().Context())
 
 	s.logger = new(logMocks.Logger)
 	s.leaderElection = new(concDdbMocks.LeaderElection)

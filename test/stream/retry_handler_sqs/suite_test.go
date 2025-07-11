@@ -281,7 +281,7 @@ func (s *RetryHandlerSqsTestSuite) writeAggregateMessage() {
 	msg := stream.NewJsonMessage(string(messages), map[string]string{
 		stream.AttributeAggregate: strconv.FormatBool(true),
 	})
-	err = s.sqsOutput.WriteOne(context.Background(), msg)
+	err = s.sqsOutput.WriteOne(s.T().Context(), msg)
 	s.NoError(err)
 }
 
@@ -300,7 +300,7 @@ func (s *RetryHandlerSqsTestSuite) writeAggregateCompressedMessage() {
 	msg := stream.NewJsonMessage(string(messages), map[string]string{
 		stream.AttributeAggregate: strconv.FormatBool(true),
 	})
-	err = s.sqsOutput.WriteOne(context.Background(), msg)
+	err = s.sqsOutput.WriteOne(s.T().Context(), msg)
 	s.NoError(err)
 }
 
@@ -318,7 +318,7 @@ func (s *RetryHandlerSqsTestSuite) writeCompressedAggregateMessage() {
 		stream.AttributeAggregate:   strconv.FormatBool(true),
 		stream.AttributeCompression: stream.CompressionGZip.String(),
 	})
-	err = s.sqsOutput.WriteOne(context.Background(), msg)
+	err = s.sqsOutput.WriteOne(s.T().Context(), msg)
 	s.NoError(err)
 }
 
@@ -328,7 +328,7 @@ func (s *RetryHandlerSqsTestSuite) writeProtobufAggregateMessage() {
 	msg := stream.NewJsonMessage(string(messages), map[string]string{
 		stream.AttributeAggregate: strconv.FormatBool(true),
 	})
-	err := s.sqsOutput.WriteOne(context.Background(), msg)
+	err := s.sqsOutput.WriteOne(s.T().Context(), msg)
 	s.NoError(err)
 }
 
@@ -340,7 +340,7 @@ func (s *RetryHandlerSqsTestSuite) writeCompressedProtobufAggregateMessage() {
 		stream.AttributeAggregate:   strconv.FormatBool(true),
 		stream.AttributeCompression: stream.CompressionGZip.String(),
 	})
-	err := s.sqsOutput.WriteOne(context.Background(), msg)
+	err := s.sqsOutput.WriteOne(s.T().Context(), msg)
 	s.NoError(err)
 }
 
@@ -369,7 +369,7 @@ func (s *RetryHandlerSqsTestSuite) protobufBatch() []byte {
 
 func (s *RetryHandlerSqsTestSuite) writeSingleMessage() {
 	msg := stream.NewJsonMessage(`{ "Id": 1 }`)
-	err := s.sqsOutput.WriteOne(context.Background(), msg)
+	err := s.sqsOutput.WriteOne(s.T().Context(), msg)
 	s.NoError(err)
 }
 
@@ -377,7 +377,7 @@ func (s *RetryHandlerSqsTestSuite) writeSingleCompressedMessage() {
 	msg := stream.NewJsonMessage(s.compress([]byte(`{ "Id": 1 }`)), map[string]string{
 		stream.AttributeCompression: stream.CompressionGZip.String(),
 	})
-	err := s.sqsOutput.WriteOne(context.Background(), msg)
+	err := s.sqsOutput.WriteOne(s.T().Context(), msg)
 	s.NoError(err)
 }
 

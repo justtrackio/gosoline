@@ -180,7 +180,8 @@ func (_c *ReadSeekerCloser_Seek_Call) RunAndReturn(run func(int64, int) (int64, 
 func NewReadSeekerCloser(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *ReadSeekerCloser {
+},
+) *ReadSeekerCloser {
 	mock := &ReadSeekerCloser{}
 	mock.Mock.Test(t)
 

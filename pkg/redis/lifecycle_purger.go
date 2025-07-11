@@ -15,8 +15,11 @@ type LifeCyclePurger struct {
 func NewLifeCyclePurger(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*LifeCyclePurger, error) {
 	var err error
 	var client Client
+	var settings *Settings
 
-	settings := ReadSettings(config, name)
+	if settings, err = ReadSettings(config, name); err != nil {
+		return nil, fmt.Errorf("failed to read redis settings for name %q in NewLifeCyclePurger: %w", name, err)
+	}
 
 	if client, err = NewClientWithSettings(ctx, logger, settings); err != nil {
 		return nil, fmt.Errorf("can not connect to database: %w", err)

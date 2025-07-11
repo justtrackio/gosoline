@@ -12,14 +12,14 @@ type page struct {
 
 type order struct {
 	field     string
-	direction interface{}
+	direction any
 }
 
 type QueryBuilder struct {
 	table   string
 	joins   []string
-	where   []interface{}
-	args    [][]interface{}
+	where   []any
+	args    [][]any
 	groupBy []string
 	orderBy []order
 	page    *page
@@ -45,7 +45,7 @@ func (qb *QueryBuilder) Joins(joins []string) db.QueryBuilder {
 	return qb
 }
 
-func (qb *QueryBuilder) Where(query interface{}, args ...interface{}) db.QueryBuilder {
+func (qb *QueryBuilder) Where(query any, args ...any) db.QueryBuilder {
 	qb.where = append(qb.where, query)
 	qb.args = append(qb.args, args)
 

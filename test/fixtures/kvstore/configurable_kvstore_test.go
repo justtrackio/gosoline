@@ -46,7 +46,7 @@ func (s *ConfigurableKvStoreTestSuite) TestConfigurableKvStore() {
 	s.NoError(err)
 
 	var res KvStoreModel
-	found, err := store.Get(context.Background(), "kvstore_entry_1", &res)
+	found, err := store.Get(s.T().Context(), "kvstore_entry_1", &res)
 
 	s.NoError(err)
 	s.True(found)
@@ -58,7 +58,7 @@ func (s *ConfigurableKvStoreTestSuite) TestConfigurableKvStore() {
 	anotherStore, err := kvstore.ProvideConfigurableKvStore[KvStoreModel](envContext, envConfig, envLogger, "another_test_store")
 	s.NoError(err)
 
-	found, err = anotherStore.Get(context.Background(), "kvstore_entry_1", &res)
+	found, err = anotherStore.Get(s.T().Context(), "kvstore_entry_1", &res)
 
 	s.NoError(err)
 	s.True(found)
@@ -70,7 +70,7 @@ func (s *ConfigurableKvStoreTestSuite) TestConfigurableKvStore() {
 	redisStore, err := kvstore.ProvideConfigurableKvStore[KvStoreModel](envContext, envConfig, envLogger, "redis_test_store")
 	s.NoError(err)
 
-	found, err = redisStore.Get(context.Background(), "redis_kvstore_entry_1", &res)
+	found, err = redisStore.Get(s.T().Context(), "redis_kvstore_entry_1", &res)
 
 	s.NoError(err)
 	s.True(found)

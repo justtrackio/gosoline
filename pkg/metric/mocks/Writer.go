@@ -136,7 +136,8 @@ func (_c *Writer_WriteOne_Call) RunAndReturn(run func(*metric.Datum)) *Writer_Wr
 func NewWriter(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Writer {
+},
+) *Writer {
 	mock := &Writer{}
 	mock.Mock.Test(t)
 

@@ -170,7 +170,8 @@ func (_c *MessageEncoder_Encode_Call) RunAndReturn(run func(context.Context, int
 func NewMessageEncoder(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MessageEncoder {
+},
+) *MessageEncoder {
 	mock := &MessageEncoder{}
 	mock.Mock.Test(t)
 

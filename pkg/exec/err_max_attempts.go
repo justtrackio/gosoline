@@ -32,5 +32,6 @@ func (e *ErrAttemptsExceeded) Unwrap() error {
 
 func IsErrMaxAttemptsExceeded(err error) bool {
 	var errExpected *ErrAttemptsExceeded
+
 	return errors.As(err, &errExpected)
 }

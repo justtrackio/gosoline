@@ -45,7 +45,9 @@ func newOtelTraceProvider(ctx context.Context, config cfg.Config, logger log.Log
 	appId.PadFromConfig(config)
 
 	settings := &OtelSettings{}
-	config.UnmarshalKey("tracing.otel", settings)
+	if err := config.UnmarshalKey("tracing.otel", settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal otel tracing settings: %w", err)
+	}
 
 	otelExporterFactory, ok := otelTraceExporters[settings.Exporter]
 	if !ok {

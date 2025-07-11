@@ -251,7 +251,8 @@ func (_c *Repository_QuerySql_Call[T]) RunAndReturn(run func(context.Context, st
 func NewRepository[T interface{}](t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Repository[T] {
+},
+) *Repository[T] {
 	mock := &Repository[T]{}
 	mock.Mock.Test(t)
 

@@ -12,7 +12,6 @@ type (
 	JSONTestCase[BehaviourFrom, BehaviourTo db.Nullable | db.NonNullable] struct {
 		description
 		fromBehaviour BehaviourFrom
-		toBehaviour   BehaviourTo
 	}
 
 	description string

@@ -229,7 +229,8 @@ func (_c *PutItemBuilder_WithCondition_Call) RunAndReturn(run func(expression.Co
 func NewPutItemBuilder(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *PutItemBuilder {
+},
+) *PutItemBuilder {
 	mock := &PutItemBuilder{}
 	mock.Mock.Test(t)
 

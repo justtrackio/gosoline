@@ -166,7 +166,8 @@ func (_c *PartitionedOutput_WriteOne_Call) RunAndReturn(run func(context.Context
 func NewPartitionedOutput(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *PartitionedOutput {
+},
+) *PartitionedOutput {
 	mock := &PartitionedOutput{}
 	mock.Mock.Test(t)
 

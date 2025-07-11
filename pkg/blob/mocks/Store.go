@@ -448,7 +448,8 @@ func (_c *Store_WriteOne_Call) RunAndReturn(run func(*blob.Object) error) *Store
 func NewStore(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Store {
+},
+) *Store {
 	mock := &Store{}
 	mock.Mock.Test(t)
 

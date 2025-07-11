@@ -1,7 +1,6 @@
 package ddb_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -40,7 +39,7 @@ func (s *DdbLeaderElectionTestCase) SetupTest() {
 }
 
 func (s *DdbLeaderElectionTestCase) TestSuccess() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	builder := ddbMocks.NewPutItemBuilder(s.T())
 	builder.EXPECT().WithCondition(mock.AnythingOfType("expression.ConditionBuilder")).Return(builder)

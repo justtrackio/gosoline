@@ -7,7 +7,7 @@ import (
 	"github.com/imdario/mergo"
 )
 
-func Merge(target interface{}, source interface{}) error {
+func Merge(target any, source any) error {
 	tt := reflect.TypeOf(target)
 
 	if tt.Kind() != reflect.Ptr {

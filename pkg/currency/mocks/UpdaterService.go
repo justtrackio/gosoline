@@ -118,7 +118,8 @@ func (_c *UpdaterService_EnsureRecentExchangeRates_Call) RunAndReturn(run func(c
 func NewUpdaterService(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *UpdaterService {
+},
+) *UpdaterService {
 	mock := &UpdaterService{}
 	mock.Mock.Test(t)
 

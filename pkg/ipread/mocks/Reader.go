@@ -83,7 +83,8 @@ func (_c *Reader_City_Call) RunAndReturn(run func(string) (*ipread.GeoCity, erro
 func NewReader(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Reader {
+},
+) *Reader {
 	mock := &Reader{}
 	mock.Mock.Test(t)
 

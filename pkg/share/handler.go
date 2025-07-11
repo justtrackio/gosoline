@@ -34,7 +34,7 @@ type BaseShareHandler interface {
 	GetGuard() guard.Guard
 	GetModel() ModelBased
 	GetRepository() db_repo.Repository
-	TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (output interface{}, err error)
+	TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (output any, err error)
 }
 
 type EntityUpdateHandler interface {
@@ -49,7 +49,7 @@ type EntityDeleteHandler interface {
 type ShareCreateHandler interface {
 	BaseShareHandler
 	GetCreateInput() Metadata
-	TransformCreate(ctx context.Context, input interface{}, entity Shareable, policy ladon.Policy, model db_repo.ModelBased) (err error)
+	TransformCreate(ctx context.Context, input any, entity Shareable, policy ladon.Policy, model db_repo.ModelBased) (err error)
 }
 
 func AddShareCreateHandler(logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler ShareCreateHandler) {

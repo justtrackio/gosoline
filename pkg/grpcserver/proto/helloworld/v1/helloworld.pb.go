@@ -8,13 +8,14 @@ package v1
 
 import (
 	context "context"
+	reflect "reflect"
+	sync "sync"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -156,11 +157,14 @@ func file_helloworld_v1_helloworld_proto_rawDescGZIP() []byte {
 	return file_helloworld_v1_helloworld_proto_rawDescData
 }
 
-var file_helloworld_v1_helloworld_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_helloworld_v1_helloworld_proto_goTypes = []interface{}{
-	(*HelloRequest)(nil), // 0: grpc.helloworld.v1.HelloRequest
-	(*HelloReply)(nil),   // 1: grpc.helloworld.v1.HelloReply
-}
+var (
+	file_helloworld_v1_helloworld_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+	file_helloworld_v1_helloworld_proto_goTypes  = []any{
+		(*HelloRequest)(nil), // 0: grpc.helloworld.v1.HelloRequest
+		(*HelloReply)(nil),   // 1: grpc.helloworld.v1.HelloReply
+	}
+)
+
 var file_helloworld_v1_helloworld_proto_depIdxs = []int32{
 	0, // 0: grpc.helloworld.v1.GreeterService.SayHello:input_type -> grpc.helloworld.v1.HelloRequest
 	1, // 1: grpc.helloworld.v1.GreeterService.SayHello:output_type -> grpc.helloworld.v1.HelloReply
@@ -177,7 +181,7 @@ func file_helloworld_v1_helloworld_proto_init() {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_helloworld_v1_helloworld_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+		file_helloworld_v1_helloworld_proto_msgTypes[0].Exporter = func(v any, i int) any {
 			switch v := v.(*HelloRequest); i {
 			case 0:
 				return &v.state
@@ -189,7 +193,7 @@ func file_helloworld_v1_helloworld_proto_init() {
 				return nil
 			}
 		}
-		file_helloworld_v1_helloworld_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+		file_helloworld_v1_helloworld_proto_msgTypes[1].Exporter = func(v any, i int) any {
 			switch v := v.(*HelloReply); i {
 			case 0:
 				return &v.state
@@ -223,8 +227,10 @@ func file_helloworld_v1_helloworld_proto_init() {
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ context.Context
-var _ grpc.ClientConnInterface
+var (
+	_ context.Context
+	_ grpc.ClientConnInterface
+)
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
@@ -262,8 +268,7 @@ type GreeterServiceServer interface {
 }
 
 // UnimplementedGreeterServiceServer can be embedded to have forward compatible implementations.
-type UnimplementedGreeterServiceServer struct {
-}
+type UnimplementedGreeterServiceServer struct{}
 
 func (*UnimplementedGreeterServiceServer) SayHello(context.Context, *HelloRequest) (*HelloReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SayHello not implemented")
@@ -273,7 +278,7 @@ func RegisterGreeterServiceServer(s *grpc.Server, srv GreeterServiceServer) {
 	s.RegisterService(&_GreeterService_serviceDesc, srv)
 }
 
-func _GreeterService_SayHello_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GreeterService_SayHello_Handler(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
 	in := new(HelloRequest)
 	if err := dec(in); err != nil {
 		return nil, err
@@ -285,7 +290,7 @@ func _GreeterService_SayHello_Handler(srv interface{}, ctx context.Context, dec 
 		Server:     srv,
 		FullMethod: "/grpc.helloworld.v1.GreeterService/SayHello",
 	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+	handler := func(ctx context.Context, req any) (any, error) {
 		return srv.(GreeterServiceServer).SayHello(ctx, req.(*HelloRequest))
 	}
 	return interceptor(ctx, in, info, handler)

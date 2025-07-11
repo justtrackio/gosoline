@@ -132,7 +132,8 @@ func (_c *RunnableBatchConsumerCallback_Run_Call[M]) RunAndReturn(run func(conte
 func NewRunnableBatchConsumerCallback[M interface{}](t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *RunnableBatchConsumerCallback[M] {
+},
+) *RunnableBatchConsumerCallback[M] {
 	mock := &RunnableBatchConsumerCallback[M]{}
 	mock.Mock.Test(t)
 

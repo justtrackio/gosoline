@@ -13,6 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/httpserver/auth"
 	kvStoreMocks "github.com/justtrackio/gosoline/pkg/kvstore/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,7 +39,7 @@ func makeKvStoreProvider(t *testing.T, test *tokenBearerTestCase) auth.TokenBear
 	repo := kvStoreMocks.NewKvStore[bearer](t)
 
 	if test.bearerId != "" && test.token != "" {
-		repo.EXPECT().Get(context.Background(), test.bearerId, &bearer{}).Run(func(ctx context.Context, key any, m *bearer) {
+		repo.EXPECT().Get(matcher.Context, test.bearerId, &bearer{}).Run(func(ctx context.Context, key any, m *bearer) {
 			if test.bearer != nil {
 				*m = *test.bearer
 			}
@@ -61,7 +62,7 @@ func makeDdbProvider(t *testing.T, test *tokenBearerTestCase) auth.TokenBearerPr
 
 		repo.EXPECT().GetItemBuilder().Return(builder).Once()
 
-		repo.EXPECT().GetItem(context.Background(), builder, &bearer{}).Run(func(ctx context.Context, qb ddb.GetItemBuilder, result any) {
+		repo.EXPECT().GetItem(matcher.Context, builder, &bearer{}).Run(func(ctx context.Context, qb ddb.GetItemBuilder, result any) {
 			m := result.(*bearer)
 
 			if test.bearer != nil {

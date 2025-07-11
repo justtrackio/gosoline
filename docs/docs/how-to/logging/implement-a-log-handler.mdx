@@ -91,7 +91,7 @@ Here, you'll return the info level priority.
 Create a getter for the log message:
 
 ```go
-func (h *MyCustomHandler) Log(timestamp time.Time, level int, msg string, args []interface{}, err error, data log.Data) error {
+func (h *MyCustomHandler) Log(timestamp time.Time, level int, msg string, args []any, err error, data log.Data) error {
 	fmt.Printf("%s happenend at %s", msg, timestamp.Format(time.RFC822))
 	return nil
 }

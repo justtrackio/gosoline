@@ -71,7 +71,7 @@ func (m *multiOutput) GetMaxBatchSize() (maxBatchSize *int) {
 
 func NewConfigurableMultiOutput(ctx context.Context, config cfg.Config, logger log.Logger, base string) (Output, error) {
 	key := fmt.Sprintf("%s.types", ConfigurableOutputKey(base))
-	ts := config.Get(key).(map[string]interface{})
+	ts := config.Get(key).(map[string]any)
 
 	multiOutput := &multiOutput{
 		outputs: make([]Output, 0),

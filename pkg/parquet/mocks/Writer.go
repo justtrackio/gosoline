@@ -124,7 +124,8 @@ func (_c *Writer_WriteToKey_Call) RunAndReturn(run func(context.Context, string,
 func NewWriter(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Writer {
+},
+) *Writer {
 	mock := &Writer{}
 	mock.Mock.Test(t)
 

@@ -392,7 +392,8 @@ func (_c *Guard_UpdatePolicy_Call) RunAndReturn(run func(context.Context, ladon.
 func NewGuard(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Guard {
+},
+) *Guard {
 	mock := &Guard{}
 	mock.Mock.Test(t)
 

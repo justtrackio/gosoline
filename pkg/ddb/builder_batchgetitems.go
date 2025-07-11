@@ -13,13 +13,13 @@ import (
 
 //go:generate go run github.com/vektra/mockery/v2 --name BatchGetItemsBuilder
 type BatchGetItemsBuilder interface {
-	WithKeys(values ...interface{}) BatchGetItemsBuilder
-	WithKeyPairs(pairs [][]interface{}) BatchGetItemsBuilder
-	WithHashKeys(hashKeys interface{}) BatchGetItemsBuilder
+	WithKeys(values ...any) BatchGetItemsBuilder
+	WithKeyPairs(pairs [][]any) BatchGetItemsBuilder
+	WithHashKeys(hashKeys any) BatchGetItemsBuilder
 	DisableTtlFilter() BatchGetItemsBuilder
-	WithProjection(projection interface{}) BatchGetItemsBuilder
+	WithProjection(projection any) BatchGetItemsBuilder
 	WithConsistentRead(consistentRead bool) BatchGetItemsBuilder
-	Build(result interface{}) (*dynamodb.BatchGetItemInput, error)
+	Build(result any) (*dynamodb.BatchGetItemInput, error)
 }
 
 type batchGetItemsBuilder struct {
@@ -27,9 +27,9 @@ type batchGetItemsBuilder struct {
 
 	err            error
 	keyBuilder     keyBuilder
-	keyPairs       [][]interface{}
+	keyPairs       [][]any
 	consistentRead *bool
-	projection     interface{}
+	projection     any
 }
 
 func NewBatchGetItemsBuilder(metadata *Metadata, clock clock.Clock) BatchGetItemsBuilder {
@@ -39,23 +39,23 @@ func NewBatchGetItemsBuilder(metadata *Metadata, clock clock.Clock) BatchGetItem
 		keyBuilder: keyBuilder{
 			metadata: metadata.Main,
 		},
-		keyPairs: make([][]interface{}, 0, 100),
+		keyPairs: make([][]any, 0, 100),
 	}
 }
 
-func (b *batchGetItemsBuilder) WithKeys(values ...interface{}) BatchGetItemsBuilder {
+func (b *batchGetItemsBuilder) WithKeys(values ...any) BatchGetItemsBuilder {
 	b.keyPairs = append(b.keyPairs, values)
 
 	return b
 }
 
-func (b *batchGetItemsBuilder) WithKeyPairs(pairs [][]interface{}) BatchGetItemsBuilder {
+func (b *batchGetItemsBuilder) WithKeyPairs(pairs [][]any) BatchGetItemsBuilder {
 	b.keyPairs = append(b.keyPairs, pairs...)
 
 	return b
 }
 
-func (b *batchGetItemsBuilder) WithHashKeys(hashKeys interface{}) BatchGetItemsBuilder {
+func (b *batchGetItemsBuilder) WithHashKeys(hashKeys any) BatchGetItemsBuilder {
 	slice, err := refl.InterfaceToInterfaceSlice(hashKeys)
 	if err != nil {
 		b.err = multierror.Append(b.err, err)
@@ -74,7 +74,7 @@ func (b *batchGetItemsBuilder) DisableTtlFilter() BatchGetItemsBuilder {
 	return b
 }
 
-func (b *batchGetItemsBuilder) WithProjection(projection interface{}) BatchGetItemsBuilder {
+func (b *batchGetItemsBuilder) WithProjection(projection any) BatchGetItemsBuilder {
 	b.projection = projection
 
 	return b
@@ -86,7 +86,7 @@ func (b *batchGetItemsBuilder) WithConsistentRead(consistentRead bool) BatchGetI
 	return b
 }
 
-func (b *batchGetItemsBuilder) Build(result interface{}) (*dynamodb.BatchGetItemInput, error) {
+func (b *batchGetItemsBuilder) Build(result any) (*dynamodb.BatchGetItemInput, error) {
 	if b.projection == nil {
 		b.projection = result
 	}

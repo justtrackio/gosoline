@@ -278,7 +278,8 @@ func (_c *UpdateHandler_TransformUpdate_Call) RunAndReturn(run func(context.Cont
 func NewUpdateHandler(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *UpdateHandler {
+},
+) *UpdateHandler {
 	mock := &UpdateHandler{}
 	mock.Mock.Test(t)
 

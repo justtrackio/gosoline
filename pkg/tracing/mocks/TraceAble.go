@@ -72,7 +72,8 @@ func (_c *TraceAble_GetTrace_Call) RunAndReturn(run func() *tracing.Trace) *Trac
 func NewTraceAble(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *TraceAble {
+},
+) *TraceAble {
 	mock := &TraceAble{}
 	mock.Mock.Test(t)
 

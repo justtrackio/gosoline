@@ -18,8 +18,12 @@ import (
 func CalculatorModuleFactory(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
 	var err error
 	var handler Handler
+	var settings *CalculatorSettings
 
-	settings := readCalculatorSettings(config)
+	if settings, err = readCalculatorSettings(config); err != nil {
+		return nil, fmt.Errorf("can not read calculator settings: %w", err)
+	}
+
 	handlers := map[string]Handler{}
 	modules := map[string]kernel.ModuleFactory{}
 

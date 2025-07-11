@@ -437,7 +437,8 @@ func (_c *SizedStore_PutBatch_Call[T]) RunAndReturn(run func(context.Context, in
 func NewSizedStore[T interface{}](t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *SizedStore[T] {
+},
+) *SizedStore[T] {
 	mock := &SizedStore[T]{}
 	mock.Mock.Test(t)
 

@@ -1,7 +1,6 @@
 package db_test
 
 import (
-	"context"
 	"testing"
 
 	goSqlMock "github.com/DATA-DOG/go-sqlmock"
@@ -13,8 +12,8 @@ import (
 )
 
 func TestGetResult(t *testing.T) {
-	ctx := context.Background()
-	client, sqlMock := getMocks()
+	ctx := t.Context()
+	client, sqlMock := getMocks(t)
 
 	expectedResult := db.Result{
 		{
@@ -50,8 +49,8 @@ func TestGetResult(t *testing.T) {
 }
 
 func TestGetSingleScalarValue(t *testing.T) {
-	ctx := context.Background()
-	client, sqlMock := getMocks()
+	ctx := t.Context()
+	client, sqlMock := getMocks(t)
 
 	rows := goSqlMock.NewRows([]string{"count"})
 	rows.AddRow(3)
@@ -68,8 +67,8 @@ func TestGetSingleScalarValue(t *testing.T) {
 }
 
 func TestQuery(t *testing.T) {
-	ctx := context.Background()
-	client, sqlMock := getMocks()
+	ctx := t.Context()
+	client, sqlMock := getMocks(t)
 
 	id := "1"
 	name := "test_thing"
@@ -103,8 +102,8 @@ func TestQuery(t *testing.T) {
 }
 
 func TestClient_Exec(t *testing.T) {
-	ctx := context.Background()
-	client, sqlMock := getMocks()
+	ctx := t.Context()
+	client, sqlMock := getMocks(t)
 
 	id := "2"
 	name := "old_name"
@@ -127,8 +126,11 @@ func TestClient_Exec(t *testing.T) {
 	sqlMock.ExpectClose()
 }
 
-func getMocks() (db.Client, goSqlMock.Sqlmock) {
-	dbMock, sqlMock, _ := goSqlMock.New()
+func getMocks(t *testing.T) (db.Client, goSqlMock.Sqlmock) {
+	dbMock, sqlMock, err := goSqlMock.New()
+	if err != nil {
+		assert.NoError(t, err)
+	}
 	loggerMock := logMocks.NewLoggerMock(logMocks.WithMockAll)
 	sqlxDB := sqlx.NewDb(dbMock, "sqlmock")
 

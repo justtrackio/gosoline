@@ -279,7 +279,8 @@ func (_c *Partitioner_Trim_Call) RunAndReturn(run func(int)) *Partitioner_Trim_C
 func NewPartitioner(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Partitioner {
+},
+) *Partitioner {
 	mock := &Partitioner{}
 	mock.Mock.Test(t)
 

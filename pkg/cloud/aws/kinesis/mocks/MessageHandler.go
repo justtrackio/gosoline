@@ -100,7 +100,8 @@ func (_c *MessageHandler_Handle_Call) RunAndReturn(run func([]byte) error) *Mess
 func NewMessageHandler(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MessageHandler {
+},
+) *MessageHandler {
 	mock := &MessageHandler{}
 	mock.Mock.Test(t)
 

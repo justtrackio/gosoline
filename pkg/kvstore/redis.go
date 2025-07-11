@@ -82,14 +82,14 @@ func (s *redisKvStore[T]) Get(ctx context.Context, key any, value *T) (bool, err
 	return true, nil
 }
 
-func (s *redisKvStore[T]) GetBatch(ctx context.Context, keys any, result any) ([]interface{}, error) {
+func (s *redisKvStore[T]) GetBatch(ctx context.Context, keys any, result any) ([]any, error) {
 	return getBatch(ctx, keys, result, s.getChunk, s.settings.BatchSize)
 }
 
-func (s *redisKvStore[T]) getChunk(ctx context.Context, resultMap *refl.Map, keys []interface{}) ([]interface{}, error) {
+func (s *redisKvStore[T]) getChunk(ctx context.Context, resultMap *refl.Map, keys []any) ([]any, error) {
 	var err error
 
-	missing := make([]interface{}, 0)
+	missing := make([]any, 0)
 	keyStrings := make([]string, len(keys))
 
 	for i := 0; i < len(keyStrings); i++ {
@@ -146,14 +146,12 @@ func (s *redisKvStore[T]) Put(ctx context.Context, key any, value T) error {
 	return nil
 }
 
-func (s *redisKvStore[T]) marshalKeyValue(key any, value any) (string, []byte, error) {
-	bytes, err := Marshal(value)
-	if err != nil {
+func (s *redisKvStore[T]) marshalKeyValue(key any, value any) (keyStr string, bytes []byte, err error) {
+	if bytes, err = Marshal(value); err != nil {
 		return "", nil, fmt.Errorf("can not marshal value %T %v: %w", value, value, err)
 	}
 
-	keyStr, err := s.key(key)
-	if err != nil {
+	if keyStr, err = s.key(key); err != nil {
 		return "", nil, fmt.Errorf("can not get key to write value to redis: %w", err)
 	}
 
@@ -163,11 +161,11 @@ func (s *redisKvStore[T]) marshalKeyValue(key any, value any) (string, []byte, e
 func (s *redisKvStore[T]) PutBatch(ctx context.Context, values any) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
 	if err != nil {
-		return fmt.Errorf("could not convert values from %T to map[interface{}]interface{}", values)
+		return fmt.Errorf("could not convert values from %T to map[any]any", values)
 	}
 
 	chunkSize := s.settings.BatchSize
-	pairs := make([]interface{}, 0, 2*chunkSize)
+	pairs := make([]any, 0, 2*chunkSize)
 	for k, v := range mii {
 		key, value, err := s.marshalKeyValue(k, v)
 		if err != nil {
@@ -180,7 +178,7 @@ func (s *redisKvStore[T]) PutBatch(ctx context.Context, values any) error {
 			if err != nil {
 				return fmt.Errorf("failed to write batch to redis: %w", err)
 			}
-			pairs = make([]interface{}, 0, chunkSize)
+			pairs = make([]any, 0, chunkSize)
 		}
 	}
 
@@ -237,7 +235,7 @@ func (s *redisKvStore[T]) Delete(ctx context.Context, key any) error {
 func (s *redisKvStore[T]) DeleteBatch(ctx context.Context, keys any) error {
 	si, err := refl.InterfaceToInterfaceSlice(keys)
 	if err != nil {
-		return fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
+		return fmt.Errorf("could not convert keys from %T to []any: %w", keys, err)
 	}
 
 	redisKeys := make([]string, len(si))

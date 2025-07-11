@@ -150,7 +150,8 @@ func (_c *Producer_WriteOne_Call) RunAndReturn(run func(context.Context, interfa
 func NewProducer(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Producer {
+},
+) *Producer {
 	mock := &Producer{}
 	mock.Mock.Test(t)
 

@@ -136,7 +136,8 @@ func (_c *Topic_PublishBatch_Call) RunAndReturn(run func(context.Context, []stri
 func NewTopic(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Topic {
+},
+) *Topic {
 	mock := &Topic{}
 	mock.Mock.Test(t)
 

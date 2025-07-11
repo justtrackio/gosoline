@@ -21,7 +21,7 @@ type producerDaemonPartitionedAggregatorTestSuite struct {
 }
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) SetupTest() {
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.rand = mocks.NewPartitionerRand(s.T())
 	s.aggregators = []*mocks.ProducerDaemonAggregator{

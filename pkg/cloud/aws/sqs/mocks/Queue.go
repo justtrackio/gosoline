@@ -412,7 +412,8 @@ func (_c *Queue_SendBatch_Call) RunAndReturn(run func(context.Context, []*sqs.Me
 func NewQueue(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Queue {
+},
+) *Queue {
 	mock := &Queue{}
 	mock.Mock.Test(t)
 

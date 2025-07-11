@@ -98,7 +98,7 @@ func (l *Service) Purge(ctx context.Context) error {
 			return fmt.Errorf("could not delete objects: %w", err)
 		}
 
-		if *out.IsTruncated == false {
+		if !*out.IsTruncated {
 			break
 		}
 

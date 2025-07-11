@@ -86,7 +86,8 @@ func (_c *TypedTransformer_Transform_Call[I, M]) RunAndReturn(run func(context.C
 func NewTypedTransformer[I interface{}, M mdlsub.Model](t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *TypedTransformer[I, M] {
+},
+) *TypedTransformer[I, M] {
 	mock := &TypedTransformer[I, M]{}
 	mock.Mock.Test(t)
 

@@ -19,10 +19,10 @@ func TestModule(t *testing.T) {
 	mgr := status.NewManager()
 	logger := logMocks.NewLogger(t)
 	logger.EXPECT().WithChannel("status").Return(logger).Once()
-	m, err := status.NewModule(mgr)(context.Background(), nil, logger)
+	m, err := status.NewModule(mgr)(t.Context(), nil, logger)
 	assert.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cfn := coffin.New()
 
 	cfn.GoWithContext(ctx, m.Run)
@@ -118,7 +118,7 @@ func TestModuleExample(t *testing.T) {
 		exitCodeHandler,
 		application.WithModuleFactory("status", status.NewModule(status.ProvideManager())),
 		application.WithModuleFactory("main", NewTestModule),
-		application.WithConfigMap(map[string]interface{}{
+		application.WithConfigMap(map[string]any{
 			"env":         "test",
 			"app_project": "justtrack",
 			"app_family":  "fam",

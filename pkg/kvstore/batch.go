@@ -7,8 +7,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
-func keyChunks(keys []interface{}, size int) [][]interface{} {
-	var chunks [][]interface{}
+func keyChunks(keys []any, size int) [][]any {
+	var chunks [][]any
 
 	for i := 0; i < len(keys); i += size {
 		end := i + size
@@ -23,9 +23,9 @@ func keyChunks(keys []interface{}, size int) [][]interface{} {
 	return chunks
 }
 
-type chunkGetter func(ctx context.Context, resultMap *refl.Map, keys []interface{}) ([]interface{}, error)
+type chunkGetter func(ctx context.Context, resultMap *refl.Map, keys []any) ([]any, error)
 
-func getBatch(ctx context.Context, keys interface{}, result interface{}, getChunk chunkGetter, batchSize int) ([]interface{}, error) {
+func getBatch(ctx context.Context, keys any, result any, getChunk chunkGetter, batchSize int) ([]any, error) {
 	keySlice, err := refl.InterfaceToInterfaceSlice(keys)
 	if err != nil {
 		return nil, fmt.Errorf("can not morph keys to slice of interfaces: %w", err)
@@ -46,7 +46,7 @@ func getBatch(ctx context.Context, keys interface{}, result interface{}, getChun
 	}
 
 	chunks := keyChunks(keySlice, batchSize)
-	missing := make([]interface{}, 0)
+	missing := make([]any, 0)
 
 	for _, chunk := range chunks {
 		miss, err := getChunk(ctx, resultMap, chunk)

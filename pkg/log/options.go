@@ -10,7 +10,7 @@ func WithContextFieldsResolver(resolvers ...ContextFieldsResolverFunction) Optio
 	}
 }
 
-func WithFields(tags map[string]interface{}) Option {
+func WithFields(tags map[string]any) Option {
 	return func(logger *gosoLogger) error {
 		logger.data.Fields = mergeFields(logger.data.Fields, tags)
 
@@ -21,6 +21,7 @@ func WithFields(tags map[string]interface{}) Option {
 func WithHandlers(handler ...Handler) Option {
 	return func(logger *gosoLogger) error {
 		logger.handlers = append(logger.handlers, handler...)
+
 		return nil
 	}
 }

@@ -92,7 +92,8 @@ func (_c *TimeStampable_SetUpdatedAt_Call) RunAndReturn(run func(*time.Time)) *T
 func NewTimeStampable(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *TimeStampable {
+},
+) *TimeStampable {
 	mock := &TimeStampable{}
 	mock.Mock.Test(t)
 

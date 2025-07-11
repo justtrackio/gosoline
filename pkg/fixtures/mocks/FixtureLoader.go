@@ -72,7 +72,8 @@ func (_c *FixtureLoader_Load_Call) RunAndReturn(run func(context.Context) error)
 func NewFixtureLoader(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *FixtureLoader {
+},
+) *FixtureLoader {
 	mock := &FixtureLoader{}
 	mock.Mock.Test(t)
 

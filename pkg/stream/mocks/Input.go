@@ -197,7 +197,8 @@ func (_c *Input_Stop_Call) RunAndReturn(run func()) *Input_Stop_Call {
 func NewInput(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Input {
+},
+) *Input {
 	mock := &Input{}
 	mock.Mock.Test(t)
 

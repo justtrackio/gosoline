@@ -67,7 +67,9 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 
 func getConfigs(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...ClientOption) (*ClientConfig, aws.Config, error) {
 	clientCfg := &ClientConfig{}
-	gosoAws.UnmarshalClientSettings(config, &clientCfg.Settings, "athena", name)
+	if err := gosoAws.UnmarshalClientSettings(config, &clientCfg.Settings, "athena", name); err != nil {
+		return nil, aws.Config{}, fmt.Errorf("failed to unmarshal Athena client settings: %w", err)
+	}
 
 	for _, opt := range optFns {
 		opt(clientCfg)

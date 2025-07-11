@@ -11,7 +11,7 @@ type Sentry interface {
 	CaptureException(exception error, hint *sentry.EventHint, scope sentry.EventModifier) *sentry.EventID
 }
 
-type ErrorHandler func(msg string, args ...interface{})
+type ErrorHandler func(msg string, args ...any)
 
 var defaultErrorHandler = PanicErrorHandler
 
@@ -19,19 +19,19 @@ func WithDefaultErrorHandler(handler ErrorHandler) {
 	defaultErrorHandler = handler
 }
 
-func PanicErrorHandler(msg string, args ...interface{}) {
+func PanicErrorHandler(msg string, args ...any) {
 	err := fmt.Errorf(msg, args...)
 	panic(err)
 }
 
 func LoggerErrorHandler(logger Logger) ErrorHandler {
-	return func(msg string, args ...interface{}) {
+	return func(msg string, args ...any) {
 		logger.Error(msg, args...)
 	}
 }
 
 func SentryErrorHandler(sentry Sentry) ErrorHandler {
-	return func(msg string, args ...interface{}) {
+	return func(msg string, args ...any) {
 		err := fmt.Errorf(msg, args...)
 		sentry.CaptureException(err, nil, nil)
 	}

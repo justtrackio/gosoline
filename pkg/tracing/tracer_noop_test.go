@@ -1,7 +1,6 @@
 package tracing_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -20,7 +19,7 @@ func TestNoopTracer_StartSpan(t *testing.T) {
 func TestNoopTracer_StartSpanFromContext(t *testing.T) {
 	tracer := tracing.NewNoopTracer()
 
-	ctx, _ := tracer.StartSpanFromContext(context.Background(), "test_trans")
+	ctx, _ := tracer.StartSpanFromContext(t.Context(), "test_trans")
 	traceId := tracing.GetTraceIdFromContext(ctx)
 
 	assert.Nil(t, traceId, "the trace id should not exist")
@@ -36,7 +35,7 @@ func TestNoopTracer_StartSpanFromContextWithTrace(t *testing.T) {
 		Sampled:  true,
 	}
 
-	ctx := tracing.ContextWithTrace(context.Background(), trace)
+	ctx := tracing.ContextWithTrace(t.Context(), trace)
 	ctx, _ = tracer.StartSpanFromContext(ctx, "another_trace")
 	traceId := tracing.GetTraceIdFromContext(ctx)
 

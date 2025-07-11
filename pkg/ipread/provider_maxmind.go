@@ -42,13 +42,15 @@ type maxmindProvider struct {
 }
 
 func NewMaxmindProvider(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Provider, error) {
-	logger = logger.WithFields(map[string]interface{}{
+	logger = logger.WithFields(map[string]any{
 		"provider_name": name,
 	})
 
 	key := fmt.Sprintf("ipread.%s", name)
 	settings := &MaxmindSettings{}
-	config.UnmarshalKey(key, settings)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal maxmind settings for %s: %w", name, err)
+	}
 
 	var err error
 	var loader databaseLoader

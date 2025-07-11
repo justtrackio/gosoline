@@ -4,7 +4,6 @@
 package ddb_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -57,7 +56,7 @@ func (s *DdbTestSuite) SetupTest() error {
 }
 
 func (s *DdbTestSuite) TestWriteReadUpdateDeleteItem() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	_, err := s.repo.PutItem(ctx, nil, s.makeItem("1", "abc", time.Hour))
 	s.NoError(err)
@@ -87,7 +86,7 @@ func (s *DdbTestSuite) TestWriteReadUpdateDeleteItem() {
 }
 
 func (s *DdbTestSuite) TestGetExpiredItem() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	_, err := s.repo.PutItem(ctx, nil, s.makeItem("1", "abc", time.Second*10))
 	s.NoError(err)
@@ -102,7 +101,7 @@ func (s *DdbTestSuite) TestGetExpiredItem() {
 }
 
 func (s *DdbTestSuite) TestBatch() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	_, err := s.repo.BatchPutItems(ctx, []*TestData{
 		s.makeItem("1", "abc", time.Hour),
@@ -147,7 +146,7 @@ func (s *DdbTestSuite) TestBatch() {
 }
 
 func (s *DdbTestSuite) TestScan() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	_, err := s.repo.PutItem(ctx, nil, s.makeItem("1", "abc", time.Hour))
 	s.NoError(err)
@@ -168,7 +167,7 @@ func (s *DdbTestSuite) TestScan() {
 }
 
 func (s *DdbTestSuite) TestQuery() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	_, err := s.repo.PutItem(ctx, nil, s.makeItem("1", "abc", time.Hour))
 	s.NoError(err)

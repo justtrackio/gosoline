@@ -266,7 +266,8 @@ func (_c *CheckpointWithoutRelease_Persist_Call) RunAndReturn(run func(context.C
 func NewCheckpointWithoutRelease(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *CheckpointWithoutRelease {
+},
+) *CheckpointWithoutRelease {
 	mock := &CheckpointWithoutRelease{}
 	mock.Mock.Test(t)
 

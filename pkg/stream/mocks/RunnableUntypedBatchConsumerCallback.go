@@ -180,7 +180,8 @@ func (_c *RunnableUntypedBatchConsumerCallback_Run_Call) RunAndReturn(run func(c
 func NewRunnableUntypedBatchConsumerCallback(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *RunnableUntypedBatchConsumerCallback {
+},
+) *RunnableUntypedBatchConsumerCallback {
 	mock := &RunnableUntypedBatchConsumerCallback{}
 	mock.Mock.Test(t)
 

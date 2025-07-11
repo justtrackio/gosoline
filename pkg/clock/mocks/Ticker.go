@@ -138,7 +138,8 @@ func (_c *Ticker_Stop_Call) RunAndReturn(run func()) *Ticker_Stop_Call {
 func NewTicker(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Ticker {
+},
+) *Ticker {
 	mock := &Ticker{}
 	mock.Mock.Test(t)
 

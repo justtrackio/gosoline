@@ -21,11 +21,13 @@ type streamOutputSettings struct {
 type streamOutputFactory struct{}
 
 func (f *streamOutputFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
-	outputs := config.GetStringMap("stream.output", map[string]interface{}{})
+	outputs := config.GetStringMap("stream.output", map[string]any{})
 
 	for outputName := range outputs {
 		settings := &streamOutputSettings{}
-		config.UnmarshalDefaults(settings)
+		if err := config.UnmarshalDefaults(settings); err != nil {
+			return fmt.Errorf("could not unmarshal defaults for output %s: %w", outputName, err)
+		}
 
 		settings.Name = outputName
 		settings.Type = componentStreamOutput
@@ -42,11 +44,11 @@ func (f streamOutputFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &streamOutputSettings{}
 }
 
-func (f streamOutputFactory) DescribeContainers(settings interface{}) componentContainerDescriptions {
+func (f streamOutputFactory) DescribeContainers(settings any) componentContainerDescriptions {
 	return nil
 }
 
-func (f streamOutputFactory) Component(_ cfg.Config, _ log.Logger, _ map[string]*container, settings interface{}) (Component, error) {
+func (f streamOutputFactory) Component(_ cfg.Config, _ log.Logger, _ map[string]*container, settings any) (Component, error) {
 	s := settings.(*streamOutputSettings)
 
 	component := &streamOutputComponent{

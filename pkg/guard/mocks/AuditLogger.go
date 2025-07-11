@@ -100,7 +100,8 @@ func (_c *AuditLogger_LogRejectedAccessRequest_Call) RunAndReturn(run func(conte
 func NewAuditLogger(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *AuditLogger {
+},
+) *AuditLogger {
 	mock := &AuditLogger{}
 	mock.Mock.Test(t)
 

@@ -75,6 +75,7 @@ func (i *InMemoryInput) Run(ctx context.Context) error {
 	}
 
 	close(i.channel)
+
 	return nil
 }
 

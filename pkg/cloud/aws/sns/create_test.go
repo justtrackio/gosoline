@@ -1,7 +1,6 @@
 package sns_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -14,7 +13,7 @@ import (
 )
 
 func TestCreateTopic(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	client := gosoSnsMocks.NewClient(t)
 	client.EXPECT().CreateTopic(ctx, &awsSns.CreateTopicInput{
 		Name: aws.String("mcoins-test-analytics-topicker-topic"),
@@ -31,7 +30,7 @@ func TestCreateTopic(t *testing.T) {
 }
 
 func TestCreateTopicFailing(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	client := gosoSnsMocks.NewClient(t)
 	client.EXPECT().CreateTopic(ctx, &awsSns.CreateTopicInput{
 		Name: aws.String("mcoins-test-analytics-topicker-topic"),

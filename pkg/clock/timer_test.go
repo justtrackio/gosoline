@@ -48,6 +48,7 @@ func TestRealTimer(t *testing.T) {
 			break
 		case <-timer.Chan():
 			assert.Fail(t, "timer should not have triggered that fast")
+
 			return
 		}
 		stopped := timer.Stop()

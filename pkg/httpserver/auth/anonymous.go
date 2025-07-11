@@ -19,7 +19,7 @@ func (a *anonymousAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 		Name:            Anonymous,
 		Anonymous:       true,
 		AuthenticatedBy: ByAnonymous,
-		Attributes:      map[string]interface{}{},
+		Attributes:      map[string]any{},
 	}
 
 	RequestWithSubject(ginCtx, user)

@@ -11,12 +11,12 @@ import (
 
 //go:generate go run github.com/vektra/mockery/v2 --name DeleteItemBuilder
 type DeleteItemBuilder interface {
-	WithHash(hashValue interface{}) DeleteItemBuilder
-	WithRange(rangeValue interface{}) DeleteItemBuilder
+	WithHash(hashValue any) DeleteItemBuilder
+	WithRange(rangeValue any) DeleteItemBuilder
 	WithCondition(cond expression.ConditionBuilder) DeleteItemBuilder
 	ReturnNone() DeleteItemBuilder
 	ReturnAllOld() DeleteItemBuilder
-	Build(item interface{}) (*dynamodb.DeleteItemInput, error)
+	Build(item any) (*dynamodb.DeleteItemInput, error)
 }
 
 type deleteItemBuilder struct {
@@ -35,13 +35,13 @@ func NewDeleteItemBuilder(metadata *Metadata) DeleteItemBuilder {
 	}
 }
 
-func (b *deleteItemBuilder) WithHash(hashValue interface{}) DeleteItemBuilder {
+func (b *deleteItemBuilder) WithHash(hashValue any) DeleteItemBuilder {
 	b.keyBuilder.withHash(hashValue)
 
 	return b
 }
 
-func (b *deleteItemBuilder) WithRange(rangeValue interface{}) DeleteItemBuilder {
+func (b *deleteItemBuilder) WithRange(rangeValue any) DeleteItemBuilder {
 	b.keyBuilder.withRange(rangeValue)
 
 	return b
@@ -65,7 +65,7 @@ func (b *deleteItemBuilder) ReturnAllOld() DeleteItemBuilder {
 	return b
 }
 
-func (b *deleteItemBuilder) Build(item interface{}) (*dynamodb.DeleteItemInput, error) {
+func (b *deleteItemBuilder) Build(item any) (*dynamodb.DeleteItemInput, error) {
 	if b.returnType != "" && b.returnType != types.ReturnValueNone && !isPointer(item) {
 		return nil, fmt.Errorf("the provided old value has to be a pointer")
 	}

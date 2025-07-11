@@ -1,7 +1,6 @@
 package resourcegroupstaggingapi_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -15,7 +14,7 @@ import (
 )
 
 func TestResourcesManager_GetResources(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	client := gosoResMocks.NewClient(t)

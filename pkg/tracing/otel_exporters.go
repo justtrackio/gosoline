@@ -2,6 +2,7 @@ package tracing
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -38,7 +39,9 @@ var otelTraceExporters = map[string]OtelExporterFactory{
 
 func NewOtelHttpTracer(ctx context.Context, config cfg.Config, _ log.Logger) (*otlptrace.Exporter, error) {
 	settings := &OtelExporterSettings{}
-	config.UnmarshalKey("tracing.otel.http", settings)
+	if err := config.UnmarshalKey("tracing.otel.http", settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal otel http exporter settings: %w", err)
+	}
 
 	opts := []otlptracehttp.Option{
 		otlptracehttp.WithEndpoint(settings.Endpoint),

@@ -183,7 +183,8 @@ func (_c *HandlerWithMultipleBindings_Handle_Call) RunAndReturn(run func(context
 func NewHandlerWithMultipleBindings(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *HandlerWithMultipleBindings {
+},
+) *HandlerWithMultipleBindings {
 	mock := &HandlerWithMultipleBindings{}
 	mock.Mock.Test(t)
 

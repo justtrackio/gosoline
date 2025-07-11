@@ -146,7 +146,8 @@ func (_c *SignalOnce_Signaled_Call) RunAndReturn(run func() bool) *SignalOnce_Si
 func NewSignalOnce(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *SignalOnce {
+},
+) *SignalOnce {
 	mock := &SignalOnce{}
 	mock.Mock.Test(t)
 

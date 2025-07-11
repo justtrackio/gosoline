@@ -123,7 +123,8 @@ func (_c *BaseCreateHandler_TransformCreate_Call) RunAndReturn(run func(context.
 func NewBaseCreateHandler(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *BaseCreateHandler {
+},
+) *BaseCreateHandler {
 	mock := &BaseCreateHandler{}
 	mock.Mock.Test(t)
 

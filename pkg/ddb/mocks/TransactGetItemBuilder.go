@@ -127,7 +127,8 @@ func (_c *TransactGetItemBuilder_GetItem_Call) RunAndReturn(run func() interface
 func NewTransactGetItemBuilder(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *TransactGetItemBuilder {
+},
+) *TransactGetItemBuilder {
 	mock := &TransactGetItemBuilder{}
 	mock.Mock.Test(t)
 

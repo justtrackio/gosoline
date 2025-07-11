@@ -312,7 +312,8 @@ func (_c *Checkpoint_Release_Call) RunAndReturn(run func(context.Context) error)
 func NewCheckpoint(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Checkpoint {
+},
+) *Checkpoint {
 	mock := &Checkpoint{}
 	mock.Mock.Test(t)
 

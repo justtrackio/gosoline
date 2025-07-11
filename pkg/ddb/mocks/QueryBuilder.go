@@ -851,7 +851,8 @@ func (_c *QueryBuilder_WithRangeLte_Call) RunAndReturn(run func(interface{}) ddb
 func NewQueryBuilder(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *QueryBuilder {
+},
+) *QueryBuilder {
 	mock := &QueryBuilder{}
 	mock.Mock.Test(t)
 

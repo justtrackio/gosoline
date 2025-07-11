@@ -87,7 +87,8 @@ func (_c *DistributedLockProvider_Acquire_Call) RunAndReturn(run func(context.Co
 func NewDistributedLockProvider(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *DistributedLockProvider {
+},
+) *DistributedLockProvider {
 	mock := &DistributedLockProvider{}
 	mock.Mock.Test(t)
 
