@@ -110,7 +110,8 @@ func (s *ClientTestSuite) getClients(name string, notifier exec.Notify) (db.Clie
 	connection, err = db.NewConnection(ctx, config, logger, name)
 	s.FailIfError(err)
 
-	executor := db.NewExecutor(config, logger, name, "api", notifier)
+	executor, err := db.NewExecutor(config, logger, name, "api", notifier)
+	s.FailIfError(err)
 	client := db.NewClientWithInterfaces(logger, connection, executor)
 
 	return client, proxy

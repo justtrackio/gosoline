@@ -43,7 +43,8 @@ func (s *S3TestSuite) TestS3() {
 	s.NoError(err)
 
 	s3Client := s.Env().S3("default").Client()
-	bucketName := s.Env().Config().GetString("blob.test.bucket")
+	bucketName, err := s.Env().Config().GetString("blob.test.bucket")
+	s.NoError(err)
 
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
