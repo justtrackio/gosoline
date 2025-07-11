@@ -32,7 +32,9 @@ func NewLifeCyclePurger(ctx context.Context, config cfg.Config, logger log.Logge
 	}
 
 	clientSettings := gosoDynamodb.ClientSettings{}
-	gosoAws.UnmarshalClientSettings(config, &clientSettings, "dynamodb", clientName)
+	if err = gosoAws.UnmarshalClientSettings(config, &clientSettings, "dynamodb", clientName); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal client settings: %w", err)
+	}
 
 	return &LifeCyclePurger{
 		client:         client,

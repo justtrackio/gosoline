@@ -121,7 +121,11 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 			logger := suite.Env().Logger()
 
 			configKey := mdlsub.GetSubscriberOutputConfigKey(tc.GetName())
-			outputType := config.GetString(configKey)
+			outputType, err := config.GetString(configKey)
+			if err != nil {
+				assert.FailNow(t, "failed to get output type", "failed to get subscriber output type for %s: %v", tc.GetName(), err)
+				return
+			}
 
 			switch outputType {
 			case mdlsub.OutputTypeDb:

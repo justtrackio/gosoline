@@ -546,7 +546,7 @@ func (_c *Config_GetMsiSlice_Call) RunAndReturn(run func(string, ...[]map[string
 }
 
 // GetString provides a mock function with given fields: key, optionalDefault
-func (_m *Config) GetString(key string, optionalDefault ...string) string {
+func (_m *Config) GetString(key string, optionalDefault ...string) (string, error) {
 	_va := make([]interface{}, len(optionalDefault))
 	for _i := range optionalDefault {
 		_va[_i] = optionalDefault[_i]
@@ -561,13 +561,23 @@ func (_m *Config) GetString(key string, optionalDefault ...string) string {
 	}
 
 	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...string) (string, error)); ok {
+		return rf(key, optionalDefault...)
+	}
 	if rf, ok := ret.Get(0).(func(string, ...string) string); ok {
 		r0 = rf(key, optionalDefault...)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string, ...string) error); ok {
+		r1 = rf(key, optionalDefault...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // Config_GetString_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetString'
@@ -596,12 +606,12 @@ func (_c *Config_GetString_Call) Run(run func(key string, optionalDefault ...str
 	return _c
 }
 
-func (_c *Config_GetString_Call) Return(_a0 string) *Config_GetString_Call {
-	_c.Call.Return(_a0)
+func (_c *Config_GetString_Call) Return(_a0 string, _a1 error) *Config_GetString_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *Config_GetString_Call) RunAndReturn(run func(string, ...string) string) *Config_GetString_Call {
+func (_c *Config_GetString_Call) RunAndReturn(run func(string, ...string) (string, error)) *Config_GetString_Call {
 	_c.Call.Return(run)
 	return _c
 }

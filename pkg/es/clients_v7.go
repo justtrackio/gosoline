@@ -60,10 +60,16 @@ var factory = map[string]clientBuilder{
 
 func NewClient(config cfg.Config, logger Logger, name string) (*ClientV7, error) {
 	clientTypeKey := fmt.Sprintf("es_%s_type", name)
-	clientType := config.GetString(clientTypeKey)
+	clientType, err := config.GetString(clientTypeKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get elasticsearch client type from %s: %w", clientTypeKey, err)
+	}
 
 	urlKey := fmt.Sprintf("es_%s_endpoint", name)
-	url := config.GetString(urlKey)
+	url, err := config.GetString(urlKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get elasticsearch endpoint from %s: %w", urlKey, err)
+	}
 
 	client, err := NewSimpleClient(logger, url, clientType)
 	if err != nil {

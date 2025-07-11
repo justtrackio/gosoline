@@ -14,7 +14,10 @@ func init() {
 }
 
 func calculatorConfigPostprocessor(config cfg.GosoConf) (bool, error) {
-	settings := readCalculatorSettings(config)
+	settings, err := readCalculatorSettings(config)
+	if err != nil {
+		return false, fmt.Errorf("failed to read calculator settings: %w", err)
+	}
 
 	if !settings.Enabled {
 		return false, nil
@@ -38,11 +41,21 @@ func calculatorConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 		pattern = strings.ReplaceAll(pattern, templ, val)
 	}
 
+	appGroup, err := config.GetString("app_group")
+	if err != nil {
+		return false, fmt.Errorf("failed to get app_group config: %w", err)
+	}
+	
+	appName, err := config.GetString("app_name")
+	if err != nil {
+		return false, fmt.Errorf("failed to get app_name config: %w", err)
+	}
+
 	leaderElectionSettings := &ddb.DdbLeaderElectionSettings{
 		Naming: ddb.TableNamingSettings{
 			Pattern: pattern,
 		},
-		GroupId:       fmt.Sprintf("%s-%s", config.GetString("app_group"), config.GetString("app_name")),
+		GroupId:       fmt.Sprintf("%s-%s", appGroup, appName),
 		LeaseDuration: time.Minute,
 	}
 

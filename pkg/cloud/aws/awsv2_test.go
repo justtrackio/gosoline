@@ -62,7 +62,8 @@ func TestUnmarshalClientSettings(t *testing.T) {
 	assert.NoError(t, err)
 
 	settings := &aws.ClientSettings{}
-	aws.UnmarshalClientSettings(config, settings, "cloudwatch", "default")
+	err = aws.UnmarshalClientSettings(config, settings, "cloudwatch", "default")
+	assert.NoError(t, err)
 	assert.Equal(t, &aws.ClientSettings{
 		Region:     "eu-central-1",
 		Endpoint:   "http://localhost:4566",
@@ -85,7 +86,8 @@ func TestUnmarshalClientSettings(t *testing.T) {
 	}, settings)
 
 	settings = &aws.ClientSettings{}
-	aws.UnmarshalClientSettings(config, settings, "cloudwatch", "metrics")
+	err = aws.UnmarshalClientSettings(config, settings, "cloudwatch", "metrics")
+	assert.NoError(t, err)
 	assert.Equal(t, &aws.ClientSettings{
 		Region:     "eu-central-1",
 		Endpoint:   "http://localhost:4566",

@@ -62,7 +62,9 @@ func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, na
 
 func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...ClientOption) (*sqs.Client, error) {
 	clientCfg := &ClientConfig{}
-	gosoAws.UnmarshalClientSettings(config, &clientCfg.Settings, "sqs", name)
+	if err := gosoAws.UnmarshalClientSettings(config, &clientCfg.Settings, "sqs", name); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal client settings: %w", err)
+	}
 
 	for _, opt := range optFns {
 		opt(clientCfg)

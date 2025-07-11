@@ -71,7 +71,7 @@ func LogNewClientCreated(ctx context.Context, logger log.Logger, service string,
 	}).Info("created new %s client %s", service, clientName)
 }
 
-func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, service string, name string) {
+func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, service string, name string) error {
 	if name == "" {
 		name = "default"
 	}
@@ -93,8 +93,13 @@ func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, se
 		cfg.UnmarshalWithDefaultsFromKey(clientDefaultsKey, "."),
 	}...)
 
-	backoffSettings := exec.ReadBackoffSettings(config, clientsKey, clientDefaultsKey, defaultClientKey, defaultsKey, "cloud.aws.defaults")
+	backoffSettings, err := exec.ReadBackoffSettings(config, clientsKey, clientDefaultsKey, defaultClientKey, defaultsKey, "cloud.aws.defaults")
+	if err != nil {
+		return fmt.Errorf("failed to read backoff settings for AWS client: %w", err)
+	}
 	settings.SetBackoff(backoffSettings)
+	
+	return nil
 }
 
 func DefaultClientOptions(ctx context.Context, _ cfg.Config, logger log.Logger, clientConfig ClientConfigAware) ([]func(options *awsCfg.LoadOptions) error, error) {

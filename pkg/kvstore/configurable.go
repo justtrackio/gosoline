@@ -67,7 +67,10 @@ func NewConfigurableKvStore[T any](ctx context.Context, config cfg.Config, logge
 	}
 
 	key := fmt.Sprintf("kvstore.%s.type", name)
-	t := config.GetString(key)
+	t, err := config.GetString(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get kvstore type for %s: %w", name, err)
+	}
 
 	switch t {
 	case TypeChain:

@@ -89,7 +89,10 @@ func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, 
 	logger = logger.WithChannel(fmt.Sprintf("consumer-%s", name))
 
 	settings := ReadConsumerSettings(config, name)
-	appId := cfg.GetAppIdFromConfig(config)
+	appId, err := cfg.GetAppIdFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get app ID from config: %w", err)
+	}
 
 	tracer, err := tracing.ProvideTracer(ctx, config, logger)
 	if err != nil {

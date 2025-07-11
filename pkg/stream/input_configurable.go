@@ -57,7 +57,10 @@ func ProvideConfigurableInput(ctx context.Context, config cfg.Config, logger log
 }
 
 func NewConfigurableInput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
-	t := readInputType(config, name)
+	t, err := readInputType(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read input type: %w", err)
+	}
 
 	factory, ok := inputFactories[t]
 
@@ -279,20 +282,27 @@ func ConfigurableInputKey(name string) string {
 	return fmt.Sprintf("stream.input.%s", name)
 }
 
-func readInputType(config cfg.Config, name string) string {
+func readInputType(config cfg.Config, name string) (string, error) {
 	key := fmt.Sprintf("%s.type", ConfigurableInputKey(name))
-	t := config.GetString(key)
+	t, err := config.GetString(key)
+	if err != nil {
+		return "", fmt.Errorf("failed to get input type for %s: %w", name, err)
+	}
 
-	return t
+	return t, nil
 }
 
-func readAllInputTypes(config cfg.Config) map[string]string {
+func readAllInputTypes(config cfg.Config) (map[string]string, error) {
 	inputMap := config.GetStringMap("stream.input", map[string]interface{}{})
 	inputsTypes := make(map[string]string, len(inputMap))
 
 	for name := range inputMap {
-		inputsTypes[name] = readInputType(config, name)
+		typ, err := readInputType(config, name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read input type for %s: %w", name, err)
+		}
+		inputsTypes[name] = typ
 	}
 
-	return inputsTypes
+	return inputsTypes, nil
 }

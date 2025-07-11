@@ -63,7 +63,10 @@ func ProvideCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.
 
 func NewCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	testClock := clock.NewRealClock()
-	cwNamespace := GetCloudWatchNamespace(config)
+	cwNamespace, err := GetCloudWatchNamespace(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cloudwatch namespace: %w", err)
+	}
 
 	client, err := gosoCloudwatch.ProvideClient(ctx, config, log.NewLogger(), "default", func(cfg *gosoCloudwatch.ClientConfig) {
 		cfg.Settings.Backoff.MaxAttempts = 0
@@ -190,8 +193,11 @@ func (w *cloudwatchWriter) buildMetricData(batch Data) ([]types.MetricDatum, err
 	return metricData, nil
 }
 
-func GetCloudWatchNamespace(config cfg.Config) string {
-	appId := cfg.GetAppIdFromConfig(config)
+func GetCloudWatchNamespace(config cfg.Config) (string, error) {
+	appId, err := cfg.GetAppIdFromConfig(config)
+	if err != nil {
+		return "", fmt.Errorf("failed to get app ID from config: %w", err)
+	}
 
 	values := map[string]string{
 		"project": appId.Project,
@@ -210,5 +216,5 @@ func GetCloudWatchNamespace(config cfg.Config) string {
 		namespace = strings.ReplaceAll(namespace, templ, val)
 	}
 
-	return namespace
+	return namespace, nil
 }

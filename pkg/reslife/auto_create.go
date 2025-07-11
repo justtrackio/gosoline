@@ -11,7 +11,10 @@ func init() {
 }
 
 func AutoCreateConfigPostProcessor(config cfg.GosoConf) (bool, error) {
-	env := config.GetString("env", "")
+	env, err := config.GetString("env", "")
+	if err != nil {
+		return false, fmt.Errorf("failed to get env config: %w", err)
+	}
 
 	if env != "dev" && env != "test" {
 		return false, nil

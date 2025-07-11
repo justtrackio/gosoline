@@ -27,7 +27,10 @@ type Settings struct {
 type redisCacheKey string
 
 func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
-	settings := ReadSettings(config, name)
+	settings, err := ReadSettings(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read redis settings for %s: %w", name, err)
+	}
 	cacheKey := fmt.Sprintf("%s:%s", settings.Address, name)
 
 	return appctx.Provide(ctx, redisCacheKey(cacheKey), func() (Client, error) {
@@ -39,7 +42,7 @@ func GetRedisConfigKey(name string) string {
 	return fmt.Sprintf("redis.%s", name)
 }
 
-func ReadSettings(config cfg.Config, name string) *Settings {
+func ReadSettings(config cfg.Config, name string) (*Settings, error) {
 	key := GetRedisConfigKey(name)
 
 	// This is a hack to ensure default redis config is populated,
@@ -49,11 +52,15 @@ func ReadSettings(config cfg.Config, name string) *Settings {
 	settings := &Settings{}
 	config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultsFromKey("redis.default", "."))
 
-	settings.BackoffSettings = exec.ReadBackoffSettings(config, key, "redis.default")
+	backoffSettings, err := exec.ReadBackoffSettings(config, key, "redis.default")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read backoff settings for redis client %s: %w", name, err)
+	}
+	settings.BackoffSettings = backoffSettings
 
 	if settings.Name == "" {
 		settings.Name = name
 	}
 
-	return settings
+	return settings, nil
 }

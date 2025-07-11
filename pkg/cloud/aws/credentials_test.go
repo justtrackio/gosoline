@@ -144,7 +144,10 @@ func (s *CredentialsTestSuite) unmarshalClientSettings(values map[string]interfa
 		},
 	})
 
-	gosoAws.UnmarshalClientSettings(config, &settings, "ddb", "default")
+	err := gosoAws.UnmarshalClientSettings(config, &settings, "ddb", "default")
+	if err != nil {
+		panic(err)
+	}
 
 	return settings
 }

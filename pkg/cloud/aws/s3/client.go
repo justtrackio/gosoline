@@ -70,9 +70,11 @@ func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, na
 }
 
 func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...ClientOption) (*s3.Client, error) {
-	clientCfg := GetClientConfig(config, name, optFns...)
+	clientCfg, err := GetClientConfig(config, name, optFns...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client config: %w", err)
+	}
 
-	var err error
 	var awsConfig aws.Config
 
 	if awsConfig, err = gosoAws.DefaultClientConfig(ctx, config, logger, clientCfg); err != nil {
@@ -89,19 +91,24 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 	return client, nil
 }
 
-func GetClientConfig(config cfg.Config, name string, optFns ...ClientOption) *ClientConfig {
+func GetClientConfig(config cfg.Config, name string, optFns ...ClientOption) (*ClientConfig, error) {
 	clientCfg := &ClientConfig{}
-	gosoAws.UnmarshalClientSettings(config, &clientCfg.Settings, "s3", name)
+	if err := gosoAws.UnmarshalClientSettings(config, &clientCfg.Settings, "s3", name); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal client settings: %w", err)
+	}
 
 	for _, opt := range optFns {
 		opt(clientCfg)
 	}
 
-	return clientCfg
+	return clientCfg, nil
 }
 
 func ResolveEndpoint(config cfg.Config, name string, optFns ...ClientOption) (string, error) {
-	clientCfg := GetClientConfig(config, name, optFns...)
+	clientCfg, err := GetClientConfig(config, name, optFns...)
+	if err != nil {
+		return "", fmt.Errorf("failed to get client config: %w", err)
+	}
 
 	if clientCfg.Settings.Endpoint != "" {
 		return clientCfg.Settings.Endpoint, nil
