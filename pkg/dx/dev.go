@@ -1,6 +1,8 @@
 package dx
 
 import (
+	"fmt"
+
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 

@@ -95,8 +95,7 @@ func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, se
 
 	backoffSettings, err := exec.ReadBackoffSettings(config, clientsKey, clientDefaultsKey, defaultClientKey, defaultsKey, "cloud.aws.defaults")
 	if err != nil {
-		config.err("failed to read backoff settings for AWS client: %w", err)
-		return
+		panic(fmt.Errorf("failed to read backoff settings for AWS client: %w", err))
 	}
 	settings.SetBackoff(backoffSettings)
 }

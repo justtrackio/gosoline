@@ -30,7 +30,10 @@ type Consumer struct {
 func NewConsumer(
 	ctx context.Context, conf cfg.Config, logger log.Logger, key string,
 ) (*Consumer, error) {
-	settings := ParseSettings(conf, key)
+	settings, err := ParseSettings(conf, key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse kafka consumer settings for %s: %w", key, err)
+	}
 
 	// Connection.
 	dialer, err := connection.NewDialer(settings.Connection())

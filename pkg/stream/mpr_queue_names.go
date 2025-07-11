@@ -20,7 +20,10 @@ func getQueueNames(config cfg.Config) ([]string, error) {
 	var queueName string
 	var reader queueNameReader
 
-	inputs := readAllInputTypes(config)
+	inputs, err := readAllInputTypes(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read input types: %w", err)
+	}
 	queueNames := make([]string, 0)
 
 	for inputName, typ := range inputs {

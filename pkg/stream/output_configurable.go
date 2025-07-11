@@ -57,7 +57,6 @@ func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Lo
 	}
 
 	var ok bool
-	var err error
 	var factory OutputFactory
 	var output Output
 

@@ -145,7 +145,10 @@ type redisClient struct {
 type redisKey Settings
 
 func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
-	settings := ReadSettings(config, name)
+	settings, err := ReadSettings(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read redis settings for %s: %w", name, err)
+	}
 
 	if err := reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings)); err != nil {
 		return nil, fmt.Errorf("failed to add redis lifecycle manager: %w", err)

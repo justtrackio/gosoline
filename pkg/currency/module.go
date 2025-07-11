@@ -38,7 +38,10 @@ func NewCurrencyModule() kernel.ModuleFactory {
 			return nil, fmt.Errorf("can not create updater: %w", err)
 		}
 
-		appId := cfg.GetAppIdFromConfig(config)
+		appId, err := cfg.GetAppIdFromConfig(config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get app ID from config: %w", err)
+		}
 
 		lockProvider, err := ddb.NewDdbLockProvider(ctx, config, logger, conc.DistributedLockSettings{
 			AppId:           appId,

@@ -32,13 +32,17 @@ func MysqlOrmFixtureSetFactory[T any](metadata *Metadata, data fixtures.NamedFix
 func NewMysqlOrmFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, metadata *Metadata) (fixtures.FixtureWriter, error) {
 	metadata.ModelId.PadFromConfig(config)
 
+	appId, err := cfg.GetAppIdFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get app ID from config: %w", err)
+	}
+
 	repoSettings := Settings{
-		AppId:      cfg.GetAppIdFromConfig(config),
+		AppId:      appId,
 		Metadata:   *metadata,
 		ClientName: "default",
 	}
 
-	var err error
 	var dbSettings *db.Settings
 	var repo *repository
 

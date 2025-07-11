@@ -191,7 +191,10 @@ func (w *cloudwatchWriter) buildMetricData(batch Data) ([]types.MetricDatum, err
 }
 
 func GetCloudWatchNamespace(config cfg.Config) string {
-	appId := cfg.GetAppIdFromConfig(config)
+	appId, err := cfg.GetAppIdFromConfig(config)
+	if err != nil {
+		panic(fmt.Errorf("failed to get app ID from config: %w", err))
+	}
 
 	values := map[string]string{
 		"project": appId.Project,

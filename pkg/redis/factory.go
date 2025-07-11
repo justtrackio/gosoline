@@ -27,7 +27,10 @@ type Settings struct {
 type redisCacheKey string
 
 func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
-	settings := ReadSettings(config, name)
+	settings, err := ReadSettings(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read redis settings for %s: %w", name, err)
+	}
 	cacheKey := fmt.Sprintf("%s:%s", settings.Address, name)
 
 	return appctx.Provide(ctx, redisCacheKey(cacheKey), func() (Client, error) {

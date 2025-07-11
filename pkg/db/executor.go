@@ -21,7 +21,10 @@ func NewExecutorWithChecker(config cfg.Config, logger log.Logger, name string, b
 		Name: name,
 	}
 
-	executorSettings := exec.ReadBackoffSettings(config, backoffType)
+	executorSettings, err := exec.ReadBackoffSettings(config, backoffType)
+	if err != nil {
+		panic(fmt.Errorf("failed to read backoff settings for db executor %s: %w", name, err))
+	}
 
 	return exec.NewExecutor(
 		logger,

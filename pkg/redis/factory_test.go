@@ -36,7 +36,8 @@ func (s *FactoryTestSuite) initConfig(settings map[string]interface{}) {
 func (s *FactoryTestSuite) TestDefault() {
 	s.initConfig(map[string]interface{}{})
 
-	settings := redis.ReadSettings(s.config, "default")
+	settings, err := redis.ReadSettings(s.config, "default")
+	s.NoError(err)
 
 	expected := &redis.Settings{
 		AppId: cfg.AppId{
@@ -76,7 +77,8 @@ func (s *FactoryTestSuite) TestDedicated() {
 		},
 	})
 
-	settings := redis.ReadSettings(s.config, "dedicated")
+	settings, err := redis.ReadSettings(s.config, "dedicated")
+	s.NoError(err)
 
 	expected := &redis.Settings{
 		AppId: cfg.AppId{
@@ -118,7 +120,8 @@ func (s *FactoryTestSuite) TestWithDefaults() {
 		},
 	})
 
-	settings := redis.ReadSettings(s.config, "partial")
+	settings, err := redis.ReadSettings(s.config, "partial")
+	s.NoError(err)
 
 	expected := &redis.Settings{
 		AppId: cfg.AppId{

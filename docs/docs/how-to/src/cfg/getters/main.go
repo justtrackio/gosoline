@@ -19,6 +19,10 @@ func main() {
 
 	// highlight-start
 	fmt.Printf("got port: %d\n", config.GetInt("port"))
-	fmt.Printf("got host: %s\n", config.GetString("host"))
+	host, err := config.GetString("host")
+	if err != nil {
+		panic(fmt.Errorf("failed to get host config: %w", err))
+	}
+	fmt.Printf("got host: %s\n", host)
 	// highlight-end
 }
