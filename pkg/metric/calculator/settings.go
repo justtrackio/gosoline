@@ -39,13 +39,17 @@ type CalculatorSettings struct {
 	CloudWatchNamespace string
 }
 
-func readCalculatorSettings(config cfg.Config) *CalculatorSettings {
+func readCalculatorSettings(config cfg.Config) (*CalculatorSettings, error) {
 	settings := &CalculatorSettings{}
 	config.UnmarshalKey("metric.calculator", settings)
 
-	settings.CloudWatchNamespace = metric.GetCloudWatchNamespace(config)
+	var err error
+	settings.CloudWatchNamespace, err = metric.GetCloudWatchNamespace(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cloudwatch namespace: %w", err)
+	}
 
-	return settings
+	return settings, nil
 }
 
 func ReadHandlerSettings[T any](config cfg.Config, name string, settings T) T {

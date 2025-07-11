@@ -11,11 +11,11 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-func NewExecutor(config cfg.Config, logger log.Logger, name string, backoffType string, notifier ...exec.Notify) exec.Executor {
+func NewExecutor(config cfg.Config, logger log.Logger, name string, backoffType string, notifier ...exec.Notify) (exec.Executor, error) {
 	return NewExecutorWithChecker(config, logger, name, backoffType, []exec.ErrorChecker{}, notifier)
 }
 
-func NewExecutorWithChecker(config cfg.Config, logger log.Logger, name string, backoffType string, checker []exec.ErrorChecker, notifier []exec.Notify) exec.Executor {
+func NewExecutorWithChecker(config cfg.Config, logger log.Logger, name string, backoffType string, checker []exec.ErrorChecker, notifier []exec.Notify) (exec.Executor, error) {
 	res := &exec.ExecutableResource{
 		Type: "db-client",
 		Name: name,
@@ -23,7 +23,7 @@ func NewExecutorWithChecker(config cfg.Config, logger log.Logger, name string, b
 
 	executorSettings, err := exec.ReadBackoffSettings(config, backoffType)
 	if err != nil {
-		panic(fmt.Errorf("failed to read backoff settings for db executor %s: %w", name, err))
+		return nil, fmt.Errorf("failed to read backoff settings for db executor %s: %w", name, err)
 	}
 
 	return exec.NewExecutor(
@@ -39,7 +39,7 @@ func NewExecutorWithChecker(config cfg.Config, logger log.Logger, name string, b
 			CheckIoTimeout,
 		}, checker...),
 		notifier...,
-	)
+	), nil
 }
 
 func ExecutorBackoffType(name string) string {

@@ -131,7 +131,10 @@ func NewClientWithSettings(ctx context.Context, config cfg.Config, logger log.Lo
 	}
 
 	if settings.Retry.Enabled {
-		executor = NewExecutor(config, logger, name, ExecutorBackoffType(name))
+		executor, err = NewExecutor(config, logger, name, ExecutorBackoffType(name))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create database executor: %w", err)
+		}
 	}
 
 	client := NewClientWithInterfaces(logger, connection, executor)

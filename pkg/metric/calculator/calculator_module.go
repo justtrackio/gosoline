@@ -19,7 +19,10 @@ func CalculatorModuleFactory(ctx context.Context, config cfg.Config, logger log.
 	var err error
 	var handler Handler
 
-	settings := readCalculatorSettings(config)
+	settings, err := readCalculatorSettings(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read calculator settings: %w", err)
+	}
 	handlers := map[string]Handler{}
 	modules := map[string]kernel.ModuleFactory{}
 
