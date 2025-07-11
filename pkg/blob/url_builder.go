@@ -20,10 +20,15 @@ type urlBuilder struct {
 }
 
 func NewUrlBuilder(config cfg.Config, name string) (UrlBuilder, error) {
-	storeSettings := ReadStoreSettings(config, name)
-	clientConfig := s3.GetClientConfig(config, storeSettings.ClientName)
+	storeSettings, err := ReadStoreSettings(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read store settings: %w", err)
+	}
+	clientConfig, err := s3.GetClientConfig(config, storeSettings.ClientName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client config: %w", err)
+	}
 
-	var err error
 	var endpoint string
 
 	if endpoint, err = s3.ResolveEndpoint(config, storeSettings.ClientName); err != nil {
