@@ -29,12 +29,17 @@ func (s *Settings) WithConnection(conn *connection.Settings) *Settings {
 	return s
 }
 
-func ParseSettings(config cfg.Config, key string) *Settings {
+func ParseSettings(config cfg.Config, key string) (*Settings, error) {
 	settings := &Settings{}
 	config.UnmarshalKey(key, settings)
 
-	settings.connection = connection.ParseSettings(config, settings.ConnectionName)
-	settings.FQTopic = kafka.FQTopicName(config, cfg.GetAppIdFromConfig(config), settings.Topic)
+	appId, err := cfg.GetAppIdFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get app ID from config: %w", err)
+	}
 
-	return settings
+	settings.connection = connection.ParseSettings(config, settings.ConnectionName)
+	settings.FQTopic = kafka.FQTopicName(config, appId, settings.Topic)
+
+	return settings, nil
 }

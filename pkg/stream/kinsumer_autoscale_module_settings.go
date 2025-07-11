@@ -66,11 +66,21 @@ func kinsumerAutoscaleConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 		return true, nil
 	}
 
+	appGroup, err := config.GetString("app_group")
+	if err != nil {
+		return false, fmt.Errorf("failed to get app_group config: %w", err)
+	}
+	
+	appName, err := config.GetString("app_name")
+	if err != nil {
+		return false, fmt.Errorf("failed to get app_name config: %w", err)
+	}
+
 	leaderElectionSettings := &ddb.DdbLeaderElectionSettings{
 		Naming: ddb.TableNamingSettings{
 			Pattern: settings.DynamoDb.Naming.Pattern,
 		},
-		GroupId:       fmt.Sprintf("%s-%s", config.GetString("app_group"), config.GetString("app_name")),
+		GroupId:       fmt.Sprintf("%s-%s", appGroup, appName),
 		LeaseDuration: time.Minute,
 	}
 

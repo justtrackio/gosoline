@@ -15,7 +15,7 @@ type BackoffSettings struct {
 	MaxInterval     time.Duration `cfg:"max_interval" default:"10s"`
 }
 
-func ReadBackoffSettings(config cfg.Config, paths ...string) BackoffSettings {
+func ReadBackoffSettings(config cfg.Config, paths ...string) (BackoffSettings, error) {
 	typ := "default"
 	paths = append(paths, "exec")
 
@@ -33,11 +33,15 @@ func ReadBackoffSettings(config cfg.Config, paths ...string) BackoffSettings {
 			continue
 		}
 
-		typ = config.GetString(keyType)
+		var err error
+		typ, err = config.GetString(keyType)
+		if err != nil {
+			return BackoffSettings{}, fmt.Errorf("failed to get backoff type from %s: %w", keyType, err)
+		}
 	}
 
 	if settings, ok := predefined[typ]; ok {
-		return settings
+		return settings, nil
 	}
 
 	additionalDefaults := make([]cfg.UnmarshalDefaults, 0)
@@ -51,7 +55,7 @@ func ReadBackoffSettings(config cfg.Config, paths ...string) BackoffSettings {
 	settings := &BackoffSettings{}
 	config.UnmarshalKey(key, settings, additionalDefaults...)
 
-	return *settings
+	return *settings, nil
 }
 
 var predefined = map[string]BackoffSettings{

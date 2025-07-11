@@ -270,8 +270,13 @@ func WithLoggerGroupTag(app *App) {
 			return errors.New("can not get application group from config to set it on logger")
 		}
 
+		appGroup, err := config.GetString("app_group")
+		if err != nil {
+			return fmt.Errorf("failed to get app_group config: %w", err)
+		}
+
 		return logger.Option(log.WithFields(map[string]any{
-			"group": config.GetString("app_group"),
+			"group": appGroup,
 		}))
 	})
 }
@@ -282,8 +287,13 @@ func WithLoggerApplicationTag(app *App) {
 			return errors.New("can not get application name from config to set it on logger")
 		}
 
+		appName, err := config.GetString("app_name")
+		if err != nil {
+			return fmt.Errorf("failed to get app_name config: %w", err)
+		}
+
 		return logger.Option(log.WithFields(map[string]any{
-			"application": config.GetString("app_name"),
+			"application": appName,
 		}))
 	})
 }

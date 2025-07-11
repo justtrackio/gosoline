@@ -33,7 +33,10 @@ func NewLeaderElection(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("no leader election with name %s configured", name)
 	}
 
-	typ := config.GetString(key)
+	typ, err := config.GetString(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get leader election type for %s: %w", name, err)
+	}
 
 	if _, ok := leaderElectionFactories[typ]; !ok {
 		return nil, fmt.Errorf("leader election with name %s has an unknown type %s", name, typ)
