@@ -1,6 +1,7 @@
 package consumer
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -36,14 +37,17 @@ func (s *Settings) WithConnection(conn *connection.Settings) *Settings {
 	return s
 }
 
-func ParseSettings(config cfg.Config, key string) *Settings {
+func ParseSettings(config cfg.Config, key string) (*Settings, error) {
 	settings := &Settings{}
 	config.UnmarshalKey(key, settings)
 
-	appID := cfg.GetAppIdFromConfig(config)
+	appID, err := cfg.GetAppIdFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get app ID from config: %w", err)
+	}
 	settings.connection = connection.ParseSettings(config, settings.ConnectionName)
 	settings.FQGroupID = kafka.FQGroupId(config, appID, settings.GroupID)
 	settings.FQTopic = kafka.FQTopicName(config, appID, settings.Topic)
 
-	return settings
+	return settings, nil
 }

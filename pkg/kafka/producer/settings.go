@@ -1,6 +1,7 @@
 package producer
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"

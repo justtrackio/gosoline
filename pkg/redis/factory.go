@@ -39,7 +39,7 @@ func GetRedisConfigKey(name string) string {
 	return fmt.Sprintf("redis.%s", name)
 }
 
-func ReadSettings(config cfg.Config, name string) *Settings {
+func ReadSettings(config cfg.Config, name string) (*Settings, error) {
 	key := GetRedisConfigKey(name)
 
 	// This is a hack to ensure default redis config is populated,
@@ -49,11 +49,15 @@ func ReadSettings(config cfg.Config, name string) *Settings {
 	settings := &Settings{}
 	config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultsFromKey("redis.default", "."))
 
-	settings.BackoffSettings = exec.ReadBackoffSettings(config, key, "redis.default")
+	backoffSettings, err := exec.ReadBackoffSettings(config, key, "redis.default")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read backoff settings for redis client %s: %w", name, err)
+	}
+	settings.BackoffSettings = backoffSettings
 
 	if settings.Name == "" {
 		settings.Name = name
 	}
 
-	return settings
+	return settings, nil
 }
