@@ -13,12 +13,12 @@ import (
 )
 
 func TestCoffin_New(t *testing.T) {
-	cfn := coffin.New()
+	cfn := coffin.NewGraveyard().Entomb()
 	myErr := errors.New("my error")
 
-	cfn.Gof(func() error {
+	cfn.Go("test", func() error {
 		panic(myErr)
-	}, "got this error: %d", 42)
+	}, coffin.WithErrorWrapper("got this error: %d", 42))
 
 	err := cfn.Wait()
 	assert.Error(t, err)
@@ -44,14 +44,14 @@ func TestCoffin_WithContext(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		t.Run(fmt.Sprintf("iteration %d", i), func(t *testing.T) {
 			assert.NotPanics(t, func() {
-				cfn, ctx := coffin.WithContext(context.Background())
+				cfn := coffin.NewGraveyard(coffin.WithContext(context.Background())).Entomb()
 				c := make(chan struct{})
 				errStop := errors.New("please stop")
 
-				cfn.GoWithContext(ctx, func(ctx context.Context) error {
-					nestedCfn, cfnCtx := coffin.WithContext(ctx)
+				cfn.GoWithContext("test", func(ctx context.Context) error {
+					nestedCfn := coffin.NewGraveyard(coffin.WithContext(ctx)).Entomb()
 
-					nestedCfn.GoWithContext(cfnCtx, func(ctx context.Context) error {
+					nestedCfn.GoWithContext("inner test", func(ctx context.Context) error {
 						ticker := time.NewTicker(time.Millisecond)
 						defer ticker.Stop()
 						count := 0
@@ -73,14 +73,15 @@ func TestCoffin_WithContext(t *testing.T) {
 					if !errors.Is(err, context.Canceled) {
 						assert.NoError(t, err)
 					}
-					return err
+
+					return nil
 				})
 
 				<-c
 				cfn.Kill(errStop)
 				err := cfn.Wait()
 
-				assert.Equal(t, errStop, err)
+				assert.EqualError(t, err, errStop.Error())
 			})
 		})
 	}
@@ -88,8 +89,8 @@ func TestCoffin_WithContext(t *testing.T) {
 
 func TestCoffin_WithContext_Cancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	cfn, ctx := coffin.WithContext(ctx)
-	cfn.GoWithContext(ctx, func(ctx context.Context) error {
+	cfn := coffin.NewGraveyard(coffin.WithContext(ctx)).Entomb()
+	cfn.GoWithContext("test", func(ctx context.Context) error {
 		<-ctx.Done()
 		// if we exit this function before the coffin is dying, we might sometimes have it return nil, sometimes context.Canceled
 		// thus, for now we wait until the coffin is dying, so we know it got already killed by context.Canceled
@@ -105,8 +106,8 @@ func TestCoffin_WithContext_Cancel(t *testing.T) {
 }
 
 func TestCoffin_Gof(t *testing.T) {
-	cfn := coffin.New()
-	cfn.Gof(func() error {
+	cfn := coffin.NewGraveyard().Entomb()
+	cfn.Go("test", func() error {
 		var err error
 
 		// crash the function!
@@ -115,7 +116,7 @@ func TestCoffin_Gof(t *testing.T) {
 		assert.Failf(t, "got unexpected string back", errString)
 
 		return err
-	}, "crashing function")
+	}, coffin.WithErrorWrapper("crashing function"))
 
 	err := cfn.Wait()
 	assert.Error(t, err)
@@ -123,7 +124,7 @@ func TestCoffin_Gof(t *testing.T) {
 }
 
 func TestCoffin_Wait_Empty(t *testing.T) {
-	cfn := coffin.New()
+	cfn := coffin.NewGraveyard().Entomb()
 	// check waiting on an empty coffin does not block forever
 	err := cfn.Wait()
 	assert.NoError(t, err)

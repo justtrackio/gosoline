@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"runtime/pprof"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -289,6 +290,7 @@ func (k *kernel) runModule(ctx context.Context, name string, ms *moduleState) (m
 		moduleErr = ms.err
 	}(ms)
 
+	ctx = pprof.WithLabels(ctx, pprof.Labels("module", name))
 	ms.err = ms.module.Run(ctx)
 
 	return ms.err
@@ -350,7 +352,7 @@ func (k *kernel) waitAllStagesDone() conc.SignalOnce {
 
 	go func() {
 		for _, s := range k.stages {
-			<-s.ctx.Done()
+			<-s.grave.Ctx().Done()
 		}
 
 		done.Signal()

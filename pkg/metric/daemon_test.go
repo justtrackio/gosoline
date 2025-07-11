@@ -70,9 +70,9 @@ func TestWriteLotsOfBadMetrics(t *testing.T) {
 		MetricName: "myMetricName",
 	})
 
-	cfn := coffin.New()
-	cfn.GoWithContext(ctx, daemon.Run)
-	cfn.GoWithContext(ctx, func(ctx context.Context) error {
+	grave := coffin.NewGraveyard(coffin.WithContext(ctx))
+	grave.GoWithContext("daemon runner", daemon.Run)
+	grave.GoWithContext("metric writer", func(ctx context.Context) error {
 		for {
 			select {
 			case <-ctx.Done():
@@ -86,7 +86,7 @@ func TestWriteLotsOfBadMetrics(t *testing.T) {
 		}
 	})
 	for i := 0; i < 10; i++ {
-		cfn.GoWithContext(ctx, func(ctx context.Context) error {
+		grave.GoWithContext("other metric writer", func(ctx context.Context) error {
 			for {
 				select {
 				case <-ctx.Done():
@@ -103,13 +103,13 @@ func TestWriteLotsOfBadMetrics(t *testing.T) {
 			}
 		})
 	}
-	cfn.Go(func() error {
+	grave.Go("cancel runner", func() error {
 		time.Sleep(10 * time.Second)
 		cancel()
 
 		return nil
 	})
 
-	err = cfn.Wait()
+	err = grave.Wait()
 	assert.NoError(t, err)
 }

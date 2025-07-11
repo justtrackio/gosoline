@@ -2,6 +2,7 @@ package stream_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/coffin"
@@ -44,10 +45,10 @@ func (s *InMemoryInputTestSuite) TestRun() {
 func (s *InMemoryInputTestSuite) TestReset() {
 	input := stream.NewInMemoryInput(&stream.InMemorySettings{})
 	wait := make(chan struct{})
-	cfn := coffin.New()
+	grave := coffin.NewGraveyard()
 
 	for i := 0; i < 100; i++ {
-		cfn.Go(func() error {
+		grave.Go(fmt.Sprintf("resetter %d", i), func() error {
 			<-wait
 			// these two calls should be thread safe and not interfere with each other
 			input.Stop()
@@ -59,7 +60,7 @@ func (s *InMemoryInputTestSuite) TestReset() {
 
 	close(wait)
 
-	s.NoError(cfn.Wait())
+	s.NoError(grave.Wait())
 }
 
 func TestInMemoryInputSuite(t *testing.T) {

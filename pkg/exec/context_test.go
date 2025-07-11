@@ -165,14 +165,14 @@ func (s *contextTestSuite) TestConcurrentlyPrintable() {
 	for i := 0; i < 1000; i++ {
 		ctx, cancel := exec.WithManualCancelContext(context.Background())
 		c := make(chan struct{})
-		cfn := coffin.New()
-		cfn.Go(func() error {
+		grave := coffin.NewGraveyard()
+		grave.Go("cancel task", func() error {
 			<-c
 			cancel()
 
 			return nil
 		})
-		cfn.Go(func() error {
+		grave.Go("print task", func() error {
 			<-c
 			if s := fmt.Sprintf("%v", ctx); s == "" {
 				return fmt.Errorf("should never happen")
@@ -181,7 +181,7 @@ func (s *contextTestSuite) TestConcurrentlyPrintable() {
 			return nil
 		})
 		close(c)
-		s.NoError(cfn.Wait(), "Fail at iteration %d", i)
+		s.NoError(grave.Wait(), "Fail at iteration %d", i)
 	}
 }
 

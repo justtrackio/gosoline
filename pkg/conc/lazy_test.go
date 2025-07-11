@@ -59,9 +59,9 @@ func TestLazyConcurrently(t *testing.T) {
 	})
 
 	ch := make(chan struct{})
-	cfn := coffin.New()
+	grave := coffin.NewGraveyard()
 	for i := 0; i < 10; i++ {
-		cfn.Go(func() error {
+		grave.Go(fmt.Sprintf("runner %d", i), func() error {
 			<-ch
 			v, err := l.Get(i)
 			if err != nil {
@@ -76,7 +76,7 @@ func TestLazyConcurrently(t *testing.T) {
 
 	close(ch)
 
-	err := cfn.Wait()
+	err := grave.Wait()
 	assert.NoError(t, err)
 
 	assert.LessOrEqual(t, called, int32(10))

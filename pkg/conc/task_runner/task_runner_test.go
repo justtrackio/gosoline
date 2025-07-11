@@ -20,8 +20,8 @@ func TestTaskRunner(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(ctx)
 
-	cfn := coffin.New()
-	cfn.GoWithContext(ctx, runner.Run)
+	grave := coffin.NewGraveyard(coffin.WithContext(ctx))
+	grave.GoWithContext("runner", runner.Run)
 
 	var callCount atomic.Int32
 	var wg sync.WaitGroup
@@ -45,7 +45,7 @@ func TestTaskRunner(t *testing.T) {
 	wg.Wait()
 	cancel()
 
-	err = cfn.Wait()
+	err = grave.Wait()
 	assert.NoError(t, err)
 	assert.Equal(t, int32(100), callCount.Load())
 }

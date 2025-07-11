@@ -23,9 +23,9 @@ func TestModule(t *testing.T) {
 	assert.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	cfn := coffin.New()
+	grave := coffin.NewGraveyard(coffin.WithContext(ctx))
 
-	cfn.GoWithContext(ctx, m.Run)
+	grave.GoWithContext("runner", m.Run)
 
 	mgr.StartWork("test", 3).ReportDone()
 	logger.EXPECT().Info("Work item %s: done", "test").Run(func(format string, args ...any) {
@@ -38,7 +38,7 @@ func TestModule(t *testing.T) {
 	err = unix.Kill(unix.Getpid(), unix.SIGUSR1)
 	assert.NoError(t, err)
 
-	err = cfn.Wait()
+	err = grave.Wait()
 	assert.NoError(t, err)
 }
 
@@ -63,19 +63,19 @@ func NewTestModule(_ context.Context, _ cfg.Config, logger log.Logger) (kernel.M
 func (m *testModule) Run(ctx context.Context) error {
 	// declare a new work item with 3 steps
 	mainHandle := m.statusManager.StartWork("main", 3)
-	cfn := coffin.New()
+	grave := coffin.NewGraveyard()
 
 	// first step: launch the work method and monitor its success
-	cfn.Go(m.statusManager.Monitor("work 1", m.Work))
+	grave.Go("statusManager/monitor", m.statusManager.Monitor("work 1", m.Work))
 	mainHandle.ReportProgress(1, 0)
 
 	// second step: launch another work method and also monitor its success
-	cfn.GoWithContext(ctx, m.statusManager.MonitorWithContext("work 2", m.WorkWithContext))
+	grave.GoWithContext("statusManager/monitorWithContext", m.statusManager.MonitorWithContext("work 2", m.WorkWithContext), coffin.WithContext(ctx))
 	mainHandle.ReportProgress(2, 0)
 
 	// last step: launch a method that publishes two messages for the other workers to consume
 	publishHandle := m.statusManager.StartWork("publish", 2)
-	cfn.Go(publishHandle.Monitor(func() error {
+	grave.Go("publisher", publishHandle.Monitor(func() error {
 		m.data <- 1
 		publishHandle.ReportProgress(1, 0)
 		m.data <- 2
@@ -91,7 +91,7 @@ func (m *testModule) Run(ctx context.Context) error {
 	defer m.statusManager.PrintReport(m.logger)
 
 	// wait for all routines to exit again
-	return cfn.Wait()
+	return grave.Wait()
 }
 
 // this method simply waits for a published message and never fails afterwards

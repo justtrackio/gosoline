@@ -56,7 +56,7 @@ type sqsInput struct {
 	unmarshaler      UnmarshallerFunc
 	healthCheckTimer clock.HealthCheckTimer
 
-	cfn     coffin.Coffin
+	grave   coffin.Graveyard
 	channel chan *Message
 	stopped int32
 	started int32
@@ -116,7 +116,7 @@ func NewSqsInputWithInterfaces(
 		settings:         settings,
 		unmarshaler:      unmarshaller,
 		healthCheckTimer: healthCheckTimer,
-		cfn:              coffin.New(),
+		grave:            coffin.NewGraveyard(),
 		channel:          make(chan *Message),
 	}
 }
@@ -136,20 +136,17 @@ func (i *sqsInput) Run(ctx context.Context) error {
 
 	i.logger.Info("starting sqs input with %d runners", i.settings.RunnerCount)
 
-	i.cfn.Go(func() error {
-		for j := 0; j < i.settings.RunnerCount; j++ {
-			i.cfn.Gof(func() error {
-				return i.runLoop(ctx)
-			}, "panic in sqs input runner")
-		}
+	cfn := i.grave.Entomb()
+	for j := 0; j < i.settings.RunnerCount; j++ {
+		i.grave.Go(fmt.Sprintf("sqsInput/runLoop%03d", j), func() error {
+			return i.runLoop(ctx)
+		}, coffin.WithErrorWrapper("panic in sqs input runner"))
+	}
 
-		return nil
-	})
-
-	<-i.cfn.Dying()
+	<-cfn.Dying()
 	i.Stop()
 
-	return i.cfn.Wait()
+	return i.grave.Wait()
 }
 
 func (i *sqsInput) runLoop(ctx context.Context) error {
