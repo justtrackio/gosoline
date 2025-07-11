@@ -197,9 +197,17 @@ func (s *ConfigTestSuite) TestConfig_GetString() {
 		"nested": "nested stuff",
 	})
 
-	s.Equal("foobar", s.config.GetString("s"))
-	s.Equal("this is also nested stuff augmented", s.config.GetString("a"))
-	s.Equal("default", s.config.GetString("missing", "default"))
+	result, err := s.config.GetString("s")
+	s.NoError(err)
+	s.Equal("foobar", result)
+	
+	result, err = s.config.GetString("a")
+	s.NoError(err)
+	s.Equal("this is also nested stuff augmented", result)
+	
+	result, err = s.config.GetString("missing", "default")
+	s.NoError(err)
+	s.Equal("default", result)
 }
 
 func (s *ConfigTestSuite) TestConfig_GetStringNoDecode() {
@@ -207,7 +215,34 @@ func (s *ConfigTestSuite) TestConfig_GetStringNoDecode() {
 		"nodecode": "!nodecode {this}-should-{be}-plain",
 	})
 
-	s.Equal("{this}-should-{be}-plain", s.config.GetString("nodecode"))
+	result, err := s.config.GetString("nodecode")
+	s.NoError(err)
+	s.Equal("{this}-should-{be}-plain", result)
+}
+
+func (s *ConfigTestSuite) TestConfig_GetStringError() {
+	// Test error handling when value cannot be cast to string
+	s.setupConfigValues(map[string]interface{}{
+		"notstring": func() {}, // function cannot be cast to string
+	})
+
+	result, err := s.config.GetString("notstring")
+	s.Error(err)
+	s.Contains(err.Error(), "can not cast value")
+	s.Equal("", result)
+	
+	// Test that we get proper error when key is missing and no default
+	var cfgErr error
+	errorHandler := func(msg string, args ...interface{}) {
+		cfgErr = fmt.Errorf(msg, args...)
+	}
+	s.applyOptions(cfg.WithErrorHandlers(errorHandler))
+	
+	result, err = s.config.GetString("missing")
+	s.NoError(err) // GetString doesn't return error for missing keys, it uses error handler
+	s.Equal("", result)
+	s.Error(cfgErr) // But error handler should be called
+	s.Contains(cfgErr.Error(), "there is no config setting for key 'missing'")
 }
 
 func (s *ConfigTestSuite) TestConfig_GetStringMapString() {
@@ -297,7 +332,9 @@ func (s *ConfigTestSuite) TestConfig_Environment() {
 	})
 
 	s.Equal(2, s.config.GetInt("i"))
-	s.Equal("string", s.config.GetString("s"))
+	result, err := s.config.GetString("s")
+	s.NoError(err)
+	s.Equal("string", result)
 	s.Equal("2019-11-27", s.config.GetTime("t").Format("2006-01-02"))
 	s.Equal([]string{"a", "b", "c"}, s.config.GetStringSlice("sl"))
 }
@@ -310,7 +347,9 @@ func (s *ConfigTestSuite) TestConfig_EnvironmentPrefixed() {
 	})
 
 	s.Equal(2, s.config.GetInt("i"))
-	s.Equal("string", s.config.GetString("s"))
+	result, err := s.config.GetString("s")
+	s.NoError(err)
+	s.Equal("string", result)
 }
 
 func (s *ConfigTestSuite) TestEnvironmentUnmarshalStructWithEmbeddedSlice() {

@@ -32,7 +32,7 @@ type Config interface {
 	GetIntSlice(key string, optionalDefault ...[]int) []int
 	GetFloat64(key string, optionalDefault ...float64) float64
 	GetMsiSlice(key string, optionalDefault ...[]map[string]interface{}) []map[string]interface{}
-	GetString(key string, optionalDefault ...string) string
+	GetString(key string, optionalDefault ...string) (string, error)
 	GetStringMap(key string, optionalDefault ...map[string]interface{}) map[string]interface{}
 	GetStringMapString(key string, optionalDefault ...map[string]string) map[string]string
 	GetStringSlice(key string, optionalDefault ...[]string) []string
@@ -211,7 +211,7 @@ func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]interfa
 	return msiSlice
 }
 
-func (c *config) GetString(key string, optionalDefault ...string) string {
+func (c *config) GetString(key string, optionalDefault ...string) (string, error) {
 	return c.getString(key, optionalDefault...)
 }
 
@@ -392,7 +392,11 @@ func (c *config) augmentString(str string) string {
 	matches := templateRegexp.FindAllStringSubmatch(str, -1)
 
 	for _, m := range matches {
-		replace := c.getString(m[1])
+		replace, err := c.getString(m[1])
+		if err != nil {
+			c.err("can not augment string with template %s: %w", m[1], err)
+			replace = ""
+		}
 		str = strings.ReplaceAll(str, m[0], replace)
 	}
 
@@ -451,20 +455,20 @@ func (c *config) get(key string) interface{} {
 	return dataMap.Get(key).Data()
 }
 
-func (c *config) getString(key string, optionalDefault ...string) string {
+func (c *config) getString(key string, optionalDefault ...string) (string, error) {
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return c.augmentString(optionalDefault[0])
+		return c.augmentString(optionalDefault[0]), nil
 	}
 
 	data := c.get(key)
 	str, err := cast.ToStringE(data)
 	if err != nil {
-		panic(fmt.Errorf("can not cast value %v of key %s to string", data, key))
+		return "", fmt.Errorf("can not cast value %v of key %s to string: %w", data, key, err)
 	}
 
 	augmented := c.augmentString(str)
 
-	return augmented
+	return augmented, nil
 }
 
 func (c *config) isSet(key string) bool {

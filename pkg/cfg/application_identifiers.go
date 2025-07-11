@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/funk"
@@ -14,36 +15,83 @@ type AppId struct {
 	Application string `cfg:"application" default:"{app_name}" json:"application"`
 }
 
-func GetAppIdFromConfig(config Config) AppId {
-	return AppId{
-		Project:     config.GetString("app_project"),
-		Environment: config.GetString("env"),
-		Family:      config.GetString("app_family"),
-		Group:       config.GetString("app_group"),
-		Application: config.GetString("app_name"),
+func GetAppIdFromConfig(config Config) (AppId, error) {
+	project, err := config.GetString("app_project")
+	if err != nil {
+		return AppId{}, fmt.Errorf("failed to get app_project: %w", err)
 	}
+	
+	environment, err := config.GetString("env")
+	if err != nil {
+		return AppId{}, fmt.Errorf("failed to get env: %w", err)
+	}
+	
+	family, err := config.GetString("app_family")
+	if err != nil {
+		return AppId{}, fmt.Errorf("failed to get app_family: %w", err)
+	}
+	
+	group, err := config.GetString("app_group")
+	if err != nil {
+		return AppId{}, fmt.Errorf("failed to get app_group: %w", err)
+	}
+	
+	application, err := config.GetString("app_name")
+	if err != nil {
+		return AppId{}, fmt.Errorf("failed to get app_name: %w", err)
+	}
+	
+	return AppId{
+		Project:     project,
+		Environment: environment,
+		Family:      family,
+		Group:       group,
+		Application: application,
+	}, nil
 }
 
-func (i *AppId) PadFromConfig(config Config) {
+func (i *AppId) PadFromConfig(config Config) error {
 	if len(i.Project) == 0 {
-		i.Project = config.GetString("app_project")
+		project, err := config.GetString("app_project")
+		if err != nil {
+			return fmt.Errorf("failed to get app_project: %w", err)
+		}
+		i.Project = project
 	}
 
 	if len(i.Environment) == 0 {
-		i.Environment = config.GetString("env")
+		environment, err := config.GetString("env")
+		if err != nil {
+			return fmt.Errorf("failed to get env: %w", err)
+		}
+		i.Environment = environment
 	}
 
 	if len(i.Family) == 0 {
-		i.Family = config.GetString("app_family")
+		family, err := config.GetString("app_family")
+		if err != nil {
+			return fmt.Errorf("failed to get app_family: %w", err)
+		}
+		i.Family = family
 	}
 
 	if len(i.Group) == 0 {
-		i.Group = config.GetString("app_group")
+		group, err := config.GetString("app_group")
+		if err != nil {
+			return fmt.Errorf("failed to get app_group: %w", err)
+		}
+		i.Group = group
 	}
 
 	if len(i.Application) == 0 {
-		i.Application = config.GetString("app_name")
+		application, err := config.GetString("app_name")
+		if err != nil {
+			return fmt.Errorf("failed to get app_name: %w", err)
+		}
+		i.Application = application
 	}
+	
+	return nil
 }
 
 func (i *AppId) String() string {
