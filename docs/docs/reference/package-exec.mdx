@@ -1,0 +1,508 @@
+---
+title: Package exec
+---
+
+# exec package
+
+The exec package provides robust retry and backoff mechanisms for executing operations that might fail due to temporary issues like network timeouts, connection errors, or service unavailability. It implements intelligent error classification and exponential backoff strategies to improve reliability in distributed systems.
+
+## Core Concepts
+
+The exec package is built around the concept of making operations resilient to transient failures by automatically retrying them with intelligent backoff strategies. It provides:
+
+- **Retry Logic**: Automatic retrying of failed operations with configurable limits
+- **Error Classification**: Smart categorization of errors to determine retry behavior
+- **Backoff Strategies**: Exponential backoff with jitter to avoid thundering herd problems
+- **Context Management**: Advanced context utilities for graceful cancellation and timeouts
+- **Resource Tracking**: Logging and monitoring of retry attempts and outcomes
+
+## Functions
+
+### [NewExecutor()](https://github.com/justtrackio/gosoline/blob/main/pkg/exec/executor.go#L29)
+
+#### Usage
+
+```go
+logger := log.NewLogger()
+resource := &exec.ExecutableResource{
+    Type: "http",
+    Name: "api-service",
+}
+settings := &exec.BackoffSettings{
+    InitialInterval: 50 * time.Millisecond,
+    MaxAttempts:     5,
+    MaxElapsedTime:  30 * time.Second,
+    MaxInterval:     10 * time.Second,
+}
+errorCheckers := []exec.ErrorChecker{
+    exec.CheckConnectionError,
+    exec.CheckTimeoutError,
+}
+
+executor := exec.NewExecutor(logger, resource, settings, errorCheckers)
+```
+
+#### Description
+
+Creates a new executor with backoff retry logic. The executor will automatically retry operations based on the provided settings and error checkers.
+
+### [NewBackoffExecutor()](https://github.com/justtrackio/gosoline/blob/main/pkg/exec/executor_backoff.go#L21)
+
+#### Usage
+
+```go
+executor := exec.NewBackoffExecutor(logger, resource, settings, errorCheckers, notifier)
+```
+
+#### Description
+
+Creates a new backoff executor with custom notification handlers. Notifiers are called on each retry attempt.
+
+### [NewDefaultExecutor()](https://github.com/justtrackio/gosoline/blob/main/pkg/exec/executor.go#L39)
+
+#### Usage
+
+```go
+executor := exec.NewDefaultExecutor()
+```
+
+#### Description
+
+Creates a simple executor that runs operations without any retry logic. Useful for testing or when retry behavior is not needed.
+
+## Context Utilities
+
+### [WithDelayedCancelContext()](https://github.com/justtrackio/gosoline/blob/main/pkg/exec/context.go#L115)
+
+#### Usage
+
+```go
+ctx, stop := exec.WithDelayedCancelContext(parentCtx, 5*time.Second)
+defer stop()
+
+// Use ctx for operations that need delayed cancellation
+result, err := someOperation(ctx)
+```
+
+#### Description
+
+Creates a context that propagates cancellation from the parent context after a specified delay. This is useful for giving operations time to complete gracefully even after the parent context is canceled.
+
+#### Related functions
+
+<details>
+
+<summary>WithStoppableDeadlineContext()</summary>
+
+Creates a context with a deadline that can be stopped before the deadline is reached.
+
+```go
+deadline := time.Now().Add(30 * time.Second)
+ctx, stop := exec.WithStoppableDeadlineContext(parentCtx, deadline)
+defer stop()
+```
+
+</details>
+
+<details>
+
+<summary>WithManualCancelContext()</summary>
+
+Creates a context that only cancels when explicitly canceled, not when the parent cancels.
+
+```go
+ctx, cancel := exec.WithManualCancelContext(parentCtx)
+defer cancel()
+```
+
+</details>
+
+## Error Checkers
+
+The exec package includes several built-in error checkers that help classify errors for retry decisions:
+
+### [CheckConnectionError()](https://github.com/justtrackio/gosoline/blob/main/pkg/exec/error.go#L42)
+
+#### Usage
+
+```go
+errorCheckers := []exec.ErrorChecker{
+    exec.CheckConnectionError,
+}
+```
+
+#### Description
+
+Checks for connection-related errors like `ECONNREFUSED`, `ECONNRESET`, `EOF`, and connection reset errors. These are typically retryable.
+
+#### Related checkers
+
+<details>
+
+<summary>CheckTimeoutError()</summary>
+
+Checks for timeout errors (`ETIMEDOUT`).
+
+```go
+exec.CheckTimeoutError
+```
+
+</details>
+
+<details>
+
+<summary>CheckClientAwaitHeaderTimeoutError()</summary>
+
+Checks for HTTP client header timeout errors.
+
+```go
+exec.CheckClientAwaitHeaderTimeoutError
+```
+
+</details>
+
+<details>
+
+<summary>CheckTlsHandshakeTimeoutError()</summary>
+
+Checks for TLS handshake timeout errors.
+
+```go
+exec.CheckTlsHandshakeTimeoutError
+```
+
+</details>
+
+<details>
+
+<summary>CheckUsedClosedConnectionError()</summary>
+
+Checks for errors related to using closed connections.
+
+```go
+exec.CheckUsedClosedConnectionError
+```
+
+</details>
+
+<details>
+
+<summary>CheckOperationWasCanceledError()</summary>
+
+Checks for operation canceled errors.
+
+```go
+exec.CheckOperationWasCanceledError
+```
+
+</details>
+
+<details>
+
+<summary>CheckHttp2ClientConnectionForceClosedError()</summary>
+
+Checks for HTTP/2 connection force closed errors.
+
+```go
+exec.CheckHttp2ClientConnectionForceClosedError
+```
+
+</details>
+
+## Methods
+
+### [Execute()](https://github.com/justtrackio/gosoline/blob/main/pkg/exec/executor.go#L25)
+
+#### Usage
+
+```go
+result, err := executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+    // Your operation here
+    return httpClient.Get("https://api.example.com/data")
+}, func(err error, duration time.Duration) {
+    // Optional notification handler
+    log.Printf("Retry after %v due to: %v", duration, err)
+})
+```
+
+#### Description
+
+Executes an operation with retry logic. The function will be retried according to the executor's configuration until it succeeds, encounters a permanent error, or exceeds retry limits.
+
+## Interfaces
+
+### [Executor](https://github.com/justtrackio/gosoline/blob/main/pkg/exec/executor.go#L25)
+
+#### Definition
+
+```go
+type Executor interface {
+    Execute(ctx context.Context, f Executable, notifier ...Notify) (interface{}, error)
+}
+```
+
+#### Description
+
+The main interface for executing operations with retry logic.
+
+### [Executable](https://github.com/justtrackio/gosoline/blob/main/pkg/exec/executor.go#L21)
+
+#### Definition
+
+```go
+type Executable func(ctx context.Context) (interface{}, error)
+```
+
+#### Description
+
+Function type for operations that can be executed by an executor.
+
+### [ErrorChecker](https://github.com/justtrackio/gosoline/blob/main/pkg/exec/error.go#L28)
+
+#### Definition
+
+```go
+type ErrorChecker func(result any, err error) ErrorType
+```
+
+#### Description
+
+Function type for checking errors and determining retry behavior. Returns one of:
+- `ErrorTypeUnknown`: Let other checkers decide
+- `ErrorTypeOk`: Success, stop retrying
+- `ErrorTypePermanent`: Permanent failure, stop retrying
+- `ErrorTypeRetryable`: Temporary failure, retry the operation
+
+### [Notify](https://github.com/justtrackio/gosoline/blob/main/pkg/exec/executor.go#L22)
+
+#### Definition
+
+```go
+type Notify func(error, time.Duration)
+```
+
+#### Description
+
+Function type for notification handlers called on each retry attempt.
+
+## Configuration
+
+### BackoffSettings
+
+The `BackoffSettings` struct configures retry behavior:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `cancel_delay` | Delay before propagating context cancellation | 0 |
+| `initial_interval` | Initial delay between retries | 50ms |
+| `max_attempts` | Maximum number of retry attempts | 10 |
+| `max_elapsed_time` | Maximum total time for all retries | 10m |
+| `max_interval` | Maximum delay between retries | 10s |
+
+### [ReadBackoffSettings()](https://github.com/justtrackio/gosoline/blob/main/pkg/exec/settings.go#L18)
+
+#### Usage
+
+```go
+settings := exec.ReadBackoffSettings(config, "myservice")
+```
+
+#### Description
+
+Reads backoff settings from configuration with support for inheritance and predefined types.
+
+### Predefined Backoff Types
+
+#### "api" type
+Optimized for API calls with shorter timeouts:
+```yaml
+exec:
+  backoff:
+    type: api
+```
+
+Settings:
+- Initial interval: 100ms
+- Max elapsed time: 10s
+- Max interval: 1s
+
+#### "once" type
+Single attempt, no retries:
+```yaml
+exec:
+  backoff:
+    type: once
+```
+
+Settings:
+- Max attempts: 1
+- Max elapsed time: 0
+
+#### "infinite" type
+Infinite retries with longer intervals:
+```yaml
+exec:
+  backoff:
+    type: infinite
+```
+
+Settings:
+- Initial interval: 50ms
+- Max attempts: 0 (infinite)
+- Max elapsed time: 0 (infinite)
+- Max interval: 10s
+
+#### Custom configuration
+```yaml
+exec:
+  backoff:
+    initial_interval: 100ms
+    max_attempts: 5
+    max_elapsed_time: 30s
+    max_interval: 5s
+    cancel_delay: 1s
+```
+
+## Usage Examples
+
+### Basic HTTP Client with Retries
+
+```go
+import (
+    "context"
+    "net/http"
+    "time"
+    
+    "github.com/justtrackio/gosoline/pkg/exec"
+    "github.com/justtrackio/gosoline/pkg/log"
+)
+
+func makeResilientHttpCall(url string) (*http.Response, error) {
+    logger := log.NewLogger()
+    
+    resource := &exec.ExecutableResource{
+        Type: "http",
+        Name: "external-api",
+    }
+    
+    settings := &exec.BackoffSettings{
+        InitialInterval: 100 * time.Millisecond,
+        MaxAttempts:     3,
+        MaxElapsedTime:  10 * time.Second,
+        MaxInterval:     1 * time.Second,
+    }
+    
+    errorCheckers := []exec.ErrorChecker{
+        exec.CheckConnectionError,
+        exec.CheckTimeoutError,
+        exec.CheckClientAwaitHeaderTimeoutError,
+    }
+    
+    executor := exec.NewExecutor(logger, resource, settings, errorCheckers)
+    
+    ctx := context.Background()
+    result, err := executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+        client := &http.Client{Timeout: 5 * time.Second}
+        return client.Get(url)
+    })
+    
+    if err != nil {
+        return nil, err
+    }
+    
+    return result.(*http.Response), nil
+}
+```
+
+### Database Operations with Custom Error Handling
+
+```go
+func executeDatabaseQuery(query string) ([]Row, error) {
+    logger := log.NewLogger()
+    
+    resource := &exec.ExecutableResource{
+        Type: "database",
+        Name: "primary-db",
+    }
+    
+    settings := &exec.BackoffSettings{
+        InitialInterval: 50 * time.Millisecond,
+        MaxAttempts:     5,
+        MaxElapsedTime:  30 * time.Second,
+        MaxInterval:     2 * time.Second,
+    }
+    
+    // Custom error checker for database errors
+    dbErrorChecker := func(result any, err error) exec.ErrorType {
+        if err == nil {
+            return exec.ErrorTypeOk
+        }
+        
+        if strings.Contains(err.Error(), "connection refused") {
+            return exec.ErrorTypeRetryable
+        }
+        
+        if strings.Contains(err.Error(), "syntax error") {
+            return exec.ErrorTypePermanent
+        }
+        
+        return exec.ErrorTypeUnknown
+    }
+    
+    errorCheckers := []exec.ErrorChecker{
+        dbErrorChecker,
+        exec.CheckConnectionError,
+    }
+    
+    executor := exec.NewExecutor(logger, resource, settings, errorCheckers)
+    
+    ctx := context.Background()
+    result, err := executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+        return database.Query(query)
+    }, func(err error, duration time.Duration) {
+        log.Printf("Database query failed, retrying in %v: %v", duration, err)
+    })
+    
+    if err != nil {
+        return nil, err
+    }
+    
+    return result.([]Row), nil
+}
+```
+
+### Using Configuration-Based Settings
+
+```yaml
+# config.yml
+myservice:
+  backoff:
+    type: api
+    
+database:
+  backoff:
+    initial_interval: 200ms
+    max_attempts: 3
+    max_elapsed_time: 15s
+```
+
+```go
+func setupExecutorFromConfig(config cfg.Config) exec.Executor {
+    logger := log.NewLogger()
+    
+    // Read settings with fallback hierarchy
+    settings := exec.ReadBackoffSettings(config, "myservice", "database")
+    
+    resource := &exec.ExecutableResource{
+        Type: "service",
+        Name: "my-service",
+    }
+    
+    errorCheckers := []exec.ErrorChecker{
+        exec.CheckConnectionError,
+        exec.CheckTimeoutError,
+    }
+    
+    return exec.NewExecutor(logger, resource, &settings, errorCheckers)
+}
+```
