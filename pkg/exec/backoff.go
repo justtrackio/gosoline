@@ -1,6 +1,6 @@
 package exec
 
-import "github.com/cenkalti/backoff/v4"
+import backoff "github.com/cenkalti/backoff/v4"
 
 func NewExponentialBackOff(settings *BackoffSettings) *backoff.ExponentialBackOff {
 	backoffConfig := backoff.NewExponentialBackOff()

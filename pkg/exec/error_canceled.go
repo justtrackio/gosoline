@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/hashicorp/go-multierror"
+	multierror "github.com/hashicorp/go-multierror"
 )
 
 const RequestCanceledError = requestCanceledError("RequestCanceled")

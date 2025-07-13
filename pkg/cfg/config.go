@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-playground/validator/v10"
-	"github.com/hashicorp/go-multierror"
+	validator "github.com/go-playground/validator/v10"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/mapx"
 	"github.com/justtrackio/gosoline/pkg/refl"

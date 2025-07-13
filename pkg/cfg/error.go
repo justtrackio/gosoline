@@ -3,7 +3,7 @@ package cfg
 import (
 	"fmt"
 
-	"github.com/getsentry/sentry-go"
+	sentry "github.com/getsentry/sentry-go"
 )
 
 //go:generate go run github.com/vektra/mockery/v2 --name Sentry

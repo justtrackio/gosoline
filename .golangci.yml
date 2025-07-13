@@ -12,15 +12,8 @@ run:
 
 output:
   formats:
-    text:
-      print-linter-name: true
-      print-issued-lines: true
-      colors: true
+    - format: line-number
       path: stdout
-
-formatters:
-  enable:
-    - gofumpt
 
 linters:
   default: none
@@ -42,7 +35,6 @@ linters:
     - revive # Fast, configurable, extensible, flexible, and beautiful linter for Go. Drop-in replacement of golint.
     - staticcheck # It's a set of rules from staticcheck.
     - unused # Checks Go code for unused constants, variables, functions and types.
-    - usetesting # Use the testing package instead of the deprecated test package, replacement for tenv
     - whitespace # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc.
 
   exclusions:
