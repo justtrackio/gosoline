@@ -41,7 +41,13 @@ func ParseSettings(config cfg.Config, key string) (*Settings, error) {
 		return nil, fmt.Errorf("failed to parse kafka connection settings for connection %q in ParseSettings: %w", settings.ConnectionName, err)
 	}
 	settings.connection = conn
-	settings.FQTopic, err = kafka.FQTopicName(config, cfg.GetAppIdFromConfig(config), settings.Topic)
+
+	appId, err := cfg.GetAppIdFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get app id from config: %w", err)
+	}
+
+	settings.FQTopic, err = kafka.FQTopicName(config, appId, settings.Topic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get fully qualified topic name for topic %q in ParseSettings: %w", settings.Topic, err)
 	}

@@ -124,7 +124,10 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 			logger := suite.Env().Logger()
 
 			configKey := mdlsub.GetSubscriberOutputConfigKey(tc.GetName())
-			outputType := config.GetString(configKey)
+			outputType, err := config.GetString(configKey)
+			if err != nil {
+				assert.FailNow(t, "can't read subscriber output type", "the test case for the subscription of %s can't be initialized: %v", tc.GetName(), err)
+			}
 
 			switch outputType {
 			case mdlsub.OutputTypeDb:

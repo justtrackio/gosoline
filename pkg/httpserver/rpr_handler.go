@@ -35,7 +35,10 @@ type rprHandler struct {
 
 func RequestsPerRunnerHandlerFactory(ctx context.Context, config cfg.Config, logger log.Logger, calculatorSettings *calculator.CalculatorSettings) (calculator.Handler, error) {
 	logger = logger.WithChannel("httpserver_requests_per_runner")
-	serverNames := getHttpServerNames(config)
+	serverNames, err := getHttpServerNames(config)
+	if err != nil {
+		return nil, fmt.Errorf("can not get http server names: %w", err)
+	}
 
 	settings, err := calculator.ReadHandlerSettings(config, "httpserver_requests_per_runner", &calculator.PerRunnerMetricSettings{})
 	if err != nil {
@@ -150,11 +153,16 @@ func (h *rprHandler) getRequestsMetrics(ctx context.Context) (float64, error) {
 	return requests, nil
 }
 
-func getHttpServerNames(config cfg.Config) []string {
-	names := funk.Keys(config.GetStringMap("httpserver"))
+func getHttpServerNames(config cfg.Config) ([]string, error) {
+	httpServerMap, err := config.GetStringMap("httpserver")
+	if err != nil {
+		return []string{}, fmt.Errorf("can not get httpserver config: %w", err)
+	}
+
+	names := funk.Keys(httpServerMap)
 	names = slices.DeleteFunc(names, func(s string) bool {
 		return s == "health-check"
 	})
 
-	return names
+	return names, nil
 }

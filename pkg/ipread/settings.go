@@ -29,7 +29,10 @@ func readSettings(config cfg.Config, name string) (*ReaderSettings, error) {
 
 func readAllSettings(config cfg.Config) (map[string]*ReaderSettings, error) {
 	readerSettings := make(map[string]*ReaderSettings)
-	readerMap := config.GetStringMap("ipread", map[string]any{})
+	readerMap, err := config.GetStringMap("ipread", map[string]any{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ipread settings: %w", err)
+	}
 
 	for name := range readerMap {
 		settings, err := readSettings(config, name)

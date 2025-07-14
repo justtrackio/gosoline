@@ -61,10 +61,16 @@ var factory = map[string]clientBuilder{
 
 func NewClient(config cfg.Config, logger Logger, name string) (*ClientV7, error) {
 	clientTypeKey := fmt.Sprintf("es_%s_type", name)
-	clientType := config.GetString(clientTypeKey)
+	clientType, err := config.GetString(clientTypeKey)
+	if err != nil {
+		return nil, fmt.Errorf("could not get client type: %w", err)
+	}
 
 	urlKey := fmt.Sprintf("es_%s_endpoint", name)
-	url := config.GetString(urlKey)
+	url, err := config.GetString(urlKey)
+	if err != nil {
+		return nil, fmt.Errorf("could not get url: %w", err)
+	}
 
 	client, err := NewSimpleClient(logger, url, clientType)
 	if err != nil {
@@ -72,7 +78,10 @@ func NewClient(config cfg.Config, logger Logger, name string) (*ClientV7, error)
 	}
 
 	templateKey := fmt.Sprintf("es_%s_templates", name)
-	templatePath := config.GetStringSlice(templateKey)
+	templatePath, err := config.GetStringSlice(templateKey)
+	if err != nil {
+		return nil, fmt.Errorf("could not get template path: %w", err)
+	}
 
 	if err = putTemplates(logger, client, name, templatePath); err != nil {
 		return nil, fmt.Errorf("can not put templates: %w", err)

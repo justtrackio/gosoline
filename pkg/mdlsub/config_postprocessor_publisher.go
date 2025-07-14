@@ -29,7 +29,10 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		return false, nil
 	}
 
-	publishers := config.GetStringMap(ConfigKeyMdlSubPublishers)
+	publishers, err := config.GetStringMap(ConfigKeyMdlSubPublishers)
+	if err != nil {
+		return false, fmt.Errorf("can not read publisher settings: %w", err)
+	}
 
 	for name := range publishers {
 		publisherKey := getPublisherConfigKey(name)

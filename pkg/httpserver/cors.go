@@ -9,12 +9,21 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
-func Cors(config cfg.Config) gin.HandlerFunc {
-	allowedOriginPattern := config.GetString("api_cors_allowed_origin_pattern")
+func Cors(config cfg.Config) (gin.HandlerFunc, error) {
+	allowedOriginPattern, err := config.GetString("api_cors_allowed_origin_pattern")
+	if err != nil {
+		return nil, err
+	}
 	validOrigin := regexp.MustCompile(allowedOriginPattern)
 
-	allowedHeaders := config.GetStringSlice("api_cors_allowed_headers")
-	allowedMethods := config.GetStringSlice("api_cors_allowed_methods")
+	allowedHeaders, err := config.GetStringSlice("api_cors_allowed_headers")
+	if err != nil {
+		return nil, err
+	}
+	allowedMethods, err := config.GetStringSlice("api_cors_allowed_methods")
+	if err != nil {
+		return nil, err
+	}
 
 	return cors.New(cors.Config{
 		AllowOriginFunc: func(origin string) bool {
@@ -24,5 +33,5 @@ func Cors(config cfg.Config) gin.HandlerFunc {
 		AllowMethods:     allowedMethods,
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
-	})
+	}), nil
 }

@@ -38,7 +38,9 @@ func (f *s3Factory) Detect(config cfg.Config, manager *ComponentsConfigManager) 
 		return nil
 	}
 
-	if manager.HasType(componentS3) {
+	if has, err := manager.HasType(componentS3); err != nil {
+		return fmt.Errorf("failed to check if component exists: %w", err)
+	} else if has {
 		return nil
 	}
 

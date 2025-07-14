@@ -38,7 +38,9 @@ func (f *ddbFactory) Detect(config cfg.Config, manager *ComponentsConfigManager)
 		return nil
 	}
 
-	if manager.HasType(componentDdb) {
+	if has, err := manager.HasType(componentDdb); err != nil {
+		return fmt.Errorf("failed to check if component exists: %w", err)
+	} else if has {
 		return nil
 	}
 

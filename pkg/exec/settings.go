@@ -33,7 +33,11 @@ func ReadBackoffSettings(config cfg.Config, paths ...string) (BackoffSettings, e
 			continue
 		}
 
-		typ = config.GetString(keyType)
+		var err error
+		typ, err = config.GetString(keyType)
+		if err != nil {
+			return BackoffSettings{}, fmt.Errorf("could not get backoff type: %w", err)
+		}
 	}
 
 	if settings, ok := predefined[typ]; ok {

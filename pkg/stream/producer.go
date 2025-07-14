@@ -147,7 +147,10 @@ func readProducerSettings(config cfg.Config, name string) (*ProducerSettings, er
 
 func readAllProducerDaemonSettings(config cfg.Config) (map[string]*ProducerSettings, error) {
 	producerSettings := make(map[string]*ProducerSettings)
-	producerMap := config.GetStringMap("stream.producer", map[string]any{})
+	producerMap, err := config.GetStringMap("stream.producer", map[string]any{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get producer settings: %w", err)
+	}
 
 	for name := range producerMap {
 		s, err := readProducerSettings(config, name)

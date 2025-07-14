@@ -51,10 +51,12 @@ func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Lo
 	}
 
 	key := fmt.Sprintf("%s.type", ConfigurableOutputKey(name))
-	typ := config.GetString(key)
+	typ, err := config.GetString(key)
+	if err != nil {
+		return nil, fmt.Errorf("could not get type for output %s: %w", name, err)
+	}
 
 	var ok bool
-	var err error
 	var factory OutputFactory
 	var output Output
 

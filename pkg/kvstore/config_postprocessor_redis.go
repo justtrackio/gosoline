@@ -22,7 +22,10 @@ func RedisConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		return false, nil
 	}
 
-	kvstores := config.GetStringMap(ConfigKeyKvstore)
+	kvstores, err := config.GetStringMap(ConfigKeyKvstore)
+	if err != nil {
+		return false, fmt.Errorf("failed to get kvstore settings: %w", err)
+	}
 
 	for name, kvstore := range kvstores {
 		var elements []any

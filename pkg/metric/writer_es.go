@@ -47,7 +47,10 @@ func NewElasticsearchWriter(_ context.Context, config cfg.Config, logger log.Log
 
 	testClock := clock.NewRealClock()
 
-	appId := cfg.GetAppIdFromConfig(config)
+	appId, err := cfg.GetAppIdFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("can not get app id from config: %w", err)
+	}
 	namespace := fmt.Sprintf("%s/%s/%s/%s-%s", appId.Project, appId.Environment, appId.Family, appId.Group, appId.Application)
 
 	return NewElasticsearchWriterWithInterfaces(logger, client, testClock, namespace), nil

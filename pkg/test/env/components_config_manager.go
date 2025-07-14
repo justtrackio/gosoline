@@ -38,7 +38,12 @@ func (m *ComponentsConfigManager) ShouldAutoDetect(typ string) bool {
 func (m *ComponentsConfigManager) GetAllSettings() ([]ComponentBaseSettingsAware, error) {
 	allSettings := make([]ComponentBaseSettingsAware, 0)
 
-	for typ, components := range m.List() {
+	componentList, err := m.List()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get component list: %w", err)
+	}
+
+	for typ, components := range componentList {
 		factory, ok := componentFactories[typ]
 
 		if !ok {
@@ -58,46 +63,60 @@ func (m *ComponentsConfigManager) GetAllSettings() ([]ComponentBaseSettingsAware
 	return allSettings, nil
 }
 
-func (m *ComponentsConfigManager) List() map[string]map[string]any {
+func (m *ComponentsConfigManager) List() (map[string]map[string]any, error) {
 	settings := make(map[string]map[string]any, 0)
 
 	if !m.config.IsSet("test.components") {
-		return settings
+		return settings, nil
 	}
 
-	types := m.config.GetStringMap("test.components")
+	types, err := m.config.GetStringMap("test.components")
+	if err != nil {
+		return settings, nil
+	}
+
 	for typ := range types {
 		settings[typ] = make(map[string]any, 0)
 
-		names := m.config.GetStringMap(fmt.Sprintf("test.components.%s", typ))
+		names, err := m.config.GetStringMap(fmt.Sprintf("test.components.%s", typ))
+		if err != nil {
+			return nil, fmt.Errorf("can not get components of type %s: %w", typ, err)
+		}
+
 		for name, value := range names {
 			settings[typ][name] = value
 		}
 	}
 
-	return settings
+	return settings, nil
 }
 
-func (m *ComponentsConfigManager) Has(typ string, name string) bool {
-	configured := m.List()
+func (m *ComponentsConfigManager) Has(typ string, name string) (bool, error) {
+	configured, err := m.List()
+	if err != nil {
+		return false, fmt.Errorf("failed to list components: %w", err)
+	}
 
 	if components, ok := configured[typ]; ok {
 		if _, ok = components[name]; ok {
-			return true
+			return true, nil
 		}
 	}
 
-	return false
+	return false, nil
 }
 
-func (m *ComponentsConfigManager) HasType(typ string) bool {
-	configured := m.List()
-
-	if _, ok := configured[typ]; ok {
-		return true
+func (m *ComponentsConfigManager) HasType(typ string) (bool, error) {
+	configured, err := m.List()
+	if err != nil {
+		return false, fmt.Errorf("failed to list components: %w", err)
 	}
 
-	return false
+	if _, ok := configured[typ]; ok {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func (m *ComponentsConfigManager) Add(settings any) error {
@@ -116,7 +135,9 @@ func (m *ComponentsConfigManager) Add(settings any) error {
 		return fmt.Errorf("the component settings has to implement the interface ComponentBaseSettingsAware")
 	}
 
-	if m.Has(componentSettings.GetName(), componentSettings.GetType()) {
+	if has, err := m.Has(componentSettings.GetName(), componentSettings.GetType()); err != nil {
+		return fmt.Errorf("failed to check if component exists: %w", err)
+	} else if has {
 		return fmt.Errorf("component %s of type %s already exists", componentSettings.GetName(), componentSettings.GetType())
 	}
 

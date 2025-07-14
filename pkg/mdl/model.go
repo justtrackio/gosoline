@@ -6,7 +6,7 @@ import (
 )
 
 type ConfigProvider interface {
-	GetString(key string, optionalDefault ...string) string
+	GetString(key string, optionalDefault ...string) (string, error)
 }
 
 type ModelId struct {
@@ -22,26 +22,40 @@ func (m *ModelId) String() string {
 	return fmt.Sprintf("%s.%s.%s.%s", m.Project, m.Family, m.Group, m.Name)
 }
 
-func (m *ModelId) PadFromConfig(config ConfigProvider) {
+func (m *ModelId) PadFromConfig(config ConfigProvider) error {
+	var err error
+
 	if m.Project == "" {
-		m.Project = config.GetString("app_project")
+		if m.Project, err = config.GetString("app_project"); err != nil {
+			return fmt.Errorf("could not get app_project: %w", err)
+		}
 	}
 
 	if m.Environment == "" {
-		m.Environment = config.GetString("env")
+		if m.Environment, err = config.GetString("env"); err != nil {
+			return fmt.Errorf("could not get env: %w", err)
+		}
 	}
 
 	if m.Family == "" {
-		m.Family = config.GetString("app_family")
+		if m.Family, err = config.GetString("app_family"); err != nil {
+			return fmt.Errorf("could not get app_family: %w", err)
+		}
 	}
 
 	if m.Group == "" {
-		m.Group = config.GetString("app_group")
+		if m.Group, err = config.GetString("app_group"); err != nil {
+			return fmt.Errorf("could not get app_group: %w", err)
+		}
 	}
 
 	if m.Application == "" {
-		m.Application = config.GetString("app_name")
+		if m.Application, err = config.GetString("app_name"); err != nil {
+			return fmt.Errorf("could not get app_name: %w", err)
+		}
 	}
+
+	return nil
 }
 
 func ModelIdFromString(str string) (ModelId, error) {

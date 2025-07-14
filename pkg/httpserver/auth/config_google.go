@@ -76,8 +76,15 @@ func NewConfigGoogleAuthenticator(config cfg.Config, logger log.Logger) (Authent
 		oauth2Service: oauth2Service,
 	}
 
-	clientIds := config.GetStringSlice("api_auth_google_client_ids")
-	allowedAddresses := config.GetStringSlice("api_auth_google_allowed_addresses")
+	clientIds, err := config.GetStringSlice("api_auth_google_client_ids")
+	if err != nil {
+		return nil, fmt.Errorf("failed getting google client ids: %w", err)
+	}
+
+	allowedAddresses, err := config.GetStringSlice("api_auth_google_allowed_addresses")
+	if err != nil {
+		return nil, fmt.Errorf("failed getting google allowed addresses: %w", err)
+	}
 
 	return NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, clientIds, allowedAddresses), nil
 }
