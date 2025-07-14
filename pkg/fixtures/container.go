@@ -61,11 +61,15 @@ func (c *Container) AddPostProcessorFactories(factory ...PostProcessorFactory) {
 }
 
 func (c *Container) Build(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureLoader, error) {
-	if !isFixtureLoadingEnabled(config) {
+	enabled, err := isFixtureLoadingEnabled(config)
+	if err != nil {
+		return nil, fmt.Errorf("could not check if fixture loading is enabled: %w", err)
+	}
+
+	if !enabled {
 		return NewFixtureLoaderDisabled(logger), nil
 	}
 
-	var err error
 	var fixtureSets []FixtureSet
 	var loader FixtureLoader
 	postProcessors := make([]PostProcessor, len(c.postProcessorFactories))

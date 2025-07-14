@@ -79,7 +79,10 @@ func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) 
 
 	for _, typ := range settings.Writers {
 		metricWriterAggrCnfKey := metricWriterAggrKey(typ)
-		aggWriter := config.GetBool(metricWriterAggrCnfKey, false)
+		aggWriter, err := config.GetBool(metricWriterAggrCnfKey, false)
+		if err != nil {
+			return nil, fmt.Errorf("can not get bool from config at %s: %w", metricWriterAggrCnfKey, err)
+		}
 
 		factory, ok := writerFactories[typ]
 		if !ok {

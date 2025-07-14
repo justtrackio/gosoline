@@ -22,7 +22,11 @@ func UseRandomPortConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 			return fmt.Errorf("could not set dx.use_random_port: %w", err)
 		}
 
-		if ShouldUseRandomPort(config) {
+		should, err := ShouldUseRandomPort(config)
+		if err != nil {
+			return fmt.Errorf("could not check if random port should be used: %w", err)
+		}
+		if should {
 			for setting := range randomizablePortSettings {
 				if err := config.Option(cfg.WithConfigSetting(setting, "0", cfg.SkipExisting)); err != nil {
 					return fmt.Errorf("could not set %s: %w", setting, err)
@@ -34,6 +38,6 @@ func UseRandomPortConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	})
 }
 
-func ShouldUseRandomPort(config cfg.Config) bool {
+func ShouldUseRandomPort(config cfg.Config) (bool, error) {
 	return config.GetBool("dx.use_random_port", false)
 }

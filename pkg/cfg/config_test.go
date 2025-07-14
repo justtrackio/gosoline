@@ -128,8 +128,13 @@ func (s *ConfigTestSuite) TestConfig_GetBool() {
 		"b": "true",
 	})
 
-	s.True(s.config.GetBool("b"))
-	s.True(s.config.GetBool("missing", true))
+	val, err := s.config.GetBool("b")
+	s.NoError(err)
+	s.True(val)
+
+	val, err = s.config.GetBool("missing", true)
+	s.NoError(err)
+	s.True(val)
 }
 
 func (s *ConfigTestSuite) TestConfig_GetDuration() {

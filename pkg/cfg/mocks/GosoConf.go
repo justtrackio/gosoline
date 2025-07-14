@@ -176,7 +176,7 @@ func (_c *GosoConf_Get_Call) RunAndReturn(run func(string, ...interface{}) inter
 }
 
 // GetBool provides a mock function with given fields: key, optionalDefault
-func (_m *GosoConf) GetBool(key string, optionalDefault ...bool) bool {
+func (_m *GosoConf) GetBool(key string, optionalDefault ...bool) (bool, error) {
 	_va := make([]interface{}, len(optionalDefault))
 	for _i := range optionalDefault {
 		_va[_i] = optionalDefault[_i]
@@ -191,13 +191,23 @@ func (_m *GosoConf) GetBool(key string, optionalDefault ...bool) bool {
 	}
 
 	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...bool) (bool, error)); ok {
+		return rf(key, optionalDefault...)
+	}
 	if rf, ok := ret.Get(0).(func(string, ...bool) bool); ok {
 		r0 = rf(key, optionalDefault...)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string, ...bool) error); ok {
+		r1 = rf(key, optionalDefault...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GosoConf_GetBool_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBool'
@@ -226,12 +236,12 @@ func (_c *GosoConf_GetBool_Call) Run(run func(key string, optionalDefault ...boo
 	return _c
 }
 
-func (_c *GosoConf_GetBool_Call) Return(_a0 bool) *GosoConf_GetBool_Call {
-	_c.Call.Return(_a0)
+func (_c *GosoConf_GetBool_Call) Return(_a0 bool, _a1 error) *GosoConf_GetBool_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *GosoConf_GetBool_Call) RunAndReturn(run func(string, ...bool) bool) *GosoConf_GetBool_Call {
+func (_c *GosoConf_GetBool_Call) RunAndReturn(run func(string, ...bool) (bool, error)) *GosoConf_GetBool_Call {
 	_c.Call.Return(run)
 	return _c
 }

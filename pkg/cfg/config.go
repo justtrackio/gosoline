@@ -27,7 +27,7 @@ type Config interface {
 	AllKeys() []string
 	AllSettings() map[string]any
 	Get(key string, optionalDefault ...any) any
-	GetBool(key string, optionalDefault ...bool) bool
+	GetBool(key string, optionalDefault ...bool) (bool, error)
 	GetDuration(key string, optionalDefault ...time.Duration) time.Duration
 	GetInt(key string, optionalDefault ...int) int
 	GetIntSlice(key string, optionalDefault ...[]int) []int
@@ -97,20 +97,18 @@ func (c *config) Get(key string, optionalDefault ...any) any {
 	return c.get(key)
 }
 
-func (c *config) GetBool(key string, optionalDefault ...bool) bool {
+func (c *config) GetBool(key string, optionalDefault ...bool) (bool, error) {
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0]
+		return optionalDefault[0], nil
 	}
 
 	data := c.get(key)
 	b, err := cast.ToBoolE(data)
 	if err != nil {
-		c.err("can not cast value %v[%T] of key %s to bool: %w", data, data, key, err)
-
-		return false
+		return false, fmt.Errorf("can not cast value %v[%T] of key %s to bool: %w", data, data, key, err)
 	}
 
-	return b
+	return b, nil
 }
 
 func (c *config) GetDuration(key string, optionalDefault ...time.Duration) time.Duration {

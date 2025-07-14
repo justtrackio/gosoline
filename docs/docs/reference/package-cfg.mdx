@@ -102,7 +102,7 @@ config.GetString("env", "dev")
 
 ```go
 config := cfg.New()
-config.GetBool("enabled", true)
+enabled, err := config.GetBool("enabled", true)
 ```
 
 </details>
