@@ -14,42 +14,73 @@ type AppId struct {
 	Application string `cfg:"application" default:"{app_name}" json:"application"`
 }
 
-func GetAppIdFromConfig(config Config) AppId {
-	return AppId{
-		Project:     config.GetString("app_project"),
-		Environment: config.GetString("env"),
-		Family:      config.GetString("app_family"),
-		Group:       config.GetString("app_group"),
-		Application: config.GetString("app_name"),
+func GetAppIdFromConfig(config Config) (AppId, error) {
+	var err error
+	appId := AppId{}
+
+	if appId.Project, err = config.GetString("app_project"); err != nil {
+		return appId, err
 	}
+
+	if appId.Environment, err = config.GetString("env"); err != nil {
+		return appId, err
+	}
+
+	if appId.Family, err = config.GetString("app_family"); err != nil {
+		return appId, err
+	}
+
+	if appId.Group, err = config.GetString("app_group"); err != nil {
+		return appId, err
+	}
+
+	if appId.Application, err = config.GetString("app_name"); err != nil {
+		return appId, err
+	}
+
+	return appId, nil
 }
 
-func (i *AppId) PadFromConfig(config Config) {
-	if len(i.Project) == 0 {
-		i.Project = config.GetString("app_project")
+func (i *AppId) PadFromConfig(config Config) error {
+	var err error
+
+	if i.Project == "" {
+		if i.Project, err = config.GetString("app_project"); err != nil {
+			return err
+		}
 	}
 
-	if len(i.Environment) == 0 {
-		i.Environment = config.GetString("env")
+	if i.Environment == "" {
+		if i.Environment, err = config.GetString("env"); err != nil {
+			return err
+		}
 	}
 
-	if len(i.Family) == 0 {
-		i.Family = config.GetString("app_family")
+	if i.Family == "" {
+		if i.Family, err = config.GetString("app_family"); err != nil {
+			return err
+		}
 	}
 
-	if len(i.Group) == 0 {
-		i.Group = config.GetString("app_group")
+	if i.Group == "" {
+		if i.Group, err = config.GetString("app_group"); err != nil {
+			return err
+		}
 	}
 
-	if len(i.Application) == 0 {
-		i.Application = config.GetString("app_name")
+	if i.Application == "" {
+		if i.Application, err = config.GetString("app_name"); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func (i *AppId) String() string {
 	elements := []string{i.Project, i.Environment, i.Family, i.Group, i.Application}
 	elements = funk.Filter(elements, func(element string) bool {
-		return len(element) > 0
+		return element != ""
 	})
 
 	return strings.Join(elements, "-")

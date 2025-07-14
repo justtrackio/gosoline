@@ -36,7 +36,9 @@ func (f *redisFactory) Detect(config cfg.Config, manager *ComponentsConfigManage
 		return nil
 	}
 
-	if manager.HasType(componentRedis) {
+	if has, err := manager.HasType(componentRedis); err != nil {
+		return fmt.Errorf("failed to check if component exists: %w", err)
+	} else if has {
 		return nil
 	}
 

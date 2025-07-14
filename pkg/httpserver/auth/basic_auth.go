@@ -30,7 +30,10 @@ func NewBasicAuthHandler(config cfg.Config, logger log.Logger) (gin.HandlerFunc,
 		return nil, fmt.Errorf("can not create basicAuthAuthenticator: %w", err)
 	}
 
-	appName := config.GetString("app_name")
+	appName, err := config.GetString("app_name")
+	if err != nil {
+		return nil, fmt.Errorf("can not get app_name: %w", err)
+	}
 
 	return func(ginCtx *gin.Context) {
 		valid, err := auth.IsValid(ginCtx)
@@ -50,7 +53,10 @@ func NewBasicAuthHandler(config cfg.Config, logger log.Logger) (gin.HandlerFunc,
 }
 
 func NewBasicAuthAuthenticator(config cfg.Config, logger log.Logger) (Authenticator, error) {
-	userEntries := config.GetStringSlice(configBasicAuth)
+	userEntries, err := config.GetStringSlice(configBasicAuth)
+	if err != nil {
+		return nil, fmt.Errorf("can not get basic auth users: %w", err)
+	}
 
 	users := make(map[string]string)
 

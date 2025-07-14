@@ -52,11 +52,16 @@ func (f *mysqlFactory) Detect(config cfg.Config, manager *ComponentsConfigManage
 		return nil
 	}
 
-	if manager.HasType(componentMySql) {
+	if has, err := manager.HasType(componentMySql); err != nil {
+		return fmt.Errorf("failed to check if component exists: %w", err)
+	} else if has {
 		return nil
 	}
 
-	components := config.GetStringMap("db")
+	components, err := config.GetStringMap("db")
+	if err != nil {
+		return fmt.Errorf("can not get db components: %w", err)
+	}
 
 	for name := range components {
 		driver := config.Get(fmt.Sprintf("db.%s.driver", name))

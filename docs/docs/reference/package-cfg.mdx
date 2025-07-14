@@ -82,7 +82,11 @@ fmt.Println(config.GetString("port"))
 os.Setenv("PORT", "8081")
 
 // Prints 8081
-fmt.Println(config.GetString("port"))
+port, err := config.GetString("port")
+if err != nil {
+    panic(err)
+}
+fmt.Println(port)
 ```
 
 :::
@@ -93,7 +97,10 @@ fmt.Println(config.GetString("port"))
 
 ```go
 config := cfg.New()
-config.GetString("env", "dev")
+str, err := config.GetString("env", "dev")
+if err != nil {
+    panic(err)
+}
 ```
 
 </details>

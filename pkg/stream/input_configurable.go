@@ -57,7 +57,10 @@ func ProvideConfigurableInput(ctx context.Context, config cfg.Config, logger log
 }
 
 func NewConfigurableInput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
-	t := readInputType(config, name)
+	t, err := readInputType(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("could not read input type: %w", err)
+	}
 
 	factory, ok := inputFactories[t]
 
@@ -200,7 +203,9 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 		Healthcheck:         configuration.Healthcheck,
 	}
 
-	settings.PadFromConfig(config)
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, nil, fmt.Errorf("failed to pad sns input settings from config: %w", err)
+	}
 
 	targets := make([]SnsInputTarget, len(configuration.Targets))
 	for i, t := range configuration.Targets {
@@ -210,7 +215,9 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 			Application: t.Application,
 		}
 
-		targetAppId.PadFromConfig(config)
+		if err := targetAppId.PadFromConfig(config); err != nil {
+			return nil, nil, fmt.Errorf("failed to pad target app id from config: %w", err)
+		}
 
 		clientName := t.ClientName
 		if clientName == "" {
@@ -279,7 +286,9 @@ func readSqsInputSettings(config cfg.Config, name string) (*SqsInputSettings, er
 		Unmarshaller:        configuration.Unmarshaller,
 	}
 
-	settings.PadFromConfig(config)
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad sqs input settings from config: %w", err)
+	}
 
 	return settings, nil
 }
@@ -297,20 +306,31 @@ func ConfigurableInputKey(name string) string {
 	return fmt.Sprintf("stream.input.%s", name)
 }
 
-func readInputType(config cfg.Config, name string) string {
+func readInputType(config cfg.Config, name string) (string, error) {
 	key := fmt.Sprintf("%s.type", ConfigurableInputKey(name))
-	t := config.GetString(key)
+	t, err := config.GetString(key)
+	if err != nil {
+		return "", fmt.Errorf("could not get string for key %s: %w", key, err)
+	}
 
-	return t
+	return t, nil
 }
 
-func readAllInputTypes(config cfg.Config) map[string]string {
-	inputMap := config.GetStringMap("stream.input", map[string]any{})
+func readAllInputTypes(config cfg.Config) (map[string]string, error) {
+	inputMap, err := config.GetStringMap("stream.input", map[string]any{})
+	if err != nil {
+		return nil, fmt.Errorf("could not get string map for key stream.input: %w", err)
+	}
+
 	inputsTypes := make(map[string]string, len(inputMap))
 
 	for name := range inputMap {
-		inputsTypes[name] = readInputType(config, name)
+		var err error
+		inputsTypes[name], err = readInputType(config, name)
+		if err != nil {
+			return nil, fmt.Errorf("could not read input type for %s: %w", name, err)
+		}
 	}
 
-	return inputsTypes
+	return inputsTypes, nil
 }

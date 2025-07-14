@@ -33,10 +33,10 @@ type Config interface {
 	GetIntSlice(key string, optionalDefault ...[]int) []int
 	GetFloat64(key string, optionalDefault ...float64) float64
 	GetMsiSlice(key string, optionalDefault ...[]map[string]any) []map[string]any
-	GetString(key string, optionalDefault ...string) string
-	GetStringMap(key string, optionalDefault ...map[string]any) map[string]any
-	GetStringMapString(key string, optionalDefault ...map[string]string) map[string]string
-	GetStringSlice(key string, optionalDefault ...[]string) []string
+	GetString(key string, optionalDefault ...string) (string, error)
+	GetStringMap(key string, optionalDefault ...map[string]any) (map[string]any, error)
+	GetStringMapString(key string, optionalDefault ...map[string]string) (map[string]string, error)
+	GetStringSlice(key string, optionalDefault ...[]string) ([]string, error)
 	GetTime(key string, optionalDefault ...time.Time) time.Time
 	IsSet(string) bool
 	HasPrefix(prefix string) bool
@@ -210,55 +210,59 @@ func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]any) []
 	return msiSlice
 }
 
-func (c *config) GetString(key string, optionalDefault ...string) string {
+func (c *config) GetString(key string, optionalDefault ...string) (string, error) {
 	return c.getString(key, optionalDefault...)
 }
 
-func (c *config) GetStringMap(key string, optionalDefault ...map[string]any) map[string]any {
+func (c *config) GetStringMap(key string, optionalDefault ...map[string]any) (map[string]any, error) {
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0]
+		return optionalDefault[0], nil
 	}
 
 	data := c.get(key)
 	strMap, err := cast.ToStringMapE(data)
 	if err != nil {
-		c.err("can not cast value %v[%T] of key %s to map[string]any: %w", data, data, key, err)
-
-		return nil
+		return nil, fmt.Errorf("can not cast value %v[%T] of key %s to map[string]any: %w", data, data, key, err)
 	}
 
 	for k, v := range strMap {
 		if str, ok := v.(string); ok {
-			strMap[k] = c.augmentString(str)
+			augmented, err := c.augmentString(str)
+			if err != nil {
+				return nil, fmt.Errorf("can not augment string in map for key %s: %w", key, err)
+			}
+			strMap[k] = augmented
 		}
 	}
 
-	return strMap
+	return strMap, nil
 }
 
-func (c *config) GetStringMapString(key string, optionalDefault ...map[string]string) map[string]string {
+func (c *config) GetStringMapString(key string, optionalDefault ...map[string]string) (map[string]string, error) {
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0]
+		return optionalDefault[0], nil
 	}
 
 	data := c.get(key)
 	strMap, err := cast.ToStringMapStringE(data)
 	if err != nil {
-		c.err("can not cast value %v[%T] of key %s to map[string]string: %w", data, data, key, err)
-
-		return nil
+		return nil, fmt.Errorf("can not cast value %v[%T] of key %s to map[string]string: %w", data, data, key, err)
 	}
 
 	for k, v := range strMap {
-		strMap[k] = c.augmentString(v)
+		augmented, err := c.augmentString(v)
+		if err != nil {
+			return nil, fmt.Errorf("can not augment string in map for key %s: %w", key, err)
+		}
+		strMap[k] = augmented
 	}
 
-	return strMap
+	return strMap, nil
 }
 
-func (c *config) GetStringSlice(key string, optionalDefault ...[]string) []string {
+func (c *config) GetStringSlice(key string, optionalDefault ...[]string) ([]string, error) {
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0]
+		return optionalDefault[0], nil
 	}
 
 	var err error
@@ -274,17 +278,18 @@ func (c *config) GetStringSlice(key string, optionalDefault ...[]string) []strin
 	}
 
 	if err != nil {
-		c.err("can not cast value %v[%T] of key %s to []string: %w", data, data, key, err)
-
-		return nil
+		return nil, fmt.Errorf("can not cast value %v[%T] of key %s to []string: %w", data, data, key, err)
 	}
 
 	for i := 0; i < len(strSlice); i++ {
-		strSlice[i] = c.augmentString(strSlice[i])
-		strSlice[i] = strings.TrimSpace(strSlice[i])
+		augmented, err := c.augmentString(strSlice[i])
+		if err != nil {
+			return nil, fmt.Errorf("can not augment string in slice for key %s: %w", key, err)
+		}
+		strSlice[i] = strings.TrimSpace(augmented)
 	}
 
-	return strSlice
+	return strSlice, nil
 }
 
 func (c *config) GetTime(key string, optionalDefault ...time.Time) time.Time {
@@ -387,7 +392,7 @@ func (c *config) UnmarshalKey(key string, output any, defaults ...UnmarshalDefau
 	return fmt.Errorf("can not unmarshal key %s: output should be a pointer to struct or slice but instead is %T", key, output)
 }
 
-func (c *config) augmentString(str string) string {
+func (c *config) augmentString(str string) (string, error) {
 	groups := valFlagsRegexp.FindStringSubmatch(str)
 	flags := make([]string, 0)
 
@@ -398,17 +403,20 @@ func (c *config) augmentString(str string) string {
 	}
 
 	if funk.Contains(flags, flagNoDecode) {
-		return str
+		return str, nil
 	}
 
 	matches := templateRegexp.FindAllStringSubmatch(str, -1)
 
 	for _, m := range matches {
-		replace := c.getString(m[1])
+		replace, err := c.getString(m[1])
+		if err != nil {
+			return "", err
+		}
 		str = strings.ReplaceAll(str, m[0], replace)
 	}
 
-	return str
+	return str, nil
 }
 
 func (c *config) err(msg string, args ...any) {
@@ -440,7 +448,7 @@ func (c *config) buildMapStruct(target any) (*mapx.Struct, error) {
 func (c *config) decodeAugmentHook() mapx.MapStructDecoder {
 	return func(_ reflect.Type, val any) (any, error) {
 		if raw, ok := val.(string); ok {
-			return c.augmentString(raw), nil
+			return c.augmentString(raw)
 		}
 
 		return val, nil
@@ -453,15 +461,19 @@ func (c *config) get(key string) any {
 	dataMap := mapx.NewMapX()
 	dataMap.Set(key, data)
 
-	environment := c.readEnvironmentFromValues(c.envKeyPrefix, dataMap)
-	dataMap.Merge(".", environment)
+	environment, err := c.readEnvironmentFromValues(c.envKeyPrefix, dataMap)
+	if err != nil {
+		c.err("could not read environment from values: %v", err)
+	} else {
+		dataMap.Merge(".", environment)
+	}
 
 	c.settings.Merge(".", dataMap)
 
 	return dataMap.Get(key).Data()
 }
 
-func (c *config) getString(key string, optionalDefault ...string) string {
+func (c *config) getString(key string, optionalDefault ...string) (string, error) {
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return c.augmentString(optionalDefault[0])
 	}
@@ -469,12 +481,10 @@ func (c *config) getString(key string, optionalDefault ...string) string {
 	data := c.get(key)
 	str, err := cast.ToStringE(data)
 	if err != nil {
-		panic(fmt.Errorf("can not cast value %v of key %s to string", data, key))
+		return "", fmt.Errorf("can not cast value %v[%T] of key %s to string: %w", data, data, key, err)
 	}
 
-	augmented := c.augmentString(str)
-
-	return augmented
+	return c.augmentString(str)
 }
 
 func (c *config) isSet(key string) bool {
@@ -555,41 +565,49 @@ func (c *config) mergeStruct(prefix string, settings any, options ...MergeOption
 	return c.mergeMsi(prefix, msi, options...)
 }
 
-func (c *config) readEnvironmentFromStructKeys(prefix string, structKeys []mapx.StructKey) *mapx.MapX {
+func (c *config) readEnvironmentFromStructKeys(prefix string, structKeys []mapx.StructKey) (*mapx.MapX, error) {
 	environment := mapx.NewMapX()
 
 	for _, structKey := range structKeys {
 		switch structKey.Kind {
 		case reflect.Slice:
-			c.readEnvironmentFromStructKeysSlice(prefix, structKey, environment)
+			if err := c.readEnvironmentFromStructKeysSlice(prefix, structKey, environment); err != nil {
+				return nil, err
+			}
 
 		default:
 			key := structKey.Key
 			envKey := c.resolveEnvKey(prefix, key)
 
 			if envValue, ok := c.envProvider.LookupEnv(envKey); ok {
-				augmentedString := c.augmentString(envValue)
+				augmentedString, err := c.augmentString(envValue)
+				if err != nil {
+					return nil, err
+				}
 				environment.Set(key, augmentedString)
 			}
 		}
 	}
 
-	return environment
+	return environment, nil
 }
 
-func (c *config) readEnvironmentFromStructKeysSlice(prefix string, structKey mapx.StructKey, environment *mapx.MapX) {
+func (c *config) readEnvironmentFromStructKeysSlice(prefix string, structKey mapx.StructKey, environment *mapx.MapX) error {
 	if len(structKey.SubKeys) > 0 {
-		c.readEnvironmentFromStructKeysSlicePrefixed(prefix, structKey, environment)
-	} else {
-		c.readEnvironmentFromStructKeysSliceIndexed(prefix, structKey, environment)
+		return c.readEnvironmentFromStructKeysSlicePrefixed(prefix, structKey, environment)
 	}
+
+	return c.readEnvironmentFromStructKeysSliceIndexed(prefix, structKey, environment)
 }
 
-func (c *config) readEnvironmentFromStructKeysSlicePrefixed(prefix string, structKey mapx.StructKey, environment *mapx.MapX) {
+func (c *config) readEnvironmentFromStructKeysSlicePrefixed(prefix string, structKey mapx.StructKey, environment *mapx.MapX) error {
 	for i := 0; ; i++ {
 		sliceKeyIndexed := fmt.Sprintf("%s[%d]", structKey.Key, i)
 		sliceKeyPrefixed := fmt.Sprintf("%s.%s", prefix, sliceKeyIndexed)
-		sliceValues := c.readEnvironmentFromStructKeys(sliceKeyPrefixed, structKey.SubKeys)
+		sliceValues, err := c.readEnvironmentFromStructKeys(sliceKeyPrefixed, structKey.SubKeys)
+		if err != nil {
+			return err
+		}
 
 		if len(sliceValues.Msi()) == 0 {
 			break
@@ -597,23 +615,30 @@ func (c *config) readEnvironmentFromStructKeysSlicePrefixed(prefix string, struc
 
 		environment.Set(sliceKeyIndexed, sliceValues)
 	}
+
+	return nil
 }
 
-func (c *config) readEnvironmentFromStructKeysSliceIndexed(prefix string, structKey mapx.StructKey, environment *mapx.MapX) {
+func (c *config) readEnvironmentFromStructKeysSliceIndexed(prefix string, structKey mapx.StructKey, environment *mapx.MapX) error {
 	for i := 0; ; i++ {
 		sliceKeyIndexed := fmt.Sprintf("%s[%d]", structKey.Key, i)
 		envKey := c.resolveEnvKey(prefix, sliceKeyIndexed)
 
 		if envValue, ok := c.envProvider.LookupEnv(envKey); ok {
-			augmentedString := c.augmentString(envValue)
+			augmentedString, err := c.augmentString(envValue)
+			if err != nil {
+				return err
+			}
 			environment.Set(sliceKeyIndexed, augmentedString)
 		} else {
 			break
 		}
 	}
+
+	return nil
 }
 
-func (c *config) readEnvironmentFromValues(prefix string, input *mapx.MapX) *mapx.MapX {
+func (c *config) readEnvironmentFromValues(prefix string, input *mapx.MapX) (*mapx.MapX, error) {
 	environment := mapx.NewMapX()
 
 	for _, k := range input.Keys() {
@@ -621,19 +646,25 @@ func (c *config) readEnvironmentFromValues(prefix string, input *mapx.MapX) *map
 		val := input.Get(k)
 
 		if nestedMap, err := val.Map(); err == nil {
-			nestedValues := c.readEnvironmentFromValues(key, nestedMap)
+			nestedValues, err := c.readEnvironmentFromValues(key, nestedMap)
+			if err != nil {
+				return nil, err
+			}
 			environment.Set(k, nestedValues)
 
 			continue
 		}
 
 		if envValue, ok := c.envProvider.LookupEnv(key); ok {
-			augmentedString := c.augmentString(envValue)
+			augmentedString, err := c.augmentString(envValue)
+			if err != nil {
+				return nil, err
+			}
 			environment.Set(k, augmentedString)
 		}
 	}
 
-	return environment
+	return environment, nil
 }
 
 func (c *config) resolveEnvKey(prefix string, key string) string {
@@ -655,7 +686,11 @@ func (c *config) resolveEnvKey(prefix string, key string) string {
 }
 
 func (c *config) unmarshalMap(key string, output any, defaults []UnmarshalDefaults) error {
-	names := c.GetStringMap(key)
+	names, err := c.GetStringMap(key)
+	if err != nil {
+		return fmt.Errorf("can not get string map for key %s: %w", key, err)
+	}
+
 	m, err := refl.MapOf(output)
 	if err != nil {
 		return fmt.Errorf("can not unmarshal key %s: %w", key, err)
@@ -739,8 +774,15 @@ func (c *config) unmarshalStruct(key string, output any, additionalDefaults []Un
 	}
 
 	environmentKey := c.resolveEnvKey(c.envKeyPrefix, key)
-	environmentKeySettings := c.readEnvironmentFromStructKeys(environmentKey, ms.Keys())
-	environmentValueSettings := c.readEnvironmentFromValues(environmentKey, finalSettings)
+	environmentKeySettings, err := c.readEnvironmentFromStructKeys(environmentKey, ms.Keys())
+	if err != nil {
+		return fmt.Errorf("can not read environment key settings for key %s: %w", key, err)
+	}
+
+	environmentValueSettings, err := c.readEnvironmentFromValues(environmentKey, finalSettings)
+	if err != nil {
+		return fmt.Errorf("can not read environment value settings for key %s: %w", key, err)
+	}
 
 	finalSettings.Merge(".", environmentKeySettings)
 	finalSettings.Merge(".", environmentValueSettings)

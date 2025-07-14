@@ -34,7 +34,9 @@ type localstackSettings struct {
 type localstackFactory struct{}
 
 func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
-	if manager.HasType(ComponentLocalstack) {
+	if has, err := manager.HasType(ComponentLocalstack); err != nil {
+		return fmt.Errorf("failed to check if component exists: %w", err)
+	} else if has {
 		return nil
 	}
 

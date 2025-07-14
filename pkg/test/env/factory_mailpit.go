@@ -33,7 +33,9 @@ func (m mailpitFactory) Detect(config cfg.Config, manager *ComponentsConfigManag
 		return nil
 	}
 
-	if manager.HasType(componentMailpit) {
+	if has, err := manager.HasType(componentMailpit); err != nil {
+		return fmt.Errorf("failed to check if component exists: %w", err)
+	} else if has {
 		return nil
 	}
 

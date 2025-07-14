@@ -24,10 +24,13 @@ type ConsumerRetrySettings struct {
 	GraceTime time.Duration `cfg:"grace_time" default:"10s"`
 }
 
-func GetAllConsumerNames(config cfg.Config) []string {
-	consumerMap := config.GetStringMap("stream.consumer", map[string]any{})
+func GetAllConsumerNames(config cfg.Config) ([]string, error) {
+	consumerMap, err := config.GetStringMap("stream.consumer", map[string]any{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get consumer settings: %w", err)
+	}
 
-	return funk.Keys(consumerMap)
+	return funk.Keys(consumerMap), nil
 }
 
 func ConfigurableConsumerKey(name string) string {

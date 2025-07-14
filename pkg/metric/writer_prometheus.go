@@ -75,7 +75,10 @@ func NewPrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logg
 		return nil, fmt.Errorf("could not get prometheus writer settings: %w", err)
 	}
 
-	appId := cfg.GetAppIdFromConfig(config)
+	appId, err := cfg.GetAppIdFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("could not get app id from config: %w", err)
+	}
 	namespace := promNSNamingStrategy(appId)
 
 	registry, err := ProvideRegistry(ctx, prometheusDefaultRegistry)

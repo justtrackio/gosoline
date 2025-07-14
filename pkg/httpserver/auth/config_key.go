@@ -27,8 +27,11 @@ type configKeyAuthenticator struct {
 
 type ApiKeyProvider func(ginCtx *gin.Context) string
 
-func NewConfigKeyHandler(config cfg.Config, logger log.Logger, provider ApiKeyProvider) gin.HandlerFunc {
-	auth := NewConfigKeyAuthenticator(config, logger, provider)
+func NewConfigKeyHandler(config cfg.Config, logger log.Logger, provider ApiKeyProvider) (gin.HandlerFunc, error) {
+	auth, err := NewConfigKeyAuthenticator(config, logger, provider)
+	if err != nil {
+		return nil, fmt.Errorf("could not create config key authenticator: %w", err)
+	}
 
 	return func(ginCtx *gin.Context) {
 		valid, err := auth.IsValid(ginCtx)
@@ -43,16 +46,20 @@ func NewConfigKeyHandler(config cfg.Config, logger log.Logger, provider ApiKeyPr
 
 		ginCtx.JSON(http.StatusUnauthorized, gin.H{"err": err.Error()})
 		ginCtx.Abort()
-	}
+	}, nil
 }
 
-func NewConfigKeyAuthenticator(config cfg.Config, logger log.Logger, provider ApiKeyProvider) Authenticator {
-	keys := config.GetStringSlice(configApiKeys)
+func NewConfigKeyAuthenticator(config cfg.Config, logger log.Logger, provider ApiKeyProvider) (Authenticator, error) {
+	keys, err := config.GetStringSlice(configApiKeys)
+	if err != nil {
+		return nil, fmt.Errorf("could not get string slice from config: %w", err)
+	}
+
 	keys = funk.Filter(keys, func(key string) bool {
 		return key != ""
 	})
 
-	return NewConfigKeyAuthenticatorWithInterfaces(logger, keys, provider)
+	return NewConfigKeyAuthenticatorWithInterfaces(logger, keys, provider), nil
 }
 
 func NewConfigKeyAuthenticatorWithInterfaces(logger log.Logger, keys []string, provider ApiKeyProvider) Authenticator {

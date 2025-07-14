@@ -84,8 +84,11 @@ type (
 	ModelProvider       func() TokenBearer
 )
 
-func NewTokenBearerHandler(config cfg.Config, logger log.Logger, provider TokenBearerProvider) gin.HandlerFunc {
-	auth := NewTokenBearerAuthenticator(config, logger, provider)
+func NewTokenBearerHandler(config cfg.Config, logger log.Logger, provider TokenBearerProvider) (gin.HandlerFunc, error) {
+	auth, err := NewTokenBearerAuthenticator(config, logger, provider)
+	if err != nil {
+		return nil, fmt.Errorf("can not create token bearer authenticator: %w", err)
+	}
 
 	return func(ginCtx *gin.Context) {
 		valid, err := auth.IsValid(ginCtx)
@@ -100,14 +103,21 @@ func NewTokenBearerHandler(config cfg.Config, logger log.Logger, provider TokenB
 
 		ginCtx.JSON(http.StatusUnauthorized, gin.H{"err": err.Error()})
 		ginCtx.Abort()
-	}
+	}, nil
 }
 
-func NewTokenBearerAuthenticator(config cfg.Config, logger log.Logger, provider TokenBearerProvider) Authenticator {
-	keyHeader := config.GetString(configBearerIdHeader)
-	tokenHeader := config.GetString(configBearerTokenHeader)
+func NewTokenBearerAuthenticator(config cfg.Config, logger log.Logger, provider TokenBearerProvider) (Authenticator, error) {
+	keyHeader, err := config.GetString(configBearerIdHeader)
+	if err != nil {
+		return nil, err
+	}
 
-	return NewTokenBearerAuthenticatorWithInterfaces(logger, keyHeader, tokenHeader, provider)
+	tokenHeader, err := config.GetString(configBearerTokenHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewTokenBearerAuthenticatorWithInterfaces(logger, keyHeader, tokenHeader, provider), nil
 }
 
 func NewTokenBearerAuthenticatorWithInterfaces(logger log.Logger, keyHeader string, tokenHeader string, provider TokenBearerProvider) Authenticator {

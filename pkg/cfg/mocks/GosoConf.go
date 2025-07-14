@@ -556,7 +556,7 @@ func (_c *GosoConf_GetMsiSlice_Call) RunAndReturn(run func(string, ...[]map[stri
 }
 
 // GetString provides a mock function with given fields: key, optionalDefault
-func (_m *GosoConf) GetString(key string, optionalDefault ...string) string {
+func (_m *GosoConf) GetString(key string, optionalDefault ...string) (string, error) {
 	_va := make([]interface{}, len(optionalDefault))
 	for _i := range optionalDefault {
 		_va[_i] = optionalDefault[_i]
@@ -571,13 +571,23 @@ func (_m *GosoConf) GetString(key string, optionalDefault ...string) string {
 	}
 
 	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...string) (string, error)); ok {
+		return rf(key, optionalDefault...)
+	}
 	if rf, ok := ret.Get(0).(func(string, ...string) string); ok {
 		r0 = rf(key, optionalDefault...)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string, ...string) error); ok {
+		r1 = rf(key, optionalDefault...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GosoConf_GetString_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetString'
@@ -606,18 +616,18 @@ func (_c *GosoConf_GetString_Call) Run(run func(key string, optionalDefault ...s
 	return _c
 }
 
-func (_c *GosoConf_GetString_Call) Return(_a0 string) *GosoConf_GetString_Call {
-	_c.Call.Return(_a0)
+func (_c *GosoConf_GetString_Call) Return(_a0 string, _a1 error) *GosoConf_GetString_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *GosoConf_GetString_Call) RunAndReturn(run func(string, ...string) string) *GosoConf_GetString_Call {
+func (_c *GosoConf_GetString_Call) RunAndReturn(run func(string, ...string) (string, error)) *GosoConf_GetString_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetStringMap provides a mock function with given fields: key, optionalDefault
-func (_m *GosoConf) GetStringMap(key string, optionalDefault ...map[string]interface{}) map[string]interface{} {
+func (_m *GosoConf) GetStringMap(key string, optionalDefault ...map[string]interface{}) (map[string]interface{}, error) {
 	_va := make([]interface{}, len(optionalDefault))
 	for _i := range optionalDefault {
 		_va[_i] = optionalDefault[_i]
@@ -632,6 +642,10 @@ func (_m *GosoConf) GetStringMap(key string, optionalDefault ...map[string]inter
 	}
 
 	var r0 map[string]interface{}
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...map[string]interface{}) (map[string]interface{}, error)); ok {
+		return rf(key, optionalDefault...)
+	}
 	if rf, ok := ret.Get(0).(func(string, ...map[string]interface{}) map[string]interface{}); ok {
 		r0 = rf(key, optionalDefault...)
 	} else {
@@ -640,7 +654,13 @@ func (_m *GosoConf) GetStringMap(key string, optionalDefault ...map[string]inter
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string, ...map[string]interface{}) error); ok {
+		r1 = rf(key, optionalDefault...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GosoConf_GetStringMap_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStringMap'
@@ -669,18 +689,18 @@ func (_c *GosoConf_GetStringMap_Call) Run(run func(key string, optionalDefault .
 	return _c
 }
 
-func (_c *GosoConf_GetStringMap_Call) Return(_a0 map[string]interface{}) *GosoConf_GetStringMap_Call {
-	_c.Call.Return(_a0)
+func (_c *GosoConf_GetStringMap_Call) Return(_a0 map[string]interface{}, _a1 error) *GosoConf_GetStringMap_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *GosoConf_GetStringMap_Call) RunAndReturn(run func(string, ...map[string]interface{}) map[string]interface{}) *GosoConf_GetStringMap_Call {
+func (_c *GosoConf_GetStringMap_Call) RunAndReturn(run func(string, ...map[string]interface{}) (map[string]interface{}, error)) *GosoConf_GetStringMap_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetStringMapString provides a mock function with given fields: key, optionalDefault
-func (_m *GosoConf) GetStringMapString(key string, optionalDefault ...map[string]string) map[string]string {
+func (_m *GosoConf) GetStringMapString(key string, optionalDefault ...map[string]string) (map[string]string, error) {
 	_va := make([]interface{}, len(optionalDefault))
 	for _i := range optionalDefault {
 		_va[_i] = optionalDefault[_i]
@@ -695,6 +715,10 @@ func (_m *GosoConf) GetStringMapString(key string, optionalDefault ...map[string
 	}
 
 	var r0 map[string]string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...map[string]string) (map[string]string, error)); ok {
+		return rf(key, optionalDefault...)
+	}
 	if rf, ok := ret.Get(0).(func(string, ...map[string]string) map[string]string); ok {
 		r0 = rf(key, optionalDefault...)
 	} else {
@@ -703,7 +727,13 @@ func (_m *GosoConf) GetStringMapString(key string, optionalDefault ...map[string
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string, ...map[string]string) error); ok {
+		r1 = rf(key, optionalDefault...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GosoConf_GetStringMapString_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStringMapString'
@@ -732,18 +762,18 @@ func (_c *GosoConf_GetStringMapString_Call) Run(run func(key string, optionalDef
 	return _c
 }
 
-func (_c *GosoConf_GetStringMapString_Call) Return(_a0 map[string]string) *GosoConf_GetStringMapString_Call {
-	_c.Call.Return(_a0)
+func (_c *GosoConf_GetStringMapString_Call) Return(_a0 map[string]string, _a1 error) *GosoConf_GetStringMapString_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *GosoConf_GetStringMapString_Call) RunAndReturn(run func(string, ...map[string]string) map[string]string) *GosoConf_GetStringMapString_Call {
+func (_c *GosoConf_GetStringMapString_Call) RunAndReturn(run func(string, ...map[string]string) (map[string]string, error)) *GosoConf_GetStringMapString_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetStringSlice provides a mock function with given fields: key, optionalDefault
-func (_m *GosoConf) GetStringSlice(key string, optionalDefault ...[]string) []string {
+func (_m *GosoConf) GetStringSlice(key string, optionalDefault ...[]string) ([]string, error) {
 	_va := make([]interface{}, len(optionalDefault))
 	for _i := range optionalDefault {
 		_va[_i] = optionalDefault[_i]
@@ -758,6 +788,10 @@ func (_m *GosoConf) GetStringSlice(key string, optionalDefault ...[]string) []st
 	}
 
 	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...[]string) ([]string, error)); ok {
+		return rf(key, optionalDefault...)
+	}
 	if rf, ok := ret.Get(0).(func(string, ...[]string) []string); ok {
 		r0 = rf(key, optionalDefault...)
 	} else {
@@ -766,7 +800,13 @@ func (_m *GosoConf) GetStringSlice(key string, optionalDefault ...[]string) []st
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string, ...[]string) error); ok {
+		r1 = rf(key, optionalDefault...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GosoConf_GetStringSlice_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStringSlice'
@@ -795,12 +835,12 @@ func (_c *GosoConf_GetStringSlice_Call) Run(run func(key string, optionalDefault
 	return _c
 }
 
-func (_c *GosoConf_GetStringSlice_Call) Return(_a0 []string) *GosoConf_GetStringSlice_Call {
-	_c.Call.Return(_a0)
+func (_c *GosoConf_GetStringSlice_Call) Return(_a0 []string, _a1 error) *GosoConf_GetStringSlice_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *GosoConf_GetStringSlice_Call) RunAndReturn(run func(string, ...[]string) []string) *GosoConf_GetStringSlice_Call {
+func (_c *GosoConf_GetStringSlice_Call) RunAndReturn(run func(string, ...[]string) ([]string, error)) *GosoConf_GetStringSlice_Call {
 	_c.Call.Return(run)
 	return _c
 }

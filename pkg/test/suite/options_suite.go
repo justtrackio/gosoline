@@ -186,7 +186,10 @@ func WithSharedEnvironment() Option {
 
 func WithStreamConsumerRetryDisabled(s *suiteOptions) {
 	s.addAppOption(application.WithConfigCallback(func(config cfg.GosoConf) error {
-		consumerNames := stream.GetAllConsumerNames(config)
+		consumerNames, err := stream.GetAllConsumerNames(config)
+		if err != nil {
+			return fmt.Errorf("can not get consumer names: %w", err)
+		}
 
 		for _, name := range consumerNames {
 			key := fmt.Sprintf("%s.enabled", stream.ConfigurableConsumerRetryKey(name))

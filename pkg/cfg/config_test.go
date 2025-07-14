@@ -204,9 +204,17 @@ func (s *ConfigTestSuite) TestConfig_GetString() {
 		"nested": "nested stuff",
 	})
 
-	s.Equal("foobar", s.config.GetString("s"))
-	s.Equal("this is also nested stuff augmented", s.config.GetString("a"))
-	s.Equal("default", s.config.GetString("missing", "default"))
+	val, err := s.config.GetString("s")
+	s.NoError(err)
+	s.Equal("foobar", val)
+
+	val, err = s.config.GetString("a")
+	s.NoError(err)
+	s.Equal("this is also nested stuff augmented", val)
+
+	val, err = s.config.GetString("missing", "default")
+	s.NoError(err)
+	s.Equal("default", val)
 }
 
 func (s *ConfigTestSuite) TestConfig_GetStringNoDecode() {
@@ -214,7 +222,9 @@ func (s *ConfigTestSuite) TestConfig_GetStringNoDecode() {
 		"nodecode": "!nodecode {this}-should-{be}-plain",
 	})
 
-	s.Equal("{this}-should-{be}-plain", s.config.GetString("nodecode"))
+	val, err := s.config.GetString("nodecode")
+	s.NoError(err)
+	s.Equal("{this}-should-{be}-plain", val)
 }
 
 func (s *ConfigTestSuite) TestConfig_GetStringMapString() {
@@ -231,12 +241,16 @@ func (s *ConfigTestSuite) TestConfig_GetStringMapString() {
 		"s": "string",
 	}
 
-	strMap := s.config.GetStringMapString("map")
+	strMap, err := s.config.GetStringMapString("map")
+	s.NoError(err)
 
 	s.Len(strMap, 3)
 	s.Equal("b", strMap["a"])
 	s.Equal("baz-d", strMap["foo"])
-	s.Equal(missingMap, s.config.GetStringMapString("missing", missingMap))
+
+	val, err := s.config.GetStringMapString("missing", missingMap)
+	s.NoError(err)
+	s.Equal(missingMap, val)
 }
 
 func (s *ConfigTestSuite) TestConfig_GetStringSlice() {
@@ -250,10 +264,17 @@ func (s *ConfigTestSuite) TestConfig_GetStringSlice() {
 
 	missingSlice := []string{"a", "b"}
 
-	ss := s.config.GetStringSlice("slice")
-	single := s.config.GetStringSlice("single")
-	split := s.config.GetStringSlice("split")
-	ints := s.config.GetStringSlice("ints")
+	ss, err := s.config.GetStringSlice("slice")
+	s.NoError(err)
+
+	single, err := s.config.GetStringSlice("single")
+	s.NoError(err)
+
+	split, err := s.config.GetStringSlice("split")
+	s.NoError(err)
+
+	ints, err := s.config.GetStringSlice("ints")
+	s.NoError(err)
 
 	s.Len(ss, 2)
 	s.Equal("string", ss[0])
@@ -261,7 +282,10 @@ func (s *ConfigTestSuite) TestConfig_GetStringSlice() {
 	s.Equal([]string{"s"}, single)
 	s.Equal([]string{"x", "y", "z"}, split)
 	s.Equal([]string{"1", "2", "3"}, ints)
-	s.Equal(missingSlice, s.config.GetStringSlice("missing", missingSlice))
+
+	val, err := s.config.GetStringSlice("missing", missingSlice)
+	s.NoError(err)
+	s.Equal(missingSlice, val)
 }
 
 func (s *ConfigTestSuite) TestConfig_GetTime() {
@@ -304,9 +328,16 @@ func (s *ConfigTestSuite) TestConfig_Environment() {
 	})
 
 	s.Equal(2, s.config.GetInt("i"))
-	s.Equal("string", s.config.GetString("s"))
+
+	val, err := s.config.GetString("s")
+	s.NoError(err)
+	s.Equal("string", val)
+
 	s.Equal("2019-11-27", s.config.GetTime("t").Format("2006-01-02"))
-	s.Equal([]string{"a", "b", "c"}, s.config.GetStringSlice("sl"))
+
+	slice, err := s.config.GetStringSlice("sl")
+	s.NoError(err)
+	s.Equal([]string{"a", "b", "c"}, slice)
 }
 
 func (s *ConfigTestSuite) TestConfig_EnvironmentPrefixed() {
@@ -317,7 +348,10 @@ func (s *ConfigTestSuite) TestConfig_EnvironmentPrefixed() {
 	})
 
 	s.Equal(2, s.config.GetInt("i"))
-	s.Equal("string", s.config.GetString("s"))
+
+	val, err := s.config.GetString("s")
+	s.NoError(err)
+	s.Equal("string", val)
 }
 
 func (s *ConfigTestSuite) TestEnvironmentUnmarshalStructWithEmbeddedSlice() {

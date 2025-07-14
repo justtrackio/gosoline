@@ -22,11 +22,16 @@ type streamInputSettings struct {
 type streamInputFactory struct{}
 
 func (f *streamInputFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
-	if manager.HasType(componentStreamInput) {
+	if has, err := manager.HasType(componentStreamInput); err != nil {
+		return fmt.Errorf("failed to check if component exists: %w", err)
+	} else if has {
 		return nil
 	}
 
-	inputs := config.GetStringMap("stream.input", map[string]any{})
+	inputs, err := config.GetStringMap("stream.input", map[string]any{})
+	if err != nil {
+		return fmt.Errorf("can not get stream inputs: %w", err)
+	}
 
 	for inputName := range inputs {
 		settings := &streamInputSettings{}

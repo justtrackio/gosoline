@@ -5,7 +5,10 @@ import (
 )
 
 func runPostProcessorForDev(config cfg.GosoConf, postProcessor func(config cfg.GosoConf) error) (bool, error) {
-	env := config.GetString("env", "")
+	env, err := config.GetString("env", "")
+	if err != nil {
+		return false, err
+	}
 
 	if env != "dev" && env != "test" {
 		return false, nil

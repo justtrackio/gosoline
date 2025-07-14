@@ -21,7 +21,10 @@ type streamOutputSettings struct {
 type streamOutputFactory struct{}
 
 func (f *streamOutputFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
-	outputs := config.GetStringMap("stream.output", map[string]any{})
+	outputs, err := config.GetStringMap("stream.output", map[string]any{})
+	if err != nil {
+		return fmt.Errorf("can not get stream outputs: %w", err)
+	}
 
 	for outputName := range outputs {
 		settings := &streamOutputSettings{}

@@ -29,9 +29,14 @@ func apiDefiner(ctx context.Context, config cfg.Config, logger log.Logger) (*htt
 		return nil, fmt.Errorf("can not create basicAuth: %w", err)
 	}
 
+	configKeyAuth, err := auth.NewConfigKeyAuthenticator(config, logger, auth.ProvideValueFromHeader("X-API-KEY"))
+	if err != nil {
+		return nil, fmt.Errorf("can not create config key auth: %w", err)
+	}
+
 	group := definitions.Group("/admin")
 	group.Use(auth.NewChainHandler(map[string]auth.Authenticator{
-		"api-key":    auth.NewConfigKeyAuthenticator(config, logger, auth.ProvideValueFromHeader("X-API-KEY")),
+		"api-key":    configKeyAuth,
 		"basic-auth": basicAuth,
 	}))
 

@@ -43,7 +43,10 @@ func ParseSettings(config cfg.Config, key string) (*Settings, error) {
 		return nil, fmt.Errorf("failed to unmarshal kafka consumer settings for key %q in ParseSettings: %w", key, err)
 	}
 
-	appID := cfg.GetAppIdFromConfig(config)
+	appID, err := cfg.GetAppIdFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get app id from config: %w", err)
+	}
 	conn, err := connection.ParseSettings(config, settings.ConnectionName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse kafka connection settings for connection %q in ParseSettings: %w", settings.ConnectionName, err)
