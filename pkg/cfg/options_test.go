@@ -28,7 +28,8 @@ func (s *OptionsTestSuite) TestWithConfigMap() {
 		"b": true,
 	}))
 
-	actual := s.config.Get("b")
+	actual, err := s.config.Get("b")
+	s.NoError(err)
 	s.Equal(true, actual)
 }
 
@@ -61,7 +62,8 @@ func (s *OptionsTestSuite) TestWithConfigSetting() {
 		"b": false,
 	}))
 
-	actual := s.config.Get("a")
+	actual, err := s.config.Get("a")
+	s.NoError(err)
 	expectedMsi := expected.Msi()
 	s.Equal(expectedMsi, actual)
 
@@ -73,7 +75,8 @@ func (s *OptionsTestSuite) TestWithConfigSetting() {
 		"b": true,
 	}))
 
-	actual = s.config.Get("a")
+	actual, err = s.config.Get("a")
+	s.NoError(err)
 	expectedMsi = expected.Msi()
 	s.Equal(expectedMsi, actual)
 }

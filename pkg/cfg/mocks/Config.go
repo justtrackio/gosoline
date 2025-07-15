@@ -117,7 +117,7 @@ func (_c *Config_AllSettings_Call) RunAndReturn(run func() map[string]interface{
 }
 
 // Get provides a mock function with given fields: key, optionalDefault
-func (_m *Config) Get(key string, optionalDefault ...interface{}) interface{} {
+func (_m *Config) Get(key string, optionalDefault ...interface{}) (interface{}, error) {
 	var _ca []interface{}
 	_ca = append(_ca, key)
 	_ca = append(_ca, optionalDefault...)
@@ -128,6 +128,10 @@ func (_m *Config) Get(key string, optionalDefault ...interface{}) interface{} {
 	}
 
 	var r0 interface{}
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...interface{}) (interface{}, error)); ok {
+		return rf(key, optionalDefault...)
+	}
 	if rf, ok := ret.Get(0).(func(string, ...interface{}) interface{}); ok {
 		r0 = rf(key, optionalDefault...)
 	} else {
@@ -136,7 +140,13 @@ func (_m *Config) Get(key string, optionalDefault ...interface{}) interface{} {
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string, ...interface{}) error); ok {
+		r1 = rf(key, optionalDefault...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // Config_Get_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Get'
@@ -165,12 +175,12 @@ func (_c *Config_Get_Call) Run(run func(key string, optionalDefault ...interface
 	return _c
 }
 
-func (_c *Config_Get_Call) Return(_a0 interface{}) *Config_Get_Call {
-	_c.Call.Return(_a0)
+func (_c *Config_Get_Call) Return(_a0 interface{}, _a1 error) *Config_Get_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *Config_Get_Call) RunAndReturn(run func(string, ...interface{}) interface{}) *Config_Get_Call {
+func (_c *Config_Get_Call) RunAndReturn(run func(string, ...interface{}) (interface{}, error)) *Config_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -247,7 +257,7 @@ func (_c *Config_GetBool_Call) RunAndReturn(run func(string, ...bool) (bool, err
 }
 
 // GetDuration provides a mock function with given fields: key, optionalDefault
-func (_m *Config) GetDuration(key string, optionalDefault ...time.Duration) time.Duration {
+func (_m *Config) GetDuration(key string, optionalDefault ...time.Duration) (time.Duration, error) {
 	_va := make([]interface{}, len(optionalDefault))
 	for _i := range optionalDefault {
 		_va[_i] = optionalDefault[_i]
@@ -262,13 +272,23 @@ func (_m *Config) GetDuration(key string, optionalDefault ...time.Duration) time
 	}
 
 	var r0 time.Duration
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...time.Duration) (time.Duration, error)); ok {
+		return rf(key, optionalDefault...)
+	}
 	if rf, ok := ret.Get(0).(func(string, ...time.Duration) time.Duration); ok {
 		r0 = rf(key, optionalDefault...)
 	} else {
 		r0 = ret.Get(0).(time.Duration)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string, ...time.Duration) error); ok {
+		r1 = rf(key, optionalDefault...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // Config_GetDuration_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDuration'
@@ -297,18 +317,18 @@ func (_c *Config_GetDuration_Call) Run(run func(key string, optionalDefault ...t
 	return _c
 }
 
-func (_c *Config_GetDuration_Call) Return(_a0 time.Duration) *Config_GetDuration_Call {
-	_c.Call.Return(_a0)
+func (_c *Config_GetDuration_Call) Return(_a0 time.Duration, _a1 error) *Config_GetDuration_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *Config_GetDuration_Call) RunAndReturn(run func(string, ...time.Duration) time.Duration) *Config_GetDuration_Call {
+func (_c *Config_GetDuration_Call) RunAndReturn(run func(string, ...time.Duration) (time.Duration, error)) *Config_GetDuration_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetFloat64 provides a mock function with given fields: key, optionalDefault
-func (_m *Config) GetFloat64(key string, optionalDefault ...float64) float64 {
+func (_m *Config) GetFloat64(key string, optionalDefault ...float64) (float64, error) {
 	_va := make([]interface{}, len(optionalDefault))
 	for _i := range optionalDefault {
 		_va[_i] = optionalDefault[_i]
@@ -323,13 +343,23 @@ func (_m *Config) GetFloat64(key string, optionalDefault ...float64) float64 {
 	}
 
 	var r0 float64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...float64) (float64, error)); ok {
+		return rf(key, optionalDefault...)
+	}
 	if rf, ok := ret.Get(0).(func(string, ...float64) float64); ok {
 		r0 = rf(key, optionalDefault...)
 	} else {
 		r0 = ret.Get(0).(float64)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string, ...float64) error); ok {
+		r1 = rf(key, optionalDefault...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // Config_GetFloat64_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFloat64'
@@ -358,18 +388,18 @@ func (_c *Config_GetFloat64_Call) Run(run func(key string, optionalDefault ...fl
 	return _c
 }
 
-func (_c *Config_GetFloat64_Call) Return(_a0 float64) *Config_GetFloat64_Call {
-	_c.Call.Return(_a0)
+func (_c *Config_GetFloat64_Call) Return(_a0 float64, _a1 error) *Config_GetFloat64_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *Config_GetFloat64_Call) RunAndReturn(run func(string, ...float64) float64) *Config_GetFloat64_Call {
+func (_c *Config_GetFloat64_Call) RunAndReturn(run func(string, ...float64) (float64, error)) *Config_GetFloat64_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetInt provides a mock function with given fields: key, optionalDefault
-func (_m *Config) GetInt(key string, optionalDefault ...int) int {
+func (_m *Config) GetInt(key string, optionalDefault ...int) (int, error) {
 	_va := make([]interface{}, len(optionalDefault))
 	for _i := range optionalDefault {
 		_va[_i] = optionalDefault[_i]
@@ -384,13 +414,23 @@ func (_m *Config) GetInt(key string, optionalDefault ...int) int {
 	}
 
 	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...int) (int, error)); ok {
+		return rf(key, optionalDefault...)
+	}
 	if rf, ok := ret.Get(0).(func(string, ...int) int); ok {
 		r0 = rf(key, optionalDefault...)
 	} else {
 		r0 = ret.Get(0).(int)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string, ...int) error); ok {
+		r1 = rf(key, optionalDefault...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // Config_GetInt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInt'
@@ -419,18 +459,18 @@ func (_c *Config_GetInt_Call) Run(run func(key string, optionalDefault ...int)) 
 	return _c
 }
 
-func (_c *Config_GetInt_Call) Return(_a0 int) *Config_GetInt_Call {
-	_c.Call.Return(_a0)
+func (_c *Config_GetInt_Call) Return(_a0 int, _a1 error) *Config_GetInt_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *Config_GetInt_Call) RunAndReturn(run func(string, ...int) int) *Config_GetInt_Call {
+func (_c *Config_GetInt_Call) RunAndReturn(run func(string, ...int) (int, error)) *Config_GetInt_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetIntSlice provides a mock function with given fields: key, optionalDefault
-func (_m *Config) GetIntSlice(key string, optionalDefault ...[]int) []int {
+func (_m *Config) GetIntSlice(key string, optionalDefault ...[]int) ([]int, error) {
 	_va := make([]interface{}, len(optionalDefault))
 	for _i := range optionalDefault {
 		_va[_i] = optionalDefault[_i]
@@ -445,6 +485,10 @@ func (_m *Config) GetIntSlice(key string, optionalDefault ...[]int) []int {
 	}
 
 	var r0 []int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...[]int) ([]int, error)); ok {
+		return rf(key, optionalDefault...)
+	}
 	if rf, ok := ret.Get(0).(func(string, ...[]int) []int); ok {
 		r0 = rf(key, optionalDefault...)
 	} else {
@@ -453,7 +497,13 @@ func (_m *Config) GetIntSlice(key string, optionalDefault ...[]int) []int {
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string, ...[]int) error); ok {
+		r1 = rf(key, optionalDefault...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // Config_GetIntSlice_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetIntSlice'
@@ -482,18 +532,18 @@ func (_c *Config_GetIntSlice_Call) Run(run func(key string, optionalDefault ...[
 	return _c
 }
 
-func (_c *Config_GetIntSlice_Call) Return(_a0 []int) *Config_GetIntSlice_Call {
-	_c.Call.Return(_a0)
+func (_c *Config_GetIntSlice_Call) Return(_a0 []int, _a1 error) *Config_GetIntSlice_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *Config_GetIntSlice_Call) RunAndReturn(run func(string, ...[]int) []int) *Config_GetIntSlice_Call {
+func (_c *Config_GetIntSlice_Call) RunAndReturn(run func(string, ...[]int) ([]int, error)) *Config_GetIntSlice_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetMsiSlice provides a mock function with given fields: key, optionalDefault
-func (_m *Config) GetMsiSlice(key string, optionalDefault ...[]map[string]interface{}) []map[string]interface{} {
+func (_m *Config) GetMsiSlice(key string, optionalDefault ...[]map[string]interface{}) ([]map[string]interface{}, error) {
 	_va := make([]interface{}, len(optionalDefault))
 	for _i := range optionalDefault {
 		_va[_i] = optionalDefault[_i]
@@ -508,6 +558,10 @@ func (_m *Config) GetMsiSlice(key string, optionalDefault ...[]map[string]interf
 	}
 
 	var r0 []map[string]interface{}
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...[]map[string]interface{}) ([]map[string]interface{}, error)); ok {
+		return rf(key, optionalDefault...)
+	}
 	if rf, ok := ret.Get(0).(func(string, ...[]map[string]interface{}) []map[string]interface{}); ok {
 		r0 = rf(key, optionalDefault...)
 	} else {
@@ -516,7 +570,13 @@ func (_m *Config) GetMsiSlice(key string, optionalDefault ...[]map[string]interf
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string, ...[]map[string]interface{}) error); ok {
+		r1 = rf(key, optionalDefault...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // Config_GetMsiSlice_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMsiSlice'
@@ -545,12 +605,12 @@ func (_c *Config_GetMsiSlice_Call) Run(run func(key string, optionalDefault ...[
 	return _c
 }
 
-func (_c *Config_GetMsiSlice_Call) Return(_a0 []map[string]interface{}) *Config_GetMsiSlice_Call {
-	_c.Call.Return(_a0)
+func (_c *Config_GetMsiSlice_Call) Return(_a0 []map[string]interface{}, _a1 error) *Config_GetMsiSlice_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *Config_GetMsiSlice_Call) RunAndReturn(run func(string, ...[]map[string]interface{}) []map[string]interface{}) *Config_GetMsiSlice_Call {
+func (_c *Config_GetMsiSlice_Call) RunAndReturn(run func(string, ...[]map[string]interface{}) ([]map[string]interface{}, error)) *Config_GetMsiSlice_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -846,7 +906,7 @@ func (_c *Config_GetStringSlice_Call) RunAndReturn(run func(string, ...[]string)
 }
 
 // GetTime provides a mock function with given fields: key, optionalDefault
-func (_m *Config) GetTime(key string, optionalDefault ...time.Time) time.Time {
+func (_m *Config) GetTime(key string, optionalDefault ...time.Time) (time.Time, error) {
 	_va := make([]interface{}, len(optionalDefault))
 	for _i := range optionalDefault {
 		_va[_i] = optionalDefault[_i]
@@ -861,13 +921,23 @@ func (_m *Config) GetTime(key string, optionalDefault ...time.Time) time.Time {
 	}
 
 	var r0 time.Time
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...time.Time) (time.Time, error)); ok {
+		return rf(key, optionalDefault...)
+	}
 	if rf, ok := ret.Get(0).(func(string, ...time.Time) time.Time); ok {
 		r0 = rf(key, optionalDefault...)
 	} else {
 		r0 = ret.Get(0).(time.Time)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string, ...time.Time) error); ok {
+		r1 = rf(key, optionalDefault...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // Config_GetTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTime'
@@ -896,12 +966,12 @@ func (_c *Config_GetTime_Call) Run(run func(key string, optionalDefault ...time.
 	return _c
 }
 
-func (_c *Config_GetTime_Call) Return(_a0 time.Time) *Config_GetTime_Call {
-	_c.Call.Return(_a0)
+func (_c *Config_GetTime_Call) Return(_a0 time.Time, _a1 error) *Config_GetTime_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *Config_GetTime_Call) RunAndReturn(run func(string, ...time.Time) time.Time) *Config_GetTime_Call {
+func (_c *Config_GetTime_Call) RunAndReturn(run func(string, ...time.Time) (time.Time, error)) *Config_GetTime_Call {
 	_c.Call.Return(run)
 	return _c
 }

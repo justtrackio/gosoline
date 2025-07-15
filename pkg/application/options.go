@@ -83,14 +83,6 @@ func WithConfigDebug(app *App) {
 	})
 }
 
-func WithConfigErrorHandlers(handlers ...cfg.ErrorHandler) Option {
-	return func(app *App) {
-		app.addConfigOption(func(config cfg.GosoConf) error {
-			return config.Option(cfg.WithErrorHandlers(handlers...))
-		})
-	}
-}
-
 func WithConfigBytes(bytes []byte, format string) Option {
 	return func(app *App) {
 		app.addConfigOption(func(config cfg.GosoConf) error {

@@ -1,6 +1,10 @@
 package cfg
 
-import "github.com/justtrackio/gosoline/pkg/mapx"
+import (
+	"fmt"
+
+	"github.com/justtrackio/gosoline/pkg/mapx"
+)
 
 type UnmarshalDefaults func(config Config, finalSettings *mapx.MapX) error
 
@@ -10,7 +14,11 @@ func UnmarshalWithDefaultsFromKey(sourceKey string, targetKey string) UnmarshalD
 			return nil
 		}
 
-		sourceValues := config.Get(sourceKey)
+		sourceValues, err := config.Get(sourceKey)
+		if err != nil {
+			return fmt.Errorf("could not load source value for key %s: %w", sourceKey, err)
+		}
+
 		finalSettings.Merge(targetKey, sourceValues)
 
 		return nil

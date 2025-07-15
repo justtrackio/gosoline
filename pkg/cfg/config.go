@@ -26,18 +26,18 @@ type LookupEnv func(key string) (string, bool)
 type Config interface {
 	AllKeys() []string
 	AllSettings() map[string]any
-	Get(key string, optionalDefault ...any) any
+	Get(key string, optionalDefault ...any) (any, error)
 	GetBool(key string, optionalDefault ...bool) (bool, error)
-	GetDuration(key string, optionalDefault ...time.Duration) time.Duration
-	GetInt(key string, optionalDefault ...int) int
-	GetIntSlice(key string, optionalDefault ...[]int) []int
-	GetFloat64(key string, optionalDefault ...float64) float64
-	GetMsiSlice(key string, optionalDefault ...[]map[string]any) []map[string]any
+	GetDuration(key string, optionalDefault ...time.Duration) (time.Duration, error)
+	GetInt(key string, optionalDefault ...int) (int, error)
+	GetIntSlice(key string, optionalDefault ...[]int) ([]int, error)
+	GetFloat64(key string, optionalDefault ...float64) (float64, error)
+	GetMsiSlice(key string, optionalDefault ...[]map[string]any) ([]map[string]any, error)
 	GetString(key string, optionalDefault ...string) (string, error)
 	GetStringMap(key string, optionalDefault ...map[string]any) (map[string]any, error)
 	GetStringMapString(key string, optionalDefault ...map[string]string) (map[string]string, error)
 	GetStringSlice(key string, optionalDefault ...[]string) ([]string, error)
-	GetTime(key string, optionalDefault ...time.Time) time.Time
+	GetTime(key string, optionalDefault ...time.Time) (time.Time, error)
 	IsSet(string) bool
 	HasPrefix(prefix string) bool
 	UnmarshalDefaults(val any, additionalDefaults ...UnmarshalDefaults) error
@@ -52,7 +52,6 @@ type GosoConf interface {
 
 type config struct {
 	envProvider    EnvProvider
-	errorHandlers  []ErrorHandler
 	sanitizers     []Sanitizer
 	settings       *mapx.MapX
 	envKeyPrefix   string
@@ -72,10 +71,9 @@ func New(msis ...map[string]any) GosoConf {
 
 func NewWithInterfaces(envProvider EnvProvider, msis ...map[string]any) GosoConf {
 	cfg := &config{
-		envProvider:   envProvider,
-		errorHandlers: []ErrorHandler{defaultErrorHandler},
-		sanitizers:    make([]Sanitizer, 0),
-		settings:      mapx.NewMapX(msis...),
+		envProvider: envProvider,
+		sanitizers:  make([]Sanitizer, 0),
+		settings:    mapx.NewMapX(msis...),
 	}
 
 	return cfg
@@ -89,139 +87,115 @@ func (c *config) AllSettings() map[string]any {
 	return c.settings.Msi()
 }
 
-func (c *config) Get(key string, optionalDefault ...any) any {
-	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0]
-	}
-
-	return c.get(key)
+func (c *config) Get(key string, optionalDefault ...any) (any, error) {
+	return c.get(key, optionalDefault)
 }
 
-func (c *config) GetBool(key string, optionalDefault ...bool) (bool, error) {
-	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0], nil
+func (c *config) GetBool(key string, optionalDefault ...bool) (b bool, err error) {
+	var data any
+	if data, err = c.get(key, optionalDefault); err != nil {
+		return false, err
 	}
 
-	data := c.get(key)
-	b, err := cast.ToBoolE(data)
-	if err != nil {
+	if b, err = cast.ToBoolE(data); err != nil {
 		return false, fmt.Errorf("can not cast value %v[%T] of key %s to bool: %w", data, data, key, err)
 	}
 
 	return b, nil
 }
 
-func (c *config) GetDuration(key string, optionalDefault ...time.Duration) time.Duration {
-	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0]
+func (c *config) GetDuration(key string, optionalDefault ...time.Duration) (duration time.Duration, err error) {
+	var data any
+	if data, err = c.get(key, optionalDefault); err != nil {
+		return time.Duration(0), err
 	}
 
-	data := c.get(key)
-	duration, err := cast.ToDurationE(data)
-	if err != nil {
-		c.err("can not cast value %v[%T] of key %s to duration: %w", data, data, key, err)
-
-		return time.Duration(0)
+	if duration, err = cast.ToDurationE(data); err != nil {
+		return time.Duration(0), fmt.Errorf("can not cast value %v[%T] of key %s to duration: %w", data, data, key, err)
 	}
 
-	return duration
+	return duration, nil
 }
 
-func (c *config) GetInt(key string, optionalDefault ...int) int {
-	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0]
+func (c *config) GetInt(key string, optionalDefault ...int) (i int, err error) {
+	var data any
+	if data, err = c.get(key, optionalDefault); err != nil {
+		return 0, err
 	}
 
-	data := c.get(key)
-	i, err := cast.ToIntE(data)
-	if err != nil {
-		c.err("can not cast value %v[%T] of key %s to int: %w", data, data, key, err)
-
-		return 0
+	if i, err = cast.ToIntE(data); err != nil {
+		return 0, fmt.Errorf("can not cast value %v[%T] of key %s to int: %w", data, data, key, err)
 	}
 
-	return i
+	return i, nil
 }
 
-func (c *config) GetIntSlice(key string, optionalDefault ...[]int) []int {
-	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0]
+func (c *config) GetIntSlice(key string, optionalDefault ...[]int) (intSlice []int, err error) {
+	var data any
+	if data, err = c.get(key, optionalDefault); err != nil {
+		return nil, err
 	}
 
-	data := c.get(key)
-	intSlice, err := cast.ToIntSliceE(data)
-	if err != nil {
-		c.err("can not cast value %v[%T] of key %s to []int: %w", data, data, key, err)
-
-		return nil
+	if intSlice, err = cast.ToIntSliceE(data); err != nil {
+		return nil, fmt.Errorf("can not cast value %v[%T] of key %s to []int: %w", data, data, key, err)
 	}
 
-	return intSlice
+	return intSlice, nil
 }
 
-func (c *config) GetFloat64(key string, optionalDefault ...float64) float64 {
-	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0]
+func (c *config) GetFloat64(key string, optionalDefault ...float64) (f float64, err error) {
+	var data any
+	if data, err = c.get(key, optionalDefault); err != nil {
+		return 0.0, err
 	}
 
-	data := c.get(key)
-	i, err := cast.ToFloat64E(data)
-	if err != nil {
-		c.err("can not cast value %v[%T] of key %s to float64: %w", data, data, key, err)
-
-		return 0.0
+	if f, err = cast.ToFloat64E(data); err != nil {
+		return 0.0, fmt.Errorf("can not cast value %v[%T] of key %s to float64: %w", data, data, key, err)
 	}
 
-	return i
+	return f, nil
 }
 
-func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]any) []map[string]any {
-	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0]
+func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]any) (msiSlice []map[string]any, err error) {
+	var data any
+	if data, err = c.get(key, optionalDefault); err != nil {
+		return nil, err
 	}
 
-	var err error
-	data := c.settings.Get(key).Data()
 	reflectValue := reflect.ValueOf(data)
-
 	if reflectValue.Kind() != reflect.Slice {
-		c.err("can not cast value %v[%T] of key %s to []map[string]any: %w", data, data, key, err)
-
-		return nil
+		return nil, fmt.Errorf("can not cast value %v[%T] of key %s to []map[string]any", data, data, key)
 	}
 
 	var ok bool
 	var element any
 	var msi map[string]any
-	msiSlice := make([]map[string]any, reflectValue.Len())
+	msiSlice = make([]map[string]any, reflectValue.Len())
 
 	for i := 0; i < reflectValue.Len(); i++ {
 		element = reflectValue.Index(i).Interface()
 
 		if msi, ok = element.(map[string]any); !ok {
-			c.err("element of key %s should be a msi but instead is %T", key, element)
-
-			return nil
+			return nil, fmt.Errorf("element of key %s should be a msi but instead is %T", key, element)
 		}
 
 		msiSlice[i] = msi
 	}
 
-	return msiSlice
+	return msiSlice, nil
 }
 
 func (c *config) GetString(key string, optionalDefault ...string) (string, error) {
 	return c.getString(key, optionalDefault...)
 }
 
-func (c *config) GetStringMap(key string, optionalDefault ...map[string]any) (map[string]any, error) {
-	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0], nil
+func (c *config) GetStringMap(key string, optionalDefault ...map[string]any) (strMap map[string]any, err error) {
+	var data any
+	if data, err = c.get(key, optionalDefault); err != nil {
+		return nil, err
 	}
 
-	data := c.get(key)
-	strMap, err := cast.ToStringMapE(data)
-	if err != nil {
+	if strMap, err = cast.ToStringMapE(data); err != nil {
 		return nil, fmt.Errorf("can not cast value %v[%T] of key %s to map[string]any: %w", data, data, key, err)
 	}
 
@@ -238,14 +212,13 @@ func (c *config) GetStringMap(key string, optionalDefault ...map[string]any) (ma
 	return strMap, nil
 }
 
-func (c *config) GetStringMapString(key string, optionalDefault ...map[string]string) (map[string]string, error) {
-	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0], nil
+func (c *config) GetStringMapString(key string, optionalDefault ...map[string]string) (strMap map[string]string, err error) {
+	var data any
+	if data, err = c.get(key, optionalDefault); err != nil {
+		return nil, err
 	}
 
-	data := c.get(key)
-	strMap, err := cast.ToStringMapStringE(data)
-	if err != nil {
+	if strMap, err = cast.ToStringMapStringE(data); err != nil {
 		return nil, fmt.Errorf("can not cast value %v[%T] of key %s to map[string]string: %w", data, data, key, err)
 	}
 
@@ -260,15 +233,11 @@ func (c *config) GetStringMapString(key string, optionalDefault ...map[string]st
 	return strMap, nil
 }
 
-func (c *config) GetStringSlice(key string, optionalDefault ...[]string) ([]string, error) {
-	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0], nil
+func (c *config) GetStringSlice(key string, optionalDefault ...[]string) (strSlice []string, err error) {
+	var data any
+	if data, err = c.get(key, optionalDefault); err != nil {
+		return nil, err
 	}
-
-	var err error
-	var strSlice []string
-
-	data := c.get(key)
 
 	switch d := data.(type) {
 	case string:
@@ -292,20 +261,17 @@ func (c *config) GetStringSlice(key string, optionalDefault ...[]string) ([]stri
 	return strSlice, nil
 }
 
-func (c *config) GetTime(key string, optionalDefault ...time.Time) time.Time {
-	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return optionalDefault[0]
+func (c *config) GetTime(key string, optionalDefault ...time.Time) (tm time.Time, err error) {
+	var data any
+	if data, err = c.get(key, optionalDefault); err != nil {
+		return time.Time{}, err
 	}
 
-	data := c.get(key)
-	tm, err := cast.ToTimeE(data)
-	if err != nil {
-		c.err("can not cast value %v[%T] of key %s to time.Time: %w", data, data, key, err)
-
-		return time.Time{}
+	if tm, err = cast.ToTimeE(data); err != nil {
+		return time.Time{}, fmt.Errorf("can not cast value %v[%T] of key %s to time.Time: %w", data, data, key, err)
 	}
 
-	return tm
+	return tm, nil
 }
 
 func (c *config) IsSet(key string) bool {
@@ -419,12 +385,6 @@ func (c *config) augmentString(str string) (string, error) {
 	return str, nil
 }
 
-func (c *config) err(msg string, args ...any) {
-	for i := 0; i < len(c.errorHandlers); i++ {
-		c.errorHandlers[i](msg, args...)
-	}
-}
-
 func (c *config) buildMapStruct(target any) (*mapx.Struct, error) {
 	ms, err := mapx.NewStruct(target, &mapx.StructSettings{
 		FieldTag:   "cfg",
@@ -455,7 +415,24 @@ func (c *config) decodeAugmentHook() mapx.MapStructDecoder {
 	}
 }
 
-func (c *config) get(key string) any {
+func (c *config) get(key string, optionalDefault ...any) (any, error) {
+	var err error
+	var defaults []any
+
+	if len(optionalDefault) > 0 {
+		if defaults, err = refl.InterfaceToInterfaceSlice(optionalDefault[0]); err != nil {
+			return nil, fmt.Errorf("can not convert optional default value %v[%T] to []any: %w", optionalDefault[0], optionalDefault[0], err)
+		}
+	}
+
+	if !c.isSet(key) && len(defaults) == 0 {
+		return nil, fmt.Errorf("there is no config setting or default for key %q", key)
+	}
+
+	if !c.isSet(key) && len(defaults) > 0 {
+		return defaults[0], nil
+	}
+
 	data := c.settings.Get(key).Data()
 
 	dataMap := mapx.NewMapX()
@@ -463,24 +440,22 @@ func (c *config) get(key string) any {
 
 	environment, err := c.readEnvironmentFromValues(c.envKeyPrefix, dataMap)
 	if err != nil {
-		c.err("could not read environment from values: %v", err)
-	} else {
-		dataMap.Merge(".", environment)
+		return nil, fmt.Errorf("could not read environment from values: %w", err)
 	}
 
+	dataMap.Merge(".", environment)
 	c.settings.Merge(".", dataMap)
 
-	return dataMap.Get(key).Data()
+	return dataMap.Get(key).Data(), nil
 }
 
-func (c *config) getString(key string, optionalDefault ...string) (string, error) {
-	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
-		return c.augmentString(optionalDefault[0])
+func (c *config) getString(key string, optionalDefault ...string) (str string, err error) {
+	var data any
+	if data, err = c.get(key, optionalDefault); err != nil {
+		return "", err
 	}
 
-	data := c.get(key)
-	str, err := cast.ToStringE(data)
-	if err != nil {
+	if str, err = cast.ToStringE(data); err != nil {
 		return "", fmt.Errorf("can not cast value %v[%T] of key %s to string: %w", data, data, key, err)
 	}
 
@@ -494,21 +469,6 @@ func (c *config) isSet(key string) bool {
 	}
 
 	return c.settings.Has(key)
-}
-
-func (c *config) keyCheck(key string, defaults int) bool {
-	if c.isSet(key) {
-		return true
-	}
-
-	if defaults > 0 {
-		return false
-	}
-
-	err := fmt.Errorf("there is no config setting for key '%v'", key)
-	c.err("key check failed: %w", err)
-
-	return false
 }
 
 func (c *config) merge(prefix string, setting any, options ...MergeOption) error {

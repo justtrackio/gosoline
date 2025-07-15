@@ -82,14 +82,6 @@ func WithEnvKeyReplacer(replacer *strings.Replacer) Option {
 	}
 }
 
-func WithErrorHandlers(handlers ...ErrorHandler) Option {
-	return func(cfg *config) error {
-		cfg.errorHandlers = handlers
-
-		return nil
-	}
-}
-
 func WithSanitizers(sanitizer ...Sanitizer) Option {
 	return func(cfg *config) error {
 		cfg.sanitizers = append(cfg.sanitizers, sanitizer...)
