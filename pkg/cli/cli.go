@@ -14,7 +14,6 @@ func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.Modul
 	var cfgPostProcessors map[string]int
 
 	configOptions := []cfg.Option{
-		cfg.WithErrorHandlers(defaultErrorHandler),
 		cfg.WithConfigFile("./config.dist.yml", "yml"),
 		cfg.WithConfigFileFlag("config"),
 	}

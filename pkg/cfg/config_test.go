@@ -22,7 +22,6 @@ func (s *ConfigTestSuite) SetupTest() {
 	s.envProvider = cfg.NewMemoryEnvProvider()
 
 	options := []cfg.Option{
-		cfg.WithErrorHandlers(s.errorHandler),
 		cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
 		cfg.WithSanitizers(cfg.TimeSanitizer),
 	}
@@ -35,10 +34,6 @@ func (s *ConfigTestSuite) applyOptions(options ...cfg.Option) {
 	if err := s.config.Option(options...); err != nil {
 		s.FailNow("con not apply config options", err.Error())
 	}
-}
-
-func (s *ConfigTestSuite) errorHandler(msg string, args ...any) {
-	s.FailNow(fmt.Errorf(msg, args...).Error())
 }
 
 func (s *ConfigTestSuite) setupConfigValues(values map[string]any) {
@@ -115,12 +110,26 @@ func (s *ConfigTestSuite) TestConfig_Get() {
 		"b": true,
 	}
 
-	s.Equal(1, s.config.Get("i"))
-	s.Equal(expectedMap, s.config.Get("ms"))
-	s.Equal(expectedMap, s.config.Get("ms"), map[string]any{
+	actual, err := s.config.Get("i")
+	s.NoError(err)
+	s.Equal(1, actual)
+
+	actual, err = s.config.Get("ms")
+	s.NoError(err)
+	s.Equal(expectedMap, actual)
+
+	actual, err = s.config.Get("ms")
+	s.NoError(err)
+	s.Equal(expectedMap, actual, map[string]any{
 		"c": false,
 	})
-	s.Equal(true, s.config.Get("missing", true))
+
+	actual, err = s.config.Get("missing", true)
+	s.NoError(err)
+	s.Equal(true, actual)
+
+	_, err = s.config.Get("missing")
+	s.Error(err)
 }
 
 func (s *ConfigTestSuite) TestConfig_GetBool() {
@@ -142,8 +151,13 @@ func (s *ConfigTestSuite) TestConfig_GetDuration() {
 		"d": "1s",
 	})
 
-	s.Equal(time.Second, s.config.GetDuration("d"))
-	s.Equal(time.Minute, s.config.GetDuration("missing", time.Minute))
+	d, err := s.config.GetDuration("d")
+	s.NoError(err)
+	s.Equal(time.Second, d)
+
+	d, err = s.config.GetDuration("missing", time.Minute)
+	s.NoError(err)
+	s.Equal(time.Minute, d)
 }
 
 func (s *ConfigTestSuite) TestConfig_GetInt() {
@@ -151,8 +165,13 @@ func (s *ConfigTestSuite) TestConfig_GetInt() {
 		"i": "1",
 	})
 
-	s.Equal(1, s.config.GetInt("i"))
-	s.Equal(2, s.config.GetInt("missing", 2))
+	i, err := s.config.GetInt("i")
+	s.NoError(err)
+	s.Equal(1, i)
+
+	i, err = s.config.GetInt("missing", 2)
+	s.NoError(err)
+	s.Equal(2, i)
 }
 
 func (s *ConfigTestSuite) TestConfig_GetIntSlice() {
@@ -160,8 +179,10 @@ func (s *ConfigTestSuite) TestConfig_GetIntSlice() {
 		"slice": []int{30, 60, 120},
 	})
 
-	slice := s.config.GetIntSlice("slice")
-	missing := s.config.GetIntSlice("missing", []int{1, 2})
+	slice, err := s.config.GetIntSlice("slice")
+	s.NoError(err)
+	missing, err := s.config.GetIntSlice("missing", []int{1, 2})
+	s.NoError(err)
 
 	s.Equal(slice, []int{30, 60, 120})
 	s.Equal(missing, []int{1, 2})
@@ -172,8 +193,13 @@ func (s *ConfigTestSuite) TestConfig_GetFloat64() {
 		"f64": math.Pi,
 	})
 
-	s.Equal(math.Pi, s.config.GetFloat64("f64"))
-	s.Equal(math.Phi, s.config.GetFloat64("missing", math.Phi))
+	f, err := s.config.GetFloat64("f64")
+	s.NoError(err)
+	s.Equal(math.Pi, f)
+
+	f, err = s.config.GetFloat64("missing", math.Phi)
+	s.NoError(err)
+	s.Equal(math.Phi, f)
 }
 
 func (s *ConfigTestSuite) TestConfig_GetMsiSlice() {
@@ -193,7 +219,9 @@ func (s *ConfigTestSuite) TestConfig_GetMsiSlice() {
 		},
 	}
 
-	s.Equal(expected, s.config.GetMsiSlice("msi"))
+	msi, err := s.config.GetMsiSlice("msi")
+	s.NoError(err)
+	s.Equal(expected, msi)
 }
 
 func (s *ConfigTestSuite) TestConfig_GetString() {
@@ -298,7 +326,8 @@ func (s *ConfigTestSuite) TestConfig_GetTime() {
 		},
 	})
 
-	tm := s.config.GetTime("key.date")
+	tm, err := s.config.GetTime("key.date")
+	s.NoError(err)
 	s.Equal("2019-11-26", tm.Format("2006-01-02"))
 
 	settings := struct {
@@ -307,7 +336,7 @@ func (s *ConfigTestSuite) TestConfig_GetTime() {
 		StringDate     time.Time `cfg:"stringDate"`
 		StringDateTime time.Time `cfg:"stringDateTime"`
 	}{}
-	err := s.config.UnmarshalKey("key", &settings)
+	err = s.config.UnmarshalKey("key", &settings)
 	s.NoError(err)
 
 	s.Equal("bar", settings.Foo)
@@ -316,7 +345,9 @@ func (s *ConfigTestSuite) TestConfig_GetTime() {
 	s.Equal("2020-04-22T07:17:13+02:00", settings.StringDateTime.Format(time.RFC3339))
 
 	fakeTime := clock.NewFakeClock().Now()
-	s.Equal(fakeTime, s.config.GetTime("missing", fakeTime))
+	tm, err = s.config.GetTime("missing", fakeTime)
+	s.NoError(err)
+	s.Equal(fakeTime, tm)
 }
 
 func (s *ConfigTestSuite) TestConfig_Environment() {
@@ -327,13 +358,17 @@ func (s *ConfigTestSuite) TestConfig_Environment() {
 		"SL": "a,b,c",
 	})
 
-	s.Equal(2, s.config.GetInt("i"))
+	i, err := s.config.GetInt("i")
+	s.NoError(err)
+	s.Equal(2, i)
 
 	val, err := s.config.GetString("s")
 	s.NoError(err)
 	s.Equal("string", val)
 
-	s.Equal("2019-11-27", s.config.GetTime("t").Format("2006-01-02"))
+	tm, err := s.config.GetTime("t")
+	s.NoError(err)
+	s.Equal("2019-11-27", tm.Format("2006-01-02"))
 
 	slice, err := s.config.GetStringSlice("sl")
 	s.NoError(err)
@@ -347,7 +382,9 @@ func (s *ConfigTestSuite) TestConfig_EnvironmentPrefixed() {
 		"PREFIX_S": "string",
 	})
 
-	s.Equal(2, s.config.GetInt("i"))
+	i, err := s.config.GetInt("i")
+	s.NoError(err)
+	s.Equal(2, i)
 
 	val, err := s.config.GetString("s")
 	s.NoError(err)
@@ -694,7 +731,9 @@ func (s *ConfigTestSuite) TestConfig_FromYml() {
 	err := s.config.UnmarshalKey("key", &cm)
 	s.NoError(err)
 
-	s.Equal(1, s.config.GetInt("i"))
+	i, err := s.config.GetInt("i")
+	s.NoError(err)
+	s.Equal(1, i)
 	s.Equal(expected, cm)
 }
 

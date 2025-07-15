@@ -26,7 +26,3 @@ var defaultErrorHandler = func(msg string, args ...any) {
 	logger.Error(msg, args...)
 	os.Exit(1)
 }
-
-func callDefaultErrorHandler(msg string, args ...any) {
-	defaultErrorHandler(msg, args...)
-}

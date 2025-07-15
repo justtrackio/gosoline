@@ -64,7 +64,10 @@ func (f *mysqlFactory) Detect(config cfg.Config, manager *ComponentsConfigManage
 	}
 
 	for name := range components {
-		driver := config.Get(fmt.Sprintf("db.%s.driver", name))
+		driver, err := config.Get(fmt.Sprintf("db.%s.driver", name))
+		if err != nil {
+			return fmt.Errorf("can not get driver for component %s: %w", name, err)
+		}
 
 		if driver != componentMySql {
 			continue

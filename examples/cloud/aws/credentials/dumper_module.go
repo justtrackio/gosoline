@@ -13,9 +13,17 @@ import (
 
 func NewDebugModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	_, err := sqs.NewClient(ctx, config, logger, "example")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create sqs client: %w", err)
+	}
+
+	cfg, err := config.Get("cloud.aws")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get aws config: %w", err)
+	}
 
 	return &DebugModude{
-		config: config.Get("cloud.aws"),
+		config: cfg,
 	}, err
 }
 
