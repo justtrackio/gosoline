@@ -33,7 +33,7 @@ func (s TopicNameSettings) GetTopicId() string {
 }
 
 type TopicNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{topicId}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{realm}-{topicId}"`
 }
 
 func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (string, error) {
@@ -50,6 +50,17 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 
 	name := namingSettings.Pattern
 	appId := topicSettings.GetAppId()
+	
+	// Resolve realm if it's used in the pattern
+	realm := ""
+	if strings.Contains(name, "{realm}") {
+		var err error
+		realm, err = aws.ResolveRealm(config, appId, "sns", topicSettings.GetClientName())
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve realm for sns: %w", err)
+		}
+	}
+	
 	values := map[string]string{
 		"project": appId.Project,
 		"env":     appId.Environment,
@@ -57,6 +68,7 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 		"group":   appId.Group,
 		"app":     appId.Application,
 		"topicId": topicSettings.GetTopicId(),
+		"realm":   realm,
 	}
 
 	for key, val := range values {

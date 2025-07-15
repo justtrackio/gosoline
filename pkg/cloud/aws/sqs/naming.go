@@ -39,7 +39,7 @@ func (s QueueNameSettings) GetQueueId() string {
 }
 
 type QueueNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{queueId}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{realm}-{app}-{queueId}"`
 }
 
 func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (string, error) {
@@ -56,6 +56,17 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 
 	name := namingSettings.Pattern
 	appId := queueSettings.GetAppId()
+	
+	// Resolve realm if it's used in the pattern
+	realm := ""
+	if strings.Contains(name, "{realm}") {
+		var err error
+		realm, err = aws.ResolveRealm(config, appId, "sqs", queueSettings.GetClientName())
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve realm for sqs: %w", err)
+		}
+	}
+	
 	values := map[string]string{
 		"project": appId.Project,
 		"env":     appId.Environment,
@@ -63,6 +74,7 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 		"group":   appId.Group,
 		"app":     appId.Application,
 		"queueId": queueSettings.GetQueueId(),
+		"realm":   realm,
 	}
 
 	for key, val := range values {

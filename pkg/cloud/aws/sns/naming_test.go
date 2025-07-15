@@ -98,3 +98,67 @@ func (s *GetTopicNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
 	s.NoError(err)
 	s.Equal("producer-event", name)
 }
+
+func (s *GetTopicNameTestSuite) TestRealmDefault() {
+	// Test default realm pattern resolves correctly
+	name, err := sns.GetTopicName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack-test-gosoline-group-event", name)
+}
+
+func (s *GetTopicNameTestSuite) TestRealmGlobalCustomPattern() {
+	// Test custom global realm pattern
+	s.setupConfig(map[string]any{
+		"cloud.aws.realm.pattern": "{project}-{env}-{family}",
+	})
+
+	name, err := sns.GetTopicName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack-test-gosoline-event", name)
+}
+
+func (s *GetTopicNameTestSuite) TestRealmServiceSpecificPattern() {
+	// Test service-specific realm pattern
+	s.setupConfig(map[string]any{
+		"cloud.aws.sns.clients.default.naming.realm.pattern": "{project}-{env}",
+	})
+
+	name, err := sns.GetTopicName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack-test-event", name)
+}
+
+func (s *GetTopicNameTestSuite) TestRealmClientSpecificPattern() {
+	// Test client-specific realm pattern
+	s.settings.ClientName = "specific"
+	s.setupConfig(map[string]any{
+		"cloud.aws.sns.clients.specific.naming.realm.pattern": "{project}-{family}",
+	})
+
+	name, err := sns.GetTopicName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack-gosoline-event", name)
+}
+
+func (s *GetTopicNameTestSuite) TestRealmWithCustomPattern() {
+	// Test custom pattern with realm
+	s.setupConfig(map[string]any{
+		"cloud.aws.realm.pattern":                       "{project}-{env}-{family}",
+		"cloud.aws.sns.clients.default.naming.pattern": "{realm}-{topicId}",
+	})
+
+	name, err := sns.GetTopicName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack-test-gosoline-event", name)
+}
+
+func (s *GetTopicNameTestSuite) TestBackwardCompatibilityWithoutRealm() {
+	// Test that old patterns still work without realm
+	s.setupConfig(map[string]any{
+		"cloud.aws.sns.clients.default.naming.pattern": "{project}-{env}-{family}-{group}-{topicId}",
+	})
+
+	name, err := sns.GetTopicName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack-test-gosoline-group-event", name)
+}

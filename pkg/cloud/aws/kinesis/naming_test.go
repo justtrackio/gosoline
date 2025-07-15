@@ -98,3 +98,67 @@ func (s *GetStreamNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
 	s.NoError(err)
 	s.EqualValues("producer-event", name)
 }
+
+func (s *GetStreamNameTestSuite) TestRealmDefault() {
+	// Test default realm pattern resolves correctly
+	name, err := kinesis.GetStreamName(s.config, s.settings)
+	s.NoError(err)
+	s.EqualValues("justtrack-env-gosoline-grp-event", string(name))
+}
+
+func (s *GetStreamNameTestSuite) TestRealmGlobalCustomPattern() {
+	// Test custom global realm pattern
+	s.setupConfig(map[string]any{
+		"cloud.aws.realm.pattern": "{project}-{env}-{family}",
+	})
+
+	name, err := kinesis.GetStreamName(s.config, s.settings)
+	s.NoError(err)
+	s.EqualValues("justtrack-env-gosoline-event", name)
+}
+
+func (s *GetStreamNameTestSuite) TestRealmServiceSpecificPattern() {
+	// Test service-specific realm pattern
+	s.setupConfig(map[string]any{
+		"cloud.aws.kinesis.clients.default.naming.realm.pattern": "{project}-{env}",
+	})
+
+	name, err := kinesis.GetStreamName(s.config, s.settings)
+	s.NoError(err)
+	s.EqualValues("justtrack-env-event", name)
+}
+
+func (s *GetStreamNameTestSuite) TestRealmClientSpecificPattern() {
+	// Test client-specific realm pattern
+	s.settings.ClientName = "specific"
+	s.setupConfig(map[string]any{
+		"cloud.aws.kinesis.clients.specific.naming.realm.pattern": "{project}-{family}",
+	})
+
+	name, err := kinesis.GetStreamName(s.config, s.settings)
+	s.NoError(err)
+	s.EqualValues("justtrack-gosoline-event", name)
+}
+
+func (s *GetStreamNameTestSuite) TestRealmWithCustomPattern() {
+	// Test custom pattern with realm
+	s.setupConfig(map[string]any{
+		"cloud.aws.realm.pattern":                           "{project}-{env}-{family}",
+		"cloud.aws.kinesis.clients.default.naming.pattern": "{realm}-{streamName}",
+	})
+
+	name, err := kinesis.GetStreamName(s.config, s.settings)
+	s.NoError(err)
+	s.EqualValues("justtrack-env-gosoline-event", name)
+}
+
+func (s *GetStreamNameTestSuite) TestBackwardCompatibilityWithoutRealm() {
+	// Test that old patterns still work without realm
+	s.setupConfig(map[string]any{
+		"cloud.aws.kinesis.clients.default.naming.pattern": "{project}-{env}-{family}-{group}-{streamName}",
+	})
+
+	name, err := kinesis.GetStreamName(s.config, s.settings)
+	s.NoError(err)
+	s.EqualValues("justtrack-env-gosoline-grp-event", name)
+}

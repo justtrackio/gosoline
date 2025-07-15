@@ -15,7 +15,7 @@ type StreamNameSettingsAware interface {
 }
 
 type StreamNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{streamName}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{realm}-{streamName}"`
 }
 
 func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream, error) {
@@ -32,6 +32,16 @@ func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream,
 
 	appId := settings.GetAppId()
 	name := namingSettings.Pattern
+	
+	// Resolve realm if it's used in the pattern
+	realm := ""
+	if strings.Contains(name, "{realm}") {
+		var err error
+		realm, err = aws.ResolveRealm(config, appId, "kinesis", settings.GetClientName())
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve realm for kinesis: %w", err)
+		}
+	}
 
 	values := map[string]string{
 		"project":    appId.Project,
@@ -40,6 +50,7 @@ func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream,
 		"group":      appId.Group,
 		"app":        appId.Application,
 		"streamName": settings.GetStreamName(),
+		"realm":      realm,
 	}
 
 	for key, val := range values {
