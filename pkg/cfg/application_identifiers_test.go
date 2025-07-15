@@ -138,7 +138,7 @@ func (s *RealmTestSuite) setupConfig(settings map[string]any) {
 	s.NoError(err, "there should be no error on setting up the config")
 }
 
-func (s *RealmTestSuite) TestResolveRealm_Default() {
+func (s *RealmTestSuite) TestPopulateRealmFromConfig_Default() {
 	appId := cfg.AppId{
 		Project:     "myproject",
 		Environment: "test",
@@ -148,12 +148,12 @@ func (s *RealmTestSuite) TestResolveRealm_Default() {
 		Realm:       "",
 	}
 
-	realm, err := cfg.ResolveRealm(s.config, appId, "kinesis", "default")
+	err := appId.PopulateRealmFromConfig(s.config, "kinesis", "default")
 	s.NoError(err)
-	s.Equal("myproject-test-myfamily-mygroup", realm)
+	s.Equal("myproject-test-myfamily-mygroup", appId.Realm)
 }
 
-func (s *RealmTestSuite) TestResolveRealm_GlobalCustomPattern() {
+func (s *RealmTestSuite) TestPopulateRealmFromConfig_GlobalCustomPattern() {
 	s.setupConfig(map[string]any{
 		"cloud": map[string]any{
 			"aws": map[string]any{
@@ -173,12 +173,12 @@ func (s *RealmTestSuite) TestResolveRealm_GlobalCustomPattern() {
 		Realm:       "",
 	}
 
-	realm, err := cfg.ResolveRealm(s.config, appId, "kinesis", "default")
+	err := appId.PopulateRealmFromConfig(s.config, "kinesis", "default")
 	s.NoError(err)
-	s.Equal("custom-myproject-test", realm)
+	s.Equal("custom-myproject-test", appId.Realm)
 }
 
-func (s *RealmTestSuite) TestResolveRealm_ServiceSpecificPattern() {
+func (s *RealmTestSuite) TestPopulateRealmFromConfig_ServiceSpecificPattern() {
 	s.setupConfig(map[string]any{
 		"cloud": map[string]any{
 			"aws": map[string]any{
@@ -206,12 +206,12 @@ func (s *RealmTestSuite) TestResolveRealm_ServiceSpecificPattern() {
 		Realm:       "",
 	}
 
-	realm, err := cfg.ResolveRealm(s.config, appId, "kinesis", "default")
+	err := appId.PopulateRealmFromConfig(s.config, "kinesis", "default")
 	s.NoError(err)
-	s.Equal("kinesis-myproject-test-myfamily", realm)
+	s.Equal("kinesis-myproject-test-myfamily", appId.Realm)
 }
 
-func (s *RealmTestSuite) TestResolveRealm_ClientSpecificPattern() {
+func (s *RealmTestSuite) TestPopulateRealmFromConfig_ClientSpecificPattern() {
 	s.setupConfig(map[string]any{
 		"cloud": map[string]any{
 			"aws": map[string]any{
@@ -239,9 +239,9 @@ func (s *RealmTestSuite) TestResolveRealm_ClientSpecificPattern() {
 		Realm:       "",
 	}
 
-	realm, err := cfg.ResolveRealm(s.config, appId, "kinesis", "specific")
+	err := appId.PopulateRealmFromConfig(s.config, "kinesis", "specific")
 	s.NoError(err)
-	s.Equal("specific-myproject-test-myapp", realm)
+	s.Equal("specific-myproject-test-myapp", appId.Realm)
 }
 
 func TestRealmTestSuite(t *testing.T) {

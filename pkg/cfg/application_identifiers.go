@@ -13,7 +13,7 @@ type AppId struct {
 	Family      string `cfg:"family" default:"{app_family}" json:"family"`
 	Group       string `cfg:"group" default:"{app_group}" json:"group"`
 	Application string `cfg:"application" default:"{app_name}" json:"application"`
-	Realm       string `json:"realm"`
+	Realm       string `cfg:"realm" default:"{project}-{env}-{family}-{group}" json:"realm"`
 }
 
 func GetAppIdFromConfig(config Config) (AppId, error) {
@@ -79,6 +79,33 @@ func (i *AppId) PadFromConfig(config Config) error {
 	return nil
 }
 
+// PopulateRealmFromConfig populates the realm field from configuration with hierarchical fallback
+func (i *AppId) PopulateRealmFromConfig(config Config, service string, clientName string) error {
+	// Try to get realm pattern from service-specific client config first
+	namingKey := fmt.Sprintf("cloud.aws.%s.clients.%s.naming.realm", service, clientName)
+	
+	// Fall back to service-specific default client config
+	defaultPatternKey := fmt.Sprintf("cloud.aws.%s.clients.default.naming.realm", service)
+	
+	// Fall back to global realm config
+	globalRealmKey := "cloud.aws.realm"
+	
+	realmSettings := &struct {
+		Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}"`
+	}{}
+	
+	// Try to unmarshal with fallback chain
+	if err := config.UnmarshalKey(namingKey, realmSettings, 
+		UnmarshalWithDefaultsFromKey(globalRealmKey, "."),
+		UnmarshalWithDefaultsFromKey(defaultPatternKey, ".")); err != nil {
+		return fmt.Errorf("failed to unmarshal realm settings for %s: %w", namingKey, err)
+	}
+
+	// Use the AppId's ReplaceMacros method to expand the realm pattern
+	i.Realm = i.ReplaceMacros(realmSettings.Pattern)
+	return nil
+}
+
 func (i *AppId) String() string {
 	elements := []string{i.Project, i.Environment, i.Family, i.Group, i.Application}
 	elements = funk.Filter(elements, func(element string) bool {
@@ -99,14 +126,14 @@ func (i *AppId) ReplaceMacros(pattern string, extraMacros ...MacroValue) string 
 		result = strings.ReplaceAll(result, templ, mv.Value)
 	}
 	
-	// Replace AppId macros (including realm)
+	// Replace AppId macros (including realm first)
 	appIdMacros := []MacroValue{
+		{"realm", i.Realm},
 		{"project", i.Project},
 		{"env", i.Environment},
 		{"family", i.Family},
 		{"group", i.Group},
 		{"app", i.Application},
-		{"realm", i.Realm},
 	}
 	
 	for _, mv := range appIdMacros {
@@ -123,39 +150,13 @@ func (i *AppId) ReplaceMacros(pattern string, extraMacros ...MacroValue) string 
 	return result
 }
 
-type RealmSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}"`
-}
-
 // MacroValue represents a macro and its replacement value
 type MacroValue struct {
 	Macro string
 	Value string
 }
 
-// ResolveRealm resolves the realm pattern from configuration and expands it with the provided AppId
-func ResolveRealm(config Config, appId AppId, service string, clientName string) (string, error) {
-	// Try to get realm pattern from service-specific client config first
-	namingKey := fmt.Sprintf("cloud.aws.%s.clients.%s.naming.realm", service, clientName)
-	
-	// Fall back to service-specific default client config
-	defaultPatternKey := fmt.Sprintf("cloud.aws.%s.clients.default.naming.realm", service)
-	
-	// Fall back to global realm config
-	globalRealmKey := "cloud.aws.realm"
-	
-	realmSettings := &RealmSettings{}
-	
-	// Try to unmarshal with fallback chain
-	if err := config.UnmarshalKey(namingKey, realmSettings, 
-		UnmarshalWithDefaultsFromKey(globalRealmKey, "."),
-		UnmarshalWithDefaultsFromKey(defaultPatternKey, ".")); err != nil {
-		return "", fmt.Errorf("failed to unmarshal realm settings for %s: %w", namingKey, err)
-	}
 
-	// Use the AppId's ReplaceMacros method to expand the realm pattern
-	return appId.ReplaceMacros(realmSettings.Pattern), nil
-}
 
 
 

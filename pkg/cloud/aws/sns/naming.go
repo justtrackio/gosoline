@@ -51,19 +51,16 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 	name := namingSettings.Pattern
 	appId := topicSettings.GetAppId()
 	
-	// Resolve realm if it's used in the pattern
-	realm := ""
+	// Populate realm from config if it's used in the pattern
 	if strings.Contains(name, "{realm}") {
-		var err error
-		realm, err = cfg.ResolveRealm(config, appId, "sns", topicSettings.GetClientName())
+		err := appId.PopulateRealmFromConfig(config, "sns", topicSettings.GetClientName())
 		if err != nil {
-			return "", fmt.Errorf("failed to resolve realm for sns: %w", err)
+			return "", fmt.Errorf("failed to populate realm for sns: %w", err)
 		}
 	}
 	
-	// Use AppId's ReplaceMacros method with realm and topicId as extra macros
+	// Use AppId's ReplaceMacros method with topicId as extra macro
 	extraMacros := []cfg.MacroValue{
-		{"realm", realm},
 		{"topicId", topicSettings.GetTopicId()},
 	}
 

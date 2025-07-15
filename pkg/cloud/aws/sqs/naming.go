@@ -57,19 +57,16 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 	name := namingSettings.Pattern
 	appId := queueSettings.GetAppId()
 	
-	// Resolve realm if it's used in the pattern
-	realm := ""
+	// Populate realm from config if it's used in the pattern
 	if strings.Contains(name, "{realm}") {
-		var err error
-		realm, err = cfg.ResolveRealm(config, appId, "sqs", queueSettings.GetClientName())
+		err := appId.PopulateRealmFromConfig(config, "sqs", queueSettings.GetClientName())
 		if err != nil {
-			return "", fmt.Errorf("failed to resolve realm for sqs: %w", err)
+			return "", fmt.Errorf("failed to populate realm for sqs: %w", err)
 		}
 	}
 	
-	// Use AppId's ReplaceMacros method with realm and queueId as extra macros
+	// Use AppId's ReplaceMacros method with queueId as extra macro
 	extraMacros := []cfg.MacroValue{
-		{"realm", realm},
 		{"queueId", queueSettings.GetQueueId()},
 	}
 
