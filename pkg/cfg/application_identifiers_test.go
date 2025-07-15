@@ -26,6 +26,7 @@ func TestGetAppIdFromConfig(t *testing.T) {
 		Family:      "fam",
 		Group:       "grp",
 		Application: "name",
+		Realm:       "",
 	}, appId)
 }
 
@@ -47,48 +48,75 @@ func TestAppId_PadFromConfig(t *testing.T) {
 		Family:      "fam",
 		Group:       "grp",
 		Application: "name",
+		Realm:       "",
 	}, appId)
 
 	config.AssertExpectations(t)
 }
 
-func TestReplaceMacros(t *testing.T) {
-	pattern := "{project}-{env}-{family}-{group}-{app}"
-	values := []cfg.MacroValue{
-		{"project", "myproject"},
-		{"env", "test"},
-		{"family", "myfamily"},
-		{"group", "mygroup"},
-		{"app", "myapp"},
+func TestAppId_ReplaceMacros(t *testing.T) {
+	appId := cfg.AppId{
+		Project:     "myproject",
+		Environment: "test",
+		Family:      "myfamily",
+		Group:       "mygroup",
+		Application: "myapp",
 	}
 
-	result := cfg.ReplaceMacros(pattern, values)
+	pattern := "{project}-{env}-{family}-{group}-{app}"
+	result := appId.ReplaceMacros(pattern)
 	assert.Equal(t, "myproject-test-myfamily-mygroup-myapp", result)
 }
 
-func TestReplaceMacros_EmptyValues(t *testing.T) {
-	pattern := "{project}-{env}-{family}-{group}-{app}"
-	values := []cfg.MacroValue{
-		{"project", "myproject"},
-		{"env", ""},
-		{"family", "myfamily"},
-		{"group", ""},
-		{"app", "myapp"},
+func TestAppId_ReplaceMacros_EmptyValues(t *testing.T) {
+	appId := cfg.AppId{
+		Project:     "myproject",
+		Environment: "",
+		Family:      "myfamily",
+		Group:       "",
+		Application: "myapp",
 	}
 
-	result := cfg.ReplaceMacros(pattern, values)
+	pattern := "{project}-{env}-{family}-{group}-{app}"
+	result := appId.ReplaceMacros(pattern)
 	assert.Equal(t, "myproject--myfamily--myapp", result)
 }
 
-func TestReplaceMacros_RealmFirst(t *testing.T) {
-	pattern := "{realm}-{streamName}"
-	values := []cfg.MacroValue{
-		{"realm", "myproject-test"},
-		{"streamName", "mystream"},
+func TestAppId_ReplaceMacros_WithRealm(t *testing.T) {
+	appId := cfg.AppId{
+		Project:     "myproject",
+		Environment: "test",
+		Family:      "myfamily",
+		Group:       "mygroup",
+		Application: "myapp",
+		Realm:       "myproject-test",
 	}
 
-	result := cfg.ReplaceMacros(pattern, values)
+	pattern := "{realm}-{streamName}"
+	extraMacros := []cfg.MacroValue{
+		{"streamName", "mystream"},
+	}
+	result := appId.ReplaceMacros(pattern, extraMacros...)
 	assert.Equal(t, "myproject-test-mystream", result)
+}
+
+func TestAppId_ReplaceMacros_ExtraMacrosOrdering(t *testing.T) {
+	appId := cfg.AppId{
+		Project:     "myproject",
+		Environment: "test",
+		Family:      "myfamily",
+		Group:       "mygroup",
+		Application: "myapp",
+	}
+
+	// Test that extra macros are replaced before and after AppId macros
+	pattern := "{prefix}-{project}-{suffix}"
+	extraMacros := []cfg.MacroValue{
+		{"prefix", "before-{env}"},
+		{"suffix", "after-{env}"},
+	}
+	result := appId.ReplaceMacros(pattern, extraMacros...)
+	assert.Equal(t, "before-test-myproject-after-test", result)
 }
 
 type RealmTestSuite struct {
@@ -117,6 +145,7 @@ func (s *RealmTestSuite) TestResolveRealm_Default() {
 		Family:      "myfamily",
 		Group:       "mygroup",
 		Application: "myapp",
+		Realm:       "",
 	}
 
 	realm, err := cfg.ResolveRealm(s.config, appId, "kinesis", "default")
@@ -141,6 +170,7 @@ func (s *RealmTestSuite) TestResolveRealm_GlobalCustomPattern() {
 		Family:      "myfamily",
 		Group:       "mygroup",
 		Application: "myapp",
+		Realm:       "",
 	}
 
 	realm, err := cfg.ResolveRealm(s.config, appId, "kinesis", "default")
@@ -173,6 +203,7 @@ func (s *RealmTestSuite) TestResolveRealm_ServiceSpecificPattern() {
 		Family:      "myfamily",
 		Group:       "mygroup",
 		Application: "myapp",
+		Realm:       "",
 	}
 
 	realm, err := cfg.ResolveRealm(s.config, appId, "kinesis", "default")
@@ -205,6 +236,7 @@ func (s *RealmTestSuite) TestResolveRealm_ClientSpecificPattern() {
 		Family:      "myfamily",
 		Group:       "mygroup",
 		Application: "myapp",
+		Realm:       "",
 	}
 
 	realm, err := cfg.ResolveRealm(s.config, appId, "kinesis", "specific")

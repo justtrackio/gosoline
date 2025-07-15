@@ -61,16 +61,11 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 		}
 	}
 	
-	// Use slice of MacroValue with realm first for proper resolution order
-	values := []cfg.MacroValue{
+	// Use AppId's ReplaceMacros method with realm and topicId as extra macros
+	extraMacros := []cfg.MacroValue{
 		{"realm", realm},
-		{"project", appId.Project},
-		{"env", appId.Environment},
-		{"family", appId.Family},
-		{"group", appId.Group},
-		{"app", appId.Application},
 		{"topicId", topicSettings.GetTopicId()},
 	}
 
-	return cfg.ReplaceMacros(name, values), nil
+	return appId.ReplaceMacros(name, extraMacros...), nil
 }

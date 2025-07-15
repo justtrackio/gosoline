@@ -67,18 +67,13 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 		}
 	}
 	
-	// Use slice of MacroValue with realm first for proper resolution order
-	values := []cfg.MacroValue{
+	// Use AppId's ReplaceMacros method with realm and queueId as extra macros
+	extraMacros := []cfg.MacroValue{
 		{"realm", realm},
-		{"project", appId.Project},
-		{"env", appId.Environment},
-		{"family", appId.Family},
-		{"group", appId.Group},
-		{"app", appId.Application},
 		{"queueId", queueSettings.GetQueueId()},
 	}
 
-	name = cfg.ReplaceMacros(name, values)
+	name = appId.ReplaceMacros(name, extraMacros...)
 
 	if queueSettings.IsFifoEnabled() {
 		name += FifoSuffix

@@ -43,16 +43,11 @@ func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream,
 		}
 	}
 
-	// Use slice of MacroValue with realm first for proper resolution order
-	values := []cfg.MacroValue{
+	// Use AppId's ReplaceMacros method with realm and streamName as extra macros
+	extraMacros := []cfg.MacroValue{
 		{"realm", realm},
-		{"project", appId.Project},
-		{"env", appId.Environment},
-		{"family", appId.Family},
-		{"group", appId.Group},
-		{"app", appId.Application},
 		{"streamName", settings.GetStreamName()},
 	}
 
-	return Stream(cfg.ReplaceMacros(name, values)), nil
+	return Stream(appId.ReplaceMacros(name, extraMacros...)), nil
 }

@@ -13,6 +13,7 @@ type AppId struct {
 	Family      string `cfg:"family" default:"{app_family}" json:"family"`
 	Group       string `cfg:"group" default:"{app_group}" json:"group"`
 	Application string `cfg:"application" default:"{app_name}" json:"application"`
+	Realm       string `json:"realm"`
 }
 
 func GetAppIdFromConfig(config Config) (AppId, error) {
@@ -87,8 +88,49 @@ func (i *AppId) String() string {
 	return strings.Join(elements, "-")
 }
 
+// ReplaceMacros replaces macros in a pattern with AppId values and additional macro values
+// Extra macros are replaced once before and once after the AppId macros
+func (i *AppId) ReplaceMacros(pattern string, extraMacros ...MacroValue) string {
+	result := pattern
+	
+	// First pass: replace extra macros
+	for _, mv := range extraMacros {
+		templ := fmt.Sprintf("{%s}", mv.Macro)
+		result = strings.ReplaceAll(result, templ, mv.Value)
+	}
+	
+	// Replace AppId macros (including realm)
+	appIdMacros := []MacroValue{
+		{"project", i.Project},
+		{"env", i.Environment},
+		{"family", i.Family},
+		{"group", i.Group},
+		{"app", i.Application},
+		{"realm", i.Realm},
+	}
+	
+	for _, mv := range appIdMacros {
+		templ := fmt.Sprintf("{%s}", mv.Macro)
+		result = strings.ReplaceAll(result, templ, mv.Value)
+	}
+	
+	// Second pass: replace extra macros again
+	for _, mv := range extraMacros {
+		templ := fmt.Sprintf("{%s}", mv.Macro)
+		result = strings.ReplaceAll(result, templ, mv.Value)
+	}
+	
+	return result
+}
+
 type RealmSettings struct {
 	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}"`
+}
+
+// MacroValue represents a macro and its replacement value
+type MacroValue struct {
+	Macro string
+	Value string
 }
 
 // ResolveRealm resolves the realm pattern from configuration and expands it with the provided AppId
@@ -111,31 +153,10 @@ func ResolveRealm(config Config, appId AppId, service string, clientName string)
 		return "", fmt.Errorf("failed to unmarshal realm settings for %s: %w", namingKey, err)
 	}
 
-	// Expand the realm pattern with appId values
-	values := []MacroValue{
-		{"project", appId.Project},
-		{"env", appId.Environment},
-		{"family", appId.Family},
-		{"group", appId.Group},
-		{"app", appId.Application},
-	}
-
-	return ReplaceMacros(realmSettings.Pattern, values), nil
+	// Use the AppId's ReplaceMacros method to expand the realm pattern
+	return appId.ReplaceMacros(realmSettings.Pattern), nil
 }
 
-// MacroValue represents a macro and its replacement value
-type MacroValue struct {
-	Macro string
-	Value string
-}
 
-// ReplaceMacros replaces macros in a string with their values
-// The slice is processed in order, allowing realm to be resolved first
-func ReplaceMacros(pattern string, values []MacroValue) string {
-	result := pattern
-	for _, mv := range values {
-		templ := fmt.Sprintf("{%s}", mv.Macro)
-		result = strings.ReplaceAll(result, templ, mv.Value)
-	}
-	return result
-}
+
+
