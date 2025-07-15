@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/funk"
@@ -84,4 +85,57 @@ func (i *AppId) String() string {
 	})
 
 	return strings.Join(elements, "-")
+}
+
+type RealmSettings struct {
+	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}"`
+}
+
+// ResolveRealm resolves the realm pattern from configuration and expands it with the provided AppId
+func ResolveRealm(config Config, appId AppId, service string, clientName string) (string, error) {
+	// Try to get realm pattern from service-specific client config first
+	namingKey := fmt.Sprintf("cloud.aws.%s.clients.%s.naming.realm", service, clientName)
+	
+	// Fall back to service-specific default client config
+	defaultPatternKey := fmt.Sprintf("cloud.aws.%s.clients.default.naming.realm", service)
+	
+	// Fall back to global realm config
+	globalRealmKey := "cloud.aws.realm"
+	
+	realmSettings := &RealmSettings{}
+	
+	// Try to unmarshal with fallback chain
+	if err := config.UnmarshalKey(namingKey, realmSettings, 
+		UnmarshalWithDefaultsFromKey(globalRealmKey, "."),
+		UnmarshalWithDefaultsFromKey(defaultPatternKey, ".")); err != nil {
+		return "", fmt.Errorf("failed to unmarshal realm settings for %s: %w", namingKey, err)
+	}
+
+	// Expand the realm pattern with appId values
+	values := []MacroValue{
+		{"project", appId.Project},
+		{"env", appId.Environment},
+		{"family", appId.Family},
+		{"group", appId.Group},
+		{"app", appId.Application},
+	}
+
+	return ReplaceMacros(realmSettings.Pattern, values), nil
+}
+
+// MacroValue represents a macro and its replacement value
+type MacroValue struct {
+	Macro string
+	Value string
+}
+
+// ReplaceMacros replaces macros in a string with their values
+// The slice is processed in order, allowing realm to be resolved first
+func ReplaceMacros(pattern string, values []MacroValue) string {
+	result := pattern
+	for _, mv := range values {
+		templ := fmt.Sprintf("{%s}", mv.Macro)
+		result = strings.ReplaceAll(result, templ, mv.Value)
+	}
+	return result
 }

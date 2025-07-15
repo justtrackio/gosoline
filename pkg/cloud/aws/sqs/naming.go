@@ -61,26 +61,24 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 	realm := ""
 	if strings.Contains(name, "{realm}") {
 		var err error
-		realm, err = aws.ResolveRealm(config, appId, "sqs", queueSettings.GetClientName())
+		realm, err = cfg.ResolveRealm(config, appId, "sqs", queueSettings.GetClientName())
 		if err != nil {
 			return "", fmt.Errorf("failed to resolve realm for sqs: %w", err)
 		}
 	}
 	
-	values := map[string]string{
-		"project": appId.Project,
-		"env":     appId.Environment,
-		"family":  appId.Family,
-		"group":   appId.Group,
-		"app":     appId.Application,
-		"queueId": queueSettings.GetQueueId(),
-		"realm":   realm,
+	// Use slice of MacroValue with realm first for proper resolution order
+	values := []cfg.MacroValue{
+		{"realm", realm},
+		{"project", appId.Project},
+		{"env", appId.Environment},
+		{"family", appId.Family},
+		{"group", appId.Group},
+		{"app", appId.Application},
+		{"queueId", queueSettings.GetQueueId()},
 	}
 
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		name = strings.ReplaceAll(name, templ, val)
-	}
+	name = cfg.ReplaceMacros(name, values)
 
 	if queueSettings.IsFifoEnabled() {
 		name += FifoSuffix

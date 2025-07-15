@@ -55,26 +55,22 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 	realm := ""
 	if strings.Contains(name, "{realm}") {
 		var err error
-		realm, err = aws.ResolveRealm(config, appId, "sns", topicSettings.GetClientName())
+		realm, err = cfg.ResolveRealm(config, appId, "sns", topicSettings.GetClientName())
 		if err != nil {
 			return "", fmt.Errorf("failed to resolve realm for sns: %w", err)
 		}
 	}
 	
-	values := map[string]string{
-		"project": appId.Project,
-		"env":     appId.Environment,
-		"family":  appId.Family,
-		"group":   appId.Group,
-		"app":     appId.Application,
-		"topicId": topicSettings.GetTopicId(),
-		"realm":   realm,
+	// Use slice of MacroValue with realm first for proper resolution order
+	values := []cfg.MacroValue{
+		{"realm", realm},
+		{"project", appId.Project},
+		{"env", appId.Environment},
+		{"family", appId.Family},
+		{"group", appId.Group},
+		{"app", appId.Application},
+		{"topicId", topicSettings.GetTopicId()},
 	}
 
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		name = strings.ReplaceAll(name, templ, val)
-	}
-
-	return name, nil
+	return cfg.ReplaceMacros(name, values), nil
 }

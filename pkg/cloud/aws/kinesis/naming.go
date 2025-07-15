@@ -37,26 +37,22 @@ func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream,
 	realm := ""
 	if strings.Contains(name, "{realm}") {
 		var err error
-		realm, err = aws.ResolveRealm(config, appId, "kinesis", settings.GetClientName())
+		realm, err = cfg.ResolveRealm(config, appId, "kinesis", settings.GetClientName())
 		if err != nil {
 			return "", fmt.Errorf("failed to resolve realm for kinesis: %w", err)
 		}
 	}
 
-	values := map[string]string{
-		"project":    appId.Project,
-		"env":        appId.Environment,
-		"family":     appId.Family,
-		"group":      appId.Group,
-		"app":        appId.Application,
-		"streamName": settings.GetStreamName(),
-		"realm":      realm,
+	// Use slice of MacroValue with realm first for proper resolution order
+	values := []cfg.MacroValue{
+		{"realm", realm},
+		{"project", appId.Project},
+		{"env", appId.Environment},
+		{"family", appId.Family},
+		{"group", appId.Group},
+		{"app", appId.Application},
+		{"streamName", settings.GetStreamName()},
 	}
 
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		name = strings.ReplaceAll(name, templ, val)
-	}
-
-	return Stream(name), nil
+	return Stream(cfg.ReplaceMacros(name, values)), nil
 }
