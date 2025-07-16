@@ -44,7 +44,7 @@ func TestCoffin_WithContext(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		t.Run(fmt.Sprintf("iteration %d", i), func(t *testing.T) {
 			assert.NotPanics(t, func() {
-				cfn := coffin.New(context.Background())
+				cfn := coffin.New(t.Context())
 				c := make(chan struct{})
 				errStop := errors.New("please stop")
 
@@ -52,21 +52,7 @@ func TestCoffin_WithContext(t *testing.T) {
 					nestedCfn := coffin.New(ctx)
 
 					nestedCfn.GoWithContext("inner test", func(ctx context.Context) error {
-						ticker := time.NewTicker(time.Millisecond)
-						defer ticker.Stop()
-						count := 0
-
-						for {
-							select {
-							case <-ticker.C:
-								count++
-								if count == 3 {
-									close(c)
-								}
-							case <-ctx.Done():
-								return nil
-							}
-						}
+						return closeAfter3Milliseconds(ctx, c)
 					})
 
 					err := nestedCfn.Wait()
@@ -87,8 +73,26 @@ func TestCoffin_WithContext(t *testing.T) {
 	}
 }
 
+func closeAfter3Milliseconds(ctx context.Context, c chan struct{}) error {
+	ticker := time.NewTicker(time.Millisecond)
+	defer ticker.Stop()
+	count := 0
+
+	for {
+		select {
+		case <-ticker.C:
+			count++
+			if count == 3 {
+				close(c)
+			}
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
 func TestCoffin_WithContext_Cancel(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	tmb := coffin.New(ctx).Entomb()
 	tmb.GoWithContext("test", func(ctx context.Context) error {
 		<-ctx.Done()

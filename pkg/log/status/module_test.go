@@ -23,9 +23,9 @@ func TestModule(t *testing.T) {
 	assert.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
-	cfn := coffin.New(context.Background())
+	cfn := coffin.New(ctx)
 
-	cfn.GoWithContext("runner", m.Run, coffin.WithContext(ctx))
+	cfn.GoWithContext("runner", m.Run)
 
 	mgr.StartWork("test", 3).ReportDone()
 	logger.EXPECT().Info("Work item %s: done", "test").Run(func(format string, args ...any) {

@@ -70,7 +70,7 @@ func TestWriteLotsOfBadMetrics(t *testing.T) {
 		MetricName: "myMetricName",
 	})
 
-	cfn := coffin.New(context.Background())
+	cfn := coffin.New(t.Context())
 	cfn.GoWithContext("daemon runner", daemon.Run, coffin.WithContext(ctx))
 	cfn.GoWithContext("metric writer", func(ctx context.Context) error {
 		for {

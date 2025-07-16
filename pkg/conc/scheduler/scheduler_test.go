@@ -23,8 +23,8 @@ func TestScheduler(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(ctx)
 
-	cfn := coffin.New(context.Background())
-	cfn.GoWithContext("runner", runner.Run, coffin.WithContext(ctx))
+	cfn := coffin.New(ctx)
+	cfn.GoWithContext("runner", runner.Run)
 
 	batchRunner := func(ctx context.Context, keys []string, providers []func() (int, error)) (map[string]int, error) {
 		results := map[string]int{}

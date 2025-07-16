@@ -14,7 +14,7 @@ import (
 	errorsPkg "github.com/pkg/errors"
 )
 
-var coffinDying = fmt.Errorf("coffin is dying")
+var errCoffinDying = fmt.Errorf("coffin is dying")
 
 // A Coffin allows you to monitor the execution of multiple goroutines. You can wait until no goroutine is executing anymore, but a Coffin
 // is infinitely reusable as long as no goroutine panics or returns an error.
@@ -293,7 +293,7 @@ func (g *coffin) done() {
 		g.closeIfOpen(g.dying)
 		g.closeIfOpen(g.dead)
 		if g.cancelCtx != nil {
-			g.cancelCtx(coffinDying)
+			g.cancelCtx(errCoffinDying)
 			g.cancelCtx = nil
 		}
 	}
@@ -308,7 +308,7 @@ func (g *coffin) Kill(reason error) {
 
 func (g *coffin) kill(reason error) {
 	if reason == nil {
-		reason = coffinDying
+		reason = errCoffinDying
 	}
 
 	if g.cancelCtx != nil {
@@ -318,7 +318,7 @@ func (g *coffin) kill(reason error) {
 
 	g.closeIfOpen(g.dying)
 
-	g.setErrLocked(reason)
+	g.setErr(reason)
 }
 
 func (g *coffin) closeIfOpen(c chan Void) {
@@ -336,14 +336,7 @@ func (g *coffin) closeIfOpen(c chan Void) {
 }
 
 func (g *coffin) setErr(err error) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	g.setErrLocked(err)
-}
-
-func (g *coffin) setErrLocked(err error) {
-	if err == nil || errors.Is(err, coffinDying) {
+	if err == nil || errors.Is(err, errCoffinDying) {
 		return
 	}
 

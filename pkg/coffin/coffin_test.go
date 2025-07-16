@@ -170,7 +170,6 @@ func (s *coffinTestSuite) TestNestedGo() {
 func (s *coffinTestSuite) TestCoffinReuse() {
 	for i := 1; i <= 100; i++ {
 		s.cfn.Go("task", func() error {
-
 			return nil
 		})
 
@@ -209,6 +208,7 @@ func (s *coffinTestSuite) TestGoWithCanceledContext() {
 
 	s.cfn.GoWithContext("test", func(ctx context.Context) error {
 		<-ctx.Done()
+
 		return ctx.Err()
 	}, coffin.WithContext(ctx))
 
