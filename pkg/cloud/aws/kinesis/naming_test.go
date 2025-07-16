@@ -29,6 +29,7 @@ func (s *GetStreamNameTestSuite) SetupTest() {
 			Family:      "gosoline",
 			Group:       "grp",
 			Application: "producer",
+			Realm:       "justtrack-env-gosoline-grp",
 		},
 		ClientName: "default",
 		StreamName: "event",

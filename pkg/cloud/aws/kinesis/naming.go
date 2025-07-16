@@ -32,17 +32,20 @@ func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream,
 
 	appId := settings.GetAppId()
 	name := namingSettings.Pattern
-	
-	// Populate realm from config if it's used in the pattern
+
+	// Resolve realm pattern if it's used in the pattern
+	realm := ""
 	if strings.Contains(name, "{realm}") {
-		err := appId.PopulateRealmFromConfig(config, "kinesis", settings.GetClientName())
+		var err error
+		realm, err = appId.ResolveRealmPattern(config, "kinesis", settings.GetClientName())
 		if err != nil {
-			return "", fmt.Errorf("failed to populate realm for kinesis: %w", err)
+			return "", fmt.Errorf("failed to resolve realm pattern for kinesis: %w", err)
 		}
 	}
 
-	// Use AppId's ReplaceMacros method with streamName as extra macro
+	// Use AppId's ReplaceMacros method with streamName and realm as extra macros
 	extraMacros := []cfg.MacroValue{
+		{"realm", realm},
 		{"streamName", settings.GetStreamName()},
 	}
 

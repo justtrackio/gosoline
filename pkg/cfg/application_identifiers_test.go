@@ -6,6 +6,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	cfgMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -16,6 +17,13 @@ func TestGetAppIdFromConfig(t *testing.T) {
 	config.EXPECT().GetString("app_group").Return("grp", nil)
 	config.EXPECT().GetString("app_name").Return("name", nil)
 	config.EXPECT().GetString("env").Return("test", nil)
+	config.EXPECT().UnmarshalKey("cloud.aws.realm", mock.AnythingOfType("*struct { Pattern string \"cfg:\\\"pattern,nodecode\\\" default:\\\"{project}-{env}-{family}-{group}\\\"\" }")).Run(func(key string, settings interface{}, additionalDefaults ...cfg.UnmarshalDefaults) {
+		// Set the default pattern
+		settingsPtr := settings.(*struct {
+			Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}"`
+		})
+		settingsPtr.Pattern = "{project}-{env}-{family}-{group}"
+	}).Return(nil)
 
 	appId, err := cfg.GetAppIdFromConfig(config)
 	assert.NoError(t, err)
@@ -26,7 +34,7 @@ func TestGetAppIdFromConfig(t *testing.T) {
 		Family:      "fam",
 		Group:       "grp",
 		Application: "name",
-		Realm:       "",
+		Realm:       "prj-test-fam-grp",
 	}, appId)
 }
 
@@ -37,6 +45,13 @@ func TestAppId_PadFromConfig(t *testing.T) {
 	config.EXPECT().GetString("app_group").Return("grp", nil)
 	config.EXPECT().GetString("app_name").Return("name", nil)
 	config.EXPECT().GetString("env").Return("test", nil)
+	config.EXPECT().UnmarshalKey("cloud.aws.realm", mock.AnythingOfType("*struct { Pattern string \"cfg:\\\"pattern,nodecode\\\" default:\\\"{project}-{env}-{family}-{group}\\\"\" }")).Run(func(key string, settings interface{}, additionalDefaults ...cfg.UnmarshalDefaults) {
+		// Set the default pattern
+		settingsPtr := settings.(*struct {
+			Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}"`
+		})
+		settingsPtr.Pattern = "{project}-{env}-{family}-{group}"
+	}).Return(nil)
 
 	appId := cfg.AppId{}
 	err := appId.PadFromConfig(config)
@@ -48,7 +63,7 @@ func TestAppId_PadFromConfig(t *testing.T) {
 		Family:      "fam",
 		Group:       "grp",
 		Application: "name",
-		Realm:       "",
+		Realm:       "prj-test-fam-grp",
 	}, appId)
 
 	config.AssertExpectations(t)
@@ -138,7 +153,7 @@ func (s *RealmTestSuite) setupConfig(settings map[string]any) {
 	s.NoError(err, "there should be no error on setting up the config")
 }
 
-func (s *RealmTestSuite) TestPopulateRealmFromConfig_Default() {
+func (s *RealmTestSuite) TestRealmFromConfig_Default() {
 	appId := cfg.AppId{
 		Project:     "myproject",
 		Environment: "test",
@@ -148,12 +163,12 @@ func (s *RealmTestSuite) TestPopulateRealmFromConfig_Default() {
 		Realm:       "",
 	}
 
-	err := appId.PopulateRealmFromConfig(s.config, "kinesis", "default")
+	err := appId.PadFromConfig(s.config)
 	s.NoError(err)
 	s.Equal("myproject-test-myfamily-mygroup", appId.Realm)
 }
 
-func (s *RealmTestSuite) TestPopulateRealmFromConfig_GlobalCustomPattern() {
+func (s *RealmTestSuite) TestRealmFromConfig_GlobalCustomPattern() {
 	s.setupConfig(map[string]any{
 		"cloud": map[string]any{
 			"aws": map[string]any{
@@ -173,75 +188,9 @@ func (s *RealmTestSuite) TestPopulateRealmFromConfig_GlobalCustomPattern() {
 		Realm:       "",
 	}
 
-	err := appId.PopulateRealmFromConfig(s.config, "kinesis", "default")
+	err := appId.PadFromConfig(s.config)
 	s.NoError(err)
 	s.Equal("custom-myproject-test", appId.Realm)
-}
-
-func (s *RealmTestSuite) TestPopulateRealmFromConfig_ServiceSpecificPattern() {
-	s.setupConfig(map[string]any{
-		"cloud": map[string]any{
-			"aws": map[string]any{
-				"kinesis": map[string]any{
-					"clients": map[string]any{
-						"default": map[string]any{
-							"naming": map[string]any{
-								"realm": map[string]any{
-									"pattern": "kinesis-{project}-{env}-{family}",
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	})
-
-	appId := cfg.AppId{
-		Project:     "myproject",
-		Environment: "test",
-		Family:      "myfamily",
-		Group:       "mygroup",
-		Application: "myapp",
-		Realm:       "",
-	}
-
-	err := appId.PopulateRealmFromConfig(s.config, "kinesis", "default")
-	s.NoError(err)
-	s.Equal("kinesis-myproject-test-myfamily", appId.Realm)
-}
-
-func (s *RealmTestSuite) TestPopulateRealmFromConfig_ClientSpecificPattern() {
-	s.setupConfig(map[string]any{
-		"cloud": map[string]any{
-			"aws": map[string]any{
-				"kinesis": map[string]any{
-					"clients": map[string]any{
-						"specific": map[string]any{
-							"naming": map[string]any{
-								"realm": map[string]any{
-									"pattern": "specific-{project}-{env}-{app}",
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	})
-
-	appId := cfg.AppId{
-		Project:     "myproject",
-		Environment: "test",
-		Family:      "myfamily",
-		Group:       "mygroup",
-		Application: "myapp",
-		Realm:       "",
-	}
-
-	err := appId.PopulateRealmFromConfig(s.config, "kinesis", "specific")
-	s.NoError(err)
-	s.Equal("specific-myproject-test-myapp", appId.Realm)
 }
 
 func TestRealmTestSuite(t *testing.T) {

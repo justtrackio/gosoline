@@ -40,6 +40,11 @@ func GetAppIdFromConfig(config Config) (AppId, error) {
 		return appId, err
 	}
 
+	// Resolve realm from config
+	if err = appId.resolveRealmFromConfig(config); err != nil {
+		return appId, err
+	}
+
 	return appId, nil
 }
 
@@ -76,11 +81,36 @@ func (i *AppId) PadFromConfig(config Config) error {
 		}
 	}
 
+	// Resolve realm from config if not already set
+	if i.Realm == "" {
+		if err = i.resolveRealmFromConfig(config); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-// PopulateRealmFromConfig populates the realm field from configuration with hierarchical fallback
-func (i *AppId) PopulateRealmFromConfig(config Config, service string, clientName string) error {
+// resolveRealmFromConfig resolves the realm from global configuration
+func (i *AppId) resolveRealmFromConfig(config Config) error {
+	// Try to get realm pattern from global config
+	globalRealmKey := "cloud.aws.realm"
+	
+	realmSettings := &struct {
+		Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}"`
+	}{}
+	
+	if err := config.UnmarshalKey(globalRealmKey, realmSettings); err != nil {
+		return fmt.Errorf("failed to unmarshal realm settings for %s: %w", globalRealmKey, err)
+	}
+
+	// Use the AppId's ReplaceMacros method to expand the realm pattern
+	i.Realm = i.ReplaceMacros(realmSettings.Pattern)
+	return nil
+}
+
+// ResolveRealmPattern resolves a realm pattern from service-specific configuration with fallback to global config
+func (i *AppId) ResolveRealmPattern(config Config, service string, clientName string) (string, error) {
 	// Try to get realm pattern from service-specific client config first
 	namingKey := fmt.Sprintf("cloud.aws.%s.clients.%s.naming.realm", service, clientName)
 	
@@ -98,16 +128,15 @@ func (i *AppId) PopulateRealmFromConfig(config Config, service string, clientNam
 	if err := config.UnmarshalKey(namingKey, realmSettings, 
 		UnmarshalWithDefaultsFromKey(globalRealmKey, "."),
 		UnmarshalWithDefaultsFromKey(defaultPatternKey, ".")); err != nil {
-		return fmt.Errorf("failed to unmarshal realm settings for %s: %w", namingKey, err)
+		return "", fmt.Errorf("failed to unmarshal realm settings for %s: %w", namingKey, err)
 	}
 
 	// Use the AppId's ReplaceMacros method to expand the realm pattern
-	i.Realm = i.ReplaceMacros(realmSettings.Pattern)
-	return nil
+	return i.ReplaceMacros(realmSettings.Pattern), nil
 }
 
 func (i *AppId) String() string {
-	elements := []string{i.Project, i.Environment, i.Family, i.Group, i.Application}
+	elements := []string{i.Project, i.Environment, i.Family, i.Group, i.Application, i.Realm}
 	elements = funk.Filter(elements, func(element string) bool {
 		return element != ""
 	})
@@ -127,7 +156,7 @@ func (i *AppId) ReplaceMacros(pattern string, extraMacros ...MacroValue) string 
 	}
 	
 	// Replace AppId macros (including realm first)
-	appIdMacros := []MacroValue{
+	allMacros := []MacroValue{
 		{"realm", i.Realm},
 		{"project", i.Project},
 		{"env", i.Environment},
@@ -136,13 +165,10 @@ func (i *AppId) ReplaceMacros(pattern string, extraMacros ...MacroValue) string 
 		{"app", i.Application},
 	}
 	
-	for _, mv := range appIdMacros {
-		templ := fmt.Sprintf("{%s}", mv.Macro)
-		result = strings.ReplaceAll(result, templ, mv.Value)
-	}
+	// Append extra macros to replace them after AppId macros
+	allMacros = append(allMacros, extraMacros...)
 	
-	// Second pass: replace extra macros again
-	for _, mv := range extraMacros {
+	for _, mv := range allMacros {
 		templ := fmt.Sprintf("{%s}", mv.Macro)
 		result = strings.ReplaceAll(result, templ, mv.Value)
 	}
