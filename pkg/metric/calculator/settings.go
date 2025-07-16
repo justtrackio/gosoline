@@ -9,8 +9,8 @@ import (
 )
 
 type EcsSettings struct {
-	Cluster string `cfg:"cluster" default:"{app_project}-{env}-{app_family}"`
-	Service string `cfg:"service" default:"{app_group}-{app_name}"`
+	Cluster string `cfg:"cluster" default:"{realm}"`
+	Service string `cfg:"service" default:"{realm}-{app}"`
 }
 
 type DynamoDbSettings struct {
@@ -18,7 +18,7 @@ type DynamoDbSettings struct {
 }
 
 type DynamoDbNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{modelId}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{realm}-{app}-{modelId}"`
 }
 
 type CloudWatchSettings struct {
@@ -26,7 +26,7 @@ type CloudWatchSettings struct {
 }
 
 type CloudWatchNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}/{env}/{family}/{group}-{app}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{realm}-{app}"`
 }
 
 type CalculatorSettings struct {

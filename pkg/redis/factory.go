@@ -11,7 +11,7 @@ import (
 )
 
 type Naming struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{name}.{group}.redis.{env}.{family}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{realm}-{app}-{name}.redis"`
 }
 
 type Settings struct {

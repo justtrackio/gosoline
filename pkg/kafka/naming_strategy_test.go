@@ -28,6 +28,7 @@ func (s *KafkaNamingTestSuite) SetupTest() {
 		Family:      "gosoline",
 		Group:       "group",
 		Application: "producer",
+		Realm:       "justtrack-test-gosoline-group",
 	}
 	s.topicId = "topic_a"
 	s.groupId = "c-group-1"
@@ -41,13 +42,13 @@ func (s *KafkaNamingTestSuite) setupConfig(settings map[string]any) {
 func (s *KafkaNamingTestSuite) TestDefaultTopicId() {
 	topic, err := kafka.FQTopicName(s.config, s.appID, s.topicId)
 	s.NoError(err, "there should be no error")
-	s.Equal(topic, "test-topic-a")
+	s.Equal(topic, "justtrack-test-gosoline-group-topic-a")
 }
 
 func (s *KafkaNamingTestSuite) TestDefaultGroupId() {
 	group, err := kafka.FQGroupId(s.config, s.appID, s.groupId)
 	s.NoError(err, "there should be no error")
-	s.Equal(group, "test-producer-c-group-1")
+	s.Equal(group, "justtrack-test-gosoline-group-producer-c-group-1")
 }
 
 func (s *KafkaNamingTestSuite) TestLegacyGroupId() {

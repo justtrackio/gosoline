@@ -23,7 +23,7 @@ type KinsumerAutoscaleModuleDynamoDbSettings struct {
 }
 
 type KinsumerAutoscaleModuleDynamoDbNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{env}-kinsumer-autoscale-leaders"`
+	Pattern string `cfg:"pattern,nodecode" default:"{realm}-kinsumer-autoscale-leaders"`
 }
 
 type KinsumerAutoscaleModuleSettings struct {
