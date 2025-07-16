@@ -208,7 +208,8 @@ func (s *BatchConsumerTestSuite) TestRun_InputRunError() {
 
 	err := s.batchConsumer.Run(s.kernelCtx)
 
-	s.EqualError(err, "error while waiting for all routines to stop: panic during run of the consumer input: read error")
+	s.Error(err)
+	s.Contains(err.Error(), "error while waiting for all routines to stop: panic during run of the consumer input: read error")
 }
 
 func (s *BatchConsumerTestSuite) TestRun_CallbackRunError() {
@@ -230,7 +231,8 @@ func (s *BatchConsumerTestSuite) TestRun_CallbackRunError() {
 
 	err := s.batchConsumer.Run(s.kernelCtx)
 
-	s.EqualError(err, "error while waiting for all routines to stop: panic during run of the consumerCallback: consumerCallback run error")
+	s.Error(err)
+	s.Contains(err.Error(), "error while waiting for all routines to stop: panic during run of the consumerCallback: consumerCallback run error")
 }
 
 func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {

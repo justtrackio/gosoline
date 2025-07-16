@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -102,19 +103,27 @@ func NewBatchRunner(ctx context.Context, config cfg.Config, logger log.Logger, n
 
 func (r *batchRunner) Run(ctx context.Context) error {
 	for i := 0; i < r.settings.ReaderRunnerCount; i++ {
-		go r.executeRead(ctx)
+		go coffin.RunLabeled(ctx, fmt.Sprintf("blob/batchRunner/executeRead-%d", i), func() {
+			r.executeRead(ctx)
+		})
 	}
 
 	for i := 0; i < r.settings.WriterRunnerCount; i++ {
-		go r.executeWrite(ctx)
+		go coffin.RunLabeled(ctx, fmt.Sprintf("blob/batchRunner/executeWrite-%d", i), func() {
+			r.executeWrite(ctx)
+		})
 	}
 
 	for i := 0; i < r.settings.CopyRunnerCount; i++ {
-		go r.executeCopy(ctx)
+		go coffin.RunLabeled(ctx, fmt.Sprintf("blob/batchRunner/executeCopy-%d", i), func() {
+			r.executeCopy(ctx)
+		})
 	}
 
 	for i := 0; i < r.settings.DeleteRunnerCount; i++ {
-		go r.executeDelete(ctx)
+		go coffin.RunLabeled(ctx, fmt.Sprintf("blob/batchRunner/executeDelete-%d", i), func() {
+			r.executeDelete(ctx)
+		})
 	}
 
 	<-ctx.Done()

@@ -70,9 +70,9 @@ func TestWriteLotsOfBadMetrics(t *testing.T) {
 		MetricName: "myMetricName",
 	})
 
-	cfn := coffin.New()
-	cfn.GoWithContext(ctx, daemon.Run)
-	cfn.GoWithContext(ctx, func(ctx context.Context) error {
+	cfn := coffin.New(context.Background())
+	cfn.GoWithContext("daemon runner", daemon.Run, coffin.WithContext(ctx))
+	cfn.GoWithContext("metric writer", func(ctx context.Context) error {
 		for {
 			select {
 			case <-ctx.Done():
@@ -84,9 +84,9 @@ func TestWriteLotsOfBadMetrics(t *testing.T) {
 				MetricName: "myMetricName",
 			})
 		}
-	})
+	}, coffin.WithContext(ctx))
 	for i := 0; i < 10; i++ {
-		cfn.GoWithContext(ctx, func(ctx context.Context) error {
+		cfn.GoWithContext("other metric writer", func(ctx context.Context) error {
 			for {
 				select {
 				case <-ctx.Done():
@@ -101,9 +101,9 @@ func TestWriteLotsOfBadMetrics(t *testing.T) {
 					Value:      1,
 				})
 			}
-		})
+		}, coffin.WithContext(ctx))
 	}
-	cfn.Go(func() error {
+	cfn.Go("cancel runner", func() error {
 		time.Sleep(10 * time.Second)
 		cancel()
 

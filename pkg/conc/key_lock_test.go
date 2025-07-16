@@ -53,37 +53,33 @@ func Test_keyLock_Lock(t *testing.T) {
 }
 
 func TestKeyLockHighTraffic(t *testing.T) {
-	cfn := coffin.New()
+	cfn := coffin.New(t.Context())
 	count := 0
 
-	cfn.Go(func() error {
-		l := conc.NewKeyLock()
+	l := conc.NewKeyLock()
 
-		var inCCS int32
+	var inCCS int32
 
-		for i := 0; i < 100; i++ {
-			cfn.Go(func() error {
-				for j := 0; j < 1000; j++ {
-					unlock := l.Lock("a")
+	for i := 0; i < 100; i++ {
+		cfn.Go("testTask", func() error {
+			for j := 0; j < 1000; j++ {
+				unlock := l.Lock("a")
 
-					// in critical section!
-					success := atomic.CompareAndSwapInt32(&inCCS, 0, 1)
-					assert.True(t, success, "we should be the only one in the critical section!")
+				// in critical section!
+				success := atomic.CompareAndSwapInt32(&inCCS, 0, 1)
+				assert.True(t, success, "we should be the only one in the critical section!")
 
-					count++
+				count++
 
-					success = atomic.CompareAndSwapInt32(&inCCS, 1, 0)
-					assert.True(t, success, "we should be the only one in the critical section!")
+				success = atomic.CompareAndSwapInt32(&inCCS, 1, 0)
+				assert.True(t, success, "we should be the only one in the critical section!")
 
-					unlock()
-				}
+				unlock()
+			}
 
-				return nil
-			})
-		}
-
-		return nil
-	})
+			return nil
+		})
+	}
 
 	err := cfn.Wait()
 	assert.NoError(t, err)

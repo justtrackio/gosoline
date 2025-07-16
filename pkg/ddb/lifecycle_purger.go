@@ -27,6 +27,8 @@ func NewLifeCyclePurger(ctx context.Context, config cfg.Config, logger log.Logge
 	var err error
 	var client gosoDynamodb.Client
 
+	logger = logger.WithChannel(fmt.Sprintf("lifecycle-purger-%s", tableName))
+
 	if client, err = gosoDynamodb.ProvideClient(ctx, config, logger, clientName); err != nil {
 		return nil, fmt.Errorf("can not create dynamodb client: %w", err)
 	}
@@ -100,22 +102,18 @@ func (s *LifeCyclePurger) purgeDropTable(ctx context.Context, table *types.Table
 }
 
 func (s *LifeCyclePurger) purgeScan(ctx context.Context, keyFields []types.KeySchemaElement) error {
-	cfn := coffin.New()
+	cfn := coffin.New(ctx)
 
 	totalSegments := s.clientSettings.PurgeParallelism
 	if totalSegments == 0 {
 		totalSegments = runtime.NumCPU()
 	}
 
-	cfn.GoWithContext(ctx, func(ctx context.Context) error {
-		for i := range totalSegments {
-			cfn.GoWithContext(ctx, func(ctx context.Context) error {
-				return s.doPurgeScan(ctx, keyFields, i, totalSegments)
-			})
-		}
-
-		return nil
-	})
+	for i := range totalSegments {
+		cfn.GoWithContext(fmt.Sprintf("purge segments %d", i), func(ctx context.Context) error {
+			return s.doPurgeScan(ctx, keyFields, i, totalSegments)
+		})
+	}
 
 	if err := cfn.Wait(); err != nil {
 		return fmt.Errorf("could not purge table %s: %w", s.tableName, err)

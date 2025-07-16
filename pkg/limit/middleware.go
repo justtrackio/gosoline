@@ -1,6 +1,6 @@
 package limit
 
-import "golang.org/x/net/context"
+import "context"
 
 type Middleware interface {
 	OnTake(ctx context.Context, i Invocation)

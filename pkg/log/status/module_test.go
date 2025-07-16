@@ -23,9 +23,9 @@ func TestModule(t *testing.T) {
 	assert.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
-	cfn := coffin.New()
+	cfn := coffin.New(context.Background())
 
-	cfn.GoWithContext(ctx, m.Run)
+	cfn.GoWithContext("runner", m.Run, coffin.WithContext(ctx))
 
 	mgr.StartWork("test", 3).ReportDone()
 	logger.EXPECT().Info("Work item %s: done", "test").Run(func(format string, args ...any) {
@@ -63,19 +63,19 @@ func NewTestModule(_ context.Context, _ cfg.Config, logger log.Logger) (kernel.M
 func (m *testModule) Run(ctx context.Context) error {
 	// declare a new work item with 3 steps
 	mainHandle := m.statusManager.StartWork("main", 3)
-	cfn := coffin.New()
+	cfn := coffin.New(ctx)
 
 	// first step: launch the work method and monitor its success
-	cfn.Go(m.statusManager.Monitor("work 1", m.Work))
+	cfn.GoWithContext("statusManager/monitor", m.statusManager.MonitorWithContext("work 1", m.Work))
 	mainHandle.ReportProgress(1, 0)
 
 	// second step: launch another work method and also monitor its success
-	cfn.GoWithContext(ctx, m.statusManager.MonitorWithContext("work 2", m.WorkWithContext))
+	cfn.GoWithContext("statusManager/monitorWithContext", m.statusManager.MonitorWithContext("work 2", m.WorkWithContext))
 	mainHandle.ReportProgress(2, 0)
 
 	// last step: launch a method that publishes two messages for the other workers to consume
 	publishHandle := m.statusManager.StartWork("publish", 2)
-	cfn.Go(publishHandle.Monitor(func() error {
+	cfn.Go("publisher", publishHandle.Monitor(func() error {
 		m.data <- 1
 		publishHandle.ReportProgress(1, 0)
 		m.data <- 2
@@ -95,7 +95,7 @@ func (m *testModule) Run(ctx context.Context) error {
 }
 
 // this method simply waits for a published message and never fails afterwards
-func (m *testModule) Work() error {
+func (m *testModule) Work(context.Context) error {
 	<-m.data
 
 	return nil

@@ -2,130 +2,305 @@ package coffin_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
+	"strconv"
 	"testing"
-	"time"
 
 	"github.com/justtrackio/gosoline/pkg/coffin"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestCoffin_New(t *testing.T) {
-	cfn := coffin.New()
-	myErr := errors.New("my error")
-
-	cfn.Gof(func() error {
-		panic(myErr)
-	}, "got this error: %d", 42)
-
-	err := cfn.Wait()
-	assert.Error(t, err)
-	assert.True(t, errors.Is(err, myErr))
-	assert.True(t, strings.HasPrefix(err.Error(), "got this error: 42: my error"))
+type coffinTestSuite struct {
+	suite.Suite
+	cfn coffin.Coffin
 }
 
-func TestCoffin_WithContext(t *testing.T) {
-	// if you are asking wtf is this, you might be correct. But let me explain:
-	// - we iterate a few times because this is a race condition and does not
-	//   trigger every time
-	// - the nested coffin pattern is actually used if your module is using the
-	//   coffin module. The outer coffin is actually used by the kernel to keep
-	//   track of your module
-	// - the error we are testing for is "panic: close of closed channel"
-	// - the error triggers because the old coffin implementation did COPY a coffin
-	//   and by doing so did copy a mutex. but a mutex is not safe to copy after
-	//   someone already got a reference to it - in this case tomb.WithContext
-	// - thus, tomb.WithContext locked a DIFFERENT mutex than we later locked when
-	//   killing the tomb/coffin, but closed the SAME channel
-	// - this test is thus intended to make sure no one actually reintroduces this
-	//   behavior
-	for i := 0; i < 10; i++ {
-		t.Run(fmt.Sprintf("iteration %d", i), func(t *testing.T) {
-			assert.NotPanics(t, func() {
-				cfn, ctx := coffin.WithContext(t.Context())
-				c := make(chan struct{})
-				errStop := errors.New("please stop")
-
-				cfn.GoWithContext(ctx, func(ctx context.Context) error {
-					nestedCfn, cfnCtx := coffin.WithContext(ctx)
-
-					nestedCfn.GoWithContext(cfnCtx, func(ctx context.Context) error {
-						ticker := time.NewTicker(time.Millisecond)
-						defer ticker.Stop()
-						count := 0
-
-						for {
-							select {
-							case <-ticker.C:
-								count++
-								if count == 3 {
-									close(c)
-								}
-							case <-ctx.Done():
-								return nil
-							}
-						}
-					})
-
-					err := nestedCfn.Wait()
-					if !errors.Is(err, context.Canceled) {
-						assert.NoError(t, err)
-					}
-
-					return err
-				})
-
-				<-c
-				cfn.Kill(errStop)
-				err := cfn.Wait()
-
-				assert.Equal(t, errStop, err)
-			})
-		})
-	}
+func TestCoffin(t *testing.T) {
+	suite.Run(t, new(coffinTestSuite))
 }
 
-func TestCoffin_WithContext_Cancel(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	cfn, ctx := coffin.WithContext(ctx)
-	cfn.GoWithContext(ctx, func(ctx context.Context) error {
-		<-ctx.Done()
-		// if we exit this function before the coffin is dying, we might sometimes have it return nil, sometimes context.Canceled
-		// thus, for now we wait until the coffin is dying, so we know it got already killed by context.Canceled
-		<-cfn.Dying()
+func (s *coffinTestSuite) SetupTest() {
+	s.cfn = coffin.New(s.T().Context(), coffin.WithLabels(map[string]string{
+		"test": s.T().Name(),
+	}))
+}
+
+func (s *coffinTestSuite) TestGo() {
+	s.cfn.GoWithContext("test", func(context.Context) error {
+		s.Equal(1, s.cfn.Running())
+		s.Equal(1, s.cfn.Started())
+		s.Equal(0, s.cfn.Terminated())
+		err := s.cfn.Err()
+		s.NoError(err)
 
 		return nil
 	})
 
+	err := s.cfn.Wait()
+	s.NoError(err)
+	s.Equal(0, s.cfn.Running())
+	s.Equal(1, s.cfn.Started())
+	s.Equal(1, s.cfn.Terminated())
+}
+
+func (s *coffinTestSuite) TestGoWithError() {
+	s.cfn.Go("test", func() error {
+		s.Equal(1, s.cfn.Running())
+		s.Equal(1, s.cfn.Started())
+		s.Equal(0, s.cfn.Terminated())
+		err := s.cfn.Err()
+		s.NoError(err)
+
+		return fmt.Errorf("test error")
+	})
+
+	err := s.cfn.Wait()
+	s.EqualError(err, `failed to execute task "test" from package "coffin_test": test error`)
+	s.Equal(0, s.cfn.Running())
+	s.Equal(1, s.cfn.Started())
+	s.Equal(1, s.cfn.Terminated())
+}
+
+func (s *coffinTestSuite) TestGoWithPanic() {
+	s.cfn.Go("test", func() error {
+		s.Equal(1, s.cfn.Running())
+		s.Equal(1, s.cfn.Started())
+		s.Equal(0, s.cfn.Terminated())
+		err := s.cfn.Err()
+		s.NoError(err)
+
+		panic("test panic")
+	})
+
+	err := s.cfn.Wait()
+	s.Error(err)
+	s.Contains(err.Error(), "test panic")
+	s.Equal(0, s.cfn.Running())
+	s.Equal(1, s.cfn.Started())
+	s.Equal(1, s.cfn.Terminated())
+}
+
+func (s *coffinTestSuite) TestGoWithContext() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.cfn.GoWithContext("test", func(ctxArg context.Context) error {
+		s.Equal(ctx, ctxArg)
+
+		s.Equal(1, s.cfn.Running())
+		s.Equal(1, s.cfn.Started())
+		s.Equal(0, s.cfn.Terminated())
+		err := s.cfn.Err()
+		s.NoError(err)
+
+		return nil
+	}, coffin.WithContext(ctx))
+
+	err := s.cfn.Wait()
+	s.NoError(err)
+	s.Equal(0, s.cfn.Running())
+	s.Equal(1, s.cfn.Started())
+	s.Equal(1, s.cfn.Terminated())
+}
+
+func (s *coffinTestSuite) TestConcurrentGo() {
+	for i := 0; i < 100; i++ {
+		s.cfn.Go(fmt.Sprintf("test-%02d", i), func() error {
+			return nil
+		}, coffin.WithLabels(map[string]string{
+			"index": strconv.Itoa(i),
+		}))
+	}
+
+	err := s.cfn.Wait()
+	s.NoError(err)
+	s.Equal(0, s.cfn.Running())
+	s.Equal(100, s.cfn.Started())
+	s.Equal(100, s.cfn.Terminated())
+}
+
+func (s *coffinTestSuite) TestMultipleErrors() {
+	s.cfn.Go("task1", func() error {
+		return fmt.Errorf("error 1")
+	})
+	s.cfn.Go("task2", func() error {
+		return fmt.Errorf("error 2")
+	})
+
+	err := s.cfn.Wait()
+	s.Error(err)
+	s.Contains(err.Error(), "error 1")
+	s.Contains(err.Error(), "error 2")
+	s.Equal(0, s.cfn.Running())
+	s.Equal(2, s.cfn.Started())
+	s.Equal(2, s.cfn.Terminated())
+}
+
+func (s *coffinTestSuite) TestMixedSuccessFailure() {
+	s.cfn.Go("success-task", func() error {
+		return nil
+	})
+	s.cfn.Go("failure-task", func() error {
+		return fmt.Errorf("task failed")
+	})
+
+	err := s.cfn.Wait()
+	s.EqualError(err, `failed to execute task "failure-task" from package "coffin_test": task failed`)
+	s.Equal(0, s.cfn.Running())
+	s.Equal(2, s.cfn.Started())
+	s.Equal(2, s.cfn.Terminated())
+}
+
+func (s *coffinTestSuite) TestNestedGo() {
+	s.cfn.Go("parent", func() error {
+		s.cfn.Go("child", func() error {
+			return nil
+		})
+
+		return nil
+	})
+
+	err := s.cfn.Wait()
+	s.NoError(err)
+	s.Equal(0, s.cfn.Running())
+	s.Equal(2, s.cfn.Started())
+	s.Equal(2, s.cfn.Terminated())
+}
+
+func (s *coffinTestSuite) TestCoffinReuse() {
+	for i := 1; i <= 100; i++ {
+		s.cfn.Go("task", func() error {
+
+			return nil
+		})
+
+		err := s.cfn.Wait()
+		s.NoError(err)
+		s.Equal(0, s.cfn.Running())
+		s.Equal(i, s.cfn.Started())
+		s.Equal(i, s.cfn.Terminated())
+	}
+}
+
+func (s *coffinTestSuite) TestMultipleWaitCalls() {
+	s.cfn.Go("test", func() error {
+		return nil
+	})
+
+	err := s.cfn.Wait()
+	s.NoError(err)
+
+	// calling Wait again should immediately return without errors
+	err = s.cfn.Wait()
+	s.NoError(err)
+}
+
+func (s *coffinTestSuite) TestCallWaitWithoutSpawningTask() {
+	err := s.cfn.Wait()
+	s.NoError(err)
+	s.Equal(0, s.cfn.Running())
+	s.Equal(0, s.cfn.Started())
+	s.Equal(0, s.cfn.Terminated())
+}
+
+func (s *coffinTestSuite) TestGoWithCanceledContext() {
+	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	err := cfn.Wait()
-	assert.Equal(t, ctx.Err(), err)
+	s.cfn.GoWithContext("test", func(ctx context.Context) error {
+		<-ctx.Done()
+		return ctx.Err()
+	}, coffin.WithContext(ctx))
+
+	err := s.cfn.Wait()
+	s.EqualError(err, `failed to execute task "test" from package "coffin_test": context canceled`)
+	s.Equal(0, s.cfn.Running())
+	s.Equal(1, s.cfn.Started())
+	s.Equal(1, s.cfn.Terminated())
 }
 
-func TestCoffin_Gof(t *testing.T) {
-	cfn := coffin.New()
-	cfn.Gof(func() error {
-		var err error
+func (s *coffinTestSuite) TestWrappedError() {
+	s.cfn.Go("test", func() error {
+		return fmt.Errorf("some error")
+	}, coffin.WithErrorWrapper("an error occurred = %v", true))
 
-		// crash the function!
-		//goland:noinspection GoNilness
-		errString := err.Error()
-		assert.Failf(t, "got unexpected string back", errString)
-
-		return err
-	}, "crashing function")
-
-	err := cfn.Wait()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "crashing function: runtime error: invalid memory address or nil pointer dereference")
+	err := s.cfn.Wait()
+	s.EqualError(err, "an error occurred = true: some error")
+	s.Equal(0, s.cfn.Running())
+	s.Equal(1, s.cfn.Started())
+	s.Equal(1, s.cfn.Terminated())
 }
 
-func TestCoffin_Wait_Empty(t *testing.T) {
-	cfn := coffin.New()
-	// check waiting on an empty coffin does not block forever
-	err := cfn.Wait()
-	assert.NoError(t, err)
+func (s *coffinTestSuite) TestCtxStaysSame() {
+	ctx := s.cfn.Ctx()
+	select {
+	case <-ctx.Done():
+		s.FailNow("should not yet be done with the context")
+	default:
+	}
+	s.cfn.GoWithContext("exit immediately", func(context.Context) error {
+		return nil
+	})
+	// check we can read from the context
+	err := s.cfn.Wait()
+	s.NoError(err)
+	<-ctx.Done()
+	<-s.cfn.Ctx().Done()
+	s.Equal(ctx, s.cfn.Ctx())
+
+	// run another go routine
+	c := make(chan struct{})
+	s.cfn.GoWithContext("exit once told", func(context.Context) error {
+		<-c
+
+		return nil
+	})
+	newCtx := s.cfn.Ctx()
+	s.NotEqual(newCtx, ctx)
+	select {
+	case <-newCtx.Done():
+		s.FailNow("should not yet be done with the new context")
+	default:
+	}
+	close(c)
+	err = s.cfn.Wait()
+	s.NoError(err)
+	<-newCtx.Done()
+}
+
+func (s *coffinTestSuite) TestTombStaysSame() {
+	tmb := s.cfn.Entomb()
+	select {
+	case <-tmb.Dead():
+		s.FailNow("tomb should not yet be dead")
+	default:
+	}
+	s.cfn.GoWithContext("exit immediately", func(context.Context) error {
+		return nil
+	})
+	// check we can read from the context
+	err := s.cfn.Wait()
+	s.NoError(err)
+	<-tmb.Dead()
+	<-s.cfn.Entomb().Dead()
+	s.Equal(tmb, s.cfn.Entomb())
+
+	// run another go routine
+	c := make(chan struct{})
+	s.cfn.GoWithContext("exit once told", func(context.Context) error {
+		<-c
+
+		return nil
+	})
+	newTmb := s.cfn.Entomb()
+	s.NotEqual(newTmb, tmb)
+	select {
+	case <-newTmb.Dead():
+		s.FailNow("new tomb should not yet be dead")
+	default:
+	}
+	close(c)
+	err = s.cfn.Wait()
+	s.NoError(err)
+	<-newTmb.Dead()
 }

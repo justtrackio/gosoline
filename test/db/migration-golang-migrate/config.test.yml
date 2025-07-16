@@ -18,7 +18,7 @@ db:
       enabled: true
       provider: golang-migrate
       table_prefixed: false
-      path: file://migrations/
+      path: file://migrations
 
 fixtures:
   enabled: true

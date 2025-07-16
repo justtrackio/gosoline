@@ -27,8 +27,8 @@ func NewKafkaOutput(ctx context.Context, config cfg.Config, logger log.Logger, k
 }
 
 func NewKafkaOutputWithInterfaces(ctx context.Context, producer *kafkaProducer.Producer) (*KafkaOutput, error) {
-	pool := coffin.New()
-	pool.GoWithContext(ctx, producer.Run)
+	pool := coffin.New(ctx)
+	pool.GoWithContext("kafkaProducer/run", producer.Run)
 
 	return &KafkaOutput{producer: producer, pool: pool}, nil
 }

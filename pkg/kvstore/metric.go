@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/refl"
@@ -54,7 +55,11 @@ func NewMetricStoreWithInterfaces[T any](store KvStore[T], settings *Settings) K
 	}
 
 	if sizedStore, ok := store.(SizedStore[T]); ok {
-		go s.recordSize(sizedStore)
+		go coffin.RunLabeled(context.Background(), "kvstore/recordSize", func() {
+			s.recordSize(sizedStore)
+		}, map[string]string{
+			"store": settings.Name,
+		})
 	}
 
 	return s

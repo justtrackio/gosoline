@@ -8,6 +8,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -89,7 +90,9 @@ func (i *redisListInput) Run(ctx context.Context) error {
 		return errors.New("wait time should be bigger than 0")
 	}
 
-	go i.runMetricLoop(ctx)
+	go coffin.RunLabeled(ctx, "stream/redisInput", func() {
+		i.runMetricLoop(ctx)
+	})
 
 	for {
 		if i.stopped {

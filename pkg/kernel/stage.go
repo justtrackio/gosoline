@@ -2,8 +2,8 @@ package kernel
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -12,8 +12,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
-
-var ErrKernelStopping = fmt.Errorf("stopping kernel")
 
 type modules struct {
 	lck     conc.PoisonedLock
@@ -26,7 +24,6 @@ func (m modules) len() int {
 
 type stage struct {
 	cfn                 coffin.Coffin
-	ctx                 context.Context
 	clk                 clock.Clock
 	logger              log.Logger
 	index               int
@@ -40,7 +37,7 @@ type stage struct {
 }
 
 func newStage(ctx context.Context, config cfg.Config, logger log.Logger, index int) (*stage, error) {
-	cfn, ctx := coffin.WithContext(ctx)
+	cfn := coffin.New(ctx)
 
 	settings, err := readSettings(config)
 	if err != nil {
@@ -49,7 +46,6 @@ func newStage(ctx context.Context, config cfg.Config, logger log.Logger, index i
 
 	return &stage{
 		cfn:                 cfn,
-		ctx:                 ctx,
 		clk:                 clock.NewRealClock(),
 		logger:              logger,
 		index:               index,
@@ -71,15 +67,15 @@ func (s *stage) run(k *kernel) error {
 	}
 
 	for name, ms := range s.modules.modules {
-		s.cfn.Gof(func(name string, ms *moduleState) func() error {
-			return func() error {
+		s.cfn.GoWithContext(fmt.Sprintf("%s (stage %d)", name, ms.config.stage), func(name string, ms *moduleState) func(ctx context.Context) error {
+			return func(ctx context.Context) error {
 				// wait until every routine of the stage was spawned
 				// if a module exists too fast, we have a race condition
 				// regarding the precondition of tomb.Go (namely that no
 				// new routine may be added after the last one exited)
 				<-s.running.Channel()
 
-				resultErr := k.runModule(s.ctx, name, ms)
+				resultErr := k.runModule(ctx, name, ms)
 
 				if resultErr != nil {
 					// pass the error (and stage) to the internal stop function, so we raise the correct error in the end
@@ -89,7 +85,10 @@ func (s *stage) run(k *kernel) error {
 
 				return resultErr
 			}
-		}(name, ms), "panic during running of module %s", name)
+		}(name, ms), coffin.WithLabels(map[string]string{
+			"stage":  strconv.Itoa(ms.config.stage),
+			"module": name,
+		}), coffin.WithErrorWrapper("panic during running of module %s", name))
 	}
 
 	s.running.Signal()
@@ -117,7 +116,7 @@ func (s *stage) healthcheck() HealthCheckResult {
 				err = coffin.ResolveRecovery(recover())
 			}()
 
-			return healthAware.IsHealthy(s.ctx)
+			return healthAware.IsHealthy(s.cfn.Ctx())
 		}()
 
 		result = append(result, ModuleHealthCheckResult{
@@ -176,7 +175,7 @@ func (s *stage) waitUntilHealthy() error {
 				s.healthCheckSettings.Timeout,
 				strings.Join(unhealthyModules, ", "),
 			)
-		case <-s.ctx.Done():
+		case <-s.cfn.Ctx().Done():
 			return nil
 		case <-sleepTicker.Chan():
 		}
@@ -185,16 +184,13 @@ func (s *stage) waitUntilHealthy() error {
 
 func (s *stage) stopWait(killErr error) {
 	// if the stage already failed, we had a race condition in the past. On the one hand, the error wasn't propagated to
-	// the coffin/tomb yet, on the other hand, we had spawned a go routine to stop the kernel (which would eventually call
+	// the coffin yet, on the other hand, we had spawned a go routine to stop the kernel (which would eventually call
 	// this method here). Thus, we now pass the error for the stage which caused us to terminate the stage/kernel and
 	// kill the coffin with this error (so we still have the race, but both results are the same)
-	if killErr == nil {
-		killErr = ErrKernelStopping
-	}
 	s.cfn.Kill(killErr)
 	s.err = s.cfn.Wait()
 
-	if s.err != nil && !errors.Is(s.err, ErrKernelStopping) {
+	if s.err != nil {
 		s.logger.Error("error during the execution of stage %d: %w", s.index, s.err)
 	}
 

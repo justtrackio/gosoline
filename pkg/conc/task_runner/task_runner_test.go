@@ -20,8 +20,8 @@ func TestTaskRunner(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(ctx)
 
-	cfn := coffin.New()
-	cfn.GoWithContext(ctx, runner.Run)
+	cfn := coffin.New(context.Background())
+	cfn.GoWithContext("runner", runner.Run, coffin.WithContext(ctx))
 
 	var callCount atomic.Int32
 	var wg sync.WaitGroup

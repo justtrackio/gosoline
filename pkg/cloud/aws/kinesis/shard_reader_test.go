@@ -182,7 +182,7 @@ func (s *shardReaderTestSuite) TestGetRecordsAndReleaseFails() {
 	}).Return(nil, fmt.Errorf("fail")).Once()
 
 	err := s.shardReader.Run(s.ctx, s.consumeRecord)
-	s.EqualError(err, multierror.Append(
+	s.EqualError(err, `failed to execute task "kinsumer/shardIterator" from package "kinesis": `+multierror.Append(
 		fmt.Errorf("failed reading records from shard: failed to get records from shard: fail"),
 		fmt.Errorf("failed to release checkpoint for shard: fail again"),
 	).Error())

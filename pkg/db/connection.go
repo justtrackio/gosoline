@@ -64,7 +64,7 @@ func NewConnectionFromSettings(ctx context.Context, logger log.Logger, name stri
 		return nil, fmt.Errorf("can not run migrations: %w", err)
 	}
 
-	publishConnectionMetrics(connection)
+	publishConnectionMetrics(name, connection)
 
 	return connection, nil
 }

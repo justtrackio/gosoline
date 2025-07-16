@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/exec"
@@ -136,7 +137,9 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.Di
 		}).Debug("acquired lock")
 
 		lock = NewDdbLockFromInterfaces(m, m.clock, m.logger, ctx, resource, token, expires)
-		go lock.runWatcher()
+		go coffin.RunLabeled(ctx, "conc/ddb/lockWatcher", func() {
+			lock.runWatcher()
+		})
 
 		return nil
 	}, m.backOff)
