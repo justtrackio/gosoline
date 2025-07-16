@@ -6,8 +6,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	cfgMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 func TestGetAppIdFromConfig(t *testing.T) {
@@ -17,13 +15,7 @@ func TestGetAppIdFromConfig(t *testing.T) {
 	config.EXPECT().GetString("app_group").Return("grp", nil)
 	config.EXPECT().GetString("app_name").Return("name", nil)
 	config.EXPECT().GetString("env").Return("test", nil)
-	config.EXPECT().UnmarshalKey("cloud.aws.realm", mock.AnythingOfType("*struct { Pattern string \"cfg:\\\"pattern,nodecode\\\" default:\\\"{project}-{env}-{family}-{group}\\\"\" }")).Run(func(key string, settings interface{}, additionalDefaults ...cfg.UnmarshalDefaults) {
-		// Set the default pattern
-		settingsPtr := settings.(*struct {
-			Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}"`
-		})
-		settingsPtr.Pattern = "{project}-{env}-{family}-{group}"
-	}).Return(nil)
+	config.EXPECT().GetString("realm").Return("rlm", nil)
 
 	appId, err := cfg.GetAppIdFromConfig(config)
 	assert.NoError(t, err)
@@ -34,7 +26,7 @@ func TestGetAppIdFromConfig(t *testing.T) {
 		Family:      "fam",
 		Group:       "grp",
 		Application: "name",
-		Realm:       "prj-test-fam-grp",
+		Realm:       "rlm",
 	}, appId)
 }
 
@@ -45,13 +37,7 @@ func TestAppId_PadFromConfig(t *testing.T) {
 	config.EXPECT().GetString("app_group").Return("grp", nil)
 	config.EXPECT().GetString("app_name").Return("name", nil)
 	config.EXPECT().GetString("env").Return("test", nil)
-	config.EXPECT().UnmarshalKey("cloud.aws.realm", mock.AnythingOfType("*struct { Pattern string \"cfg:\\\"pattern,nodecode\\\" default:\\\"{project}-{env}-{family}-{group}\\\"\" }")).Run(func(key string, settings interface{}, additionalDefaults ...cfg.UnmarshalDefaults) {
-		// Set the default pattern
-		settingsPtr := settings.(*struct {
-			Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}"`
-		})
-		settingsPtr.Pattern = "{project}-{env}-{family}-{group}"
-	}).Return(nil)
+	config.EXPECT().GetString("realm").Return("rlm", nil)
 
 	appId := cfg.AppId{}
 	err := appId.PadFromConfig(config)
@@ -63,7 +49,7 @@ func TestAppId_PadFromConfig(t *testing.T) {
 		Family:      "fam",
 		Group:       "grp",
 		Application: "name",
-		Realm:       "prj-test-fam-grp",
+		Realm:       "rlm",
 	}, appId)
 
 	config.AssertExpectations(t)
@@ -76,9 +62,10 @@ func TestAppId_ReplaceMacros(t *testing.T) {
 		Family:      "myfamily",
 		Group:       "mygroup",
 		Application: "myapp",
+		Realm:       "{project}-{env}-{family}-{group}",
 	}
 
-	pattern := "{project}-{env}-{family}-{group}-{app}"
+	pattern := "{realm}-{app}"
 	result := appId.ReplaceMacros(pattern)
 	assert.Equal(t, "myproject-test-myfamily-mygroup-myapp", result)
 }
@@ -90,9 +77,10 @@ func TestAppId_ReplaceMacros_EmptyValues(t *testing.T) {
 		Family:      "myfamily",
 		Group:       "",
 		Application: "myapp",
+		Realm:       "{project}-{env}-{family}-{group}",
 	}
 
-	pattern := "{project}-{env}-{family}-{group}-{app}"
+	pattern := "{realm}-{app}"
 	result := appId.ReplaceMacros(pattern)
 	assert.Equal(t, "myproject--myfamily--myapp", result)
 }
@@ -104,7 +92,7 @@ func TestAppId_ReplaceMacros_WithRealm(t *testing.T) {
 		Family:      "myfamily",
 		Group:       "mygroup",
 		Application: "myapp",
-		Realm:       "myproject-test",
+		Realm:       "{project}-{env}-{family}-{group}",
 	}
 
 	pattern := "{realm}-{streamName}"
@@ -112,7 +100,7 @@ func TestAppId_ReplaceMacros_WithRealm(t *testing.T) {
 		{"streamName", "mystream"},
 	}
 	result := appId.ReplaceMacros(pattern, extraMacros...)
-	assert.Equal(t, "myproject-test-mystream", result)
+	assert.Equal(t, "myproject-test-myfamily-mygroup-mystream", result)
 }
 
 func TestAppId_ReplaceMacros_ExtraMacrosOrdering(t *testing.T) {
@@ -122,77 +110,15 @@ func TestAppId_ReplaceMacros_ExtraMacrosOrdering(t *testing.T) {
 		Family:      "myfamily",
 		Group:       "mygroup",
 		Application: "myapp",
+		Realm:       "{project}-{env}",
 	}
 
 	// Test that extra macros are replaced before and after AppId macros
-	pattern := "{prefix}-{project}-{suffix}"
+	pattern := "{prefix}-{realm}-{suffix}"
 	extraMacros := []cfg.MacroValue{
 		{"prefix", "before-{env}"},
 		{"suffix", "after-{env}"},
 	}
 	result := appId.ReplaceMacros(pattern, extraMacros...)
-	assert.Equal(t, "before-test-myproject-after-test", result)
-}
-
-type RealmTestSuite struct {
-	suite.Suite
-	config      cfg.GosoConf
-	envProvider cfg.EnvProvider
-}
-
-func (s *RealmTestSuite) SetupTest() {
-	s.envProvider = cfg.NewMemoryEnvProvider()
-	s.config = cfg.NewWithInterfaces(s.envProvider)
-
-	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
-	s.NoError(err)
-}
-
-func (s *RealmTestSuite) setupConfig(settings map[string]any) {
-	err := s.config.Option(cfg.WithConfigMap(settings))
-	s.NoError(err, "there should be no error on setting up the config")
-}
-
-func (s *RealmTestSuite) TestRealmFromConfig_Default() {
-	appId := cfg.AppId{
-		Project:     "myproject",
-		Environment: "test",
-		Family:      "myfamily",
-		Group:       "mygroup",
-		Application: "myapp",
-		Realm:       "",
-	}
-
-	err := appId.PadFromConfig(s.config)
-	s.NoError(err)
-	s.Equal("myproject-test-myfamily-mygroup", appId.Realm)
-}
-
-func (s *RealmTestSuite) TestRealmFromConfig_GlobalCustomPattern() {
-	s.setupConfig(map[string]any{
-		"cloud": map[string]any{
-			"aws": map[string]any{
-				"realm": map[string]any{
-					"pattern": "custom-{project}-{env}",
-				},
-			},
-		},
-	})
-
-	appId := cfg.AppId{
-		Project:     "myproject",
-		Environment: "test",
-		Family:      "myfamily",
-		Group:       "mygroup",
-		Application: "myapp",
-		Realm:       "",
-	}
-
-	err := appId.PadFromConfig(s.config)
-	s.NoError(err)
-	s.Equal("custom-myproject-test", appId.Realm)
-}
-
-func TestRealmTestSuite(t *testing.T) {
-	suite.Run(t, new(RealmTestSuite))
+	assert.Equal(t, "before-test-myproject-test-after-test", result)
 }
