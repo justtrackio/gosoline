@@ -30,7 +30,7 @@ func (s *GetStreamNameTestSuite) SetupTest() {
 		"app_family":  "gosoline",
 		"app_group":   "grp",
 		"app_name":    "producer",
-		"realm":       "justtrack-env-gosoline-grp", // Default realm value
+		"realm":       "{app_project}-{env}-{app_family}-{app_group}", // Default realm value
 	}
 	
 	err := s.config.Option(cfg.WithConfigMap(baseConfig))
@@ -126,7 +126,7 @@ func (s *GetStreamNameTestSuite) TestRealmDefault() {
 func (s *GetStreamNameTestSuite) TestRealmGlobalCustomPattern() {
 	// Test custom global realm
 	s.setupConfig(map[string]any{
-		"realm": "justtrack-env-gosoline",
+		"realm": "{app_project}-{env}-{app_family}",
 	})
 
 	name, err := kinesis.GetStreamName(s.config, s.settings)
@@ -137,7 +137,7 @@ func (s *GetStreamNameTestSuite) TestRealmGlobalCustomPattern() {
 func (s *GetStreamNameTestSuite) TestRealmServiceSpecificPattern() {
 	// Test service-specific realm
 	s.setupConfig(map[string]any{
-		"realm": "justtrack-env",
+		"realm": "{app_project}-{env}",
 	})
 
 	name, err := kinesis.GetStreamName(s.config, s.settings)
@@ -149,7 +149,7 @@ func (s *GetStreamNameTestSuite) TestRealmClientSpecificPattern() {
 	// Test client-specific realm
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"realm": "justtrack-gosoline",
+		"realm": "{app_project}-{app_family}",
 	})
 
 	name, err := kinesis.GetStreamName(s.config, s.settings)
@@ -160,13 +160,13 @@ func (s *GetStreamNameTestSuite) TestRealmClientSpecificPattern() {
 func (s *GetStreamNameTestSuite) TestRealmWithCustomPattern() {
 	// Test custom pattern with realm
 	s.setupConfig(map[string]any{
-		"realm": "justtrack-env-gosoline",
-		"cloud.aws.kinesis.clients.default.naming.pattern": "{realm}-{streamName}",
+		"realm": "{app_project}-{env}-{app_family}",
+		"cloud.aws.kinesis.clients.default.naming.pattern": "{realm}-{app}-{streamName}",
 	})
 
 	name, err := kinesis.GetStreamName(s.config, s.settings)
 	s.NoError(err)
-	s.EqualValues("justtrack-env-gosoline-event", name)
+	s.EqualValues("justtrack-env-gosoline-producer-event", name)
 }
 
 func (s *GetStreamNameTestSuite) TestBackwardCompatibilityWithoutRealm() {

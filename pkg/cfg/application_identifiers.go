@@ -13,7 +13,7 @@ type AppId struct {
 	Family      string `cfg:"family"      default:"{app_family}"                     json:"family"`
 	Group       string `cfg:"group"       default:"{app_group}"                      json:"group"`
 	Application string `cfg:"application" default:"{app_name}"                       json:"application"`
-	Realm       string `cfg:"realm"       default:"{project}-{env}-{family}-{group}" json:"realm"`
+	Realm       string `cfg:"realm"       default:"{app_project}-{env}-{app_family}-{app_group}" json:"realm"`
 }
 
 func GetAppIdFromConfig(config Config) (AppId, error) {
