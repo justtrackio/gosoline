@@ -7,18 +7,18 @@ import (
 )
 
 func ResolveRecovery(unknownErr any) error {
-	switch rval := unknownErr.(type) {
+	switch retVal := unknownErr.(type) {
 	case nil:
 		return nil
 
 	case error:
-		return withStack(rval)
+		return withStack(retVal)
 
 	case string:
-		return withStack(fmt.Errorf("%s", rval))
+		return withStack(fmt.Errorf("%s", retVal))
 
 	default:
-		return withStack(fmt.Errorf("unhandled error type %T", rval))
+		return withStack(fmt.Errorf("unhandled error type %T", retVal))
 	}
 }
 

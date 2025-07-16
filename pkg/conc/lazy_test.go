@@ -59,9 +59,9 @@ func TestLazyConcurrently(t *testing.T) {
 	})
 
 	ch := make(chan struct{})
-	cfn := coffin.New()
+	cfn := coffin.New(t.Context())
 	for i := 0; i < 10; i++ {
-		cfn.Go(func() error {
+		cfn.Go(fmt.Sprintf("runner %d", i), func() error {
 			<-ch
 			v, err := l.Get(i)
 			if err != nil {

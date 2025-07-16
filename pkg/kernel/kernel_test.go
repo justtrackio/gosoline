@@ -62,27 +62,23 @@ func (s *KernelTestSuite) SetupTest() {
 func timeout(t *testing.T, d time.Duration, f func(t *testing.T)) {
 	done := make(chan struct{})
 	errChan := make(chan error)
-	cfn := coffin.New()
-	cfn.Go(func() error {
-		cfn.Go(func() error {
-			defer close(done)
-			f(t)
+	cfn := coffin.New(t.Context())
+	cfn.Go("task runner", func() error {
+		defer close(done)
+		f(t)
 
-			return nil
-		})
-		cfn.Go(func() error {
-			timer := time.NewTimer(d)
-			defer timer.Stop()
-			defer close(errChan)
+		return nil
+	})
+	cfn.Go("timeout task", func() error {
+		timer := time.NewTimer(d)
+		defer timer.Stop()
+		defer close(errChan)
 
-			select {
-			case <-timer.C:
-				errChan <- fmt.Errorf("test timed out after %v", d)
-			case <-done:
-			}
-
-			return nil
-		})
+		select {
+		case <-timer.C:
+			errChan <- fmt.Errorf("test timed out after %v", d)
+		case <-done:
+		}
 
 		return nil
 	})
@@ -494,9 +490,9 @@ type realModule struct {
 }
 
 func (m *realModule) Run(ctx context.Context) error {
-	cfn, cfnCtx := coffin.WithContext(ctx)
+	cfn := coffin.New(ctx)
 
-	cfn.GoWithContext(cfnCtx, func(ctx context.Context) error {
+	cfn.GoWithContext("task", func(ctx context.Context) error {
 		ticker := time.NewTicker(time.Millisecond * 2)
 		defer ticker.Stop()
 

@@ -1,12 +1,14 @@
 package parquet
 
 import (
+	"context"
 	"math"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 )
 
 type Partition struct {
@@ -115,7 +117,7 @@ func (p *memoryPartitioner) Size() int {
 }
 
 func (p *memoryPartitioner) Start() {
-	go func() {
+	go coffin.RunLabeled(context.Background(), "parquet/memoryPartitioner", func() {
 		for {
 			select {
 			case <-p.ticker.C:
@@ -124,7 +126,7 @@ func (p *memoryPartitioner) Start() {
 				return
 			}
 		}
-	}()
+	})
 }
 
 func (p *memoryPartitioner) Stop() {

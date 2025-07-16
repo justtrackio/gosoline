@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 )
 
 type StopFunc func()
@@ -61,7 +62,7 @@ func newStoppableContext(parentCtx context.Context, deadline *time.Time, handler
 		}
 	}
 
-	go func() {
+	go coffin.RunLabeled(parentCtx, "exec/stoppableContext/closer", func() {
 		defer ctx.stopWg.Done()
 
 		shouldClose, err := handler(ctx)
@@ -71,7 +72,7 @@ func newStoppableContext(parentCtx context.Context, deadline *time.Time, handler
 		if shouldClose {
 			close(ctx.done)
 		}
-	}()
+	})
 
 	return ctx, ctx.stop
 }

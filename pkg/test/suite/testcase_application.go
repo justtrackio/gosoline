@@ -8,6 +8,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/reslife"
@@ -106,10 +107,10 @@ func runTestCaseApplication(t *testing.T, _ TestingSuite, suiteOptions *suiteOpt
 
 	appUnderTest := newAppUnderTest(app, appDone)
 
-	go func() {
+	go coffin.RunLabeled(environment.Context(), "test/suite/runApp", func() {
+		defer close(done)
 		app.Run()
-		close(done)
-	}()
+	})
 
 	select {
 	case <-app.Running():

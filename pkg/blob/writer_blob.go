@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -110,9 +111,9 @@ func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
-	go func(ctx context.Context) {
+	go coffin.RunLabeled(ctx, "fixtures/writerBlob", func() {
 		err = s.batchRunner.Run(ctx)
-	}(ctx)
+	})
 	defer cancel()
 
 	if err := s.store.Write(batch); err != nil {

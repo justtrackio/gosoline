@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -122,13 +123,13 @@ func NewMetricServerWithInterfaces(logger log.Logger, registry *prometheus.Regis
 
 func (s *metricsServer) Run(ctx context.Context) error {
 	var err error
-	go func() {
+	go coffin.RunLabeled(ctx, "metric/server", func() {
 		if err = s.server.Serve(s.listener); !errors.Is(err, http.ErrServerClosed) {
 			s.logger.Error("Server closed unexpected: %w", err)
 
 			return
 		}
-	}()
+	})
 
 	<-ctx.Done()
 

@@ -1,6 +1,7 @@
 package clock_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -121,16 +122,16 @@ func TestRealTimer_NewTimerWithNegative(t *testing.T) {
 
 func TestRealTimerConcurrentResetAndStop(t *testing.T) {
 	timer := clock.NewRealTimer(time.Minute)
-	cfn := coffin.New()
+	cfn := coffin.New(t.Context())
 	for i := 0; i < 100; i++ {
-		cfn.Go(func() error {
+		cfn.Go(fmt.Sprintf("reset task %d", i), func() error {
 			for j := 0; j < 10000; j++ {
 				timer.Reset(time.Minute)
 			}
 
 			return nil
 		})
-		cfn.Go(func() error {
+		cfn.Go(fmt.Sprintf("stop task %d", i), func() error {
 			timer.Stop()
 
 			return nil

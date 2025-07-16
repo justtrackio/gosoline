@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -59,7 +60,9 @@ func NewProfilingWithInterfaces(logger log.Logger, router *gin.Engine, settings 
 }
 
 func (p *Profiling) Run(ctx context.Context) error {
-	go p.waitForStop(ctx)
+	go coffin.RunLabeled(ctx, "httpserver/profiling/waitForStop", func() {
+		p.waitForStop(ctx)
+	})
 	err := p.server.ListenAndServe()
 
 	if !errors.Is(err, http.ErrServerClosed) {

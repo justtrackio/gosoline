@@ -2,6 +2,7 @@ package scheduler_test
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"sync"
 	"testing"
@@ -22,8 +23,8 @@ func TestScheduler(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(ctx)
 
-	cfn := coffin.New()
-	cfn.GoWithContext(ctx, runner.Run)
+	cfn := coffin.New(ctx)
+	cfn.GoWithContext("runner", runner.Run)
 
 	batchRunner := func(ctx context.Context, keys []string, providers []func() (int, error)) (map[string]int, error) {
 		results := map[string]int{}
@@ -50,7 +51,7 @@ func TestScheduler(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
-		cfn.Go(func() error {
+		cfn.Go(fmt.Sprintf("tasks %d", i), func() error {
 			defer wg.Done()
 
 			for j := i * 10; j < (i+1)*10; j++ {

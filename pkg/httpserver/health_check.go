@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -63,18 +64,20 @@ func NewHealthCheckWithInterfaces(logger log.Logger, router *gin.Engine, healthC
 	}
 }
 
-func (a *HttpServerHealthCheck) Run(ctx context.Context) error {
-	go a.waitForStop(ctx)
+func (s *HttpServerHealthCheck) Run(ctx context.Context) error {
+	go coffin.RunLabeled(ctx, "httpserver/healthcheck/waitForStop", func() {
+		s.waitForStop(ctx)
+	})
 
-	err := a.server.ListenAndServe()
+	err := s.server.ListenAndServe()
 
 	if !errors.Is(err, http.ErrServerClosed) {
-		a.logger.Error("server check closed unexpected: %w", err)
+		s.logger.Error("server check closed unexpected: %w", err)
 
 		return err
 	}
 
-	a.logger.Info("leaving httpserver health check")
+	s.logger.Info("leaving httpserver health check")
 
 	return nil
 }

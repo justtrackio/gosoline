@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/kernel/common"
@@ -268,14 +269,14 @@ func (d *Daemon) throttleError(err string) bool {
 	d.errorThrottles[err] = true
 
 	// automatically unlock the err after a minute
-	go func() {
+	go coffin.RunLabeled(context.Background(), "metric/daemon/errorThrottleUnlock", func() {
 		time.Sleep(time.Minute)
 
 		d.errorThrottlesLck.Lock()
 		defer d.errorThrottlesLck.Unlock()
 
 		delete(d.errorThrottles, err)
-	}()
+	})
 
 	return true
 }

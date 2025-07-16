@@ -1,6 +1,7 @@
 package clock_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -94,16 +95,16 @@ func TestRealTicker_NewTickerWithNegative(t *testing.T) {
 
 func TestRealTickerConcurrentResetAndStop(t *testing.T) {
 	ticker := clock.NewRealTicker(time.Minute)
-	cfn := coffin.New()
+	cfn := coffin.New(t.Context())
 	for i := 0; i < 100; i++ {
-		cfn.Go(func() error {
+		cfn.Go(fmt.Sprintf("reset task %d", i), func() error {
 			for j := 0; j < 10000; j++ {
 				ticker.Reset(time.Minute)
 			}
 
 			return nil
 		})
-		cfn.Go(func() error {
+		cfn.Go(fmt.Sprintf("stop task %d", i), func() error {
 			ticker.Stop()
 
 			return nil

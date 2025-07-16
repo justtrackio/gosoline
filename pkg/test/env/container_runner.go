@@ -1,6 +1,7 @@
 package env
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -128,22 +129,18 @@ func NewContainerRunner(config cfg.Config, logger log.Logger) (*containerRunner,
 }
 
 func (r *containerRunner) PullContainerImages(skeletons []*componentSkeleton) error {
-	cfn := coffin.New()
-	cfn.Go(func() error {
-		for _, skeleton := range skeletons {
-			for _, description := range skeleton.containerDescriptions {
-				if description.containerConfig.UseExternalContainer {
-					continue
-				}
-
-				cfn.Gof(func() error {
-					return r.PullContainerImage(description)
-				}, "can not pull container %s", skeleton.id())
+	cfn := coffin.New(context.Background())
+	for _, skeleton := range skeletons {
+		for _, description := range skeleton.containerDescriptions {
+			if description.containerConfig.UseExternalContainer {
+				continue
 			}
-		}
 
-		return nil
-	})
+			cfn.Go(fmt.Sprintf("pullContainer %s", skeleton.id()), func() error {
+				return r.PullContainerImage(description)
+			}, coffin.WithErrorWrapper("can not pull container %s", skeleton.id()))
+		}
+	}
 
 	return cfn.Wait()
 }
@@ -193,19 +190,25 @@ func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 		return err
 	}
 
-	cfn := coffin.New()
+	cfn := coffin.New(context.Background())
 	lck := new(sync.Mutex)
 
 	for i := range skeletons {
 		for name, description := range skeletons[i].containerDescriptions {
 			skeleton := skeletons[i]
 
-			cfn.Gof(func() error {
+			cfn.Go(fmt.Sprintf("containerRunner %s/%s", skeleton.id(), name), func() error {
 				var err error
 				var container *container
 
 				if container, err = r.RunContainer(skeleton, name, description); err != nil {
-					return fmt.Errorf("can not run container %s (%s:%s): %w", skeleton.id(), description.containerConfig.Repository, description.containerConfig.Tag, err)
+					return fmt.Errorf(
+						"can not run container %s (%s:%s): %w",
+						skeleton.id(),
+						description.containerConfig.Repository,
+						description.containerConfig.Tag,
+						err,
+					)
 				}
 
 				lck.Lock()
@@ -214,7 +217,7 @@ func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 				skeleton.containers[name] = container
 
 				return nil
-			}, "can not run container %s", skeleton.id())
+			}, coffin.WithErrorWrapper("can not run container %s", skeleton.id()))
 		}
 	}
 
@@ -242,7 +245,11 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton, name string,
 
 	if err = r.waitUntilHealthy(container, description.healthCheck); err != nil {
 		if description.containerConfig.UseExternalContainer {
-			return nil, fmt.Errorf("healthcheck failed on container for component %s. The container is configured to use an external container, is that container running? %w", skeleton.id(), err)
+			return nil, fmt.Errorf(
+				"healthcheck failed on container for component %s. The container is configured to use an external container, is that container running? %w",
+				skeleton.id(),
+				err,
+			)
 		}
 
 		return nil, fmt.Errorf("healthcheck failed on container for component %s: %w", skeleton.id(), err)
@@ -277,7 +284,12 @@ func (r *containerRunner) createExternalContainer(containerName, skeletonTyp str
 	}, nil
 }
 
-func (r *containerRunner) runNewContainer(containerName string, skeleton *componentSkeleton, name string, config *containerConfig) (*container, error) {
+func (r *containerRunner) runNewContainer(
+	containerName string,
+	skeleton *componentSkeleton,
+	name string,
+	config *containerConfig,
+) (*container, error) {
 	r.logger.Debug("run container %s %s:%s %s", skeleton.typ, config.Repository, config.Tag, containerName)
 
 	bindings := make(map[docker.Port][]docker.PortBinding)
@@ -316,7 +328,14 @@ func (r *containerRunner) runNewContainer(containerName string, skeleton *compon
 	return container, nil
 }
 
-func (r *containerRunner) runContainer(options *dockertest.RunOptions, resourceId string, expireAfter time.Duration, bindings portBindings, typ string, tmpfs map[string]string) (*container, error) {
+func (r *containerRunner) runContainer(
+	options *dockertest.RunOptions,
+	resourceId string,
+	expireAfter time.Duration,
+	bindings portBindings,
+	typ string,
+	tmpfs map[string]string,
+) (*container, error) {
 	var resourceContainer *container
 
 	resource, err := r.pool.RunWithOptions(options, func(hc *docker.HostConfig) {

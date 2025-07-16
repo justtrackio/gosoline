@@ -75,6 +75,8 @@ func getConfigs(ctx context.Context, config cfg.Config, logger log.Logger, name 
 		opt(clientCfg)
 	}
 
+	logger = logger.WithChannel(fmt.Sprintf("athena-%s", name))
+
 	var err error
 	var awsConfig aws.Config
 

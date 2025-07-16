@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/encoding/yaml"
@@ -73,9 +75,11 @@ func (s *MetadataServer) Run(ctx context.Context) error {
 	handler.HandleFunc("/memory", s.handleMemory)
 
 	s.server.Handler = handler
-	go s.waitForStop(ctx)
+	go coffin.RunLabeled(ctx, "metadata-server/waitForStop", func() {
+		s.waitForStop(ctx)
+	})
 
-	if err = s.server.Serve(listener); err != http.ErrServerClosed {
+	if err = s.server.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 

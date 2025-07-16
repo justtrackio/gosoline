@@ -9,6 +9,7 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -148,7 +149,9 @@ func NewWithInterfaces(
 // Run starts the Server kernel.Module, listens to the port configured and gracefully shuts down when the context is closed
 // or if the HealthChecks are enabled when a service becomes unhealthy.
 func (g *Server) Run(ctx context.Context) error {
-	go g.waitForStop(ctx)
+	go coffin.RunLabeled(ctx, "grpcserver/waitForStop", func() {
+		g.waitForStop(ctx)
+	})
 
 	err := g.server.Serve(g.listener)
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {

@@ -25,15 +25,15 @@ func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, ke
 		return nil, fmt.Errorf("failed to init consumer: %w", err)
 	}
 
-	return NewKafkaInputWithInterfaces(consumer)
+	return NewKafkaInputWithInterfaces(consumer), nil
 }
 
-func NewKafkaInputWithInterfaces(consumer *kafkaConsumer.Consumer) (*KafkaInput, error) {
+func NewKafkaInputWithInterfaces(consumer *kafkaConsumer.Consumer) *KafkaInput {
 	return &KafkaInput{
 		consumer: consumer,
 		data:     make(chan *Message, cap(consumer.Data())),
-		pool:     coffin.New(),
-	}, nil
+		pool:     coffin.New(context.Background()),
+	}
 }
 
 // Run provides a steady stream of messages, returned via Data. Run does not return until Stop is called and thus
@@ -42,7 +42,7 @@ func NewKafkaInputWithInterfaces(consumer *kafkaConsumer.Consumer) (*KafkaInput,
 //
 // Run should only be called once, not all inputs can be resumed.
 func (i *KafkaInput) Run(ctx context.Context) error {
-	i.pool.GoWithContext(ctx, i.consumer.Run)
+	i.pool.GoWithContext("kafkaInput/run", i.consumer.Run, coffin.WithContext(ctx))
 
 	defer close(i.data)
 

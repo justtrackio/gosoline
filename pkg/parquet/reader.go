@@ -130,7 +130,7 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 	stop := false
 
 	sem := semaphore.NewWeighted(int64(10))
-	cfn := coffin.New()
+	cfn := coffin.New(ctx)
 
 	for i, file := range files {
 		err := sem.Acquire(ctx, int64(1))
@@ -138,7 +138,7 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 			return err
 		}
 
-		cfn.GoWithContextf(ctx, func(i int, file string) func(ctx context.Context) error {
+		cfn.GoWithContext(fmt.Sprintf("file reader %d", i), func(i int, file string) func(ctx context.Context) error {
 			return func(ctx context.Context) error {
 				defer sem.Release(int64(1))
 
@@ -174,7 +174,9 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 
 				return nil
 			}
-		}(i, file), "panic during file read")
+		}(i, file), coffin.WithErrorWrapper("panic during file read"), coffin.WithLabels(map[string]string{
+			"file": file,
+		}))
 	}
 
 	return cfn.Wait()

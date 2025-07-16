@@ -1,9 +1,12 @@
 package clock
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/coffin"
 )
 
 // A Ticker is similar to a Timer, but it sends the current time continuously to the channel returned by Chan.
@@ -41,7 +44,10 @@ func NewRealTicker(d time.Duration) Ticker {
 		stopped: make(chan struct{}),
 		output:  make(chan time.Time),
 	}
-	go t.transformTicks(t.stopped)
+	stopped := t.stopped
+	go coffin.RunLabeled(context.Background(), "clock/realTicker/tickTransformer", func() {
+		t.transformTicks(stopped)
+	})
 
 	return t
 }
@@ -62,7 +68,9 @@ func (t *realTicker) Reset(d time.Duration) {
 	t.ticker.Reset(d)
 	newStopped := make(chan struct{})
 	t.stopped = newStopped
-	go t.transformTicks(newStopped)
+	go coffin.RunLabeled(context.Background(), "clock/realTicker/tickTransformer", func() {
+		t.transformTicks(newStopped)
+	})
 }
 
 func (t *realTicker) Stop() {

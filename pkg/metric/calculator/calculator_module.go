@@ -68,8 +68,6 @@ type CalculatorModule struct {
 
 func NewCalculatorModule(handlers map[string]Handler, settings *CalculatorSettings) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		logger = logger.WithChannel("metrics-calculator")
-
 		var err error
 		var leaderElection ddb.LeaderElection
 		var cwClient gosoCloudwatch.Client
@@ -85,6 +83,7 @@ func NewCalculatorModule(handlers map[string]Handler, settings *CalculatorSettin
 		metricWriter := metric.NewWriter()
 		ticker := clock.NewRealTicker(settings.Period)
 		memberId := uuid.New().NewV4()
+		logger = logger.WithChannel("metrics-calculator")
 
 		return NewCalculatorModuleWithInterfaces(logger, leaderElection, cwClient, metricWriter, ticker, handlers, memberId, settings), nil
 	}
