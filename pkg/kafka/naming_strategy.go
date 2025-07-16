@@ -8,8 +8,8 @@ import (
 )
 
 type KafkaNamingSettings struct {
-	TopicPattern string `cfg:"topic_pattern,nodecode" default:"{realm}-{topicId}"`
-	GroupPattern string `cfg:"group_pattern,nodecode" default:"{realm}-{app}-{groupId}"`
+	TopicPattern string `cfg:"topic_pattern,nodecode" default:"{env}-{topicId}"`
+	GroupPattern string `cfg:"group_pattern,nodecode" default:"{env}-{app}-{groupId}"`
 }
 
 func NormalizeKafkaName(name string) string {
@@ -23,12 +23,19 @@ func FQTopicName(config cfg.Config, appId cfg.AppId, topic string) (string, erro
 		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' in FQTopicName: %w", err)
 	}
 
-	// Use AppId's ReplaceMacros method with topicId as extra macro
-	extraMacros := []cfg.MacroValue{
-		{"topicId", topic},
+	name := namingSettings.TopicPattern
+	values := map[string]string{
+		"project": appId.Project,
+		"env":     appId.Environment,
+		"family":  appId.Family,
+		"group":   appId.Group,
+		"app":     appId.Application,
+		"topicId": topic,
 	}
 
-	name := appId.ReplaceMacros(namingSettings.TopicPattern, extraMacros...)
+	for key, val := range values {
+		name = strings.ReplaceAll(name, fmt.Sprintf("{%s}", key), val)
+	}
 
 	return NormalizeKafkaName(name), nil
 }
@@ -44,12 +51,19 @@ func FQGroupId(config cfg.Config, appId cfg.AppId, groupId string) (string, erro
 		return appId.Application, nil
 	}
 
-	// Use AppId's ReplaceMacros method with groupId as extra macro
-	extraMacros := []cfg.MacroValue{
-		{"groupId", groupId},
+	name := namingSettings.GroupPattern
+	values := map[string]string{
+		"project": appId.Project,
+		"env":     appId.Environment,
+		"family":  appId.Family,
+		"group":   appId.Group,
+		"app":     appId.Application,
+		"groupId": groupId,
 	}
 
-	name := appId.ReplaceMacros(namingSettings.GroupPattern, extraMacros...)
+	for key, val := range values {
+		name = strings.ReplaceAll(name, fmt.Sprintf("{%s}", key), val)
+	}
 
 	return NormalizeKafkaName(name), nil
 }

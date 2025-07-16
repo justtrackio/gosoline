@@ -3,6 +3,7 @@ package metric
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -39,7 +40,7 @@ type (
 	}
 
 	CloudwatchNamingSettings struct {
-		Pattern string `cfg:"pattern,nodecode" default:"{realm}-{app}"`
+		Pattern string `cfg:"pattern,nodecode" default:"{project}/{env}/{family}/{group}-{app}"`
 	}
 
 	cwWriterCtxKey string
@@ -199,13 +200,24 @@ func GetCloudWatchNamespace(config cfg.Config) (string, error) {
 		return "", fmt.Errorf("failed to get app id from config: %w", err)
 	}
 
+	values := map[string]string{
+		"project": appId.Project,
+		"env":     appId.Environment,
+		"family":  appId.Family,
+		"group":   appId.Group,
+		"app":     appId.Application,
+	}
+
 	cloudwatchSettings := &CloudWatchSettings{}
 	if err := getMetricWriterSettings(config, WriterTypeCloudwatch, cloudwatchSettings); err != nil {
 		return "", fmt.Errorf("failed to get cloudwatch settings: %w", err)
 	}
+	namespace := cloudwatchSettings.Naming.Pattern
 
-	// Use AppId's ReplaceMacros method
-	namespace := appId.ReplaceMacros(cloudwatchSettings.Naming.Pattern)
+	for key, val := range values {
+		templ := fmt.Sprintf("{%s}", key)
+		namespace = strings.ReplaceAll(namespace, templ, val)
+	}
 
 	return namespace, nil
 }

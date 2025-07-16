@@ -20,7 +20,7 @@ type DdbLeaderElectionItem struct {
 }
 
 type TableNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{realm}-leader-elections"`
+	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-leader-elections"`
 }
 
 type DdbLeaderElectionSettings struct {

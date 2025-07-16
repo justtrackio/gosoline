@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -29,12 +30,20 @@ func dialerSrv(logger log.Logger, settings *Settings) func(ctx context.Context, 
 		address := settings.Address
 
 		if address == "" {
-			// Use AppId's ReplaceMacros method with name as extra macro
-			extraMacros := []cfg.MacroValue{
-				{"name", settings.Name},
+			values := map[string]string{
+				"project": settings.Project,
+				"env":     settings.Environment,
+				"family":  settings.Family,
+				"group":   settings.Group,
+				"app":     settings.Application,
+				"name":    settings.Name,
 			}
 
-			address = settings.AppId.ReplaceMacros(settings.Naming.Pattern, extraMacros...)
+			address = settings.Naming.Pattern
+			for key, val := range values {
+				templ := fmt.Sprintf("{%s}", key)
+				address = strings.ReplaceAll(address, templ, val)
+			}
 
 			logger.Debug("no address provided for redis %s: using %s", settings.Name, address)
 		}

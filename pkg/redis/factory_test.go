@@ -50,7 +50,7 @@ func (s *FactoryTestSuite) TestDefault() {
 		},
 		Name: "default",
 		Naming: redis.Naming{
-			Pattern: "{realm}-{app}-{name}.redis",
+			Pattern: "{name}.{group}.redis.{env}.{family}",
 		},
 		Dialer:  "tcp",
 		Address: "127.0.0.1:6379",
@@ -92,7 +92,7 @@ func (s *FactoryTestSuite) TestDedicated() {
 		},
 		Name: "dedicated",
 		Naming: redis.Naming{
-			Pattern: "{realm}-{app}-{name}.redis",
+			Pattern: "{name}.{group}.redis.{env}.{family}",
 		},
 		Dialer:  "srv",
 		Address: "dedicated.address",
@@ -136,7 +136,7 @@ func (s *FactoryTestSuite) TestWithDefaults() {
 		},
 		Name: "partial",
 		Naming: redis.Naming{
-			Pattern: "{realm}-{app}-{name}.redis",
+			Pattern: "{name}.{group}.redis.{env}.{family}",
 		},
 		Dialer:  "srv",
 		Address: "partial.address",
