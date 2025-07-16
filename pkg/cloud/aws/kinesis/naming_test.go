@@ -22,26 +22,42 @@ type GetStreamNameTestSuite struct {
 func (s *GetStreamNameTestSuite) SetupTest() {
 	s.envProvider = cfg.NewMemoryEnvProvider()
 	s.config = cfg.NewWithInterfaces(s.envProvider)
+	
+	// Set up basic config values
+	baseConfig := map[string]any{
+		"app_project": "justtrack",
+		"env":         "env",
+		"app_family":  "gosoline",
+		"app_group":   "grp",
+		"app_name":    "producer",
+		"realm":       "justtrack-env-gosoline-grp", // Default realm value
+	}
+	
+	err := s.config.Option(cfg.WithConfigMap(baseConfig))
+	s.NoError(err)
+	
+	err = s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
+	s.NoError(err)
+	
+	// Create AppId from config
+	appId, err := cfg.GetAppIdFromConfig(s.config)
+	s.NoError(err)
+	
 	s.settings = &kinesis.Settings{
-		AppId: cfg.AppId{
-			Project:     "justtrack",
-			Environment: "env",
-			Family:      "gosoline",
-			Group:       "grp",
-			Application: "producer",
-			Realm:       "justtrack-env-gosoline-grp",
-		},
+		AppId:      appId,
 		ClientName: "default",
 		StreamName: "event",
 	}
-
-	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
-	s.NoError(err)
 }
 
 func (s *GetStreamNameTestSuite) setupConfig(settings map[string]any) {
 	err := s.config.Option(cfg.WithConfigMap(settings))
 	s.NoError(err, "there should be no error on setting up the config")
+	
+	// Recreate AppId from config to pick up new configuration
+	appId, err := cfg.GetAppIdFromConfig(s.config)
+	s.NoError(err)
+	s.settings.AppId = appId
 }
 
 func (s *GetStreamNameTestSuite) setupConfigEnv(settings map[string]string) {
@@ -108,9 +124,9 @@ func (s *GetStreamNameTestSuite) TestRealmDefault() {
 }
 
 func (s *GetStreamNameTestSuite) TestRealmGlobalCustomPattern() {
-	// Test custom global realm pattern
+	// Test custom global realm
 	s.setupConfig(map[string]any{
-		"cloud.aws.realm.pattern": "{project}-{env}-{family}",
+		"realm": "justtrack-env-gosoline",
 	})
 
 	name, err := kinesis.GetStreamName(s.config, s.settings)
@@ -119,9 +135,9 @@ func (s *GetStreamNameTestSuite) TestRealmGlobalCustomPattern() {
 }
 
 func (s *GetStreamNameTestSuite) TestRealmServiceSpecificPattern() {
-	// Test service-specific realm pattern
+	// Test service-specific realm
 	s.setupConfig(map[string]any{
-		"cloud.aws.kinesis.clients.default.naming.realm.pattern": "{project}-{env}",
+		"realm": "justtrack-env",
 	})
 
 	name, err := kinesis.GetStreamName(s.config, s.settings)
@@ -130,10 +146,10 @@ func (s *GetStreamNameTestSuite) TestRealmServiceSpecificPattern() {
 }
 
 func (s *GetStreamNameTestSuite) TestRealmClientSpecificPattern() {
-	// Test client-specific realm pattern
+	// Test client-specific realm
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.kinesis.clients.specific.naming.realm.pattern": "{project}-{family}",
+		"realm": "justtrack-gosoline",
 	})
 
 	name, err := kinesis.GetStreamName(s.config, s.settings)
@@ -144,7 +160,7 @@ func (s *GetStreamNameTestSuite) TestRealmClientSpecificPattern() {
 func (s *GetStreamNameTestSuite) TestRealmWithCustomPattern() {
 	// Test custom pattern with realm
 	s.setupConfig(map[string]any{
-		"cloud.aws.realm.pattern":                           "{project}-{env}-{family}",
+		"realm": "justtrack-env-gosoline",
 		"cloud.aws.kinesis.clients.default.naming.pattern": "{realm}-{streamName}",
 	})
 

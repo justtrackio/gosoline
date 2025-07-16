@@ -2,7 +2,6 @@ package sqs
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
@@ -56,20 +55,9 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 
 	name := namingSettings.Pattern
 	appId := queueSettings.GetAppId()
-
-	// Resolve realm pattern if it's used in the pattern
-	realm := ""
-	if strings.Contains(name, "{realm}") {
-		var err error
-		realm, err = appId.ResolveRealmPattern(config, "sqs", queueSettings.GetClientName())
-		if err != nil {
-			return "", fmt.Errorf("failed to resolve realm pattern for sqs: %w", err)
-		}
-	}
 	
-	// Use AppId's ReplaceMacros method with queueId and realm as extra macros
+	// Use AppId's ReplaceMacros method with queueId as extra macro
 	extraMacros := []cfg.MacroValue{
-		{"realm", realm},
 		{"queueId", queueSettings.GetQueueId()},
 	}
 

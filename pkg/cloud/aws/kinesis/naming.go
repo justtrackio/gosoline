@@ -2,7 +2,6 @@ package kinesis
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
@@ -33,19 +32,8 @@ func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream,
 	appId := settings.GetAppId()
 	name := namingSettings.Pattern
 
-	// Resolve realm pattern if it's used in the pattern
-	realm := ""
-	if strings.Contains(name, "{realm}") {
-		var err error
-		realm, err = appId.ResolveRealmPattern(config, "kinesis", settings.GetClientName())
-		if err != nil {
-			return "", fmt.Errorf("failed to resolve realm pattern for kinesis: %w", err)
-		}
-	}
-
-	// Use AppId's ReplaceMacros method with streamName and realm as extra macros
+	// Use AppId's ReplaceMacros method with streamName as extra macro
 	extraMacros := []cfg.MacroValue{
-		{"realm", realm},
 		{"streamName", settings.GetStreamName()},
 	}
 

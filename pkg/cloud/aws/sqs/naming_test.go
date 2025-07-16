@@ -22,25 +22,42 @@ type GetSqsQueueNameTestSuite struct {
 func (s *GetSqsQueueNameTestSuite) SetupTest() {
 	s.envProvider = cfg.NewMemoryEnvProvider()
 	s.config = cfg.NewWithInterfaces(s.envProvider)
+	
+	// Set up basic config values
+	baseConfig := map[string]any{
+		"app_project": "justtrack",
+		"env":         "test",
+		"app_family":  "gosoline",
+		"app_group":   "group",
+		"app_name":    "producer",
+		"realm":       "justtrack-test-gosoline-group", // Default realm value
+	}
+	
+	err := s.config.Option(cfg.WithConfigMap(baseConfig))
+	s.NoError(err)
+	
+	err = s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
+	s.NoError(err)
+	
+	// Create AppId from config
+	appId, err := cfg.GetAppIdFromConfig(s.config)
+	s.NoError(err)
+	
 	s.settings = sqs.QueueNameSettings{
-		AppId: cfg.AppId{
-			Project:     "justtrack",
-			Environment: "test",
-			Family:      "gosoline",
-			Group:       "group",
-			Application: "producer",
-		},
+		AppId:      appId,
 		ClientName: "default",
 		QueueId:    "event",
 	}
-
-	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
-	s.NoError(err)
 }
 
 func (s *GetSqsQueueNameTestSuite) setupConfig(settings map[string]any) {
 	err := s.config.Option(cfg.WithConfigMap(settings))
 	s.NoError(err, "there should be no error on setting up the config")
+	
+	// Recreate AppId from config to pick up new configuration
+	appId, err := cfg.GetAppIdFromConfig(s.config)
+	s.NoError(err)
+	s.settings.AppId = appId
 }
 
 func (s *GetSqsQueueNameTestSuite) setupConfigEnv(settings map[string]string) {
@@ -115,9 +132,9 @@ func (s *GetSqsQueueNameTestSuite) TestRealmDefault() {
 }
 
 func (s *GetSqsQueueNameTestSuite) TestRealmGlobalCustomPattern() {
-	// Test custom global realm pattern
+	// Test custom global realm
 	s.setupConfig(map[string]any{
-		"cloud.aws.realm.pattern": "{project}-{env}-{family}",
+		"realm": "justtrack-test-gosoline",
 	})
 
 	name, err := sqs.GetQueueName(s.config, s.settings)
@@ -126,9 +143,9 @@ func (s *GetSqsQueueNameTestSuite) TestRealmGlobalCustomPattern() {
 }
 
 func (s *GetSqsQueueNameTestSuite) TestRealmServiceSpecificPattern() {
-	// Test service-specific realm pattern
+	// Test service-specific realm
 	s.setupConfig(map[string]any{
-		"cloud.aws.sqs.clients.default.naming.realm.pattern": "{project}-{env}",
+		"realm": "justtrack-test",
 	})
 
 	name, err := sqs.GetQueueName(s.config, s.settings)
@@ -137,10 +154,10 @@ func (s *GetSqsQueueNameTestSuite) TestRealmServiceSpecificPattern() {
 }
 
 func (s *GetSqsQueueNameTestSuite) TestRealmClientSpecificPattern() {
-	// Test client-specific realm pattern
+	// Test client-specific realm
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.sqs.clients.specific.naming.realm.pattern": "{project}-{family}",
+		"realm": "justtrack-gosoline",
 	})
 
 	name, err := sqs.GetQueueName(s.config, s.settings)
@@ -152,7 +169,7 @@ func (s *GetSqsQueueNameTestSuite) TestRealmClientSpecificWithFallback() {
 	// Test client-specific fallback to service default realm
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.sqs.clients.default.naming.realm.pattern": "{project}-{env}",
+		"realm": "justtrack-test",
 	})
 
 	name, err := sqs.GetQueueName(s.config, s.settings)
@@ -163,7 +180,7 @@ func (s *GetSqsQueueNameTestSuite) TestRealmClientSpecificWithFallback() {
 func (s *GetSqsQueueNameTestSuite) TestRealmWithCustomPattern() {
 	// Test custom pattern with realm
 	s.setupConfig(map[string]any{
-		"cloud.aws.realm.pattern":                       "{project}-{env}-{family}",
+		"realm": "justtrack-test-gosoline",
 		"cloud.aws.sqs.clients.default.naming.pattern": "{realm}-{queueId}",
 	})
 

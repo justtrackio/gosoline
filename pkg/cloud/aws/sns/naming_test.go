@@ -22,25 +22,42 @@ type GetTopicNameTestSuite struct {
 func (s *GetTopicNameTestSuite) SetupTest() {
 	s.envProvider = cfg.NewMemoryEnvProvider()
 	s.config = cfg.NewWithInterfaces(s.envProvider)
+	
+	// Set up basic config values
+	baseConfig := map[string]any{
+		"app_project": "justtrack",
+		"env":         "test",
+		"app_family":  "gosoline",
+		"app_group":   "group",
+		"app_name":    "producer",
+		"realm":       "justtrack-test-gosoline-group", // Default realm value
+	}
+	
+	err := s.config.Option(cfg.WithConfigMap(baseConfig))
+	s.NoError(err)
+	
+	err = s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
+	s.NoError(err)
+	
+	// Create AppId from config
+	appId, err := cfg.GetAppIdFromConfig(s.config)
+	s.NoError(err)
+	
 	s.settings = sns.TopicNameSettings{
-		AppId: cfg.AppId{
-			Project:     "justtrack",
-			Environment: "test",
-			Family:      "gosoline",
-			Group:       "group",
-			Application: "producer",
-		},
+		AppId:      appId,
 		ClientName: "default",
 		TopicId:    "event",
 	}
-
-	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
-	s.NoError(err)
 }
 
 func (s *GetTopicNameTestSuite) setupConfig(settings map[string]any) {
 	err := s.config.Option(cfg.WithConfigMap(settings))
 	s.NoError(err, "there should be no error on setting up the config")
+	
+	// Recreate AppId from config to pick up new configuration
+	appId, err := cfg.GetAppIdFromConfig(s.config)
+	s.NoError(err)
+	s.settings.AppId = appId
 }
 
 func (s *GetTopicNameTestSuite) TestDefault() {
@@ -107,9 +124,9 @@ func (s *GetTopicNameTestSuite) TestRealmDefault() {
 }
 
 func (s *GetTopicNameTestSuite) TestRealmGlobalCustomPattern() {
-	// Test custom global realm pattern
+	// Test custom global realm
 	s.setupConfig(map[string]any{
-		"cloud.aws.realm.pattern": "{project}-{env}-{family}",
+		"realm": "justtrack-test-gosoline",
 	})
 
 	name, err := sns.GetTopicName(s.config, s.settings)
@@ -118,9 +135,9 @@ func (s *GetTopicNameTestSuite) TestRealmGlobalCustomPattern() {
 }
 
 func (s *GetTopicNameTestSuite) TestRealmServiceSpecificPattern() {
-	// Test service-specific realm pattern
+	// Test service-specific realm
 	s.setupConfig(map[string]any{
-		"cloud.aws.sns.clients.default.naming.realm.pattern": "{project}-{env}",
+		"realm": "justtrack-test",
 	})
 
 	name, err := sns.GetTopicName(s.config, s.settings)
@@ -129,10 +146,10 @@ func (s *GetTopicNameTestSuite) TestRealmServiceSpecificPattern() {
 }
 
 func (s *GetTopicNameTestSuite) TestRealmClientSpecificPattern() {
-	// Test client-specific realm pattern
+	// Test client-specific realm
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.sns.clients.specific.naming.realm.pattern": "{project}-{family}",
+		"realm": "justtrack-gosoline",
 	})
 
 	name, err := sns.GetTopicName(s.config, s.settings)
@@ -143,7 +160,7 @@ func (s *GetTopicNameTestSuite) TestRealmClientSpecificPattern() {
 func (s *GetTopicNameTestSuite) TestRealmWithCustomPattern() {
 	// Test custom pattern with realm
 	s.setupConfig(map[string]any{
-		"cloud.aws.realm.pattern":                       "{project}-{env}-{family}",
+		"realm": "justtrack-test-gosoline",
 		"cloud.aws.sns.clients.default.naming.pattern": "{realm}-{topicId}",
 	})
 

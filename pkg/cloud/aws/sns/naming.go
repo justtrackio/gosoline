@@ -2,7 +2,6 @@ package sns
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
@@ -50,20 +49,9 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 
 	name := namingSettings.Pattern
 	appId := topicSettings.GetAppId()
-
-	// Resolve realm pattern if it's used in the pattern
-	realm := ""
-	if strings.Contains(name, "{realm}") {
-		var err error
-		realm, err = appId.ResolveRealmPattern(config, "sns", topicSettings.GetClientName())
-		if err != nil {
-			return "", fmt.Errorf("failed to resolve realm pattern for sns: %w", err)
-		}
-	}
 	
-	// Use AppId's ReplaceMacros method with topicId and realm as extra macros
+	// Use AppId's ReplaceMacros method with topicId as extra macro
 	extraMacros := []cfg.MacroValue{
-		{"realm", realm},
 		{"topicId", topicSettings.GetTopicId()},
 	}
 
