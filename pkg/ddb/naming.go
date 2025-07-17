@@ -8,7 +8,7 @@ import (
 )
 
 type TableNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{realm}-{app}-{modelId}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{realm}-{modelId}"`
 }
 
 func TableName(config cfg.Config, settings *Settings) (string, error) {
