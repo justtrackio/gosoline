@@ -2,14 +2,13 @@ package ddb
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
 type TableNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{modelId}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{realm}-{app}-{modelId}"`
 }
 
 func TableName(config cfg.Config, settings *Settings) (string, error) {
@@ -43,20 +42,29 @@ func GetTableNameWithSettings(tableSettings *Settings, namingSettings *TableNami
 		tableName = tableSettings.TableNamingSettings.Pattern
 	}
 
-	values := map[string]string{
-		"project": tableSettings.ModelId.Project,
-		"env":     tableSettings.ModelId.Environment,
-		"family":  tableSettings.ModelId.Family,
-		"group":   tableSettings.ModelId.Group,
-		"app":     tableSettings.ModelId.Application,
-		"modelId": tableSettings.ModelId.Name,
-		"realm":   tableSettings.ModelId.Realm,
+	// Convert ModelId to AppId for using the ReplaceMacros method
+	appId := cfg.AppId{
+		Project:     tableSettings.ModelId.Project,
+		Environment: tableSettings.ModelId.Environment,
+		Family:      tableSettings.ModelId.Family,
+		Group:       tableSettings.ModelId.Group,
+		Application: tableSettings.ModelId.Application,
+		Realm:       tableSettings.ModelId.Realm,
 	}
 
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		tableName = strings.ReplaceAll(tableName, templ, val)
+	// If realm is empty, use the default pattern
+	if appId.Realm == "" {
+		appId.Realm = fmt.Sprintf("%s-%s-%s-%s", 
+			tableSettings.ModelId.Project,
+			tableSettings.ModelId.Environment,
+			tableSettings.ModelId.Family,
+			tableSettings.ModelId.Group)
 	}
 
-	return tableName
+	// Use AppId's ReplaceMacros method with modelId as extra macro
+	extraMacros := []cfg.MacroValue{
+		{"modelId", tableSettings.ModelId.Name},
+	}
+
+	return appId.ReplaceMacros(tableName, extraMacros...)
 }

@@ -57,7 +57,7 @@ func (s *TableNameTestSuite) TestDefault() {
 		s.FailNow("there should be no error on getting the table name", err)
 	}
 
-	s.Equal("justtrack-test-gosoline-group-event", name)
+	s.Equal("justtrack-test-gosoline-group-producer-event", name)
 }
 
 func (s *TableNameTestSuite) TestDefaultWithPattern() {
