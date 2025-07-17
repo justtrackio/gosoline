@@ -52,15 +52,6 @@ func GetTableNameWithSettings(tableSettings *Settings, namingSettings *TableNami
 		Realm:       tableSettings.ModelId.Realm,
 	}
 
-	// If realm is empty, use the default pattern
-	if appId.Realm == "" {
-		appId.Realm = fmt.Sprintf("%s-%s-%s-%s", 
-			tableSettings.ModelId.Project,
-			tableSettings.ModelId.Environment,
-			tableSettings.ModelId.Family,
-			tableSettings.ModelId.Group)
-	}
-
 	// Use AppId's ReplaceMacros method with modelId as extra macro
 	extraMacros := []cfg.MacroValue{
 		{"modelId", tableSettings.ModelId.Name},
