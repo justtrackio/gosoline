@@ -70,7 +70,7 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 		return env, fmt.Errorf("can not create component skeletons: %w", err)
 	}
 
-	if env.runner, err = NewContainerRunner(env.config, env.logger); err != nil {
+	if env.runner, err = newContainerRunner(env.config, env.logger); err != nil {
 		return env, fmt.Errorf("can not create container runner: %w", err)
 	}
 
