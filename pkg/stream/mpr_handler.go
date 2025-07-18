@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
@@ -143,6 +144,15 @@ func (h *mprHandler) getQueueMetrics(ctx context.Context, metric string, stat ty
 	period := int32(h.handlerSettings.Period.Seconds())
 	queries := make([]types.MetricDataQuery, len(h.queueNames))
 
+	logger := h.logger.WithContext(ctx).WithFields(log.Fields{
+		"metric":      metric,
+		"stat":        string(stat),
+		"start_time":  startTime,
+		"end_time":    endTime,
+		"period":      period,
+		"queue_names": strings.Join(h.queueNames, ","),
+	})
+
 	for i, queueName := range h.queueNames {
 		queries[i] = types.MetricDataQuery{
 			Id: aws.String(fmt.Sprintf("m_%d", i)),
@@ -162,6 +172,7 @@ func (h *mprHandler) getQueueMetrics(ctx context.Context, metric string, stat ty
 				Unit:   types.StandardUnitCount,
 			},
 		}
+		logger.Info("debug MetricDataQuery: %#v", queries[i])
 	}
 
 	input := &cloudwatch.GetMetricDataInput{
@@ -178,11 +189,15 @@ func (h *mprHandler) getQueueMetrics(ctx context.Context, metric string, stat ty
 	value := 0.0
 	for _, result := range out.MetricDataResults {
 		if len(result.Values) == 0 {
+			logger.Info("debug MetricDataResults result value: 0.0")
 			continue
 		}
 
+		logger.Info("debug MetricDataResults result value: %.2f", result.Values[0])
 		value += result.Values[0]
 	}
+
+	logger.Info("debug MetricDataResults sum: %.2f", value)
 
 	return value, nil
 }
