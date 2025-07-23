@@ -47,8 +47,8 @@ type bindHandler struct {
 	suite.Suite
 }
 
-func (b bindHandler) Channels() log.Channels {
-	return nil
+func (b bindHandler) ChannelLevel(string) (level *int, err error) {
+	return nil, nil
 }
 
 func (b bindHandler) Level() int {

@@ -33,8 +33,8 @@ func NewLoggerErrorHandler() *LoggerErrorHandler {
 	return &LoggerErrorHandler{}
 }
 
-func (h *LoggerErrorHandler) Channels() log.Channels {
-	return log.Channels{}
+func (h *LoggerErrorHandler) ChannelLevel(string) (level *int, err error) {
+	return nil, nil
 }
 
 func (h *LoggerErrorHandler) Level() int {

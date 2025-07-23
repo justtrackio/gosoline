@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-func newCliLogger() (log.Logger, error) {
+func newCliLogger(config cfg.Config) (log.Logger, error) {
 	var err error
 	var writer io.Writer
 
@@ -16,7 +17,7 @@ func newCliLogger() (log.Logger, error) {
 		return nil, fmt.Errorf("can not create io file writer for logger: %w", err)
 	}
 
-	handler := log.NewHandlerIoWriter(log.LevelInfo, log.Channels{}, log.FormatterConsole, "", writer)
+	handler := log.NewHandlerIoWriter(config, log.LevelInfo, log.FormatterConsole, "cli", "", writer)
 	logger := log.NewLoggerWithInterfaces(clock.Provider, []log.Handler{handler})
 
 	return logger, nil

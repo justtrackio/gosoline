@@ -3,6 +3,7 @@ package log
 import (
 	"os"
 
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
@@ -13,5 +14,5 @@ func NewCliLogger() Logger {
 }
 
 func NewCliHandler() Handler {
-	return NewHandlerIoWriter(LevelInfo, Channels{}, FormatterConsole, "15:04:05.000", os.Stdout)
+	return NewHandlerIoWriter(cfg.New(), LevelInfo, FormatterConsole, "cli", "15:04:05.000", os.Stdout)
 }

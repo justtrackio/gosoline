@@ -31,7 +31,7 @@ func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.Modul
 		return
 	}
 
-	logger, err := newCliLogger()
+	logger, err := newCliLogger(config)
 	if err != nil {
 		defaultErrorHandler("can not initialize the logger: %w", err)
 

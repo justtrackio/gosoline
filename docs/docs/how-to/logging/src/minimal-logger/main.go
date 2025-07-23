@@ -4,13 +4,14 @@ import (
 	"os"
 
 	// 1
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 func main() {
 	// 2
 	logHandler := log.NewHandlerIoWriter(
-		log.LevelInfo, log.Channels{}, log.FormatterConsole, "", os.Stdout,
+		cfg.New(), log.LevelInfo, log.FormatterConsole, "main", "", os.Stdout,
 	)
 
 	// 3
