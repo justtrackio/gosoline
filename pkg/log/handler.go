@@ -8,12 +8,10 @@ import (
 )
 
 type Handler interface {
-	Channels() Channels
+	ChannelLevel(name string) (level *int, err error)
 	Level() int
 	Log(timestamp time.Time, level int, msg string, args []any, err error, data Data) error
 }
-
-type Channels map[string]int
 
 type HandlerFactory func(config cfg.Config, name string) (Handler, error)
 

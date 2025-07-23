@@ -3,6 +3,7 @@ package log
 import (
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -13,11 +14,10 @@ func init() {
 }
 
 type HandlerIoWriterSettings struct {
-	Level           string                    `cfg:"level" default:"info"`
-	Channels        map[string]ChannelSetting `cfg:"channels"`
-	Formatter       string                    `cfg:"formatter" default:"console"`
-	TimestampFormat string                    `cfg:"timestamp_format" default:"15:04:05.000"`
-	Writer          string                    `cfg:"writer" default:"stdout"`
+	Level           string `cfg:"level" default:"info"`
+	Formatter       string `cfg:"formatter" default:"console"`
+	TimestampFormat string `cfg:"timestamp_format" default:"15:04:05.000"`
+	Writer          string `cfg:"writer" default:"stdout"`
 }
 
 type ChannelSetting struct {
@@ -50,34 +50,58 @@ func handlerIoWriterFactory(config cfg.Config, name string) (Handler, error) {
 		return nil, fmt.Errorf("io writer formatter of type %s not available", settings.Formatter)
 	}
 
-	channels := make(Channels, len(settings.Channels))
-	for channel, level := range settings.Channels {
-		channels[channel] = LevelPriority(level.Level)
-	}
-
-	return NewHandlerIoWriter(settings.Level, channels, formatter, settings.TimestampFormat, writer), nil
+	return NewHandlerIoWriter(config, settings.Level, formatter, name, settings.TimestampFormat, writer), nil
 }
 
 type handlerIoWriter struct {
+	config          cfg.Config
+	lck             sync.RWMutex
 	level           int
-	channels        Channels
+	channels        map[string]*int
 	formatter       Formatter
+	name            string
 	timestampFormat string
 	writer          io.Writer
 }
 
-func NewHandlerIoWriter(level string, channels Channels, formatter Formatter, timestampFormat string, writer io.Writer) Handler {
+func NewHandlerIoWriter(config cfg.Config, level string, formatter Formatter, name string, timestampFormat string, writer io.Writer) Handler {
 	return &handlerIoWriter{
+		config:          config,
 		level:           LevelPriority(level),
-		channels:        channels,
+		channels:        make(map[string]*int),
 		formatter:       formatter,
+		name:            name,
 		timestampFormat: timestampFormat,
 		writer:          writer,
 	}
 }
 
-func (h *handlerIoWriter) Channels() Channels {
-	return h.channels
+func (h *handlerIoWriter) ChannelLevel(name string) (level *int, err error) {
+	h.lck.RLock()
+	cached, ok := h.channels[name]
+	h.lck.RUnlock()
+
+	if ok {
+		return cached, nil
+	}
+
+	h.lck.Lock()
+	defer h.lck.Unlock()
+
+	key := fmt.Sprintf("%s.channels.%s", getHandlerConfigKey(h.name), name)
+	settings := &ChannelSetting{}
+	err = h.config.UnmarshalKey(key, settings)
+	if err != nil {
+		// store that we don't have a setting to avoid spamming errors
+		h.channels[name] = nil
+
+		return nil, fmt.Errorf("can not unmarshal channel settings: %w", err)
+	}
+
+	priority := LevelPriority(settings.Level)
+	h.channels[name] = &priority
+
+	return &priority, nil
 }
 
 func (h *handlerIoWriter) Level() int {

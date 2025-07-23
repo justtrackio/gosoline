@@ -184,7 +184,11 @@ func (l *gosoLogger) log(level int, msg string, args []any, loggedErr error) {
 	timestamp := l.clock.Now()
 
 	for _, handler := range l.handlers {
-		if !l.shouldLog(l.data.Channel, level, handler) {
+		if ok, err := l.shouldLog(l.data.Channel, level, handler); err != nil {
+			l.err(err)
+
+			continue
+		} else if !ok {
 			continue
 		}
 
@@ -194,12 +198,14 @@ func (l *gosoLogger) log(level int, msg string, args []any, loggedErr error) {
 	}
 }
 
-func (l *gosoLogger) shouldLog(current string, level int, h Handler) bool {
-	if channelLevel, ok := h.Channels()[current]; ok {
-		return channelLevel <= level
+func (l *gosoLogger) shouldLog(current string, level int, h Handler) (bool, error) {
+	if channelLevel, err := h.ChannelLevel(current); err != nil {
+		return false, fmt.Errorf("can not get channel level: %w", err)
+	} else if channelLevel != nil {
+		return *channelLevel <= level, nil
 	}
 
-	return h.Level() <= level
+	return h.Level() <= level, nil
 }
 
 func (l *gosoLogger) err(err error) {

@@ -12,9 +12,9 @@ log:
             type: iowriter
             channels:
                 metrics:
-                  level: error
+                    level: error
                 formatter:
-                  level: error
+                    level: error
             formatter: console
             level: info
             timestamp_format: 15:04:05.000

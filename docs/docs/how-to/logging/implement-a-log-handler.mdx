@@ -33,6 +33,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 ```
 
@@ -62,17 +63,19 @@ This handler struct stores the log `channel`. To use your handler, you must impl
 
 ### Implement the `Channels` method
 
-Create a getter for the log channels:
+Create a function which returns the log level for a given channel name:
 
 ```go
-func (h *MyCustomHandler) Channels() log.Channels {
-	return log.Channels{
-	    h.channel: log.PriorityInfo,
+func (h *MyCustomHandler) ChannelLevel(name string) (level *int, err error) {
+	if name == h.channel {
+		return mdl.Box(log.PriorityDebug), nil
 	}
+
+	return nil, nil
 }
 ```
 
-This returns an array of channels, including the one stored on `MyCustomHandler`.
+This checks if the requested channel is the channel we want to override, and, if so, returns a hardcoded value. Otherwise, we return nothing to indicate that the return value of the `Level` method should be used.
 
 ### Implement the `Level` method
 
@@ -92,7 +95,8 @@ Create a getter for the log message:
 
 ```go
 func (h *MyCustomHandler) Log(timestamp time.Time, level int, msg string, args []any, err error, data log.Data) error {
-	fmt.Printf("%s happenend at %s", msg, timestamp.Format(time.RFC822))
+	fmt.Printf("%s happened at %s", msg, timestamp.Format(time.RFC822))
+
 	return nil
 }
 ```
@@ -109,7 +113,9 @@ func MyCustomHandlerFactory(config cfg.Config, name string) (log.Handler, error)
 	settings := &MyCustomHandlerSettings{}
 
 	// 2
-	log.UnmarshalHandlerSettingsFromConfig(config, name, settings)
+	if err := log.UnmarshalHandlerSettingsFromConfig(config, name, settings); err != nil {
+		return nil, fmt.Errorf("can not unmarshal handler settings: %w", err)
+	}
 
 	// 3
 	return &MyCustomHandler{

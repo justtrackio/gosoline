@@ -6,6 +6,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type MyCustomHandlerSettings struct {
@@ -16,10 +17,12 @@ type MyCustomHandler struct {
 	channel string
 }
 
-func (h *MyCustomHandler) Channels() log.Channels {
-	return log.Channels{
-		h.channel: log.PriorityDebug,
+func (h *MyCustomHandler) ChannelLevel(name string) (level *int, err error) {
+	if name == h.channel {
+		return mdl.Box(log.PriorityDebug), nil
 	}
+
+	return nil, nil
 }
 
 func (h *MyCustomHandler) Level() int {

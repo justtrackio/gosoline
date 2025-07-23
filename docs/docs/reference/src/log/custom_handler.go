@@ -6,11 +6,14 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type MyCustomHandlerSettings struct {
-	Channel log.Channels `cfg:"channel"`
+	Channel Channels `cfg:"channel"`
 }
+
+type Channels map[string]string
 
 func MyCustomHandlerFactory(config cfg.Config, name string) (log.Handler, error) {
 	settings := &MyCustomHandlerSettings{}
@@ -24,11 +27,16 @@ func MyCustomHandlerFactory(config cfg.Config, name string) (log.Handler, error)
 }
 
 type MyCustomHandler struct {
-	channels log.Channels
+	channels Channels
 }
 
-func (h *MyCustomHandler) Channels() log.Channels {
-	return h.channels
+func (h *MyCustomHandler) ChannelLevel(name string) (level *int, err error) {
+	levelName, ok := h.channels[name]
+	if !ok {
+		return nil, nil
+	}
+
+	return mdl.Box(log.LevelPriority(levelName)), nil
 }
 
 func (h *MyCustomHandler) Level() int {

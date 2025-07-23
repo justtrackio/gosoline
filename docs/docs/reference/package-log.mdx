@@ -237,7 +237,7 @@ Adds additional handlers to the logger.
 
 ```go
 type Handler interface {
-	Channels() []string
+	ChannelLevel(name string) (level *int, err error)
 	Level() int
 	Log(timestamp time.Time, level int, msg string, args []any, err error, data Data) error
 }
@@ -245,7 +245,7 @@ type Handler interface {
 
 #### Description
 
-- `Channels() []string` and `Level() int` are called on every log action to check if the handler should be applied. 
+- `ChannelLevel(name string) (level *int, err error)` and `Level() int` are called on every log action to check if the handler should be applied.
 - `Log` does the actual logging afterwards.
 
 ## Log configurations
@@ -267,7 +267,7 @@ Multitool, which is able to write logs to everything which implements the `io.Wr
 | Setting          | Description                                                        | Default      |
 |------------------|--------------------------------------------------------------------|--------------|
 | level            | Levels of this and higher priority will get logged                 | info         |
-| channels         | Messages logged into these channels will be handled                | []           |
+| channels         | Messages logged into these channels will be handled                | {}           |
 | formatter        | Which format should be used by this handler                        | console      |
 | timestamp_format | A golang time format string to control the format of the timestamp | 15:04:05.000 |
 | writer           | Which io.writer implementation to use                              | stdout       |
@@ -280,7 +280,7 @@ log:
     main:
       type: iowriter
       level: info
-      channels: []
+      channels: {}
       formatter: console
       timestamp_format: 15:04:05.000
       writer: stdout
@@ -294,7 +294,7 @@ log:
     main:
       type: iowriter
       level: info
-      channels: *
+      channels: {}
       formatter: console
       timestamp_format: 15:04:05.000
       writer: file

@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -63,14 +64,14 @@ func prepareLoggerSettings(options ...LoggerOption) (*LoggerSettings, error) {
 	return settings, nil
 }
 
-func NewRecordingConsoleLogger(options ...LoggerOption) (RecordingLogger, error) {
+func NewRecordingConsoleLogger(config cfg.Config, options ...LoggerOption) (RecordingLogger, error) {
 	settings, err := prepareLoggerSettings(options...)
 	if err != nil {
 		return nil, err
 	}
 
 	cl := clock.NewRealClock()
-	handler := log.NewHandlerIoWriter(settings.Level, log.Channels{}, log.FormatterConsole, "15:04:05.000", os.Stdout)
+	handler := log.NewHandlerIoWriter(config, settings.Level, log.FormatterConsole, "test", "15:04:05.000", os.Stdout)
 
 	logger := log.NewLoggerWithInterfaces(cl, []log.Handler{handler})
 
@@ -110,8 +111,8 @@ func (r recordingLogger) Reset() {
 	}
 }
 
-func (h handlerInMemoryWriter) Channels() log.Channels {
-	return log.Channels{}
+func (h handlerInMemoryWriter) ChannelLevel(string) (level *int, err error) {
+	return nil, nil
 }
 
 func (h handlerInMemoryWriter) Level() int {
