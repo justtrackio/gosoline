@@ -128,7 +128,7 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_CreateTable(
 	historyManager, err := db_repo.NewChangeHistoryManager(envContext, envConfig, envLogger)
 	s.NoError(err)
 
-	err = historyManager.RunMigration(&TestModel1{})
+	err = historyManager.RunMigration(s.T().Context(), &TestModel1{})
 	s.NoError(err)
 
 	model := &TestModel1{
@@ -182,7 +182,7 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_UpdateTable(
 	s.NoError(err)
 
 	// this migration adds one column and drops a different column
-	err = historyManager.RunMigration(&TestModel2{})
+	err = historyManager.RunMigration(s.T().Context(), &TestModel2{})
 	s.NoError(err)
 
 	model := &TestModel2{
@@ -229,7 +229,7 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_ValidateSche
 	historyManager, err := db_repo.NewChangeHistoryManager(envContext, envConfig, envLogger)
 	s.NoError(err)
 
-	err = historyManager.RunMigration(&TestModel3{})
+	err = historyManager.RunMigration(envContext, &TestModel3{})
 
 	multiErr := &multierror.Error{}
 	if !errors.As(err, &multiErr) {

@@ -76,7 +76,7 @@ func NewProducerDaemonPartitionedAggregatorWithInterfaces(logger log.Logger, ran
 func (a *producerDaemonPartitionedAggregator) Write(ctx context.Context, msg *Message) ([]AggregateFlush, error) {
 	explicitHashKey, err := a.getExplicitHashKeyForMessage(msg)
 	if err != nil {
-		a.logger.WithContext(ctx).Error("failed to determine partition or explicit hash key, will choose one at random: %w", err)
+		a.logger.Error(ctx, "failed to determine partition or explicit hash key, will choose one at random: %w", err)
 	}
 	var bucketIndex int
 	if explicitHashKey != nil {

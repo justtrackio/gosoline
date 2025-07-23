@@ -1,7 +1,6 @@
 package mocks
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -12,6 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/objx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -77,19 +77,6 @@ func (l *loggerMock) WithChannel(channel string) log.Logger {
 		lck:            l.lck,
 		pendingLogs:    l.pendingLogs,
 	}
-}
-
-func (l *loggerMock) WithContext(ctx context.Context) log.Logger {
-	// forward potential calls to the underlying mock if we expect some
-	if _, ok := funk.FindFirstFunc(l.ExpectedCalls, func(call *mock.Call) bool {
-		return call.Method == "WithContext"
-	}); ok {
-		l.Logger.WithContext(ctx)
-	}
-
-	contextFields := log.ContextFieldsResolver(ctx)
-
-	return l.WithFields(contextFields)
 }
 
 func (l *loggerMock) WithFields(fields log.Fields) log.Logger {
@@ -194,13 +181,14 @@ func (l *loggerMock) mockLoggerMethod(method string, level string, allowed bool)
 
 	for i := 0; i < 10; i++ {
 		anythings = append(anythings, mock.Anything)
-		l.On(method, anythings...).Run(f).Return(l).Maybe()
+		anytingsWithCtx := append([]any{matcher.Context}, anythings...)
+		l.On(method, anytingsWithCtx...).Run(f).Return(l).Maybe()
 	}
 }
 
 func (l *loggerMock) inspectLogFunction(level string, allowed bool) func(args mock.Arguments) {
 	return func(args mock.Arguments) {
-		msg := args.Get(0).(string)
+		msg := args.Get(1).(string)
 		msg = fmt.Sprintf(msg, args[1:]...)
 
 		if l.t != nil {

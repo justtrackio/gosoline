@@ -85,7 +85,7 @@ func (d *dynamoDbKvStoreFixtureWriter[T]) Write(ctx context.Context, fixtures []
 		return err
 	}
 
-	d.logger.Info("loaded %d dynamodb kvstore fixtures", len(fixtures))
+	d.logger.Info(ctx, "loaded %d dynamodb kvstore fixtures", len(fixtures))
 
 	return nil
 }

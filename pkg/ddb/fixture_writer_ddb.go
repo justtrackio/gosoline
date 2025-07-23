@@ -68,7 +68,7 @@ func (d *dynamoDbFixtureWriter) Write(ctx context.Context, fixtures []any) error
 		return err
 	}
 
-	d.logger.Info("loaded %d dynamodb fixtures", len(fixtures))
+	d.logger.Info(ctx, "loaded %d dynamodb fixtures", len(fixtures))
 
 	return nil
 }

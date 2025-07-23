@@ -1,6 +1,7 @@
 package tracing
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -47,18 +48,18 @@ func (x *xrayLogger) Log(level xraylog.LogLevel, msg fmt.Stringer) {
 	case xraylog.LogLevelDebug:
 		x.logger.WithFields(log.Fields{
 			"xrayLogLevel": "debug",
-		}).Debug(msg.String())
+		}).Debug(context.Background(), msg.String())
 	case xraylog.LogLevelInfo:
 		x.logger.WithFields(log.Fields{
 			"xrayLogLevel": "info",
-		}).Info(msg.String())
+		}).Info(context.Background(), msg.String())
 	case xraylog.LogLevelWarn:
 		x.logger.WithFields(log.Fields{
 			"xrayLogLevel": "warn",
-		}).Warn(msg.String())
+		}).Warn(context.Background(), msg.String())
 	case xraylog.LogLevelError:
 		x.logger.WithFields(log.Fields{
 			"xrayLogLevel": "error",
-		}).Warn(msg.String()) // we set error to warn level to prevent triggering alarm when message too long appears
+		}).Warn(context.Background(), msg.String()) // we set error to warn level to prevent triggering alarm when message too long appears
 	}
 }

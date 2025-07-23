@@ -38,7 +38,7 @@ func (r Repository) Create(ctx context.Context, value db_repo.ModelBased) error 
 
 	err = r.dispatcher.Fire(ctx, eventName, value)
 	if err != nil {
-		r.logger.WithContext(ctx).Error("error on %s for event %s: %w", db_repo.Create, eventName, err)
+		r.logger.Error(ctx, "error on %s for event %s: %w", db_repo.Create, eventName, err)
 	}
 
 	return err
@@ -54,7 +54,7 @@ func (r Repository) Update(ctx context.Context, value db_repo.ModelBased) error 
 
 	err = r.dispatcher.Fire(ctx, eventName, value)
 	if err != nil {
-		r.logger.WithContext(ctx).Error("error on %s for event %s: %w", db_repo.Update, eventName, err)
+		r.logger.Error(ctx, "error on %s for event %s: %w", db_repo.Update, eventName, err)
 	}
 
 	return err
@@ -70,7 +70,7 @@ func (r Repository) Delete(ctx context.Context, value db_repo.ModelBased) error 
 
 	err = r.dispatcher.Fire(ctx, eventName, value)
 	if err != nil {
-		r.logger.Error("error on %s for event %s: %w", db_repo.Delete, eventName, err)
+		r.logger.Error(ctx, "error on %s for event %s: %w", db_repo.Delete, eventName, err)
 	}
 
 	return err

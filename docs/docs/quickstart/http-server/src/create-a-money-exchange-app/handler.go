@@ -51,7 +51,7 @@ func (h *euroHandler) Handle(requestContext context.Context, request *httpserver
 	amount, err := strconv.ParseFloat(amountString, 64)
 	// Send a 400 Bad Request response if amountString can't be parsed into a valid float.
 	if err != nil {
-		h.logger.Error("cannot parse amount %s: %w", amountString, err)
+		h.logger.Error(requestContext, "cannot parse amount %s: %w", amountString, err)
 
 		return httpserver.NewStatusResponse(http.StatusBadRequest), nil
 	}
@@ -60,7 +60,7 @@ func (h *euroHandler) Handle(requestContext context.Context, request *httpserver
 	result, err := h.currencyService.ToEur(requestContext, amount, currency)
 	// Send a 500 Internal Server Error if the server can't convert the amount.
 	if err != nil {
-		h.logger.Error("cannot convert amount %f with currency %s: %w", amount, currency, err)
+		h.logger.Error(requestContext, "cannot convert amount %f with currency %s: %w", amount, currency, err)
 
 		return httpserver.NewStatusResponse(http.StatusInternalServerError), nil
 	}
@@ -99,7 +99,7 @@ func (h *euroAtDateHandler) Handle(requestContext context.Context, request *http
 	date, err := time.Parse(time.RFC3339, dateString)
 	// Send a 500 Internal Server Error if the service can't parse the params or convert the currency.
 	if err != nil {
-		h.logger.Error("cannot parse date %s: %w", dateString, err)
+		h.logger.Error(requestContext, "cannot parse date %s: %w", dateString, err)
 
 		return httpserver.NewStatusResponse(http.StatusInternalServerError), nil
 	}
@@ -107,14 +107,14 @@ func (h *euroAtDateHandler) Handle(requestContext context.Context, request *http
 	amountString := request.Params.ByName("amount")
 	amount, err := strconv.ParseFloat(amountString, 64)
 	if err != nil {
-		h.logger.Error("cannot parse amount %s: %w", amountString, err)
+		h.logger.Error(requestContext, "cannot parse amount %s: %w", amountString, err)
 
 		return httpserver.NewStatusResponse(http.StatusInternalServerError), nil
 	}
 
 	result, err := h.currencyService.ToEurAtDate(requestContext, amount, currency, date)
 	if err != nil {
-		h.logger.Error("cannot convert amount %f with currency %s at date %v: %w", amount, currency, date, err)
+		h.logger.Error(requestContext, "cannot convert amount %f with currency %s at date %v: %w", amount, currency, date, err)
 
 		return httpserver.NewStatusResponse(http.StatusInternalServerError), nil
 	}

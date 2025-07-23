@@ -223,11 +223,11 @@ func (d *producerDaemon) Run(kernelCtx context.Context) error {
 
 	select {
 	case <-cfn.Dying():
-		if err := d.close(); err != nil {
+		if err := d.close(kernelCtx); err != nil {
 			return fmt.Errorf("error on close: %w", err)
 		}
 	case <-kernelCtx.Done():
-		if err := d.close(); err != nil {
+		if err := d.close(kernelCtx); err != nil {
 			return fmt.Errorf("error on close: %w", err)
 		}
 	}
@@ -249,7 +249,7 @@ func (d *producerDaemon) Write(ctx context.Context, batch []WritableMessage) err
 
 	var err error
 	var aggregated []*Message
-	d.writeMetricMessageCount(len(batch))
+	d.writeMetricMessageCount(ctx, len(batch))
 
 	if aggregated, err = d.applyAggregation(ctx, batch); err != nil {
 		return fmt.Errorf("can not apply aggregation in producer %s: %w", d.name, err)
@@ -269,7 +269,7 @@ func (d *producerDaemon) Write(ctx context.Context, batch []WritableMessage) err
 			if d.ticker != nil {
 				d.ticker.Reset(d.settings.Interval)
 			}
-			d.outCh.Write(flushedBatch)
+			d.outCh.Write(ctx, flushedBatch)
 		}
 	}
 
@@ -311,8 +311,8 @@ func (d *producerDaemon) tickerLoop(ctx context.Context) error {
 		case <-d.ticker.Chan():
 			d.lck.Lock()
 
-			if err = d.flushAll(); err != nil {
-				d.logger.Error("can not flush all messages: %w", err)
+			if err = d.flushAll(ctx); err != nil {
+				d.logger.Error(ctx, "can not flush all messages: %w", err)
 			}
 
 			d.lck.Unlock()
@@ -352,7 +352,7 @@ func (d *producerDaemon) applyAggregation(ctx context.Context, batch []WritableM
 		}
 
 		for _, readyMessage := range readyMessages {
-			d.writeMetricAggregateSize(readyMessage.MessageCount)
+			d.writeMetricAggregateSize(ctx, readyMessage.MessageCount)
 			aggregateMessage := BuildAggregateMessage(readyMessage.Body, d.settings.MessageAttributes, readyMessage.Attributes)
 
 			result = append(result, aggregateMessage)
@@ -362,7 +362,7 @@ func (d *producerDaemon) applyAggregation(ctx context.Context, batch []WritableM
 	return result, nil
 }
 
-func (d *producerDaemon) flushAggregate() ([]*Message, error) {
+func (d *producerDaemon) flushAggregate(ctx context.Context) ([]*Message, error) {
 	aggregates, err := d.aggregator.Flush()
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal aggregates: %w", err)
@@ -374,7 +374,7 @@ func (d *producerDaemon) flushAggregate() ([]*Message, error) {
 			continue
 		}
 
-		d.writeMetricAggregateSize(aggregate.MessageCount)
+		d.writeMetricAggregateSize(ctx, aggregate.MessageCount)
 		aggregateMessage := BuildAggregateMessage(aggregate.Body, d.settings.MessageAttributes, aggregate.Attributes)
 
 		messages = append(messages, aggregateMessage)
@@ -383,18 +383,18 @@ func (d *producerDaemon) flushAggregate() ([]*Message, error) {
 	return messages, nil
 }
 
-func (d *producerDaemon) flushBatch() {
+func (d *producerDaemon) flushBatch(ctx context.Context) {
 	readyBatch := d.batcher.Flush()
 
 	if len(readyBatch) == 0 {
 		return
 	}
 
-	d.outCh.Write(readyBatch)
+	d.outCh.Write(ctx, readyBatch)
 }
 
-func (d *producerDaemon) flushAll() error {
-	readyBatches, err := d.flushAggregate()
+func (d *producerDaemon) flushAll(ctx context.Context) error {
+	readyBatches, err := d.flushAggregate(ctx)
 	if err != nil {
 		return fmt.Errorf("can not flush aggregation: %w", err)
 	}
@@ -406,21 +406,21 @@ func (d *producerDaemon) flushAll() error {
 		}
 
 		if len(flushedBatch) > 0 {
-			d.outCh.Write(flushedBatch)
+			d.outCh.Write(ctx, flushedBatch)
 		}
 	}
 
-	d.flushBatch()
+	d.flushBatch(ctx)
 
 	return nil
 }
 
-func (d *producerDaemon) close() error {
+func (d *producerDaemon) close(ctx context.Context) error {
 	d.lck.Lock()
 	defer d.lck.Unlock()
-	defer d.outCh.Close()
+	defer d.outCh.Close(ctx)
 
-	if err := d.flushAll(); err != nil {
+	if err := d.flushAll(ctx); err != nil {
 		return fmt.Errorf("can not flush all messages: %w", err)
 	}
 
@@ -441,16 +441,16 @@ func (d *producerDaemon) outputLoop() error {
 		}
 
 		if err := d.output.Write(ctx, batch); err != nil {
-			d.logger.Error("can not write messages to output in producer %s: %w", d.name, err)
+			d.logger.Error(ctx, "can not write messages to output in producer %s: %w", d.name, err)
 		}
 
-		d.writeMetricBatchSize(len(batch))
-		d.writeMetricIdleDuration(idleDuration)
+		d.writeMetricBatchSize(ctx, len(batch))
+		d.writeMetricIdleDuration(ctx, idleDuration)
 	}
 }
 
-func (d *producerDaemon) writeMetricMessageCount(count int) {
-	d.metric.WriteOne(&metric.Datum{
+func (d *producerDaemon) writeMetricMessageCount(ctx context.Context, count int) {
+	d.metric.WriteOne(ctx, &metric.Datum{
 		MetricName: metricNameMessageCount,
 		Dimensions: map[string]string{
 			"ProducerDaemon": d.name,
@@ -459,8 +459,8 @@ func (d *producerDaemon) writeMetricMessageCount(count int) {
 	})
 }
 
-func (d *producerDaemon) writeMetricBatchSize(size int) {
-	d.metric.WriteOne(&metric.Datum{
+func (d *producerDaemon) writeMetricBatchSize(ctx context.Context, size int) {
+	d.metric.WriteOne(ctx, &metric.Datum{
 		MetricName: metricNameBatchSize,
 		Dimensions: map[string]string{
 			"ProducerDaemon": d.name,
@@ -469,8 +469,8 @@ func (d *producerDaemon) writeMetricBatchSize(size int) {
 	})
 }
 
-func (d *producerDaemon) writeMetricAggregateSize(size int) {
-	d.metric.WriteOne(&metric.Datum{
+func (d *producerDaemon) writeMetricAggregateSize(ctx context.Context, size int) {
+	d.metric.WriteOne(ctx, &metric.Datum{
 		MetricName: metricNameAggregateSize,
 		Dimensions: map[string]string{
 			"ProducerDaemon": d.name,
@@ -479,12 +479,12 @@ func (d *producerDaemon) writeMetricAggregateSize(size int) {
 	})
 }
 
-func (d *producerDaemon) writeMetricIdleDuration(idleDuration time.Duration) {
+func (d *producerDaemon) writeMetricIdleDuration(ctx context.Context, idleDuration time.Duration) {
 	if idleDuration > d.settings.Interval {
 		idleDuration = d.settings.Interval
 	}
 
-	d.metric.WriteOne(&metric.Datum{
+	d.metric.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: metricNameIdleDuration,
 		Dimensions: map[string]string{

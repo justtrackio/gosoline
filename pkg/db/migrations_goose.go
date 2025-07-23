@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -8,10 +9,10 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-func runMigrationGoose(logger log.Logger, settings *Settings, db *sql.DB) error {
+func runMigrationGoose(ctx context.Context, logger log.Logger, settings *Settings, db *sql.DB) error {
 	var err error
 
-	goose.SetLogger(newGooseLogger(logger))
+	goose.SetLogger(newGooseLogger(ctx, logger))
 
 	if err = goose.SetDialect(settings.Driver); err != nil {
 		return fmt.Errorf("can not set db dialect: %w", err)
@@ -25,31 +26,33 @@ func runMigrationGoose(logger log.Logger, settings *Settings, db *sql.DB) error 
 }
 
 type gooseLogger struct {
+	ctx    context.Context
 	logger log.Logger
 }
 
-func newGooseLogger(logger log.Logger) goose.Logger {
+func newGooseLogger(ctx context.Context, logger log.Logger) goose.Logger {
 	return gooseLogger{
+		ctx:    ctx,
 		logger: logger,
 	}
 }
 
 func (g gooseLogger) Fatal(v ...any) {
-	g.logger.Error(fmt.Sprint(v...))
+	g.logger.Error(g.ctx, fmt.Sprint(v...))
 }
 
 func (g gooseLogger) Fatalf(format string, v ...any) {
-	g.logger.Error(format, v...)
+	g.logger.Error(g.ctx, format, v...)
 }
 
 func (g gooseLogger) Print(v ...any) {
-	g.logger.Info(fmt.Sprint(v...))
+	g.logger.Info(g.ctx, fmt.Sprint(v...))
 }
 
 func (g gooseLogger) Println(v ...any) {
-	g.logger.Info(fmt.Sprint(v...))
+	g.logger.Info(g.ctx, fmt.Sprint(v...))
 }
 
 func (g gooseLogger) Printf(format string, v ...any) {
-	g.logger.Info(format, v...)
+	g.logger.Info(g.ctx, format, v...)
 }

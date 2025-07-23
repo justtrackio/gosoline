@@ -45,8 +45,8 @@ func (s *MiddleWareTestSuite) SetupTest() {
 
 	s.logger = logMocks.NewLogger(s.T())
 	s.logger.EXPECT().WithChannel(mock.AnythingOfType("string")).Return(s.logger)
-	s.logger.EXPECT().Info(mock.Anything)
-	s.logger.EXPECT().Info(mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	s.logger.EXPECT().Info(matcher.Context, mock.Anything)
+	s.logger.EXPECT().Info(matcher.Context, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
 	s.module = kernelMocks.NewFullModule(s.T())
 	s.module.EXPECT().IsEssential().Return(false).Once()

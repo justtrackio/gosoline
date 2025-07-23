@@ -5,6 +5,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -36,7 +37,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestEncodeEmpty() {
 }
 
 func (s *LoggerMessageEncodeHandlerTestSuite) TestEncodeSuccess() {
-	s.logger.EXPECT().Warn("omitting logger context field %s of type %T during message encoding", "fieldC", mock.Anything)
+	s.logger.EXPECT().Warn(matcher.Context, "omitting logger context field %s of type %T during message encoding", "fieldC", mock.Anything)
 
 	ctx := s.T().Context()
 	ctx = log.AppendGlobalContextFields(ctx, map[string]any{
@@ -64,7 +65,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeEmpty() {
 }
 
 func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeJsonError() {
-	s.logger.EXPECT().Warn("can not json unmarshal logger context fields during message decoding")
+	s.logger.EXPECT().Warn(matcher.Context, "can not json unmarshal logger context fields during message decoding")
 
 	ctx := s.T().Context()
 	attributes := map[string]string{

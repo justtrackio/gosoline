@@ -80,10 +80,10 @@ func NewPrometheusMetricServer(ctx context.Context, logger log.Logger, settings 
 		return nil, err
 	}
 
-	return NewMetricServerWithInterfaces(logger, registry, settings)
+	return NewMetricServerWithInterfaces(ctx, logger, registry, settings)
 }
 
-func NewMetricServerWithInterfaces(logger log.Logger, registry *prometheus.Registry, settings *PrometheusSettings) (kernel.Module, error) {
+func NewMetricServerWithInterfaces(ctx context.Context, logger log.Logger, registry *prometheus.Registry, settings *PrometheusSettings) (kernel.Module, error) {
 	handler := http.NewServeMux()
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", settings.Api.Port),
@@ -111,7 +111,7 @@ func NewMetricServerWithInterfaces(logger log.Logger, registry *prometheus.Regis
 		return nil, err
 	}
 
-	logger.Info("serving metrics on address %s", listener.Addr().String())
+	logger.Info(ctx, "serving metrics on address %s", listener.Addr().String())
 
 	return &metricsServer{
 		logger:   logger,
@@ -124,7 +124,7 @@ func (s *metricsServer) Run(ctx context.Context) error {
 	var err error
 	go func() {
 		if err = s.server.Serve(s.listener); !errors.Is(err, http.ErrServerClosed) {
-			s.logger.Error("Server closed unexpected: %w", err)
+			s.logger.Error(ctx, "Server closed unexpected: %w", err)
 
 			return
 		}
@@ -133,10 +133,10 @@ func (s *metricsServer) Run(ctx context.Context) error {
 	<-ctx.Done()
 
 	if err = s.server.Close(); err != nil {
-		s.logger.Error("Server Close: %w", err)
+		s.logger.Error(ctx, "Server Close: %w", err)
 	}
 
-	s.logger.Info("leaving metrics server")
+	s.logger.Info(ctx, "leaving metrics server")
 
 	return err
 }

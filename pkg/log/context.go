@@ -57,9 +57,9 @@ func newContext(ctx context.Context, localFields fields, globalFields fields) co
 //		ctx = log.InitContext(ctx)
 //
 //		if result, err := callee(ctx, input); err == nil {
-//			logger.WithContext(ctx).Info("Computed result %d", result)
+//			logger.Info(ctx, "Computed result %d", result)
 //		} else {
-//			logger.WithContext(ctx).Error("Failed to compute result: %w", err)
+//			logger.Error(ctx, "Failed to compute result: %w", err)
 //		}
 //	}
 //

@@ -120,7 +120,7 @@ func NewWithInterfaces(
 		serverCtx, cancelFunc = context.WithCancel(ctx)
 		hs = NewHealthServer(logger, cancelFunc)
 		protobuf.RegisterHealthServer(server, hs)
-		logger.Info("grpc_server enabled health-checks")
+		logger.Info(ctx, "grpc_server enabled health-checks")
 	}
 
 	for _, def := range *definitions {
@@ -133,7 +133,7 @@ func NewWithInterfaces(
 		}
 	}
 
-	logger.Info("grpc_server listens on address %s", listener.Addr().String())
+	logger.Info(ctx, "grpc_server listens on address %s", listener.Addr().String())
 
 	return &Server{
 		logger:       logger,
@@ -154,7 +154,7 @@ func (g *Server) Run(ctx context.Context) error {
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		g.logger.WithFields(log.Fields{
 			"error": err,
-		}).Error("grpc_server closed unexpected")
+		}).Error(ctx, "grpc_server closed unexpected")
 
 		return err
 	}
@@ -174,11 +174,11 @@ func (g *Server) waitForStop(ctx context.Context) {
 
 	select {
 	case <-ctx.Done():
-		g.logger.Info("stopping grpc_server due to canceled context")
+		g.logger.Info(ctx, "stopping grpc_server due to canceled context")
 	case <-g.serverCtx.Done():
-		g.logger.Info("stopping grpc_server due to unhealthy service")
+		g.logger.Info(ctx, "stopping grpc_server due to unhealthy service")
 	}
 
 	g.server.GracefulStop()
-	g.logger.Info("leaving grpc_server")
+	g.logger.Info(ctx, "leaving grpc_server")
 }

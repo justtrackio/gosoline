@@ -19,15 +19,15 @@ var ErrModelNotChanged = fmt.Errorf("nothing has changed on model")
 // Covers many default errors and responses like
 //   - context.Canceled, context.DeadlineExceed -> HTTP 499
 //   - dbRepo.RecordNotFoundError | dbRepo.NoQueryResultsError -> HTTP 404
-func HandleErrorOnRead(logger log.Logger, err error) (*httpserver.Response, error) {
+func HandleErrorOnRead(ctx context.Context, logger log.Logger, err error) (*httpserver.Response, error) {
 	if exec.IsRequestCanceled(err) {
-		logger.Info("read model(s) aborted: %s", err.Error())
+		logger.Info(ctx, "read model(s) aborted: %s", err.Error())
 
 		return httpserver.NewStatusResponse(httpserver.HttpStatusClientWentAway), nil
 	}
 
 	if dbRepo.IsRecordNotFoundError(err) || dbRepo.IsNoQueryResultsError(err) {
-		logger.Warn("failed to read model(s): %s", err.Error())
+		logger.Warn(ctx, "failed to read model(s): %s", err.Error())
 
 		return httpserver.NewStatusResponse(http.StatusNotFound), nil
 	}
@@ -43,22 +43,20 @@ func HandleErrorOnRead(logger log.Logger, err error) (*httpserver.Response, erro
 //   - ErrModelNotChanged -> HTTP 304
 //   - db.IsDuplicateEntryError -> HTTP 409
 func HandleErrorOnWrite(ctx context.Context, logger log.Logger, err error) (*httpserver.Response, error) {
-	logger = logger.WithContext(ctx)
-
 	if exec.IsRequestCanceled(err) {
-		logger.Error("failed to update model(s): %w", err)
+		logger.Error(ctx, "failed to update model(s): %w", err)
 
 		return httpserver.NewStatusResponse(http.StatusInternalServerError), nil
 	}
 
 	if dbRepo.IsRecordNotFoundError(err) || dbRepo.IsNoQueryResultsError(err) {
-		logger.Warn("failed to fetch model(s): %s", err.Error())
+		logger.Warn(ctx, "failed to fetch model(s): %s", err.Error())
 
 		return httpserver.NewStatusResponse(http.StatusNotFound), nil
 	}
 
 	if errors.Is(err, ErrModelNotChanged) {
-		logger.Info("model(s) unchanged, rejecting update")
+		logger.Info(ctx, "model(s) unchanged, rejecting update")
 
 		return httpserver.NewStatusResponse(http.StatusNotModified), nil
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"os"
 
@@ -48,7 +49,7 @@ func main() {
 	}
 
 	// print message with different levels
-	logger.Info("got an event with value %d", 42)
-	logger.Warn("this can but shouldn't happen")
-	logger.Error("we got an error: %s", errors.New("something bad"))
+	logger.Info(context.Background(), "got an event with value %d", 42)
+	logger.Warn(context.Background(), "this can but shouldn't happen")
+	logger.Error(context.Background(), "we got an error: %s", errors.New("something bad"))
 }

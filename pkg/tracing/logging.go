@@ -41,16 +41,12 @@ func (h *LoggerErrorHandler) Level() int {
 	return log.PriorityError
 }
 
-func (h *LoggerErrorHandler) Log(_ time.Time, _ int, _ string, _ []any, err error, data log.Data) error {
+func (h *LoggerErrorHandler) Log(ctx context.Context, _ time.Time, _ int, _ string, _ []any, err error, data log.Data) error {
 	if err == nil {
 		return nil
 	}
 
-	if data.Context == nil {
-		return nil
-	}
-
-	span := GetSpanFromContext(data.Context)
+	span := GetSpanFromContext(ctx)
 
 	if span == nil {
 		return nil

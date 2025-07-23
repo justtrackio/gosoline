@@ -26,19 +26,17 @@ func NewReadHandler(_ cfg.Config, logger log.Logger, transformer BaseHandler) gi
 }
 
 func (rh readHandler) Handle(ctx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
-	logger := rh.logger.WithContext(ctx)
-
 	id, valid := httpserver.GetUintFromRequest(request, "id")
 
 	if !valid {
-		return HandleErrorOnRead(logger, &validation.Error{
+		return HandleErrorOnRead(ctx, rh.logger, &validation.Error{
 			Errors: []error{
 				errors.New("no valid id provided"),
 			},
 		})
 	}
 
-	logger = rh.logger.WithFields(log.Fields{
+	logger := rh.logger.WithFields(log.Fields{
 		"entity_id": id,
 	})
 
@@ -46,13 +44,13 @@ func (rh readHandler) Handle(ctx context.Context, request *httpserver.Request) (
 	model := rh.transformer.GetModel()
 	err := repo.Read(ctx, id, model)
 	if err != nil {
-		return HandleErrorOnRead(logger, err)
+		return HandleErrorOnRead(ctx, logger, err)
 	}
 
 	apiView := GetApiViewFromHeader(request.Header)
 	out, err := rh.transformer.TransformOutput(ctx, model, apiView)
 	if err != nil {
-		return HandleErrorOnRead(logger, err)
+		return HandleErrorOnRead(ctx, logger, err)
 	}
 
 	return httpserver.NewJsonResponse(out), nil

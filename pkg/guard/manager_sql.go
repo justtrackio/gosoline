@@ -110,14 +110,14 @@ func (m SqlManager) Delete(ctx context.Context, id string) error {
 	del := squirrel.Delete(tableName).Where(squirrel.Eq{"id": id})
 	sql, args, err := del.ToSql()
 	if err != nil {
-		m.logger.Error("can not delete from %s: %w", tableName, err)
+		m.logger.Error(ctx, "can not delete from %s: %w", tableName, err)
 
 		return err
 	}
 
 	_, err = m.dbClient.Exec(ctx, sql, args...)
 	if err != nil {
-		m.logger.Error("can not delete from %s: %w", tableName, err)
+		m.logger.Error(ctx, "can not delete from %s: %w", tableName, err)
 
 		return err
 	}

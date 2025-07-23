@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"context"
 	"sync"
 
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -8,8 +9,8 @@ import (
 
 type OutputChannel interface {
 	Read() ([]WritableMessage, bool)
-	Write(msg []WritableMessage)
-	Close()
+	Write(ctx context.Context, msg []WritableMessage)
+	Close(ctx context.Context)
 	IsClosed() bool
 }
 
@@ -33,7 +34,7 @@ func (c *outputChannel) Read() ([]WritableMessage, bool) {
 	return msg, ok
 }
 
-func (c *outputChannel) Write(msg []WritableMessage) {
+func (c *outputChannel) Write(ctx context.Context, msg []WritableMessage) {
 	c.lck.RLock()
 	defer c.lck.RUnlock()
 
@@ -41,7 +42,7 @@ func (c *outputChannel) Write(msg []WritableMessage) {
 		// this can happen if we still get some traffic while everything is already shutting down.
 		// this is okay as far as the producer daemon is concerned, if your data can't handle this,
 		// you can't use the producer daemon anyway
-		c.logger.Warn("dropped batch of %d messages: channel is already closed", len(msg))
+		c.logger.Warn(ctx, "dropped batch of %d messages: channel is already closed", len(msg))
 
 		return
 	}
@@ -49,7 +50,7 @@ func (c *outputChannel) Write(msg []WritableMessage) {
 	c.ch <- msg
 }
 
-func (c *outputChannel) Close() {
+func (c *outputChannel) Close(ctx context.Context) {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
@@ -57,7 +58,7 @@ func (c *outputChannel) Close() {
 		c.closed = true
 		close(c.ch)
 	} else {
-		c.logger.Warn("duplicate close to output channel: channel is already closed")
+		c.logger.Warn(ctx, "duplicate close to output channel: channel is already closed")
 	}
 }
 

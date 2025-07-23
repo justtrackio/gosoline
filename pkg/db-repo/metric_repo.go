@@ -34,7 +34,7 @@ func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRep
 func (r metricRepository) Create(ctx context.Context, value ModelBased) error {
 	start := time.Now()
 	err := r.Repository.Create(ctx, value)
-	r.writeMetric(Create, err, start)
+	r.writeMetric(ctx, Create, err, start)
 
 	return err
 }
@@ -42,7 +42,7 @@ func (r metricRepository) Create(ctx context.Context, value ModelBased) error {
 func (r metricRepository) Read(ctx context.Context, id *uint, out ModelBased) error {
 	start := time.Now()
 	err := r.Repository.Read(ctx, id, out)
-	r.writeMetric(Read, err, start)
+	r.writeMetric(ctx, Read, err, start)
 
 	return err
 }
@@ -50,7 +50,7 @@ func (r metricRepository) Read(ctx context.Context, id *uint, out ModelBased) er
 func (r metricRepository) Update(ctx context.Context, value ModelBased) error {
 	start := time.Now()
 	err := r.Repository.Update(ctx, value)
-	r.writeMetric(Update, err, start)
+	r.writeMetric(ctx, Update, err, start)
 
 	return err
 }
@@ -58,7 +58,7 @@ func (r metricRepository) Update(ctx context.Context, value ModelBased) error {
 func (r metricRepository) Delete(ctx context.Context, value ModelBased) error {
 	start := time.Now()
 	err := r.Repository.Delete(ctx, value)
-	r.writeMetric(Delete, err, start)
+	r.writeMetric(ctx, Delete, err, start)
 
 	return err
 }
@@ -66,12 +66,12 @@ func (r metricRepository) Delete(ctx context.Context, value ModelBased) error {
 func (r metricRepository) Query(ctx context.Context, qb *QueryBuilder, result any) error {
 	start := time.Now()
 	err := r.Repository.Query(ctx, qb, result)
-	r.writeMetric(Query, err, start)
+	r.writeMetric(ctx, Query, err, start)
 
 	return err
 }
 
-func (r metricRepository) writeMetric(op string, err error, start time.Time) {
+func (r metricRepository) writeMetric(ctx context.Context, op string, err error, start time.Time) {
 	latencyNano := time.Since(start)
 	metricName := MetricNameDbAccessSuccess
 
@@ -79,7 +79,7 @@ func (r metricRepository) writeMetric(op string, err error, start time.Time) {
 		metricName = MetricNameDbAccessFailure
 	}
 
-	r.output.WriteOne(&metric.Datum{
+	r.output.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: metricName,
@@ -93,7 +93,7 @@ func (r metricRepository) writeMetric(op string, err error, start time.Time) {
 
 	latencyMillisecond := float64(latencyNano) / float64(time.Millisecond)
 
-	r.output.WriteOne(&metric.Datum{
+	r.output.WriteOne(ctx, &metric.Datum{
 		Timestamp:  time.Now(),
 		MetricName: MetricNameDbAccessLatency,
 		Dimensions: map[string]string{

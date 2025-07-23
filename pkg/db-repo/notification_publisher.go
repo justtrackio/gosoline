@@ -16,8 +16,10 @@ type publisherNotifier struct {
 	transformer mdl.TransformerResolver
 }
 
-func NewPublisherNotifier(_ context.Context, config cfg.Config, publisher Publisher, logger log.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) *publisherNotifier {
-	modelId.PadFromConfig(config)
+func NewPublisherNotifier(_ context.Context, config cfg.Config, publisher Publisher, logger log.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) (*publisherNotifier, error) {
+	if err := modelId.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("can not pad model id from config: %w", err)
+	}
 
 	notifier := newNotifier(logger, modelId, version)
 
@@ -25,30 +27,28 @@ func NewPublisherNotifier(_ context.Context, config cfg.Config, publisher Publis
 		notifier:    notifier,
 		publisher:   publisher,
 		transformer: transformer,
-	}
+	}, nil
 }
 
 func (n *publisherNotifier) Send(ctx context.Context, notificationType string, value ModelBased) error {
-	logger := n.logger.WithContext(ctx)
-
 	out := n.transformer("api", n.version, value)
 	err := n.publisher.Publish(ctx, notificationType, n.version, out)
 
 	if exec.IsRequestCanceled(err) {
-		logger.Info("request canceled while executing notification publish on %s for model %s with id %d", notificationType, n.modelId, value.GetId())
-		n.writeMetric(err)
+		n.logger.Info(ctx, "request canceled while executing notification publish on %s for model %s with id %d", notificationType, n.modelId, value.GetId())
+		n.writeMetric(ctx, err)
 
 		return err
 	}
 
 	if err != nil {
-		n.writeMetric(err)
+		n.writeMetric(ctx, err)
 
 		return fmt.Errorf("error executing notification on %s for model %s with id %d: %w", notificationType, n.modelId, *value.GetId(), err)
 	}
 
-	logger.Info("published on %s successful, for model %s with id %d", notificationType, n.modelId, *value.GetId())
-	n.writeMetric(nil)
+	n.logger.Info(ctx, "published on %s successful, for model %s with id %d", notificationType, n.modelId, *value.GetId())
+	n.writeMetric(ctx, nil)
 
 	return nil
 }

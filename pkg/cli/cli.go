@@ -39,7 +39,7 @@ func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.Modul
 	}
 
 	for name, priority := range cfgPostProcessors {
-		logger.Info("applied priority %d config post processor '%s'", priority, name)
+		logger.Info(context.Background(), "applied priority %d config post processor '%s'", priority, name)
 	}
 
 	ctx := appctx.WithContainer(context.Background())

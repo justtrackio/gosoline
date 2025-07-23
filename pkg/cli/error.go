@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"os"
 
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -15,6 +16,6 @@ func WithDefaultErrorHandler(handler ErrorHandler) {
 var defaultErrorHandler = func(msg string, args ...any) {
 	logger := log.NewCliLogger()
 
-	logger.Error(msg, args...)
+	logger.Error(context.Background(), msg, args...)
 	os.Exit(1)
 }

@@ -1,6 +1,7 @@
 package log
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 type Handler interface {
 	ChannelLevel(name string) (level *int, err error)
 	Level() int
-	Log(timestamp time.Time, level int, msg string, args []any, err error, data Data) error
+	Log(ctx context.Context, timestamp time.Time, level int, msg string, args []any, err error, data Data) error
 }
 
 type HandlerFactory func(config cfg.Config, name string) (Handler, error)

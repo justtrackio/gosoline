@@ -17,7 +17,7 @@ type Input interface {
 	// Stop causes Run to return as fast as possible. Calling Stop is preferable to canceling the context passed to Run
 	// as it allows Run to shut down cleaner (and might take a bit longer, e.g., to finish processing the current batch
 	// of messages).
-	Stop()
+	Stop(ctx context.Context)
 	// Data returns a channel containing the messages produced by this input.
 	Data() <-chan *Message
 	// IsHealthy checks if the input is still able to produce data. An Input is healthy if it produces zero or more

@@ -64,7 +64,7 @@ func Test_promWriter_WriteOne(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			registry := prometheus.NewRegistry()
 			w := metric.NewPrometheusWriterWithInterfaces(logger, registry, "ns:test", 1000)
-			w.WriteOne(tt.data)
+			w.WriteOne(t.Context(), tt.data)
 
 			count, err := testutil.GatherAndCount(registry, "ns:test_"+tt.data.MetricName)
 			assert.Equal(t, 1, count)
@@ -158,7 +158,7 @@ func Test_promWriter_Write(t *testing.T) {
 
 			registry := prometheus.NewRegistry()
 			w := metric.NewPrometheusWriterWithInterfaces(logger, registry, "ns:test:write", 1000)
-			w.Write(tt.data)
+			w.Write(t.Context(), tt.data)
 
 			metricOutput := fmt.Sprintf(`
 				# HELP %s unit: %s
@@ -177,7 +177,7 @@ func Test_promWriter_ExceedsLimit(t *testing.T) {
 
 	registry := prometheus.NewRegistry()
 	w := metric.NewPrometheusWriterWithInterfaces(logger, registry, "ns:test:exceedslimit", 1)
-	w.WriteOne(&metric.Datum{
+	w.WriteOne(t.Context(), &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: "counter",
 		Dimensions: nil,
@@ -185,7 +185,7 @@ func Test_promWriter_ExceedsLimit(t *testing.T) {
 		Unit:       metric.UnitPromCounter,
 	})
 
-	w.WriteOne(&metric.Datum{
+	w.WriteOne(t.Context(), &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: "over_limit",
 		Dimensions: nil,

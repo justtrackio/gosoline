@@ -29,15 +29,15 @@ func (s slowWriter) GetPriority() int {
 	return metric.PriorityHigh
 }
 
-func (s slowWriter) Write(metric.Data) {
+func (s slowWriter) Write(context.Context, metric.Data) {
 	select {
 	case <-s.ctx.Done():
 	case <-time.After(time.Second):
 	}
 }
 
-func (s slowWriter) WriteOne(data *metric.Datum) {
-	s.Write(metric.Data{data})
+func (s slowWriter) WriteOne(ctx context.Context, data *metric.Datum) {
+	s.Write(ctx, metric.Data{data})
 }
 
 func TestWriteLotsOfBadMetrics(t *testing.T) {
@@ -80,7 +80,7 @@ func TestWriteLotsOfBadMetrics(t *testing.T) {
 			case <-time.After(time.Millisecond * 10):
 			}
 
-			writer.WriteOne(&metric.Datum{
+			writer.WriteOne(ctx, &metric.Datum{
 				MetricName: "myMetricName",
 			})
 		}
@@ -94,7 +94,7 @@ func TestWriteLotsOfBadMetrics(t *testing.T) {
 				default:
 				}
 
-				writer.WriteOne(&metric.Datum{
+				writer.WriteOne(ctx, &metric.Datum{
 					Priority:   metric.PriorityHigh,
 					MetricName: "myOtherMetricName",
 					Unit:       metric.UnitCount,

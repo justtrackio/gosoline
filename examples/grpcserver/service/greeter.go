@@ -35,7 +35,7 @@ func NewGreeterService(_ cfg.Config, logger log.Logger) *greeter {
 func (h *greeter) SayHello(ctx context.Context, request *grpcServerTestProto.HelloRequest) (*grpcServerTestProto.HelloReply, error) {
 	h.requestCount++
 
-	h.logger.WithContext(ctx).Info("saying hello for %d times", h.requestCount)
+	h.logger.Info(ctx, "saying hello for %d times", h.requestCount)
 
 	return &grpcServerTestProto.HelloReply{
 		Message: fmt.Sprintf("Hello %s", request.GetName()),

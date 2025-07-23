@@ -33,7 +33,7 @@ type BatchConsumerTestSuite struct {
 	kernelCancel context.CancelFunc
 	inputData    chan *stream.Message
 	inputDataOut <-chan *stream.Message
-	inputStop    func()
+	inputStop    func(context.Context)
 
 	input *mocks.AcknowledgeableInput
 
@@ -47,7 +47,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 
 	s.inputData = make(chan *stream.Message, 10)
 	s.inputDataOut = s.inputData
-	s.inputStop = func() {
+	s.inputStop = func(ctx context.Context) {
 		s.once.Do(func() {
 			close(s.inputData)
 		})
@@ -59,7 +59,8 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 	uuidGen := uuid.New()
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	tracer := tracing.NewLocalTracer()
-	mw := metricMocks.NewWriterMockedAll()
+	mw := metricMocks.NewWriter(s.T())
+	mw.EXPECT().Write(matcher.Context, mock.Anything).Return().Maybe()
 	me := stream.NewMessageEncoder(&stream.MessageEncoderSettings{})
 	retryInput := stream.NewNoopInput()
 	retryHandler := stream.NewRetryHandlerNoopWithInterfaces()
@@ -94,7 +95,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 
 func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 	s.input.EXPECT().Data().Return(s.inputDataOut)
-	s.input.EXPECT().Stop().Run(s.inputStop).Once()
+	s.input.EXPECT().Stop(matcher.Context).Run(s.inputStop).Once()
 
 	s.input.
 		EXPECT().
@@ -140,7 +141,7 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 
 func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 	s.input.EXPECT().Data().Return(s.inputDataOut)
-	s.input.EXPECT().Stop().Run(s.inputStop).Once()
+	s.input.EXPECT().Stop(matcher.Context).Run(s.inputStop).Once()
 
 	s.input.
 		EXPECT().
@@ -189,7 +190,7 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 
 func (s *BatchConsumerTestSuite) TestRun_InputRunError() {
 	s.input.EXPECT().Data().Return(s.inputDataOut)
-	s.input.EXPECT().Stop().Run(s.inputStop).Once()
+	s.input.EXPECT().Stop(matcher.Context).Run(s.inputStop).Once()
 
 	s.input.
 		EXPECT().
@@ -213,7 +214,7 @@ func (s *BatchConsumerTestSuite) TestRun_InputRunError() {
 
 func (s *BatchConsumerTestSuite) TestRun_CallbackRunError() {
 	s.input.EXPECT().Data().Return(s.inputDataOut)
-	s.input.EXPECT().Stop().Run(s.inputStop).Once()
+	s.input.EXPECT().Stop(matcher.Context).Run(s.inputStop).Once()
 
 	s.input.EXPECT().
 		Run(matcher.Context).
@@ -247,7 +248,7 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 	aggregate := stream.BuildAggregateMessage(string(aggregateBody))
 
 	s.input.EXPECT().Data().Return(s.inputDataOut)
-	s.input.EXPECT().Stop().Run(s.inputStop).Once()
+	s.input.EXPECT().Stop(matcher.Context).Run(s.inputStop).Once()
 
 	s.input.
 		EXPECT().

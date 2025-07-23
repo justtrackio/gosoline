@@ -91,13 +91,13 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 	} else if err != nil {
 		return fmt.Errorf("failed to acquire shard: %w", err)
 	} else if !ok {
-		s.logger.Info("could not acquire shard, leaving")
+		s.logger.Info(ctx, "could not acquire shard, leaving")
 
 		return nil
 	}
 
-	s.logger.Info("acquired shard")
-	defer s.logger.Info("releasing shard")
+	s.logger.Info(ctx, "acquired shard")
+	defer s.logger.Info(ctx, "releasing shard")
 
 	releaseCtx, stop := exec.WithDelayedCancelContext(ctx, s.settings.ReleaseDelay)
 	defer stop()
@@ -194,7 +194,7 @@ func (s *shardReader) acquireShard(ctx context.Context) (bool, error) {
 		}
 
 		tookSoFar := s.clock.Since(start)
-		s.writeMetric(metricNameAcquireShardDelaySeconds, tookSoFar.Seconds(), metric.UnitSecondsMaximum)
+		s.writeMetric(ctx, metricNameAcquireShardDelaySeconds, tookSoFar.Seconds(), metric.UnitSecondsMaximum)
 
 		timer := s.clock.NewTimer(s.settings.WaitTime)
 
@@ -209,29 +209,12 @@ func (s *shardReader) acquireShard(ctx context.Context) (bool, error) {
 }
 
 func (s *shardReader) getShardIterator(ctx context.Context, sequenceNumber SequenceNumber, lastShardIterator ShardIterator) (ShardIterator, error) {
-	if lastShardIterator != "" {
-		// check if we can recycle the last shard iterator instead of starting from the configured starting point
-		resp, err := s.kinesisClient.GetRecords(ctx, &kinesis.GetRecordsInput{
-			ShardIterator: aws.String(string(lastShardIterator)),
-			Limit:         aws.Int32(1),
-		})
-		if err != nil {
-			var errExpiredIteratorException *types.ExpiredIteratorException
-			if errors.As(err, &errExpiredIteratorException) {
-				s.logger.WithContext(ctx).Info("can't continue from expired saved iterator, will start from configured default")
-			} else {
-				return "", fmt.Errorf("failed to validate shard iterator: %w", err)
-			}
-		} else {
-			// we can actually return a fresh shard iterator and continue from there (as we didn't skip any records)
-			if len(resp.Records) == 0 {
-				return ShardIterator(mdl.EmptyIfNil(resp.NextShardIterator)), nil
-			}
-
-			// return our saved shard iterator and hope it doesn't expire until we request it again (shard iterators
-			// expire after 5 minutes).
-			return lastShardIterator, nil
-		}
+	iterator, ok, err := s.getLastShardIterator(ctx, lastShardIterator)
+	if err != nil {
+		return "", err
+	}
+	if ok {
+		return iterator, nil
 	}
 
 	iteratorType := types.ShardIteratorTypeAfterSequenceNumber
@@ -258,6 +241,37 @@ func (s *shardReader) getShardIterator(ctx context.Context, sequenceNumber Seque
 	}
 
 	return ShardIterator(mdl.EmptyIfNil(resp.ShardIterator)), nil
+}
+
+func (s *shardReader) getLastShardIterator(ctx context.Context, lastShardIterator ShardIterator) (ShardIterator, bool, error) {
+	if lastShardIterator == "" {
+		return "", false, nil
+	}
+
+	// check if we can recycle the last shard iterator instead of starting from the configured starting point
+	resp, err := s.kinesisClient.GetRecords(ctx, &kinesis.GetRecordsInput{
+		ShardIterator: aws.String(string(lastShardIterator)),
+		Limit:         aws.Int32(1),
+	})
+	if err != nil {
+		var errExpiredIteratorException *types.ExpiredIteratorException
+		if errors.As(err, &errExpiredIteratorException) {
+			s.logger.Info(ctx, "can't continue from expired saved iterator, will start from configured default")
+
+			return "", false, nil
+		}
+
+		return "", false, fmt.Errorf("failed to validate shard iterator: %w", err)
+	}
+
+	// we can actually return a fresh shard iterator and continue from there (as we didn't skip any records)
+	if len(resp.Records) == 0 {
+		return ShardIterator(mdl.EmptyIfNil(resp.NextShardIterator)), true, nil
+	}
+
+	// return our saved shard iterator and hope it doesn't expire until we request it again (shard iterators
+	// expire after 5 minutes).
+	return lastShardIterator, true, nil
 }
 
 func (s *shardReader) runPersister(ctx context.Context, releaseCtx context.Context) error {
@@ -383,17 +397,17 @@ func (s *shardReader) getAndProcessRecords(
 	}
 
 	processDuration := s.clock.Since(processStart)
-	s.writeMetric(metricNameProcessDuration, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage)
-	s.writeMetric(metricNameReadRecords, float64(processedSize), metric.UnitCount)
+	s.writeMetric(ctx, metricNameProcessDuration, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage)
+	s.writeMetric(ctx, metricNameReadRecords, float64(processedSize), metric.UnitCount)
 
 	s.logger.WithChannel("kinsumer-read").WithFields(log.Fields{
 		"count":       processedSize,
 		"duration_ms": processDuration.Milliseconds(),
-	}).Info("processed batch of %d records in %s", processedSize, processDuration)
+	}).Info(ctx, "processed batch of %d records in %s", processedSize, processDuration)
 
 	// if the results are older than our wait time, continue immediately
 	if time.Duration(millisecondsBehind) > (s.settings.WaitTime + s.settings.ConsumeDelay) {
-		s.writeMetric(metricNameWaitDuration, 0.0, metric.UnitMillisecondsAverage)
+		s.writeMetric(ctx, metricNameWaitDuration, 0.0, metric.UnitMillisecondsAverage)
 
 		return 0, nil
 	}
@@ -401,7 +415,7 @@ func (s *shardReader) getAndProcessRecords(
 	durationSinceLastGetRecordsCall := s.clock.Since(getRecordsStart)
 	waitTime := max(0, s.settings.WaitTime-durationSinceLastGetRecordsCall)
 
-	s.writeMetric(metricNameWaitDuration, float64(waitTime.Milliseconds()), metric.UnitMillisecondsAverage)
+	s.writeMetric(ctx, metricNameWaitDuration, float64(waitTime.Milliseconds()), metric.UnitMillisecondsAverage)
 
 	return waitTime, nil
 }
@@ -422,7 +436,7 @@ func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (
 		return nil, "", 0, fmt.Errorf("failed to get records from shard: %w", err)
 	}
 
-	s.writeMetric(metricNameReadCount, 1.0, metric.UnitCount)
+	s.writeMetric(ctx, metricNameReadCount, 1.0, metric.UnitCount)
 
 	records = output.Records
 	nextIterator = ShardIterator(mdl.EmptyIfNil(output.NextShardIterator))
@@ -462,9 +476,9 @@ func (s *shardReader) processRecords(
 			// log the error and mark the record as done, returning an error would tear down the whole
 			// kinsumer and retrying the record (what tearing everything down would also cause) does
 			// not make sense at this point. Instead, the handler needs to implement a retry logic if needed
-			s.logger.Error("failed to handle record %s: %w", mdl.EmptyIfNil(record.SequenceNumber), err)
+			s.logger.Error(ctx, "failed to handle record %s: %w", mdl.EmptyIfNil(record.SequenceNumber), err)
 
-			s.writeMetric(metricNameFailedRecords, 1, metric.UnitCount)
+			s.writeMetric(ctx, metricNameFailedRecords, 1, metric.UnitCount)
 		}
 
 		// mark us as healthy as we managed to pass a record to downstream and are still making progress
@@ -513,7 +527,7 @@ func (s *shardReader) delayConsume(ctx context.Context, record types.Record) {
 	select {
 	case <-ctx.Done():
 	case <-timer.Chan():
-		s.writeMetric(metricNameSleepDuration, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage)
+		s.writeMetric(ctx, metricNameSleepDuration, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage)
 	}
 }
 
@@ -525,12 +539,12 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 	defer ticker.Stop()
 
 	currentMillisecondsBehind := 0.0
-	s.writeMetric(metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+	s.writeMetric(context.Background(), metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
 
 	for {
 		select {
 		case <-ticker.Chan():
-			s.writeMetric(metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+			s.writeMetric(context.Background(), metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
 		case newMillisecondsBehind, ok := <-millisecondsBehindChan:
 			if !ok {
 				// the producer stopped, so we also need to stop
@@ -538,13 +552,13 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 			}
 
 			currentMillisecondsBehind = newMillisecondsBehind
-			s.writeMetric(metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+			s.writeMetric(context.Background(), metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
 		}
 	}
 }
 
-func (s *shardReader) writeMetric(metricName string, value float64, unit metric.StandardUnit) {
-	s.metricWriter.Write(metric.Data{
+func (s *shardReader) writeMetric(ctx context.Context, metricName string, value float64, unit metric.StandardUnit) {
+	s.metricWriter.Write(ctx, metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricName,

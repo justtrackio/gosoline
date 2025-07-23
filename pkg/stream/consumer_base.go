@@ -190,13 +190,13 @@ func NewBaseConsumerWithInterfaces(
 }
 
 func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx context.Context) error) error {
-	defer c.logger.Info("leaving consumer %s", c.name)
+	defer c.logger.Info(kernelCtx, "leaving consumer %s", c.name)
 
 	if err := c.initConsumerCallback(kernelCtx); err != nil {
 		return fmt.Errorf("can not init consumer callback: %w", err)
 	}
 
-	c.logger.Info("running consumer %s with input %s", c.name, c.settings.Input)
+	c.logger.Info(kernelCtx, "running consumer %s with input %s", c.name, c.settings.Input)
 
 	// create ctx whose done channel is closed on dying coffin
 	cfn, dyingCtx := coffin.WithContext(context.Background())
@@ -219,7 +219,7 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 			cfn.GoWithContextf(manualCtx, inputRunner, "panic during consuming")
 		}
 
-		cfn.Gof(c.stopConsuming, "panic during stopping the consuming")
+		cfn.GoWithContextf(manualCtx, c.stopConsuming, "panic during stopping the consuming")
 
 		cfn.GoWithContext(manualCtx, func(manualCtx context.Context) error {
 			// wait for kernel or coffin cancel...
@@ -229,7 +229,7 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 			}
 
 			// and stop the input
-			c.stopIncomingData()
+			c.stopIncomingData(kernelCtx)
 
 			return nil
 		})
@@ -245,8 +245,7 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 }
 
 func (c *baseConsumer) logConsumeCounter(ctx context.Context) error {
-	logger := c.logger.WithContext(ctx)
-	defer logger.Debug("logConsumeCounter is ending")
+	defer c.logger.Debug(ctx, "logConsumeCounter is ending")
 
 	ticker := time.NewTicker(c.settings.IdleTimeout)
 	defer ticker.Stop()
@@ -258,10 +257,10 @@ func (c *baseConsumer) logConsumeCounter(ctx context.Context) error {
 		case <-ticker.C:
 			processed := atomic.SwapInt32(&c.processed, 0)
 
-			logger.WithFields(log.Fields{
+			c.logger.WithFields(log.Fields{
 				"count": processed,
 				"name":  c.name,
-			}).Info("processed %v messages", processed)
+			}).Info(ctx, "processed %v messages", processed)
 		}
 	}
 }
@@ -275,8 +274,7 @@ func (c *baseConsumer) initConsumerCallback(ctx context.Context) error {
 }
 
 func (c *baseConsumer) runConsumerCallback(ctx context.Context) error {
-	logger := c.logger.WithContext(ctx)
-	defer logger.Debug("runConsumerCallback is ending")
+	defer c.logger.Debug(ctx, "runConsumerCallback is ending")
 
 	if runnable, ok := c.consumerCallback.(RunnableCallback); ok {
 		return runnable.Run(ctx)
@@ -286,7 +284,7 @@ func (c *baseConsumer) runConsumerCallback(ctx context.Context) error {
 }
 
 func (c *baseConsumer) ingestData(ctx context.Context) error {
-	defer c.logger.Debug("ingestData is ending")
+	defer c.logger.Debug(ctx, "ingestData is ending")
 	defer close(c.data)
 
 	cfn := coffin.New()
@@ -302,8 +300,8 @@ func (c *baseConsumer) ingestData(ctx context.Context) error {
 
 func (c *baseConsumer) ingestDataFromSource(input Input, src string) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
-		defer c.logger.Debug("ingestDataFromSource %s is ending", src)
-		defer c.stopIncomingData()
+		defer c.logger.Debug(ctx, "ingestDataFromSource %s is ending", src)
+		defer c.stopIncomingData(ctx)
 
 		for msg := range input.Data() {
 			if retryId, ok := msg.Attributes[AttributeRetryId]; ok {
@@ -314,8 +312,8 @@ func (c *baseConsumer) ingestDataFromSource(input Input, src string) func(ctx co
 					newCtx = ctx
 				}
 
-				c.logger.WithContext(newCtx).Warn("retrying message with id %s", retryId)
-				c.writeMetricRetryCount(metricNameConsumerRetryGetCount)
+				c.logger.Warn(newCtx, "retrying message with id %s", retryId)
+				c.writeMetricRetryCount(newCtx, metricNameConsumerRetryGetCount)
 			}
 
 			c.data <- &consumerData{
@@ -330,22 +328,22 @@ func (c *baseConsumer) ingestDataFromSource(input Input, src string) func(ctx co
 }
 
 // this one acts as a fallback which should stop all still running routines
-func (c *baseConsumer) stopConsuming() error {
-	defer c.logger.Debug("stopConsuming is ending")
+func (c *baseConsumer) stopConsuming(ctx context.Context) error {
+	defer c.logger.Debug(ctx, "stopConsuming is ending")
 
 	c.wg.Wait()
-	c.stopIncomingData()
+	c.stopIncomingData(ctx)
 	c.cancel()
 
 	return nil
 }
 
-func (c *baseConsumer) stopIncomingData() {
+func (c *baseConsumer) stopIncomingData(ctx context.Context) {
 	c.stopped.Do(func() {
-		defer c.logger.Debug("stopIncomingData is ending")
+		defer c.logger.Debug(ctx, "stopIncomingData is ending")
 
-		c.retryInput.Stop()
-		c.input.Stop()
+		c.retryInput.Stop(ctx)
+		c.input.Stop(ctx)
 	})
 }
 
@@ -376,8 +374,8 @@ func (c *baseConsumer) retry(ctx context.Context, msg *Message) {
 		"retry_id": retryId,
 	})
 
-	c.logger.WithContext(ctx).Warn("putting message with id %s into retry", retryId)
-	c.writeMetricRetryCount(metricNameConsumerRetryPutCount)
+	c.logger.Warn(ctx, "putting message with id %s into retry", retryId)
+	c.writeMetricRetryCount(ctx, metricNameConsumerRetryPutCount)
 
 	ctx, stop := exec.WithDelayedCancelContext(ctx, c.settings.Retry.GraceTime)
 	defer stop()
@@ -411,9 +409,9 @@ func (c *baseConsumer) buildRetryMessage(msg *Message) (retryMsg *Message, retry
 }
 
 func (c *baseConsumer) handleError(ctx context.Context, err error, msg string) {
-	c.logger.WithContext(ctx).Error("%s: %w", msg, err)
+	c.logger.Error(ctx, "%s: %w", msg, err)
 
-	c.metricWriter.Write(metric.Data{
+	c.metricWriter.Write(ctx, metric.Data{
 		&metric.Datum{
 			MetricName: metricNameConsumerError,
 			Dimensions: map[string]string{
@@ -433,8 +431,8 @@ func (c *baseConsumer) isHealthy() bool {
 	return c.input.IsHealthy() && retryInputHealthy
 }
 
-func (c *baseConsumer) writeMetricDurationAndProcessedCount(duration time.Duration, processedCount int) {
-	c.metricWriter.Write(metric.Data{
+func (c *baseConsumer) writeMetricDurationAndProcessedCount(ctx context.Context, duration time.Duration, processedCount int) {
+	c.metricWriter.Write(ctx, metric.Data{
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerDuration,
@@ -454,8 +452,8 @@ func (c *baseConsumer) writeMetricDurationAndProcessedCount(duration time.Durati
 	})
 }
 
-func (c *baseConsumer) writeMetricRetryCount(metricName string) {
-	c.metricWriter.Write(metric.Data{
+func (c *baseConsumer) writeMetricRetryCount(ctx context.Context, metricName string) {
+	c.metricWriter.Write(ctx, metric.Data{
 		&metric.Datum{
 			MetricName: metricName,
 			Dimensions: map[string]string{

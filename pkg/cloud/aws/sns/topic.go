@@ -85,9 +85,9 @@ func (t *snsTopic) Publish(ctx context.Context, msg string, attributes ...map[st
 	_, err = t.client.Publish(ctx, input)
 
 	if exec.IsRequestCanceled(err) {
-		t.logger.WithContext(ctx).WithFields(log.Fields{
+		t.logger.WithFields(log.Fields{
 			"arn": t.topicArn,
-		}).Info("request was canceled while publishing to topic")
+		}).Info(ctx, "request was canceled while publishing to topic")
 
 		return fmt.Errorf("request was canceled while publishing to topic: %w", err)
 	}
@@ -146,9 +146,9 @@ func (t *snsTopic) publishSubSlice(ctx context.Context, entries []types.PublishB
 	_, err := t.client.PublishBatch(ctx, input)
 
 	if exec.IsRequestCanceled(err) {
-		t.logger.WithContext(ctx).WithFields(log.Fields{
+		t.logger.WithFields(log.Fields{
 			"arn": t.topicArn,
-		}).Info("request was canceled while publishing to topic")
+		}).Info(ctx, "request was canceled while publishing to topic")
 
 		return fmt.Errorf("request was canceled while publishing to topic: %w", err)
 	}

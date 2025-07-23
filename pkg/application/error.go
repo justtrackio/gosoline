@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"os"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -9,13 +10,13 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
-type ErrorHandler func(msg string, args ...any)
+type ErrorHandler func(ctx context.Context, msg string, args ...any)
 
 func withDefaultErrorHandler(handler ErrorHandler) {
 	defaultErrorHandler = handler
 }
 
-var defaultErrorHandler = func(msg string, args ...any) {
+var defaultErrorHandler = func(ctx context.Context, msg string, args ...any) {
 	writerHandler := log.NewHandlerIoWriter(cfg.New(), log.PriorityInfo, log.FormatterJson, "app", "2006-01-02T15:04:05.999Z07:00", os.Stdout)
 	metricHandler := metric.NewLoggerHandler()
 
@@ -24,6 +25,6 @@ var defaultErrorHandler = func(msg string, args ...any) {
 		metricHandler,
 	})
 
-	logger.Error(msg, args...)
+	logger.Error(ctx, msg, args...)
 	os.Exit(1)
 }
