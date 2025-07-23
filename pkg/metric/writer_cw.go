@@ -94,23 +94,23 @@ func (w *cloudwatchWriter) GetPriority() int {
 	return PriorityHigh
 }
 
-func (w *cloudwatchWriter) WriteOne(data *Datum) {
-	w.Write(Data{data})
+func (w *cloudwatchWriter) WriteOne(ctx context.Context, data *Datum) {
+	w.Write(ctx, Data{data})
 }
 
-func (w *cloudwatchWriter) Write(batch Data) {
+func (w *cloudwatchWriter) Write(ctx context.Context, batch Data) {
 	if len(batch) == 0 {
 		return
 	}
 
-	metricData, err := w.buildMetricData(batch)
+	metricData, err := w.buildMetricData(ctx, batch)
 
 	logger := w.logger.WithFields(log.Fields{
 		"namespace": w.cwNamespace,
 	})
 
 	if err != nil {
-		logger.Info("could not build metric data: %w", err)
+		logger.Info(ctx, "could not build metric data: %w", err)
 
 		return
 	}
@@ -127,17 +127,17 @@ func (w *cloudwatchWriter) Write(batch Data) {
 			Namespace:  aws.String(w.cwNamespace),
 		}
 
-		if _, err = w.client.PutMetricData(context.Background(), &input); err != nil {
-			logger.Info("could not write metric data: %s", err)
+		if _, err = w.client.PutMetricData(ctx, &input); err != nil {
+			logger.Info(ctx, "could not write metric data: %s", err)
 
 			continue
 		}
 	}
 
-	logger.Debug("written %d metric data sets to cloudwatch", len(metricData))
+	logger.Debug(ctx, "written %d metric data sets to cloudwatch", len(metricData))
 }
 
-func (w *cloudwatchWriter) buildMetricData(batch Data) ([]types.MetricDatum, error) {
+func (w *cloudwatchWriter) buildMetricData(ctx context.Context, batch Data) ([]types.MetricDatum, error) {
 	start := w.clock.Now().Add(minusOneWeek)
 	end := w.clock.Now().Add(plusOneHour)
 	metricData := make([]types.MetricDatum, 0, len(batch))
@@ -175,7 +175,7 @@ func (w *cloudwatchWriter) buildMetricData(batch Data) ([]types.MetricDatum, err
 		}
 
 		if err != nil {
-			w.logger.Error("invalid metric dimension: %w", err)
+			w.logger.Error(ctx, "invalid metric dimension: %w", err)
 
 			continue
 		}

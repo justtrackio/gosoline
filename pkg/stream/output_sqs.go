@@ -47,9 +47,11 @@ type sqsOutput struct {
 }
 
 func NewSqsOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsOutputSettings) (Output, error) {
-	settings.PadFromConfig(config)
-
 	var err error
+	if err = settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("can not pad settings from config: %w", err)
+	}
+
 	var queueName string
 	var queue sqs.Queue
 
@@ -175,9 +177,9 @@ func (o *sqsOutput) buildSqsMessage(ctx context.Context, msg WritableMessage) (*
 	}
 
 	if o.settings.Fifo.ContentBasedDeduplication && messageDeduplicationId == "" {
-		o.logger.WithContext(ctx).WithFields(log.Fields{
+		o.logger.WithFields(log.Fields{
 			"stacktrace": log.GetStackTrace(0),
-		}).Warn("writing message to queue %s (which is configured to use content based deduplication) without message deduplication id", o.queue.GetName())
+		}).Warn(ctx, "writing message to queue %s (which is configured to use content based deduplication) without message deduplication id", o.queue.GetName())
 	}
 
 	body, err := msg.MarshalToString()

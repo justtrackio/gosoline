@@ -55,7 +55,7 @@ func (b bindHandler) Level() int {
 	return log.PriorityWarn
 }
 
-func (b bindHandler) Log(_ time.Time, _ int, msg string, args []any, _ error, _ log.Data) error {
+func (b bindHandler) Log(_ context.Context, _ time.Time, _ int, msg string, args []any, _ error, _ log.Data) error {
 	formattedMsg := fmt.Sprintf(msg, args...)
 
 	b.NotEqual("POST /bind HTTP/1.1 - bind error - EOF", formattedMsg)

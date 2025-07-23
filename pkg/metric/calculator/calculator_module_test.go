@@ -15,6 +15,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric/calculator"
 	"github.com/justtrackio/gosoline/pkg/metric/calculator/mocks"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -45,7 +46,7 @@ var calculatorModuleTestCases = map[string]calculatorModuleTestCase{
 		},
 		setupMocks: func(s *CalculatorModuleTestSuite) {
 			s.mockLeaderElection(false, nil)
-			s.logger.EXPECT().Info("not leading: do nothing")
+			s.logger.EXPECT().Info(matcher.Context, "not leading: do nothing")
 		},
 	},
 	"leader_failed": {
@@ -55,9 +56,9 @@ var calculatorModuleTestCases = map[string]calculatorModuleTestCase{
 		setupMocks: func(s *CalculatorModuleTestSuite) {
 			err := fmt.Errorf("unknown leader election error")
 			s.mockLeaderElection(false, err)
-			s.logger.EXPECT().Warn("will assume leader role as election failed: %s", err)
+			s.logger.EXPECT().Warn(matcher.Context, "will assume leader role as election failed: %s", err)
 			s.mockHandler(dummyMetrics, nil)
-			s.metricWriter.EXPECT().Write(dummyMetrics)
+			s.metricWriter.EXPECT().Write(matcher.Context, dummyMetrics)
 		},
 	},
 	"happy_path": {
@@ -67,7 +68,7 @@ var calculatorModuleTestCases = map[string]calculatorModuleTestCase{
 		setupMocks: func(s *CalculatorModuleTestSuite) {
 			s.mockLeaderElection(true, nil)
 			s.mockHandler(dummyMetrics, nil)
-			s.metricWriter.EXPECT().Write(dummyMetrics)
+			s.metricWriter.EXPECT().Write(matcher.Context, dummyMetrics)
 		},
 	},
 	"handler_failed": {
@@ -80,8 +81,8 @@ var calculatorModuleTestCases = map[string]calculatorModuleTestCase{
 
 			s.mockLeaderElection(true, nil)
 			s.mockHandler(nil, err)
-			s.logger.EXPECT().Warn("can not calculate metrics per runner for handler %s: %s", "requests", err)
-			s.metricWriter.EXPECT().Write(allMetrics)
+			s.logger.EXPECT().Warn(matcher.Context, "can not calculate metrics per runner for handler %s: %s", "requests", err)
+			s.metricWriter.EXPECT().Write(matcher.Context, allMetrics)
 		},
 	},
 }

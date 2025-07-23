@@ -24,7 +24,7 @@ func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger) (str
 }
 
 func (c Consumer) Consume(ctx context.Context, input Input, attributes map[string]string) (bool, error) {
-	c.logger.WithContext(ctx).Info("got input with id %q and body %q", input.Id, input.Body)
+	c.logger.Info(ctx, "got input with id %q and body %q", input.Id, input.Body)
 
 	return true, nil
 }

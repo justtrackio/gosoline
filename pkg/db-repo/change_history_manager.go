@@ -62,13 +62,13 @@ func (c *ChangeHistoryManager) addModels(models ...ModelBased) {
 	c.models = append(c.models, models...)
 }
 
-func (c *ChangeHistoryManager) RunMigrations() error {
+func (c *ChangeHistoryManager) RunMigrations(ctx context.Context) error {
 	cfn := coffin.New()
 
 	cfn.Go(func() error {
 		for _, model := range funk.UniqByType(c.models) {
 			cfn.Go(func() error {
-				if err := c.RunMigration(model); err != nil {
+				if err := c.RunMigration(ctx, model); err != nil {
 					return fmt.Errorf("can not run migration for model %T: %w", model, err)
 				}
 
@@ -82,11 +82,11 @@ func (c *ChangeHistoryManager) RunMigrations() error {
 	return cfn.Wait()
 }
 
-func (c *ChangeHistoryManager) RunMigration(model ModelBased) error {
+func (c *ChangeHistoryManager) RunMigration(ctx context.Context, model ModelBased) error {
 	originalTable := c.buildOriginalTableMetadata(model)
 	historyTable := c.buildHistoryTableMetadata(model, originalTable)
 
-	if err := c.executeMigration(originalTable, historyTable); err != nil {
+	if err := c.executeMigration(ctx, originalTable, historyTable); err != nil {
 		return fmt.Errorf("cannot execute change history migration: %w", err)
 	}
 
@@ -136,7 +136,7 @@ where original.DATA_TYPE != coalesce(history_entries.DATA_TYPE, '');`
 	return invalidColumnsErr.ErrorOrNil()
 }
 
-func (c *ChangeHistoryManager) executeMigration(originalTable, historyTable *tableMetadata) error {
+func (c *ChangeHistoryManager) executeMigration(ctx context.Context, originalTable *tableMetadata, historyTable *tableMetadata) error {
 	statements := make([]string, 0)
 
 	if !historyTable.exists {
@@ -144,9 +144,9 @@ func (c *ChangeHistoryManager) executeMigration(originalTable, historyTable *tab
 		statements = append(statements, c.dropHistoryTriggers(originalTable, historyTable)...)
 		statements = append(statements, c.createHistoryTriggers(originalTable, historyTable)...)
 
-		c.logger.Info("creating change history setup")
+		c.logger.Info(ctx, "creating change history setup")
 
-		return c.execute(statements)
+		return c.execute(ctx, statements)
 	}
 
 	tableUpdates, err := c.updateHistoryTable(originalTable, historyTable)
@@ -159,12 +159,12 @@ func (c *ChangeHistoryManager) executeMigration(originalTable, historyTable *tab
 		statements = append(statements, c.dropHistoryTriggers(originalTable, historyTable)...)
 		statements = append(statements, c.createHistoryTriggers(originalTable, historyTable)...)
 
-		c.logger.Info("updating change history setup")
+		c.logger.Info(ctx, "updating change history setup")
 
-		return c.execute(statements)
+		return c.execute(ctx, statements)
 	}
 
-	c.logger.Info("change history setup was already up to date")
+	c.logger.Info(ctx, "change history setup was already up to date")
 
 	return nil
 }
@@ -394,30 +394,30 @@ func (c *ChangeHistoryManager) getTableMetaData(columnLength int, queryBuilder f
 	return results, nil
 }
 
-func (c *ChangeHistoryManager) execute(statements []string) error {
+func (c *ChangeHistoryManager) execute(ctx context.Context, statements []string) error {
 	if !c.settings.MigrationEnabled {
 		for _, statement := range statements {
-			c.logger.Info("planned schema change: " + statement)
+			c.logger.Info(ctx, "planned schema change: "+statement)
 		}
 
-		c.logger.Info("change history migration is disabled, please apply the changes manually")
+		c.logger.Info(ctx, "change history migration is disabled, please apply the changes manually")
 
 		return fmt.Errorf("missing schema migrations (disabled)")
 	}
 
 	for _, statement := range statements {
-		c.logger.Debug(statement)
+		c.logger.Debug(ctx, statement)
 		_, err := c.orm.CommonDB().Exec(statement)
 		if err != nil {
 			c.logger.WithFields(log.Fields{
 				"sql": statement,
-			}).Error("could not migrate change history: %w", err)
+			}).Error(ctx, "could not migrate change history: %w", err)
 
 			return fmt.Errorf("could not migrate change history: %w", err)
 		}
 	}
 
-	c.logger.Info("change history setup is now up to date")
+	c.logger.Info(ctx, "change history setup is now up to date")
 
 	return nil
 }

@@ -60,7 +60,7 @@ func (c *configurableKvStoreFixtureWriter[T]) Write(ctx context.Context, fixture
 		return err
 	}
 
-	c.logger.Info("loaded %d configurable kvstore fixtures", len(fixtures))
+	c.logger.Info(ctx, "loaded %d configurable kvstore fixtures", len(fixtures))
 
 	return nil
 }

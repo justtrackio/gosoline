@@ -102,51 +102,64 @@ func (s *KernelTestSuite) TestHangingModule() {
 			s.mockExitHandler(kernel.ExitCodeErr),
 		}
 
-		options = append(options, kernel.WithModuleFactory("normal module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-			return FunctionModule(func(ctx context.Context) error {
-				<-ctx.Done()
+		serviceChannel := make(chan int)
 
-				return nil
-			}), nil
+		options = append(options, kernel.WithModuleFactory("normal module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return newNormalModule(), nil
 		}, kernel.ModuleStage(kernel.StageApplication), kernel.ModuleType(kernel.TypeForeground)))
 
-		serviceChannel := make(chan int)
 		options = append(options, kernel.WithModuleFactory("service module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-			return FunctionModule(func(ctx context.Context) error {
-				processed := 0
-
-				for {
-					select {
-					case <-ctx.Done():
-						return nil
-					case <-serviceChannel:
-						processed++
-						if processed > 3 {
-							return fmt.Errorf("random fail")
-						}
-					}
-				}
-			}), nil
+			return newServiceModule(serviceChannel), nil
 		}, kernel.ModuleStage(kernel.StageService), kernel.ModuleType(kernel.TypeBackground)))
 
 		options = append(options, kernel.WithModuleFactory("hanging module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-			return FunctionModule(func(ctx context.Context) error {
-				n := 0
-				for {
-					select {
-					case <-ctx.Done():
-						return nil
-					case serviceChannel <- n:
-						n++
-					}
-				}
-			}), nil
+			return newHangingModule(serviceChannel), nil
 		}, kernel.ModuleStage(kernel.StageService), kernel.ModuleType(kernel.TypeForeground)))
 
 		k, err := kernel.BuildKernel(s.ctx, s.config, logger, options)
 		assert.NoError(t, err)
 
 		k.Run()
+	})
+}
+
+func newNormalModule() kernel.Module {
+	return FunctionModule(func(ctx context.Context) error {
+		<-ctx.Done()
+
+		return nil
+	})
+}
+
+func newServiceModule(serviceChannel chan int) kernel.Module {
+	return FunctionModule(func(ctx context.Context) error {
+		processed := 0
+
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-serviceChannel:
+				processed++
+				if processed > 3 {
+					return fmt.Errorf("random fail")
+				}
+			}
+		}
+	})
+}
+
+func newHangingModule(serviceChannel chan int) kernel.Module {
+	return FunctionModule(func(ctx context.Context) error {
+		n := 0
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case serviceChannel <- n:
+				n++
+			}
+		}
 	})
 }
 
@@ -172,8 +185,8 @@ func (s *KernelTestSuite) TestRunSuccess() {
 
 func (s *KernelTestSuite) TestRunFailure() {
 	s.expectStartupLogs()
-	s.logger.EXPECT().Error("error during the execution of stage %d: %w", kernel.StageApplication, mock.Anything).Once()
-	s.logger.EXPECT().Error("error running %s module %s: %w", "foreground", "module", mock.Anything).Once()
+	s.logger.EXPECT().Error(matcher.Context, "error during the execution of stage %d: %w", kernel.StageApplication, mock.Anything).Once()
+	s.logger.EXPECT().Error(matcher.Context, "error running %s module %s: %w", "foreground", "module", mock.Anything).Once()
 
 	s.expectModuleLifecycle(s.module, false, kernel.StageApplication)
 	s.module.EXPECT().Run(matcher.Context).Run(func(ctx context.Context) {
@@ -220,7 +233,7 @@ func (s *KernelTestSuite) TestStop() {
 
 func (s *KernelTestSuite) TestRunningType() {
 	s.expectStartupLogs()
-	s.logger.EXPECT().Info(mock.Anything, mock.Anything, mock.Anything)
+	s.logger.EXPECT().Info(matcher.Context, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
 	// type = foreground & stage = application are the defaults for a module
 	mf := kernelMocks.NewModule(s.T())
@@ -273,7 +286,7 @@ func (s *KernelTestSuite) TestMultipleStages() {
 			wg.Wait()
 			<-ctx.Done()
 
-			s.logger.Info("stage %d: ctx done", thisStage)
+			s.logger.Info(ctx, "stage %d: ctx done", thisStage)
 
 			for i := 0; i <= thisStage; i++ {
 				s.GreaterOrEqual(stageStatus[i], 1, fmt.Sprintf("stage %d: expected stage %d to be at least running", thisStage, i))
@@ -305,8 +318,8 @@ func (s *KernelTestSuite) TestMultipleStages() {
 
 func (s *KernelTestSuite) TestForcedExit() {
 	s.expectStartupLogs()
-	s.logger.EXPECT().Info(mock.Anything, mock.Anything, mock.Anything)
-	s.logger.EXPECT().Error(mock.Anything, mock.Anything)
+	s.logger.EXPECT().Info(matcher.Context, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	s.logger.EXPECT().Error(matcher.Context, mock.Anything, mock.Anything, mock.Anything)
 
 	mayStop := conc.NewSignalOnce()
 	appStopped := conc.NewSignalOnce()
@@ -479,8 +492,8 @@ func (s *KernelTestSuite) expectModuleLifecycle(module *kernelMocks.FullModule, 
 
 func (s *KernelTestSuite) expectStartupLogs() {
 	s.logger.EXPECT().WithChannel(mock.AnythingOfType("string")).Return(s.logger)
-	s.logger.EXPECT().Info(mock.Anything)
-	s.logger.EXPECT().Info(mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	s.logger.EXPECT().Info(matcher.Context, mock.Anything, mock.Anything)
+	s.logger.EXPECT().Info(matcher.Context, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
 type fakeModule struct{}

@@ -256,9 +256,9 @@ func (_c *AcknowledgeableInput_Run_Call) RunAndReturn(run func(context.Context) 
 	return _c
 }
 
-// Stop provides a mock function with no fields
-func (_m *AcknowledgeableInput) Stop() {
-	_m.Called()
+// Stop provides a mock function with given fields: ctx
+func (_m *AcknowledgeableInput) Stop(ctx context.Context) {
+	_m.Called(ctx)
 }
 
 // AcknowledgeableInput_Stop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Stop'
@@ -267,13 +267,14 @@ type AcknowledgeableInput_Stop_Call struct {
 }
 
 // Stop is a helper method to define mock.On call
-func (_e *AcknowledgeableInput_Expecter) Stop() *AcknowledgeableInput_Stop_Call {
-	return &AcknowledgeableInput_Stop_Call{Call: _e.mock.On("Stop")}
+//   - ctx context.Context
+func (_e *AcknowledgeableInput_Expecter) Stop(ctx interface{}) *AcknowledgeableInput_Stop_Call {
+	return &AcknowledgeableInput_Stop_Call{Call: _e.mock.On("Stop", ctx)}
 }
 
-func (_c *AcknowledgeableInput_Stop_Call) Run(run func()) *AcknowledgeableInput_Stop_Call {
+func (_c *AcknowledgeableInput_Stop_Call) Run(run func(ctx context.Context)) *AcknowledgeableInput_Stop_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -283,7 +284,7 @@ func (_c *AcknowledgeableInput_Stop_Call) Return() *AcknowledgeableInput_Stop_Ca
 	return _c
 }
 
-func (_c *AcknowledgeableInput_Stop_Call) RunAndReturn(run func()) *AcknowledgeableInput_Stop_Call {
+func (_c *AcknowledgeableInput_Stop_Call) RunAndReturn(run func(context.Context)) *AcknowledgeableInput_Stop_Call {
 	_c.Run(run)
 	return _c
 }

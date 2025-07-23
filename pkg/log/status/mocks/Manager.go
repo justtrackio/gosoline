@@ -122,9 +122,9 @@ func (_c *Manager_MonitorWithContext_Call) RunAndReturn(run func(string, func(co
 	return _c
 }
 
-// PrintReport provides a mock function with given fields: logger
-func (_m *Manager) PrintReport(logger log.Logger) {
-	_m.Called(logger)
+// PrintReport provides a mock function with given fields: ctx, logger
+func (_m *Manager) PrintReport(ctx context.Context, logger log.Logger) {
+	_m.Called(ctx, logger)
 }
 
 // Manager_PrintReport_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PrintReport'
@@ -133,14 +133,15 @@ type Manager_PrintReport_Call struct {
 }
 
 // PrintReport is a helper method to define mock.On call
+//   - ctx context.Context
 //   - logger log.Logger
-func (_e *Manager_Expecter) PrintReport(logger interface{}) *Manager_PrintReport_Call {
-	return &Manager_PrintReport_Call{Call: _e.mock.On("PrintReport", logger)}
+func (_e *Manager_Expecter) PrintReport(ctx interface{}, logger interface{}) *Manager_PrintReport_Call {
+	return &Manager_PrintReport_Call{Call: _e.mock.On("PrintReport", ctx, logger)}
 }
 
-func (_c *Manager_PrintReport_Call) Run(run func(logger log.Logger)) *Manager_PrintReport_Call {
+func (_c *Manager_PrintReport_Call) Run(run func(ctx context.Context, logger log.Logger)) *Manager_PrintReport_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(log.Logger))
+		run(args[0].(context.Context), args[1].(log.Logger))
 	})
 	return _c
 }
@@ -150,7 +151,7 @@ func (_c *Manager_PrintReport_Call) Return() *Manager_PrintReport_Call {
 	return _c
 }
 
-func (_c *Manager_PrintReport_Call) RunAndReturn(run func(log.Logger)) *Manager_PrintReport_Call {
+func (_c *Manager_PrintReport_Call) RunAndReturn(run func(context.Context, log.Logger)) *Manager_PrintReport_Call {
 	_c.Run(run)
 	return _c
 }

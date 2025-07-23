@@ -75,8 +75,8 @@ func NewConsumerWithInterfaces(settings *Settings, logger log.Logger, manager Of
 }
 
 func (c *Consumer) Run(ctx context.Context) error {
-	c.logger.Info("starting consumer")
-	defer c.logger.Info("shutdown consumer")
+	c.logger.Info(ctx, "starting consumer")
+	defer c.logger.Info(ctx, "shutdown consumer")
 
 	c.pool.GoWithContext(ctx, c.run)
 

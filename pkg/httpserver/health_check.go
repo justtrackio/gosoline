@@ -69,12 +69,12 @@ func (a *HttpServerHealthCheck) Run(ctx context.Context) error {
 	err := a.server.ListenAndServe()
 
 	if !errors.Is(err, http.ErrServerClosed) {
-		a.logger.Error("server check closed unexpected: %w", err)
+		a.logger.Error(ctx, "server check closed unexpected: %w", err)
 
 		return err
 	}
 
-	a.logger.Info("leaving httpserver health check")
+	a.logger.Info(ctx, "leaving httpserver health check")
 
 	return nil
 }
@@ -85,10 +85,10 @@ func (s *HttpServerHealthCheck) waitForStop(ctx context.Context) {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), s.settings.Timeout.Shutdown)
 	defer cancel()
 
-	s.logger.Info("trying to gracefully shutdown httpserver health check")
+	s.logger.Info(shutdownCtx, "trying to gracefully shutdown httpserver health check")
 
 	if err := s.server.Shutdown(shutdownCtx); err != nil {
-		s.logger.Error("server shutdown: %w", err)
+		s.logger.Error(shutdownCtx, "server shutdown: %w", err)
 	}
 }
 
@@ -104,7 +104,7 @@ func buildHealthCheckHandler(logger log.Logger, healthChecker kernel.HealthCheck
 
 		if result.Err() != nil {
 			ctx := c.Request.Context()
-			logger.WithContext(ctx).Error("encountered an error during the health check: %", result.Err())
+			logger.Error(ctx, "encountered an error during the health check: %", result.Err())
 		}
 
 		resp := gin.H{}

@@ -45,48 +45,42 @@ func (l *SamplingLogger) WithChannel(channel string) Logger {
 	return l.copy(logger)
 }
 
-func (l *SamplingLogger) WithContext(ctx context.Context) Logger {
-	logger := l.Logger.WithContext(ctx)
-
-	return l.copy(logger)
-}
-
 func (l *SamplingLogger) WithFields(fields Fields) Logger {
 	logger := l.Logger.WithFields(fields)
 
 	return l.copy(logger)
 }
 
-func (l *SamplingLogger) Debug(msg string, args ...any) {
+func (l *SamplingLogger) Debug(ctx context.Context, msg string, args ...any) {
 	if !l.shouldLog(msg) {
 		return
 	}
 
-	l.Logger.Debug(msg, args...)
+	l.Logger.Debug(ctx, msg, args...)
 }
 
-func (l *SamplingLogger) Error(msg string, args ...any) {
+func (l *SamplingLogger) Error(ctx context.Context, msg string, args ...any) {
 	if !l.shouldLog(msg) {
 		return
 	}
 
-	l.Logger.Error(msg, args...)
+	l.Logger.Error(ctx, msg, args...)
 }
 
-func (l *SamplingLogger) Info(msg string, args ...any) {
+func (l *SamplingLogger) Info(ctx context.Context, msg string, args ...any) {
 	if !l.shouldLog(msg) {
 		return
 	}
 
-	l.Logger.Info(msg, args...)
+	l.Logger.Info(ctx, msg, args...)
 }
 
-func (l *SamplingLogger) Warn(msg string, args ...any) {
+func (l *SamplingLogger) Warn(ctx context.Context, msg string, args ...any) {
 	if !l.shouldLog(msg) {
 		return
 	}
 
-	l.Logger.Warn(msg, args...)
+	l.Logger.Warn(ctx, msg, args...)
 }
 
 func (l *SamplingLogger) shouldLog(msg string) bool {

@@ -11,6 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/log/status"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 )
@@ -28,7 +29,7 @@ func TestModule(t *testing.T) {
 	cfn.GoWithContext(ctx, m.Run)
 
 	mgr.StartWork("test", 3).ReportDone()
-	logger.EXPECT().Info("Work item %s: done", "test").Run(func(format string, args ...any) {
+	logger.EXPECT().Info(matcher.Context, "Work item %s: done", "test").Run(func(ctx context.Context, format string, args ...any) {
 		// we can cancel the context as soon as we know that we will be logging stuff
 		// if we do this too early, the module might get a choice between returning and printing logs,
 		// but at this point we are already printing
@@ -86,9 +87,9 @@ func (m *testModule) Run(ctx context.Context) error {
 	mainHandle.ReportDone()
 
 	// print the report by hand. normally the module takes care of this when it receives a SIGUSR1.
-	m.statusManager.PrintReport(m.logger)
+	m.statusManager.PrintReport(ctx, m.logger)
 	// defer it again to get it printed after all go routines finished
-	defer m.statusManager.PrintReport(m.logger)
+	defer m.statusManager.PrintReport(ctx, m.logger)
 
 	// wait for all routines to exit again
 	return cfn.Wait()

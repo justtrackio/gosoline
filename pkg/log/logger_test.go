@@ -42,21 +42,22 @@ func TestLoggerIoWriter(t *testing.T) {
 
 	logger := log.NewLoggerWithInterfaces(cl, []log.Handler{handler})
 
-	logger.Info("foo")
+	ctx := t.Context()
+	logger.Info(ctx, "foo")
 
 	cl.Advance(time.Minute)
-	logger.Info("bar")
-	logger.Debug("some debug")
-	logger.WithChannel("forbidden").Info("something in forbidden channel")
-	logger.WithChannel("error_channel").Warn("not logged")
-	logger.WithChannel("error_channel").Error("error logged")
+	logger.Info(ctx, "bar")
+	logger.Debug(ctx, "some debug")
+	logger.WithChannel("forbidden").Info(ctx, "something in forbidden channel")
+	logger.WithChannel("error_channel").Warn(ctx, "not logged")
+	logger.WithChannel("error_channel").Error(ctx, "error logged")
 
 	cl.Advance(time.Minute)
-	logger.Info("foobaz")
+	logger.Info(ctx, "foobaz")
 
 	cl.Advance(time.Minute)
 	err := fmt.Errorf("random error")
-	logger.Error("something went wrong: %w", err)
+	logger.Error(t.Context(), "something went wrong: %w", err)
 
 	lines := getLogLines(buf)
 	assert.Len(t, lines, 5)
@@ -105,16 +106,50 @@ func TestConfigureLoggerIoChannels(t *testing.T) {
 	err = logger.Option(log.WithHandlers(handlers...))
 	assert.NoError(t, err)
 
-	logger.WithChannel("default").Info("should be logged")
-	logger.WithChannel("debug").Debug("should also be logged")
-	logger.WithChannel("verbose").Warn("should not be logged")
-	logger.WithChannel("some-other-channel").Debug("should not be logged")
+	ctx := t.Context()
+
+	logger.WithChannel("default").Info(ctx, "should be logged")
+	logger.WithChannel("debug").Debug(ctx, "should also be logged")
+	logger.WithChannel("verbose").Warn(ctx, "should not be logged")
+	logger.WithChannel("some-other-channel").Debug(ctx, "should not be logged")
 
 	lines := getLogLines(buf)
 
 	assert.Len(t, lines, 2)
 	assert.Contains(t, lines[0], "should be logged")
 	assert.Contains(t, lines[1], "should also be logged")
+}
+
+func TestLoggerContextFields(t *testing.T) {
+	config := cfg.New(map[string]any{})
+	logger, buf := getBufferedLogger(t, config)
+
+	ctx := t.Context()
+	logger.Info(ctx, "foo")
+
+	ctx = log.AppendContextFields(ctx, map[string]any{"foo": "bar"})
+	logger.Warn(ctx, "foo with context")
+
+	lines := getLogLines(buf)
+	assert.Len(t, lines, 2, "number of logged lines do not match")
+
+	assert.JSONEq(t, `{"channel":"main","level":2,"level_name":"info","timestamp":"1984-04-04T00:00:00Z","message":"foo","fields":{},"context":{}}`, lines[0])
+	assert.JSONEq(t, `{"channel":"main","level":3,"level_name":"warn","timestamp":"1984-04-04T00:00:00Z","message":"foo with context","fields":{},"context":{"foo":"bar"}}`, lines[1])
+
+	fmt.Println(lines[1])
+}
+
+func getBufferedLogger(t *testing.T, config cfg.Config) (log.Logger, *bytes.Buffer) {
+	buf := &bytes.Buffer{}
+	handler := log.NewHandlerIoWriter(config, log.PriorityInfo, log.FormatterJson, "main", time.RFC3339, buf)
+	cl := clock.NewFakeClock()
+
+	logger := log.NewLoggerWithInterfaces(cl, []log.Handler{handler})
+	if err := logger.Option(log.WithContextFieldsResolver(log.ContextFieldsResolver)); err != nil {
+		t.Fatal(err)
+	}
+
+	return logger, buf
 }
 
 func getLogLines(buf *bytes.Buffer) []string {

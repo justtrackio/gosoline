@@ -72,7 +72,7 @@ func (d *redisKvStoreFixtureWriter[T]) Write(ctx context.Context, fixtures []any
 		return err
 	}
 
-	d.logger.Info("loaded %d redis kvstore fixtures", len(fixtures))
+	d.logger.Info(ctx, "loaded %d redis kvstore fixtures", len(fixtures))
 
 	return nil
 }

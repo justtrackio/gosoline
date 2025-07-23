@@ -63,10 +63,12 @@ type sqsInput struct {
 }
 
 func NewSqsInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsInputSettings) (*sqsInput, error) {
-	settings.PadFromConfig(config)
+	var err error
+	if err = settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("can not pad settings from config: %w", err)
+	}
 
 	var ok bool
-	var err error
 	var queue sqs.Queue
 	var queueName string
 	var unmarshaller UnmarshallerFunc
@@ -132,9 +134,9 @@ func (i *sqsInput) Run(ctx context.Context) error {
 	}
 
 	defer close(i.channel)
-	defer i.logger.Info("leaving sqs input")
+	defer i.logger.Info(ctx, "leaving sqs input")
 
-	i.logger.Info("starting sqs input with %d runners", i.settings.RunnerCount)
+	i.logger.Info(ctx, "starting sqs input with %d runners", i.settings.RunnerCount)
 
 	i.cfn.Go(func() error {
 		for j := 0; j < i.settings.RunnerCount; j++ {
@@ -147,13 +149,13 @@ func (i *sqsInput) Run(ctx context.Context) error {
 	})
 
 	<-i.cfn.Dying()
-	i.Stop()
+	i.Stop(ctx)
 
 	return i.cfn.Wait()
 }
 
 func (i *sqsInput) runLoop(ctx context.Context) error {
-	defer i.logger.Info("leaving sqs input runner")
+	defer i.logger.Info(ctx, "leaving sqs input runner")
 
 	for {
 		if atomic.LoadInt32(&i.stopped) != 0 {
@@ -165,7 +167,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 
 		sqsMessages, err := i.queue.Receive(ctx, i.settings.MaxNumberOfMessages, i.settings.WaitTime)
 		if err != nil {
-			i.logger.Error("could not get messages from sqs: %w", err)
+			i.logger.Error(ctx, "could not get messages from sqs: %w", err)
 
 			continue
 		}
@@ -173,7 +175,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 		for _, sqsMessage := range sqsMessages {
 			msg, err := i.unmarshaler(sqsMessage.Body)
 			if err != nil {
-				i.logger.Error("could not unmarshal message: %w", err)
+				i.logger.Error(ctx, "could not unmarshal message: %w", err)
 
 				continue
 			}
@@ -198,7 +200,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 	}
 }
 
-func (i *sqsInput) Stop() {
+func (i *sqsInput) Stop(ctx context.Context) {
 	atomic.StoreInt32(&i.stopped, 1)
 }
 

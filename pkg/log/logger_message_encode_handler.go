@@ -37,7 +37,7 @@ func (m MessageWithLoggingFieldsEncoder) Encode(ctx context.Context, _ any, attr
 	stringAble := make(map[string]any, len(fields))
 	for k, v := range fields {
 		if _, err := cast.ToStringE(v); err != nil {
-			m.logger.Warn("omitting logger context field %s of type %T during message encoding", k, v)
+			m.logger.Warn(ctx, "omitting logger context field %s of type %T during message encoding", k, v)
 
 			continue
 		}
@@ -47,7 +47,7 @@ func (m MessageWithLoggingFieldsEncoder) Encode(ctx context.Context, _ any, attr
 
 	encodedFields, err := json.Marshal(stringAble)
 	if err != nil {
-		m.logger.Warn("can not json marshal logger context fields during message encoding")
+		m.logger.Warn(ctx, "can not json marshal logger context fields during message encoding")
 
 		return ctx, attributes, nil
 	}
@@ -67,7 +67,7 @@ func (m MessageWithLoggingFieldsEncoder) Decode(ctx context.Context, _ any, attr
 	fields := make(map[string]any)
 	err := json.Unmarshal([]byte(attributes["logger:context"]), &fields)
 	if err != nil {
-		m.logger.Warn("can not json unmarshal logger context fields during message decoding")
+		m.logger.Warn(ctx, "can not json unmarshal logger context fields during message decoding")
 
 		return ctx, attributes, nil
 	}

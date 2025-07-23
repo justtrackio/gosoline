@@ -61,7 +61,7 @@ func (t TodoHandler) Handle(ctx context.Context, request *httpserver.Request) (*
 	}
 
 	// Log the request using the TodoHandler struct's logger
-	t.logger.WithContext(ctx).Info("got todo with id %d", todo.Id)
+	t.logger.Info(ctx, "got todo with id %d", todo.Id)
 
 	// Return a Json response object with information from the Todo struct
 	return httpserver.NewJsonResponse(todo), nil

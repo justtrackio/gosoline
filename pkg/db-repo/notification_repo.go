@@ -66,14 +66,13 @@ func (r *notifyingRepository) doCallback(ctx context.Context, callbackType strin
 		return nil
 	}
 
-	logger := r.logger.WithContext(ctx)
 	var errors error
 
 	for _, c := range r.notifiers[callbackType] {
 		err := c.Send(ctx, callbackType, value)
 		if err != nil {
 			errors = multierror.Append(errors, err)
-			logger.Warn("%T notifier errored out with: %v", c, err)
+			r.logger.Warn(ctx, "%T notifier errored out with: %v", c, err)
 		}
 	}
 

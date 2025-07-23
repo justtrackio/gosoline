@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sync/atomic"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -127,7 +128,8 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 		return nil
 	}
 
-	stop := false
+	stop := &atomic.Bool{}
+	stop.Store(false)
 
 	sem := semaphore.NewWeighted(int64(10))
 	cfn := coffin.New()
@@ -138,46 +140,53 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 			return err
 		}
 
-		cfn.GoWithContextf(ctx, func(i int, file string) func(ctx context.Context) error {
-			return func(ctx context.Context) error {
-				defer sem.Release(int64(1))
-
-				if stop {
-					return nil
-				}
-
-				r.logger.Debug("reading file %d of %d: %s", i, fileCount, file)
-
-				decoded := refl.CreatePointerToSliceOfTypeAndSize(target, 0)
-
-				err := r.ReadFileIntoTarget(ctx, file, decoded, -1, 0)
-				if err != nil {
-					return fmt.Errorf("can not read file %s: %w", file, err)
-				}
-
-				if err != nil {
-					return fmt.Errorf("can not decode results in file %s: %w", file, err)
-				}
-
-				ok, err := callback(Progress{FileCount: fileCount, Current: i}, decoded)
-				if err != nil {
-					return fmt.Errorf("callback failed: %w", err)
-				}
-
-				if !ok {
-					stop = true
-
-					return nil
-				}
-
-				r.recorder.RecordFile(r.getBucketName(), file)
-
-				return nil
-			}
-		}(i, file), "panic during file read")
+		cfn.Go(r.getProcessFileGoroutine(ctx, sem, stop, i, fileCount, file, target, callback))
 	}
 
 	return cfn.Wait()
+}
+
+func (r *s3Reader) getProcessFileGoroutine(ctx context.Context, sem *semaphore.Weighted, stop *atomic.Bool, i int, fileCount int, file string, target any, callback ResultCallback) func() error {
+	return func() error {
+		defer sem.Release(int64(1))
+
+		if stop.Load() {
+			return nil
+		}
+
+		ok, err := r.readFileAsync(ctx, file, i, fileCount, target, callback)
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			stop.Store(true)
+		}
+
+		return nil
+	}
+}
+
+func (r *s3Reader) readFileAsync(ctx context.Context, file string, i int, fileCount int, target any, callback ResultCallback) (bool, error) {
+	r.logger.Debug(ctx, "reading file %d of %d: %s", i, fileCount, file)
+
+	decoded := refl.CreatePointerToSliceOfTypeAndSize(target, 0)
+
+	err := r.ReadFileIntoTarget(ctx, file, decoded, -1, 0)
+	if err != nil {
+		return false, fmt.Errorf("can not read file %s: %w", file, err)
+	}
+
+	ok, err := callback(Progress{FileCount: fileCount, Current: i}, decoded)
+	if err != nil {
+		return false, fmt.Errorf("callback failed: %w", err)
+	}
+
+	if ok {
+		r.recorder.RecordFile(r.getBucketName(), file)
+	}
+
+	return ok, nil
 }
 
 func (r *s3Reader) ReadFileIntoTarget(ctx context.Context, file string, target any, batchSize int, offset int64) error {

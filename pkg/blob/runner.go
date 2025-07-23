@@ -140,7 +140,7 @@ func (r *batchRunner) executeRead(ctx context.Context) {
 				body = out.Body
 			}
 
-			r.writeMetric(operationRead)
+			r.writeMetric(ctx, operationRead)
 
 			object.Body = StreamReader(body)
 			object.ContentType = out.ContentType
@@ -182,7 +182,7 @@ func (r *batchRunner) executeWrite(ctx context.Context) {
 				object.Error = errors.Join(object.Error, err)
 			}
 
-			r.writeMetric(operationWrite)
+			r.writeMetric(ctx, operationWrite)
 
 			object.wg.Done()
 		}
@@ -212,7 +212,7 @@ func (r *batchRunner) executeCopy(ctx context.Context) {
 				object.Error = err
 			}
 
-			r.writeMetric(operationCopy)
+			r.writeMetric(ctx, operationCopy)
 
 			object.wg.Done()
 		}
@@ -237,15 +237,15 @@ func (r *batchRunner) executeDelete(ctx context.Context) {
 				object.Error = err
 			}
 
-			r.writeMetric(operationDelete)
+			r.writeMetric(ctx, operationDelete)
 
 			object.wg.Done()
 		}
 	}
 }
 
-func (r *batchRunner) writeMetric(operation string) {
-	r.metric.WriteOne(&metric.Datum{
+func (r *batchRunner) writeMetric(ctx context.Context, operation string) {
+	r.metric.WriteOne(ctx, &metric.Datum{
 		MetricName: metricName,
 		Priority:   metric.PriorityHigh,
 		Dimensions: map[string]string{

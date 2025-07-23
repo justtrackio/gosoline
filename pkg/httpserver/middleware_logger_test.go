@@ -37,7 +37,6 @@ func TestLoggingMiddlewareTestSuite(t *testing.T) {
 
 func (s *loggingMiddlewareTestSuite) SetupTest() {
 	s.logger = logMocks.NewLogger(s.T())
-	s.logger.EXPECT().WithContext(matcher.Context).Return(s.logger)
 	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
 
 	s.handler = httpserver.NewLoggingMiddlewareWithInterfaces(s.logger, httpserver.LoggingSettings{}, clock.Provider)
@@ -46,7 +45,7 @@ func (s *loggingMiddlewareTestSuite) SetupTest() {
 func (s *loggingMiddlewareTestSuite) TestSuccess() {
 	ginCtx := buildRequest()
 
-	s.logger.EXPECT().Info("%s %s %s", "GET", "path", "HTTP/1.1")
+	s.logger.EXPECT().Info(matcher.Context, "%s %s %s", "GET", "path", "HTTP/1.1")
 
 	s.handler(ginCtx)
 }
@@ -58,7 +57,7 @@ func (s *loggingMiddlewareTestSuite) TestRequestCanceledError() {
 
 	s.Require().Error(err)
 
-	s.logger.EXPECT().Info("%s %s %s - request canceled: %s", "GET", "path", "HTTP/1.1", context.Canceled.Error())
+	s.logger.EXPECT().Info(matcher.Context, "%s %s %s - request canceled: %s", "GET", "path", "HTTP/1.1", context.Canceled.Error())
 
 	s.handler(ginCtx)
 }
@@ -70,7 +69,7 @@ func (s *loggingMiddlewareTestSuite) TestEOFError() {
 
 	s.Require().Error(err)
 
-	s.logger.EXPECT().Info("%s %s %s - connection error: %s", "GET", "path", "HTTP/1.1", io.EOF.Error())
+	s.logger.EXPECT().Info(matcher.Context, "%s %s %s - connection error: %s", "GET", "path", "HTTP/1.1", io.EOF.Error())
 
 	s.handler(ginCtx)
 }
@@ -85,7 +84,7 @@ func (s *loggingMiddlewareTestSuite) TestBindError() {
 
 	s.Require().Error(err)
 
-	s.logger.EXPECT().Warn("%s %s %s - bind error: %s", "GET", "path", "HTTP/1.1", "failed to read body")
+	s.logger.EXPECT().Warn(matcher.Context, "%s %s %s - bind error: %s", "GET", "path", "HTTP/1.1", "failed to read body")
 
 	s.handler(ginCtx)
 }
@@ -100,7 +99,7 @@ func (s *loggingMiddlewareTestSuite) TestRenderError() {
 
 	s.Require().Error(err)
 
-	s.logger.EXPECT().Warn("%s %s %s - render error: %s", "GET", "path", "HTTP/1.1", "failed to write body")
+	s.logger.EXPECT().Warn(matcher.Context, "%s %s %s - render error: %s", "GET", "path", "HTTP/1.1", "failed to write body")
 
 	s.handler(ginCtx)
 }
@@ -112,7 +111,7 @@ func (s *loggingMiddlewareTestSuite) TestDefaultError() {
 
 	s.Require().Error(err)
 
-	s.logger.EXPECT().Error("%s %s %s: %w", "GET", "path", "HTTP/1.1", mock.AnythingOfType("*errors.errorString"))
+	s.logger.EXPECT().Error(matcher.Context, "%s %s %s: %w", "GET", "path", "HTTP/1.1", mock.AnythingOfType("*errors.errorString"))
 
 	s.handler(ginCtx)
 }
@@ -137,7 +136,6 @@ func TestLogFields(t *testing.T) {
 	clock.EXPECT().Since(now).Return(250 * time.Millisecond).Once()
 
 	logger := logMocks.NewLogger(t)
-	logger.EXPECT().WithContext(matcher.Context).Return(logger)
 
 	expected := log.Fields{
 		"bytes":            2,
@@ -162,7 +160,7 @@ func TestLogFields(t *testing.T) {
 		assert.Equal(t, expected, fields)
 	}).Return(logger)
 
-	logger.EXPECT().Info("%s %s %s", "GET", "path", "HTTP/1.1")
+	logger.EXPECT().Info(matcher.Context, "%s %s %s", "GET", "path", "HTTP/1.1")
 
 	handler := httpserver.NewLoggingMiddlewareWithInterfaces(logger, httpserver.LoggingSettings{}, clock)
 
@@ -174,7 +172,6 @@ func TestLogEncodedRequestBody(t *testing.T) {
 	ginCtx.Request.Body = io.NopCloser(strings.NewReader("{}"))
 
 	logger := logMocks.NewLogger(t)
-	logger.EXPECT().WithContext(matcher.Context).Return(logger)
 
 	logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Run(func(fields log.Fields) {
 		requestBody, ok := fields["request_body"]
@@ -182,7 +179,7 @@ func TestLogEncodedRequestBody(t *testing.T) {
 		assert.Equal(t, "e30=", requestBody)
 	}).Return(logger)
 
-	logger.EXPECT().Info("%s %s %s", "GET", "path", "HTTP/1.1")
+	logger.EXPECT().Info(matcher.Context, "%s %s %s", "GET", "path", "HTTP/1.1")
 
 	handler := httpserver.NewLoggingMiddlewareWithInterfaces(logger, httpserver.LoggingSettings{
 		RequestBody:       true,

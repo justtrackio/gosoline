@@ -30,7 +30,7 @@ func NewBackoffExecutor(logger log.Logger, res *ExecutableResource, settings *Ba
 }
 
 func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ...Notify) (any, error) {
-	logger := e.logger.WithContext(ctx).WithFields(log.Fields{
+	logger := e.logger.WithFields(log.Fields{
 		"exec_id":            e.uuidGen.NewV4(),
 		"exec_resource_type": e.resource.Type,
 		"exec_resource_name": e.resource.Name,
@@ -54,7 +54,7 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ..
 			n(err, dur)
 		}
 
-		logger.Warn("retrying resource %s after error: %s", e.resource, err.Error())
+		logger.Warn(ctx, "retrying resource %s after error: %s", e.resource, err.Error())
 		attempts++
 	}
 
@@ -90,27 +90,27 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ..
 
 	// we're having an error after reaching the MaxAttempts and the error isn't good-natured
 	if err != nil && errType != ErrorTypeOk && e.settings.MaxAttempts > 0 && attempts > e.settings.MaxAttempts {
-		logger.Warn("crossed max attempts with an error on requesting resource %s after %d attempts in %s: %s", e.resource, attempts, duration, err.Error())
+		logger.Warn(ctx, "crossed max attempts with an error on requesting resource %s after %d attempts in %s: %s", e.resource, attempts, duration, err.Error())
 
 		return res, NewErrAttemptsExceeded(e.resource, attempts, duration, err)
 	}
 
 	// we're having an error after reaching the MaxElapsedTime and the error isn't good-natured
 	if err != nil && errType != ErrorTypeOk && e.settings.MaxElapsedTime > 0 && duration > e.settings.MaxElapsedTime {
-		logger.Warn("crossed max elapsed time with an error on requesting resource %s after %d attempts in %s: %s", e.resource, attempts, duration, err.Error())
+		logger.Warn(ctx, "crossed max elapsed time with an error on requesting resource %s after %d attempts in %s: %s", e.resource, attempts, duration, err.Error())
 
 		return res, NewErrMaxElapsedTimeExceeded(e.resource, attempts, duration, e.settings.MaxElapsedTime, err)
 	}
 
 	// we're still having an error and the error isn't good-natured
 	if err != nil && errType != ErrorTypeOk {
-		logger.Warn("error on requesting resource %s after %d attempts in %s: %s", e.resource, attempts, duration, err.Error())
+		logger.Warn(ctx, "error on requesting resource %s after %d attempts in %s: %s", e.resource, attempts, duration, err.Error())
 
 		return res, err
 	}
 
 	if attempts > 1 {
-		logger.Info("sent request to resource %s successful after %d attempts in %s", e.resource, attempts, duration)
+		logger.Info(ctx, "sent request to resource %s successful after %d attempts in %s", e.resource, attempts, duration)
 	}
 
 	return res, err

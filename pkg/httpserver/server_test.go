@@ -40,7 +40,7 @@ func (s *ServerTestSuite) SetupTest() {
 	tracingInstrumentor.EXPECT().HttpHandler(s.router).Return(s.router)
 	s.tracingInstrumentor = tracingInstrumentor
 
-	server, err := httpserver.NewWithInterfaces(s.logger, s.router, s.tracingInstrumentor, &httpserver.Settings{})
+	server, err := httpserver.NewWithInterfaces(s.T().Context(), s.logger, s.router, s.tracingInstrumentor, &httpserver.Settings{})
 	s.NoError(err)
 
 	s.server = server

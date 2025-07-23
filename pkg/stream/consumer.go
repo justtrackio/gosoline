@@ -38,17 +38,14 @@ var _ kernel.FullModule = &Consumer{}
 func NewUntypedConsumer(name string, callbackFactory UntypedConsumerCallbackFactory) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		loggerCallback := logger.WithChannel("consumerCallback")
-		contextEnforcingLogger := log.NewContextEnforcingLogger(loggerCallback)
 
 		var err error
 		var callback UntypedConsumerCallback
 		var baseConsumer *baseConsumer
 
-		if callback, err = callbackFactory(ctx, config, contextEnforcingLogger); err != nil {
+		if callback, err = callbackFactory(ctx, config, loggerCallback); err != nil {
 			return nil, fmt.Errorf("can not initiate callback for consumer %s: %w", name, err)
 		}
-
-		contextEnforcingLogger.Enable()
 
 		if baseConsumer, err = NewBaseConsumer(ctx, config, logger, name, callback); err != nil {
 			return nil, fmt.Errorf("can not initiate base consumer: %w", err)
@@ -82,7 +79,7 @@ func (c *Consumer) IsHealthy(_ context.Context) (bool, error) {
 }
 
 func (c *Consumer) readData(ctx context.Context) error {
-	defer c.logger.Debug("read from input is ending")
+	defer c.logger.Debug(ctx, "read from input is ending")
 	defer c.wg.Done()
 
 	// ticker to mark us as healthy should we not get any messages to process
@@ -139,7 +136,7 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerD
 	duration := c.clock.Now().Sub(start)
 	atomic.AddInt32(&c.processed, int32(len(batch)))
 
-	c.writeMetricDurationAndProcessedCount(duration, len(batch))
+	c.writeMetricDurationAndProcessedCount(ctx, duration, len(batch))
 }
 
 func (c *Consumer) processSingleMessage(ctx context.Context, cdata *consumerData) {
@@ -153,7 +150,7 @@ func (c *Consumer) processSingleMessage(ctx context.Context, cdata *consumerData
 
 	duration := c.clock.Now().Sub(start)
 	atomic.AddInt32(&c.processed, 1)
-	c.writeMetricDurationAndProcessedCount(duration, 1)
+	c.writeMetricDurationAndProcessedCount(ctx, duration, 1)
 }
 
 func (c *Consumer) startTracingContext(ctx context.Context) (context.Context, tracing.Span) {
@@ -194,7 +191,7 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 	if ok {
 		c.logger.WithFields(log.Fields{
 			"sqs_message_id": messageId,
-		}).Debug("processing sqs message")
+		}).Debug(ctx, "processing sqs message")
 	}
 
 	if ack, err = c.callback.Consume(ctx, model, attributes); err != nil {

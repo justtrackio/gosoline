@@ -90,7 +90,7 @@ func (m *RefreshModule) Run(ctx context.Context) (err error) {
 
 		case <-ticker.C:
 			if err = m.provider.Refresh(ctx); err != nil {
-				m.logger.Error("can not refresh provider: %w", err)
+				m.logger.Error(ctx, "can not refresh provider: %w", err)
 			}
 		}
 	}

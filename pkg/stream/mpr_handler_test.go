@@ -16,6 +16,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric/calculator"
 	"github.com/justtrackio/gosoline/pkg/metric/calculator/mocks"
 	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -81,7 +82,7 @@ func (s *MessagesPerRunnerTestSuite) TestCalculatePerRunnerMetricsError() {
 	s.mockGetSqsMetrics("NumberOfMessagesSent", types.StatisticSum, 100, nil)
 	s.mockGetSqsMetrics("ApproximateNumberOfMessagesVisible", types.StatisticMaximum, 50, nil)
 	s.mockBaseHandler(150, nil, fmt.Errorf("base handler error"))
-	s.logger.EXPECT().Warn("can not calculate metrics per runner for handler: can not calculate httpserver per runner metrics: %s: %T", "base handler error", mock.Anything)
+	s.logger.EXPECT().Warn(matcher.Context, "can not calculate metrics per runner for handler: can not calculate httpserver per runner metrics: %s: %T", "base handler error", mock.Anything)
 
 	expectedSmaDatum := &metric.Datum{
 		Priority:   metric.PriorityLow,

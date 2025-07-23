@@ -62,13 +62,12 @@ type dataExporter struct {
 }
 
 func (d *dataExporter) ExportTable(ctx context.Context, dbName string, tableName string) (data []map[string]any, err error) {
-	logger := d.logger.WithContext(ctx)
 	log.AppendContextFields(ctx, map[string]any{
 		"dbName":    dbName,
 		"tableName": tableName,
 	})
-	logger.Info("dumping model %s", tableName)
-	defer logger.Info("done dumping model %s", tableName)
+	d.logger.Info(ctx, "dumping model %s", tableName)
+	defer d.logger.Info(ctx, "done dumping model %s", tableName)
 
 	var resExists, resData *sqlx.Rows
 

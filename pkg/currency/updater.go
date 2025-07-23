@@ -73,13 +73,11 @@ func NewUpdaterWithInterfaces(logger log.Logger, store kvstore.KvStore[float64],
 }
 
 func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
-	logger := s.logger.WithContext(ctx)
-
 	if !s.needsRefresh(ctx) {
 		return nil
 	}
 
-	logger.Info("requesting exchange rates")
+	s.logger.Info(ctx, "requesting exchange rates")
 	rates, err := s.getCurrencyRates(ctx)
 	if err != nil {
 		return fmt.Errorf("error getting currency exchange rates: %w", err)
@@ -92,7 +90,7 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 			return fmt.Errorf("error setting exchange rate: %w", err)
 		}
 
-		logger.Info("currency: %s, rate: %f", rate.Currency, rate.Rate)
+		s.logger.Info(ctx, "currency: %s, rate: %f", rate.Currency, rate.Rate)
 
 		historicalRateKey := historicalRateKey(now, rate.Currency)
 		err = s.store.Put(ctx, historicalRateKey, rate.Rate)
@@ -107,24 +105,22 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 		return fmt.Errorf("error setting refresh date %w", err)
 	}
 
-	logger.Info("new exchange rates are set")
+	s.logger.Info(ctx, "new exchange rates are set")
 
 	return nil
 }
 
 func (s *updaterService) needsRefresh(ctx context.Context) bool {
-	logger := s.logger.WithContext(ctx)
-
 	var dateUnix float64
 	exists, err := s.store.Get(ctx, ExchangeRateDateKey, &dateUnix)
 	if err != nil {
-		logger.Info("error fetching date")
+		s.logger.Info(ctx, "error fetching date")
 
 		return true
 	}
 
 	if !exists {
-		logger.Info("date doesn't exist")
+		s.logger.Info(ctx, "date doesn't exist")
 
 		return true
 	}
@@ -134,7 +130,7 @@ func (s *updaterService) needsRefresh(ctx context.Context) bool {
 	date := time.Unix(int64(dateUnix), 0)
 
 	if date.Before(comparisonDate) {
-		logger.Info("comparison date was more than 8 hours ago")
+		s.logger.Info(ctx, "comparison date was more than 8 hours ago")
 
 		return true
 	}
@@ -160,13 +156,11 @@ func (s *updaterService) getCurrencyRates(ctx context.Context) ([]Rate, error) {
 }
 
 func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) error {
-	logger := s.logger.WithContext(ctx)
-
 	if !s.historicalRatesNeedRefresh(ctx) {
 		return nil
 	}
 
-	logger.Info("requesting historical exchange rates")
+	s.logger.Info(ctx, "requesting historical exchange rates")
 	rates, err := s.fetchExchangeRates(ctx)
 	if err != nil {
 		return fmt.Errorf("error getting historical currency exchange rates: %w", err)
@@ -197,7 +191,7 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 		}
 	}
 
-	logger.Info("updating %d historical exchange rates", len(keyValues))
+	s.logger.Info(ctx, "updating %d historical exchange rates", len(keyValues))
 
 	err = s.store.PutBatch(ctx, keyValues)
 	if err != nil {
@@ -210,24 +204,22 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 		return fmt.Errorf("error setting historical refresh date %w", err)
 	}
 
-	logger.Info("stored %d day-currency combinations of historical exchange rates", len(keyValues))
+	s.logger.Info(ctx, "stored %d day-currency combinations of historical exchange rates", len(keyValues))
 
 	return nil
 }
 
 func (s *updaterService) historicalRatesNeedRefresh(ctx context.Context) bool {
-	logger := s.logger.WithContext(ctx)
-
 	var dateUnix float64
 	exists, err := s.store.Get(ctx, HistoricalExchangeRateDateKey, &dateUnix)
 	if err != nil {
-		logger.Info("historicalRatesNeedRefresh error fetching date")
+		s.logger.Info(ctx, "historicalRatesNeedRefresh error fetching date")
 
 		return true
 	}
 
 	if !exists {
-		logger.Info("historicalRatesNeedRefresh date doesn't exist")
+		s.logger.Info(ctx, "historicalRatesNeedRefresh date doesn't exist")
 
 		return true
 	}
@@ -237,7 +229,7 @@ func (s *updaterService) historicalRatesNeedRefresh(ctx context.Context) bool {
 	date := time.Unix(int64(dateUnix), 0)
 
 	if date.Before(comparisonDate) {
-		logger.Info("historicalRatesNeedRefresh comparison date was more than threshold")
+		s.logger.Info(ctx, "historicalRatesNeedRefresh comparison date was more than threshold")
 
 		return true
 	}
