@@ -61,7 +61,7 @@ func (h *perRunnerMetricHandler) CalculatePerRunnerMetrics(ctx context.Context, 
 	}
 
 	if currentPrm, err = h.getPreviousMetric(ctx, metricName, types.StatisticAverage, settings); err != nil {
-		h.logger.Warn("can not get current %s metric per runner metric: %s, defaulting to 0", metricName, err.Error())
+		h.logger.Warn(ctx, "can not get current %s metric per runner metric: %s, defaulting to 0", metricName, err.Error())
 		currentPrm = 0
 	}
 
@@ -78,7 +78,7 @@ func (h *perRunnerMetricHandler) CalculatePerRunnerMetrics(ctx context.Context, 
 	}
 
 	if newPrm > maxPrm {
-		h.logger.Warn("newPrm of %f is higher than configured maxPrm of %f: falling back to max", newPrm, maxPrm)
+		h.logger.Warn(ctx, "newPrm of %f is higher than configured maxPrm of %f: falling back to max", newPrm, maxPrm)
 		newPrm = maxPrm
 	}
 
@@ -87,7 +87,7 @@ func (h *perRunnerMetricHandler) CalculatePerRunnerMetrics(ctx context.Context, 
 		"currentValue": currentValue,
 		"newPrm":       newPrm,
 		"runnerCount":  runnerCount,
-	}).Info("%s evaluated to %f", metricName, newPrm)
+	}).Info(ctx, "%s evaluated to %f", metricName, newPrm)
 
 	datum := &metric.Datum{
 		Priority:   metric.PriorityHigh,

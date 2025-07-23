@@ -20,7 +20,7 @@ type OffsetManager interface {
 	Start(ctx context.Context) error
 	Batch(ctx context.Context) []kafka.Message
 	Commit(ctx context.Context, msgs ...kafka.Message) error
-	Flush() error
+	Flush(ctx context.Context) error
 	IsHealthy() bool
 }
 
@@ -62,7 +62,7 @@ func NewOffsetManager(
 
 func (m *offsetManager) Start(ctx context.Context) (err error) {
 	defer func() {
-		if flushErr := m.Flush(); flushErr != nil {
+		if flushErr := m.Flush(ctx); flushErr != nil {
 			err = errors.Join(err, flushErr)
 		}
 	}()
@@ -70,7 +70,7 @@ func (m *offsetManager) Start(ctx context.Context) (err error) {
 	var msg kafka.Message
 
 	for {
-		m.logger.Debug("fetching a message")
+		m.logger.Debug(ctx, "fetching a message")
 
 		// record we are fetching a message - while we are fetching, we can't get unhealthy
 		// (as this code is outside our control to add code to mark us as healthy)
@@ -88,7 +88,7 @@ func (m *offsetManager) Start(ctx context.Context) (err error) {
 			"kafka_partition": msg.Partition,
 			"kafka_offset":    msg.Offset,
 			"kafka_key":       msg.Key,
-		}).Debug("fetched a message")
+		}).Debug(ctx, "fetched a message")
 
 		select {
 		case m.incoming <- msg:
@@ -101,8 +101,8 @@ func (m *offsetManager) Start(ctx context.Context) (err error) {
 }
 
 func (m *offsetManager) Batch(ctx context.Context) []kafka.Message {
-	m.logger.Debug("compiling batch")
-	defer m.logger.Debug("compiled batch")
+	m.logger.Debug(ctx, "compiling batch")
+	defer m.logger.Debug(ctx, "compiled batch")
 
 	batch := []kafka.Message{}
 
@@ -146,8 +146,8 @@ func (m *offsetManager) Commit(ctx context.Context, msgs ...kafka.Message) error
 		"kafka_batch_size": len(msgs),
 	})
 
-	logger.Debug("committing offsets")
-	defer logger.Debug("committed offsets")
+	logger.Debug(ctx, "committing offsets")
+	defer logger.Debug(ctx, "committed offsets")
 
 	m.readLock.Lock()
 	defer m.readLock.Unlock()
@@ -159,7 +159,7 @@ func (m *offsetManager) Commit(ctx context.Context, msgs ...kafka.Message) error
 				"kafka_offset":    msg.Offset,
 				"kafka_key":       msg.Key,
 				"Error":           "commit unknown message",
-			}).Error("failed to commit message")
+			}).Error(ctx, "failed to commit message")
 		}
 
 		delete(m.uncommitted, key)
@@ -175,12 +175,12 @@ func (m *offsetManager) Commit(ctx context.Context, msgs ...kafka.Message) error
 	return m.reader.CommitMessages(ctx, msgs...)
 }
 
-func (m *offsetManager) Flush() error {
-	m.logger.Info("flushing messages")
-	defer m.logger.Info("flushed messages")
+func (m *offsetManager) Flush(ctx context.Context) error {
+	m.logger.Info(ctx, "flushing messages")
+	defer m.logger.Info(ctx, "flushed messages")
 
 	if err := m.reader.Close(); err != nil {
-		m.logger.WithFields(log.Fields{"Error": err}).Error("failed to flush messages")
+		m.logger.WithFields(log.Fields{"Error": err}).Error(ctx, "failed to flush messages")
 
 		return err
 	}

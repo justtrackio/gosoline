@@ -61,7 +61,7 @@ func main() {
 
 func NewHelloWorldModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	return &helloWorldModule{
-		logger: logger.WithChannel("hello-world"),
+		logger: logger.WithChannel(ctx, "hello-world"),
 	}, nil
 }
 
@@ -74,9 +74,9 @@ func (h *helloWorldModule) Run(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		h.logger.Info("Time to stop")
+		h.logger.Info(ctx, "Time to stop")
 	case <-ticker:
-		h.logger.Info("Hello World")
+		h.logger.Info(ctx, "Hello World")
 	}
 
 	return nil
@@ -93,7 +93,7 @@ type foregroundModule struct {
 }
 
 func (e *foregroundModule) Run(ctx context.Context) error {
-	e.logger.Info("Foreground module")
+	e.logger.Info(ctx, "Foreground module")
 
 	return nil
 }
@@ -120,9 +120,9 @@ func (h *helloWorldModule) Run(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		h.logger.Info("Time to stop")
+		h.logger.Info(ctx, "Time to stop")
 	case <-ticker:
-		h.logger.Info("Hello World")
+		h.logger.Info(ctx, "Hello World")
 	}
 
 	return nil

@@ -10,6 +10,7 @@ import (
 )
 
 func TestOutputChannel_Simple(t *testing.T) {
+	ctx := t.Context()
 	logger := logMocks.NewLoggerMock(logMocks.WithTestingT(t))
 
 	msg := []stream.WritableMessage{
@@ -18,8 +19,8 @@ func TestOutputChannel_Simple(t *testing.T) {
 	}
 
 	ch := stream.NewOutputChannel(logger, 1)
-	ch.Write(msg)
-	ch.Close()
+	ch.Write(ctx, msg)
+	ch.Close(ctx)
 
 	// should be able to read the message again
 	readMsg, ok := ch.Read()
@@ -31,6 +32,7 @@ func TestOutputChannel_Simple(t *testing.T) {
 }
 
 func TestOutputChannel_WriteAfterClose(t *testing.T) {
+	ctx := t.Context()
 	logger := logMocks.NewLoggerMock(logMocks.WithMockUntilLevel(log.PriorityWarn), logMocks.WithTestingT(t))
 
 	msg := []stream.WritableMessage{
@@ -39,13 +41,13 @@ func TestOutputChannel_WriteAfterClose(t *testing.T) {
 	}
 
 	ch := stream.NewOutputChannel(logger, 1)
-	ch.Close()
+	ch.Close(ctx)
 	// should not crash to write after close
-	ch.Write(msg)
+	ch.Write(ctx, msg)
 
 	_, ok := ch.Read()
 	assert.False(t, ok, "message written after close should be dropped")
 
 	// should not crash to call this a second time
-	ch.Close()
+	ch.Close(ctx)
 }

@@ -32,7 +32,7 @@ func (n *noopFixtureLoader) Load(ctx context.Context) error {
 		return nil
 	}
 
-	n.logger.Info("fixtureSets loading disabled, to enable it use the 'fixtures' build tag")
+	n.logger.Info(ctx, "fixtureSets loading disabled, to enable it use the 'fixtures' build tag")
 
 	return nil
 }

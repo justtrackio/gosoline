@@ -61,24 +61,24 @@ func NewMetricStoreWithInterfaces[T any](store KvStore[T], settings *Settings) K
 }
 
 func (s *MetricStore[T]) Contains(ctx context.Context, key any) (bool, error) {
-	s.recordReads(1)
+	s.recordReads(ctx, 1)
 
 	found, err := s.KvStore.Contains(ctx, key)
 
 	if found && err == nil {
-		s.recordHits(1)
+		s.recordHits(ctx, 1)
 	}
 
 	return found, err
 }
 
 func (s *MetricStore[T]) Get(ctx context.Context, key any, value *T) (bool, error) {
-	s.recordReads(1)
+	s.recordReads(ctx, 1)
 
 	found, err := s.KvStore.Get(ctx, key, value)
 
 	if found && err == nil {
-		s.recordHits(1)
+		s.recordHits(ctx, 1)
 	}
 
 	return found, err
@@ -90,12 +90,12 @@ func (s *MetricStore[T]) GetBatch(ctx context.Context, keys any, result any) ([]
 		return nil, fmt.Errorf("can not morph keys to slice of interfaces: %w", err)
 	}
 
-	s.recordReads(len(keySlice))
+	s.recordReads(ctx, len(keySlice))
 
 	missing, err := s.KvStore.GetBatch(ctx, keySlice, result)
 
 	if err == nil {
-		s.recordHits(len(keySlice) - len(missing))
+		s.recordHits(ctx, len(keySlice)-len(missing))
 	}
 
 	return missing, err
@@ -105,7 +105,7 @@ func (s *MetricStore[T]) Put(ctx context.Context, key any, value T) error {
 	err := s.KvStore.Put(ctx, key, value)
 
 	if err == nil {
-		s.recordWrites(1)
+		s.recordWrites(ctx, 1)
 	}
 
 	return nil
@@ -120,7 +120,7 @@ func (s *MetricStore[T]) PutBatch(ctx context.Context, values any) error {
 	err = s.KvStore.PutBatch(ctx, mii)
 
 	if err == nil {
-		s.recordWrites(len(mii))
+		s.recordWrites(ctx, len(mii))
 	}
 
 	return nil
@@ -130,7 +130,7 @@ func (s *MetricStore[T]) Delete(ctx context.Context, key any) error {
 	err := s.KvStore.Delete(ctx, key)
 
 	if err == nil {
-		s.recordDeletes(1)
+		s.recordDeletes(ctx, 1)
 	}
 
 	return err
@@ -145,7 +145,7 @@ func (s *MetricStore[T]) DeleteBatch(ctx context.Context, keys any) error {
 	err = s.KvStore.DeleteBatch(ctx, si)
 
 	if err == nil {
-		s.recordDeletes(len(si))
+		s.recordDeletes(ctx, len(si))
 	}
 
 	return err
@@ -158,29 +158,29 @@ func (s *MetricStore[T]) recordSize(sizedStore SizedStore[T]) {
 		size := sizedStore.EstimateSize()
 
 		if size != nil {
-			s.record(metricNameKvStoreSize, *size)
+			s.record(context.Background(), metricNameKvStoreSize, *size)
 		}
 	}
 }
 
-func (s *MetricStore[T]) recordReads(count int) {
-	s.record(metricNameKvStoreRead, int64(count))
+func (s *MetricStore[T]) recordReads(ctx context.Context, count int) {
+	s.record(ctx, metricNameKvStoreRead, int64(count))
 }
 
-func (s *MetricStore[T]) recordHits(count int) {
-	s.record(metricNameKvStoreHit, int64(count))
+func (s *MetricStore[T]) recordHits(ctx context.Context, count int) {
+	s.record(ctx, metricNameKvStoreHit, int64(count))
 }
 
-func (s *MetricStore[T]) recordWrites(count int) {
-	s.record(metricNameKvStoreWrite, int64(count))
+func (s *MetricStore[T]) recordWrites(ctx context.Context, count int) {
+	s.record(ctx, metricNameKvStoreWrite, int64(count))
 }
 
-func (s *MetricStore[T]) recordDeletes(count int) {
-	s.record(metricNameKvStoreDelete, int64(count))
+func (s *MetricStore[T]) recordDeletes(ctx context.Context, count int) {
+	s.record(ctx, metricNameKvStoreDelete, int64(count))
 }
 
-func (s *MetricStore[T]) record(name string, value int64) {
-	s.metricWriter.WriteOne(&metric.Datum{
+func (s *MetricStore[T]) record(ctx context.Context, name string, value int64) {
+	s.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: name,
 		Dimensions: map[string]string{

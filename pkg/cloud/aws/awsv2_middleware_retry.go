@@ -122,18 +122,18 @@ func AttemptLoggerInitMiddleware(logger log.Logger, backoff *exec.BackoffSetting
 			return output, metadata, err
 		}
 
-		logger = logger.WithContext(ctx).WithFields(log.Fields{
+		logger = logger.WithFields(log.Fields{
 			"attempt_id": attempt.id,
 			"resource":   attempt.resource.String(),
 		})
 
 		if err != nil {
-			logger.Warn("sent request to resource %s finally failed after %d attempts in %s: %s", attempt.resource, attempt.count, durationTook, err)
+			logger.Warn(ctx, "sent request to resource %s finally failed after %d attempts in %s: %s", attempt.resource, attempt.count, durationTook, err)
 
 			return output, metadata, err
 		}
 
-		logger.Warn("sent request to resource %s successful after %d attempts in %s", attempt.resource, attempt.count, durationTook)
+		logger.Warn(ctx, "sent request to resource %s successful after %d attempts in %s", attempt.resource, attempt.count, durationTook)
 
 		return output, metadata, err
 	})
@@ -154,12 +154,12 @@ func AttemptLoggerRetryMiddleware(logger log.Logger) smithyMiddleware.FinalizeMi
 		if attempt.count > 1 {
 			duration := time.Since(attempt.start)
 			logger.
-				WithContext(ctx).
 				WithFields(log.Fields{
 					"attempt_id": attempt.id,
 					"resource":   attempt.resource.String(),
 				}).
 				Warn(
+					ctx,
 					"attempt number %d to request resource %s failed after %s cause of error: %s",
 					attempt.count-1,
 					attempt.resource,

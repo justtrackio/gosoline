@@ -19,7 +19,7 @@ type HelloWorldModule struct {
 }
 
 func (h HelloWorldModule) Run(ctx context.Context) error {
-	h.logger.Info("Hello World")
+	h.logger.Info(ctx, "Hello World")
 
 	return nil
 }

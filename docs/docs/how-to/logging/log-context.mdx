@@ -102,11 +102,11 @@ Finally, in `TransformCreate()` or `TransformUpdate()`, you can use the logger:
 
 ```go title=handler.go
 
-h.logger.WithContext(localctx).Info("creating new task due at %v", m.DueDate)
+h.logger.Info(localctx, "creating new task due at %v", m.DueDate)
 
 ```
 
-Here, you use `.WithContext()` to apply the `Context` to the logger.
+Here, you pass the `Context` to the logger.
 
 ## Test your work
 
@@ -181,11 +181,11 @@ status: 200
 
 This is included in the log because we automatically resolve the local and global fields and include them in the log output.
 
-If you need to create a new logger, you have to resolve the fields yourself. However, we've made this easy for you. Just call `WithContext()`:
+If you need to create a new logger, you have to resolve the fields yourself. However, we've made this easy for you. Just pass the context to the logger:
 
 ```go
 logger := log.NewLogger()
-logger.WithContext(ctx).Info("My message with context")
+logger.Info(ctx, "My message with context")
 ```
 
 ## Conclusion

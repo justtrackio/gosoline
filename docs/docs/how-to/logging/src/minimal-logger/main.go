@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	// 1
@@ -9,6 +10,7 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	// 2
 	logHandler := log.NewHandlerIoWriter(
 		cfg.New(), log.PriorityInfo, log.FormatterConsole, "main", "", os.Stdout,
@@ -22,9 +24,9 @@ func main() {
 
 	// 5
 	if err := logger.Option(loggerOptions...); err != nil {
-		logger.Error("Failed to apply logger options: %w", err)
+		logger.Error(ctx, "Failed to apply logger options: %w", err)
 		os.Exit(1)
 	}
 
-	logger.Info("Message")
+	logger.Info(ctx, "Message")
 }

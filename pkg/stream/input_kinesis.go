@@ -30,8 +30,8 @@ func (i *kinesisInput) Run(ctx context.Context) error {
 	return i.client.Run(ctx, NewKinesisMessageHandler(i.channel))
 }
 
-func (i *kinesisInput) Stop() {
-	i.client.Stop()
+func (i *kinesisInput) Stop(ctx context.Context) {
+	i.client.Stop(ctx)
 }
 
 func (i *kinesisInput) IsHealthy() bool {

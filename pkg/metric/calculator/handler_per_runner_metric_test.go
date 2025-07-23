@@ -15,6 +15,7 @@ import (
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/metric/calculator"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -77,7 +78,7 @@ func (s *PerRunnerMetricHandlerTestSuite) TestGetPreviousMetricError() {
 	s.mockGetRunnerCountMetricEcs(2, nil)
 	s.mockGetPreviousMetric(0, fmt.Errorf("previous metric error"))
 
-	s.logger.EXPECT().Warn("can not get current %s metric per runner metric: %s, defaulting to 0", "PerRunnerRequests", "can not get metric: previous metric error")
+	s.logger.EXPECT().Warn(matcher.Context, "can not get current %s metric per runner metric: %s, defaulting to 0", "PerRunnerRequests", "can not get metric: previous metric error")
 	s.mockSuccessLogger(100, 50, 50, 2)
 
 	expectedDatum := s.getExpectedDatum(50)
@@ -91,7 +92,7 @@ func (s *PerRunnerMetricHandlerTestSuite) TestMaxIncreaseExeeded() {
 	s.mockGetRunnerCountMetricEcs(2, nil)
 	s.mockGetPreviousMetric(4, nil)
 
-	s.logger.EXPECT().Warn("newPrm of %f is higher than configured maxPrm of %f: falling back to max", float64(50), float64(8))
+	s.logger.EXPECT().Warn(matcher.Context, "newPrm of %f is higher than configured maxPrm of %f: falling back to max", float64(50), float64(8))
 	s.mockSuccessLogger(100, 4, 8, 2)
 
 	expectedDatum := s.getExpectedDatum(8)
@@ -209,7 +210,7 @@ func (s *PerRunnerMetricHandlerTestSuite) mockSuccessLogger(currentValue, curren
 		"runnerCount":  runnerCount,
 	}).Return(s.logger)
 
-	s.logger.EXPECT().Info("%s evaluated to %f", "PerRunnerRequests", newPrm)
+	s.logger.EXPECT().Info(matcher.Context, "%s evaluated to %f", "PerRunnerRequests", newPrm)
 }
 
 func (s *PerRunnerMetricHandlerTestSuite) getExpectedDatum(value float64) *metric.Datum {

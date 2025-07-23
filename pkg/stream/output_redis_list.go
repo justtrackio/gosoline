@@ -31,9 +31,13 @@ type redisListOutput struct {
 }
 
 func NewRedisListOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *RedisListOutputSettings) (Output, error) {
-	settings.PadFromConfig(config)
+	err := settings.PadFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("can not pad settings from config: %w", err)
+	}
 
-	client, err := redis.ProvideClient(ctx, config, logger, settings.ServerName)
+	var client redis.Client
+	client, err = redis.ProvideClient(ctx, config, logger, settings.ServerName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
@@ -63,7 +67,7 @@ func (o *redisListOutput) WriteOne(ctx context.Context, record WritableMessage) 
 func (o *redisListOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	chunks, err := BuildChunks(batch, o.settings.BatchSize)
 	if err != nil {
-		o.logger.Error("could not batch all messages: %w", err)
+		o.logger.Error(ctx, "could not batch all messages: %w", err)
 	}
 
 	for _, chunk := range chunks {
@@ -74,12 +78,12 @@ func (o *redisListOutput) Write(ctx context.Context, batch []WritableMessage) er
 		}
 	}
 
-	o.writeListWriteMetric(len(batch))
+	o.writeListWriteMetric(ctx, len(batch))
 
 	return nil
 }
 
-func (o *redisListOutput) writeListWriteMetric(length int) {
+func (o *redisListOutput) writeListWriteMetric(ctx context.Context, length int) {
 	data := metric.Data{{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
@@ -91,7 +95,7 @@ func (o *redisListOutput) writeListWriteMetric(length int) {
 		Value: float64(length),
 	}}
 
-	o.metricWriter.Write(data)
+	o.metricWriter.Write(ctx, data)
 }
 
 func getRedisListOutputDefaultMetrics(appId cfg.AppId, key string) metric.Data {

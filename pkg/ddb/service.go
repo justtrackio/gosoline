@@ -154,7 +154,7 @@ func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 		return nil, err
 	}
 
-	s.logger.Info("created ddb table %s", s.metadataFactory.GetTableName())
+	s.logger.Info(ctx, "created ddb table %s", s.metadataFactory.GetTableName())
 
 	err = s.updateTtlSpecification(ctx, metadata)
 
@@ -224,7 +224,7 @@ func (s *Service) ensureIndices(
 			return nil, fmt.Errorf("can not update table: %w", err)
 		}
 
-		s.logger.WithContext(ctx).Info("created %s GSI for ddb table %s", *globalSecondaryIndexUpdates[0].Create.IndexName, metadata.TableName)
+		s.logger.Info(ctx, "created %s GSI for ddb table %s", *globalSecondaryIndexUpdates[0].Create.IndexName, metadata.TableName)
 	}
 }
 
@@ -261,7 +261,7 @@ func (s *Service) updateTtlSpecification(ctx context.Context, metadata *Metadata
 			return fmt.Errorf("could not update ttl specification for ddb table %s: %w", metadata.TableName, err)
 		}
 
-		s.logger.Info("updated ttl specification for ddb table %s", metadata.TableName)
+		s.logger.Info(ctx, "updated ttl specification for ddb table %s", metadata.TableName)
 
 		return nil
 	}
@@ -469,7 +469,7 @@ func (s *Service) getTimeToLiveSpecification(metadata *Metadata) (*types.TimeToL
 }
 
 func (s *Service) waitForTableGettingAvailable(ctx context.Context, name string) error {
-	s.logger.Info("waiting for ddb table %s getting available", name)
+	s.logger.Info(ctx, "waiting for ddb table %s getting available", name)
 
 	for i := 0; i < defaultMaxWaitSeconds; i++ {
 		exists, err := s.checkStatus(ctx, name, tableAvailableMapping)
@@ -488,7 +488,7 @@ func (s *Service) waitForTableGettingAvailable(ctx context.Context, name string)
 }
 
 func (s *Service) tableExists(ctx context.Context, name string) (bool, error) {
-	s.logger.Info("looking for ddb table %v", name)
+	s.logger.Info(ctx, "looking for ddb table %v", name)
 
 	exists, err := s.checkStatus(ctx, name, tableExistingMapping)
 	if err != nil {
@@ -499,7 +499,7 @@ func (s *Service) tableExists(ctx context.Context, name string) (bool, error) {
 		return false, nil
 	}
 
-	s.logger.Info("found ddb table %s", name)
+	s.logger.Info(ctx, "found ddb table %s", name)
 
 	return true, nil
 }

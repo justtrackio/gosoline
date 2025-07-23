@@ -50,7 +50,6 @@ func (s *ClientWithMiniRedisTestSuite) TestGetNotFound() {
 	// because we want to test the executor not doing that
 	logger := logMocks.NewLogger(s.T())
 	logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(logger).Once()
-	logger.EXPECT().WithContext(s.T().Context()).Return(logger).Once()
 	executor := redis.NewBackoffExecutor(logger, exec.BackoffSettings{
 		CancelDelay:     time.Second,
 		InitialInterval: time.Millisecond,

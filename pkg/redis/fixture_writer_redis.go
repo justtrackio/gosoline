@@ -86,7 +86,7 @@ func (d *redisFixtureWriter) Write(ctx context.Context, fixtures []any) error {
 		}
 	}
 
-	d.logger.Info("loaded %d redis fixtures", len(fixtures))
+	d.logger.Info(ctx, "loaded %d redis fixtures", len(fixtures))
 
 	return nil
 }

@@ -32,11 +32,11 @@ func (c *consumerAcknowledge) Acknowledge(ctx context.Context, cdata *consumerDa
 		c.logger.WithFields(log.Fields{
 			"sqs_message_id": messageId,
 			"ack":            ack,
-		}).Debug("acknowledging sqs message")
+		}).Debug(ctx, "acknowledging sqs message")
 	}
 
 	if err := ackInput.Ack(ctx, cdata.msg, ack); err != nil {
-		c.logger.WithContext(ctx).Error("could not acknowledge the message: %w", err)
+		c.logger.Error(ctx, "could not acknowledge the message: %w", err)
 	}
 }
 
@@ -72,7 +72,7 @@ func (c *consumerAcknowledge) AcknowledgeBatch(ctx context.Context, cdata []*con
 
 	for src, input := range inputs {
 		if err := input.AckBatch(ctx, inputMsgs[src], inputAcks[src]); err != nil {
-			c.logger.WithContext(ctx).Error("could not acknowledge the messages: %w", err)
+			c.logger.Error(ctx, "could not acknowledge the messages: %w", err)
 		}
 	}
 }

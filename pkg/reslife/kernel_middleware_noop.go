@@ -27,17 +27,17 @@ func LifeCycleManagerMiddleware(ctx context.Context, config cfg.Config, logger l
 	return func(next kernel.MiddlewareHandler) kernel.MiddlewareHandler {
 		return func(ctx context.Context) {
 			if env == "dev" || env == "test" {
-				logger.Warn("lifecycle management is not enabled - add the 'fixtures' build tag")
+				logger.Warn(ctx, "lifecycle management is not enabled - add the 'fixtures' build tag")
 			}
 
 			if err := manager.Init(ctx); err != nil {
-				logger.Error("can not handle the init lifecycle: %w", err)
+				logger.Error(ctx, "can not handle the init lifecycle: %w", err)
 
 				return
 			}
 
 			if err := manager.Register(ctx); err != nil {
-				logger.Error("can not handle the register lifecycle: %w", err)
+				logger.Error(ctx, "can not handle the register lifecycle: %w", err)
 
 				return
 			}

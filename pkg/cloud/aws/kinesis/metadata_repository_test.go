@@ -247,7 +247,7 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_StillOwned() {
 
 	s.mockAcquireShardGetItem(true, otherClientId, time.Second, nil)
 
-	s.logger.EXPECT().Info("not trying to take over shard %s from %s, it is still in use", s.shardId, otherClientId).Once()
+	s.logger.EXPECT().Info(matcher.Context, "not trying to take over shard %s from %s, it is still in use", s.shardId, otherClientId).Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
 	s.Nil(checkpoint)
@@ -258,7 +258,7 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_PutFail() {
 	s.mockAcquireShardGetItem(false, "", 0, nil)
 	s.mockAcquireShardPutItem("", "", false, fmt.Errorf("fail"))
 
-	s.logger.EXPECT().Info("trying to use unused shard %s", s.shardId).Once()
+	s.logger.EXPECT().Info(matcher.Context, "trying to use unused shard %s", s.shardId).Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
 	s.Nil(checkpoint)
@@ -269,8 +269,8 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_PutConditionFail() {
 	s.mockAcquireShardGetItem(false, "", 0, nil)
 	s.mockAcquireShardPutItem("", "", true, nil)
 
-	s.logger.EXPECT().Info("trying to use unused shard %s", s.shardId).Once()
-	s.logger.EXPECT().Info("failed to acquire shard %s", s.shardId).Once()
+	s.logger.EXPECT().Info(matcher.Context, "trying to use unused shard %s", s.shardId).Once()
+	s.logger.EXPECT().Info(matcher.Context, "failed to acquire shard %s", s.shardId).Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
 	s.Nil(checkpoint)
@@ -281,7 +281,7 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_SuccessNotFound() {
 	s.mockAcquireShardGetItem(false, "", 0, nil)
 	s.mockAcquireShardPutItem("", "", false, nil)
 
-	s.logger.EXPECT().Info("trying to use unused shard %s", s.shardId).Once()
+	s.logger.EXPECT().Info(matcher.Context, "trying to use unused shard %s", s.shardId).Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
 	s.NoError(err)
@@ -295,7 +295,7 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_SuccessNotInUse() {
 	s.mockAcquireShardGetItem(true, "", 0, nil)
 	s.mockAcquireShardPutItem("1234", "1234==", false, nil)
 
-	s.logger.EXPECT().Info("trying to take over shard %s from %s", s.shardId, kinesis.ClientId("nobody")).Once()
+	s.logger.EXPECT().Info(matcher.Context, "trying to take over shard %s from %s", s.shardId, kinesis.ClientId("nobody")).Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
 	s.NoError(err)
@@ -311,7 +311,7 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_SuccessTakenOver() {
 	s.mockAcquireShardGetItem(true, otherClientId, time.Hour, nil)
 	s.mockAcquireShardPutItem("1234", "1234==", false, nil)
 
-	s.logger.EXPECT().Info("trying to take over shard %s from %s", s.shardId, otherClientId).Once()
+	s.logger.EXPECT().Info(matcher.Context, "trying to take over shard %s from %s", s.shardId, otherClientId).Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
 	s.NoError(err)

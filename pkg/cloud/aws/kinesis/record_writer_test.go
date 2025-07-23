@@ -15,13 +15,15 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	uuidMocks "github.com/justtrackio/gosoline/pkg/uuid/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestRecordWriterPutRecords(t *testing.T) {
-	mw := metricMocks.NewWriterMockedAll()
+	mw := metricMocks.NewWriter(t)
+	mw.EXPECT().Write(matcher.Context, mock.Anything).Return().Times(2)
 	testClock := clock.NewFakeClock(clock.WithNonBlockingSleep)
 
 	ctx := log.AppendContextFields(t.Context(), map[string]any{
@@ -30,8 +32,8 @@ func TestRecordWriterPutRecords(t *testing.T) {
 	})
 
 	logger := logMocks.NewLoggerMock(logMocks.WithTestingT(t))
-	logger.EXPECT().Warn("PutRecords failed %d of %d records with reason: %s: after %d attempts in %s", 1, 3, "1 ProvisionedThroughputExceededException errors", 1, time.Second)
-	logger.EXPECT().Warn("PutRecords successful after %d attempts in %s", 2, mock.AnythingOfType("time.Duration"))
+	logger.EXPECT().Warn(matcher.Context, "PutRecords failed %d of %d records with reason: %s: after %d attempts in %s", 1, 3, "1 ProvisionedThroughputExceededException errors", 1, time.Second)
+	logger.EXPECT().Warn(matcher.Context, "PutRecords successful after %d attempts in %s", 2, mock.AnythingOfType("time.Duration"))
 
 	uuidGen := uuidMocks.NewUuid(t)
 	// kinesis kinesis_write_request_id

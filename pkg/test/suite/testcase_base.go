@@ -49,7 +49,7 @@ func buildTestCaseBase(_ TestingSuite, method reflect.Method) (testCaseRunner, e
 
 			return
 		}
-		environment.Logger().WithChannel("fixtures").Debug("loaded fixtures in %s", time.Since(start))
+		environment.Logger().WithChannel("fixtures").Debug(environment.Context(), "loaded fixtures in %s", time.Since(start))
 
 		method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})
 	}, nil

@@ -118,8 +118,8 @@ func (l *ddbLock) runWatcher() {
 		}
 	}
 
-	l.logger.WithContext(l.ctx).WithFields(log.Fields{
+	l.logger.WithFields(log.Fields{
 		"ddb_lock_token":    l.token,
 		"ddb_lock_resource": l.resource,
-	}).Warn("failed to release or renew the lock before the timeout")
+	}).Warn(l.ctx, "failed to release or renew the lock before the timeout")
 }

@@ -132,7 +132,7 @@ func (f FixtureSet) Write(ctx context.Context) error {
 		}
 	}
 
-	f.logger.WithContext(ctx).Info("persisted %d fixtures", len(items))
+	f.logger.Info(ctx, "persisted %d fixtures", len(items))
 
 	return nil
 }
@@ -164,7 +164,7 @@ func (f FixtureSet) fetch(ctx context.Context) (*fetchResult, error) {
 
 	data := &FetchData{}
 	req := f.httpClient.R().SetContext(ctx).SetResult(data)
-	f.logger.WithContext(ctx).Info("fetching fixture data from %s", u.String())
+	f.logger.Info(ctx, "fetching fixture data from %s", u.String())
 
 	if resp, err = req.Get(u.String()); err != nil {
 		return nil, fmt.Errorf("error on executing http request data: %w", err)

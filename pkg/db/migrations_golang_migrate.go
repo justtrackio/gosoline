@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -11,7 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-func runMigrationGolangMigrate(logger log.Logger, settings *Settings, db *sql.DB) error {
+func runMigrationGolangMigrate(ctx context.Context, logger log.Logger, settings *Settings, db *sql.DB) error {
 	if !settings.Migrations.Enabled || settings.Migrations.Path == "" {
 		return nil
 	}
@@ -42,7 +43,7 @@ func runMigrationGolangMigrate(logger log.Logger, settings *Settings, db *sql.DB
 	err = m.Up()
 
 	if errors.Is(err, migrate.ErrNoChange) {
-		logger.Info("no db migrations to run")
+		logger.Info(ctx, "no db migrations to run")
 
 		return nil
 	}

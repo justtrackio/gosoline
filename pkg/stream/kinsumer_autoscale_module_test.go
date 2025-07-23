@@ -17,6 +17,7 @@ import (
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/stream/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -36,9 +37,8 @@ var kinsumerAutoscaleModuleTestCases = map[string]kinsumerAutoscaleModuleTestCas
 			s.cancel()
 		},
 		setupMocks: func(s *KinsumerAutoscaleModuleTestSuite) {
-			s.logger.EXPECT().WithContext(s.ctx).Return(s.logger).Once()
 			s.mockLeaderElection(false, nil, false)
-			s.logger.EXPECT().Info("not leading: do nothing").Once()
+			s.logger.EXPECT().Info(matcher.Context, "not leading: do nothing").Once()
 		},
 		returnsError: false,
 	},
@@ -47,14 +47,13 @@ var kinsumerAutoscaleModuleTestCases = map[string]kinsumerAutoscaleModuleTestCas
 			s.cancel()
 		},
 		setupMocks: func(s *KinsumerAutoscaleModuleTestSuite) {
-			s.logger.EXPECT().WithContext(s.ctx).Return(s.logger).Once()
 			err := fmt.Errorf("unknown leader election error")
 			s.mockLeaderElection(false, err, false)
-			s.logger.EXPECT().Warn("will assume leader role as election failed: %s", err).Once()
+			s.logger.EXPECT().Warn(matcher.Context, "will assume leader role as election failed: %s", err).Once()
 			s.mockGetCurrentTaskCount(4, nil)
 			s.mockGetShardCount(6, nil)
 			s.mockUpdateTaskCount(6, nil)
-			s.logger.EXPECT().Info("scaled task count from %d to %d", int32(4), int32(6)).Once()
+			s.logger.EXPECT().Info(matcher.Context, "scaled task count from %d to %d", int32(4), int32(6)).Once()
 		},
 		returnsError: false,
 	},
@@ -63,7 +62,6 @@ var kinsumerAutoscaleModuleTestCases = map[string]kinsumerAutoscaleModuleTestCas
 			s.cancel()
 		},
 		setupMocks: func(s *KinsumerAutoscaleModuleTestSuite) {
-			s.logger.EXPECT().WithContext(s.ctx).Return(s.logger).Once()
 			s.mockLeaderElection(false, conc.NewLeaderElectionFatalError(s.returnedError), false)
 		},
 		returnsError: true,
@@ -73,7 +71,6 @@ var kinsumerAutoscaleModuleTestCases = map[string]kinsumerAutoscaleModuleTestCas
 			s.cancel()
 		},
 		setupMocks: func(s *KinsumerAutoscaleModuleTestSuite) {
-			s.logger.EXPECT().WithContext(s.ctx).Return(s.logger).Once()
 			s.mockLeaderElection(true, nil, false)
 			s.mockGetCurrentTaskCount(4, nil)
 			s.mockGetShardCount(4, nil)
@@ -85,12 +82,11 @@ var kinsumerAutoscaleModuleTestCases = map[string]kinsumerAutoscaleModuleTestCas
 			s.cancel()
 		},
 		setupMocks: func(s *KinsumerAutoscaleModuleTestSuite) {
-			s.logger.EXPECT().WithContext(s.ctx).Return(s.logger).Once()
 			s.mockLeaderElection(true, nil, false)
 			s.mockGetCurrentTaskCount(6, nil)
 			s.mockGetShardCount(4, nil)
 			s.mockUpdateTaskCount(4, nil)
-			s.logger.EXPECT().Info("scaled task count from %d to %d", int32(6), int32(4)).Once()
+			s.logger.EXPECT().Info(matcher.Context, "scaled task count from %d to %d", int32(6), int32(4)).Once()
 		},
 		returnsError: false,
 	},
@@ -99,7 +95,6 @@ var kinsumerAutoscaleModuleTestCases = map[string]kinsumerAutoscaleModuleTestCas
 			s.cancel()
 		},
 		setupMocks: func(s *KinsumerAutoscaleModuleTestSuite) {
-			s.logger.EXPECT().WithContext(s.ctx).Return(s.logger).Once()
 			s.mockLeaderElection(true, nil, true)
 			s.mockGetCurrentTaskCount(6, s.returnedError)
 		},
@@ -110,7 +105,6 @@ var kinsumerAutoscaleModuleTestCases = map[string]kinsumerAutoscaleModuleTestCas
 			s.cancel()
 		},
 		setupMocks: func(s *KinsumerAutoscaleModuleTestSuite) {
-			s.logger.EXPECT().WithContext(s.ctx).Return(s.logger).Once()
 			s.mockLeaderElection(true, nil, true)
 			s.mockGetCurrentTaskCount(6, nil)
 			s.mockGetShardCount(4, s.returnedError)
@@ -122,7 +116,6 @@ var kinsumerAutoscaleModuleTestCases = map[string]kinsumerAutoscaleModuleTestCas
 			s.cancel()
 		},
 		setupMocks: func(s *KinsumerAutoscaleModuleTestSuite) {
-			s.logger.EXPECT().WithContext(s.ctx).Return(s.logger).Once()
 			s.mockLeaderElection(true, nil, true)
 			s.mockGetCurrentTaskCount(6, nil)
 			s.mockGetShardCount(4, nil)

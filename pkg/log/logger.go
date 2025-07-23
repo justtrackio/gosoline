@@ -56,7 +56,6 @@ func LevelPriority(level string) (int, bool) {
 }
 
 type Data struct {
-	Context       context.Context
 	Channel       string
 	ContextFields map[string]any
 	Fields        map[string]any
@@ -66,13 +65,12 @@ type Fields map[string]any
 
 //go:generate go run github.com/vektra/mockery/v2 --name Logger
 type Logger interface {
-	Debug(format string, args ...any)
-	Info(format string, args ...any)
-	Warn(format string, args ...any)
-	Error(format string, args ...any)
+	Debug(ctx context.Context, format string, args ...any)
+	Info(ctx context.Context, format string, args ...any)
+	Warn(ctx context.Context, format string, args ...any)
+	Error(ctx context.Context, format string, args ...any)
 
 	WithChannel(channel string) Logger
-	WithContext(ctx context.Context) Logger
 	WithFields(Fields) Logger
 }
 
@@ -89,6 +87,8 @@ type HandlerSettings struct {
 	Type string `cfg:"type"`
 }
 
+var _ Logger = &gosoLogger{}
+
 type gosoLogger struct {
 	clock        clock.Clock
 	data         Data
@@ -104,7 +104,6 @@ func NewLoggerWithInterfaces(clock clock.Clock, handlers []Handler) *gosoLogger 
 	return &gosoLogger{
 		clock: clock,
 		data: Data{
-			Context:       nil,
 			Channel:       "main",
 			ContextFields: make(map[string]any),
 			Fields:        make(map[string]any),
@@ -124,44 +123,28 @@ func (l *gosoLogger) Option(options ...Option) error {
 	return nil
 }
 
-func (l *gosoLogger) Debug(format string, args ...any) {
-	l.log(PriorityDebug, format, args, nil)
+func (l *gosoLogger) Debug(ctx context.Context, format string, args ...any) {
+	l.log(ctx, PriorityDebug, format, args, nil)
 }
 
-func (l *gosoLogger) Info(format string, args ...any) {
-	l.log(PriorityInfo, format, args, nil)
+func (l *gosoLogger) Info(ctx context.Context, format string, args ...any) {
+	l.log(ctx, PriorityInfo, format, args, nil)
 }
 
-func (l *gosoLogger) Warn(format string, args ...any) {
-	l.log(PriorityWarn, format, args, nil)
+func (l *gosoLogger) Warn(ctx context.Context, format string, args ...any) {
+	l.log(ctx, PriorityWarn, format, args, nil)
 }
 
-func (l *gosoLogger) Error(format string, args ...any) {
+func (l *gosoLogger) Error(ctx context.Context, format string, args ...any) {
 	err := fmt.Errorf(format, args...)
 	msg := err.Error()
 
-	l.log(PriorityError, "%s", []any{msg}, err)
+	l.log(ctx, PriorityError, "%s", []any{msg}, err)
 }
 
 func (l *gosoLogger) WithChannel(channel string) Logger {
 	cpy := l.copy()
 	cpy.data.Channel = channel
-
-	return cpy
-}
-
-func (l *gosoLogger) WithContext(ctx context.Context) Logger {
-	if ctx == nil {
-		return l
-	}
-
-	cpy := l.copy()
-	cpy.data.Context = ctx
-
-	for _, r := range l.ctxResolvers {
-		newContextFields := r(ctx)
-		cpy.data.ContextFields = mergeFields(cpy.data.ContextFields, newContextFields)
-	}
 
 	return cpy
 }
@@ -182,8 +165,15 @@ func (l *gosoLogger) copy() *gosoLogger {
 	}
 }
 
-func (l *gosoLogger) log(level int, msg string, args []any, loggedErr error) {
+func (l *gosoLogger) log(ctx context.Context, level int, msg string, args []any, loggedErr error) {
 	timestamp := l.clock.Now()
+
+	addedContext := false
+	data := &Data{
+		Channel:       l.data.Channel,
+		ContextFields: make(map[string]any),
+		Fields:        l.data.Fields,
+	}
 
 	for _, handler := range l.handlers {
 		if ok, err := l.shouldLog(l.data.Channel, level, handler); err != nil {
@@ -194,7 +184,16 @@ func (l *gosoLogger) log(level int, msg string, args []any, loggedErr error) {
 			continue
 		}
 
-		if handlerErr := handler.Log(timestamp, level, msg, args, loggedErr, l.data); handlerErr != nil {
+		if !addedContext && ctx != nil {
+			for _, r := range l.ctxResolvers {
+				newContextFields := r(ctx)
+				data.ContextFields = mergeFields(data.ContextFields, newContextFields)
+			}
+
+			addedContext = true
+		}
+
+		if handlerErr := handler.Log(ctx, timestamp, level, msg, args, loggedErr, *data); handlerErr != nil {
 			l.err(handlerErr)
 		}
 	}

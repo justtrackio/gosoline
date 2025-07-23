@@ -1,6 +1,7 @@
 package env
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -124,7 +125,7 @@ func (h handlerInMemoryWriter) Level() int {
 	return h.level
 }
 
-func (h handlerInMemoryWriter) Log(timestamp time.Time, level int, msg string, args []any, err error, data log.Data) error {
+func (h handlerInMemoryWriter) Log(_ context.Context, timestamp time.Time, level int, msg string, args []any, err error, data log.Data) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 

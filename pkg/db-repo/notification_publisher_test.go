@@ -44,7 +44,7 @@ func Test_Publish_Notifier(t *testing.T) {
 		Environment: "test",
 	}
 
-	notifier := db_repo.NewPublisherNotifier(
+	notifier, err := db_repo.NewPublisherNotifier(
 		t.Context(),
 		cfg.New(),
 		&publisher,
@@ -53,7 +53,8 @@ func Test_Publish_Notifier(t *testing.T) {
 		1,
 		transformer,
 	)
+	assert.NoError(t, err)
 
-	err := notifier.Send(t.Context(), "CREATE", input)
+	err = notifier.Send(t.Context(), "CREATE", input)
 	assert.NoError(t, err)
 }
