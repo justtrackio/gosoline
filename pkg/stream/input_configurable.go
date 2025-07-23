@@ -183,7 +183,7 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 	key := ConfigurableInputKey(name)
 
 	configuration := &SnsInputConfiguration{}
-	if err := config.UnmarshalKey(key, &configuration); err != nil {
+	if err := config.UnmarshalKey(key, configuration); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal sns input settings for key %q in readSnsInputSettings: %w", key, err)
 	}
 
