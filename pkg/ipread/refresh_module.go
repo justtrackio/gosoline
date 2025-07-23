@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -68,10 +67,6 @@ func (m *RefreshModule) Run(ctx context.Context) (err error) {
 	defer func() {
 		// if automatic refresh is disabled, the module is still "healthy", as we don't need it
 		m.healthy.Store(!m.settings.Enabled)
-
-		if closeErr := m.provider.Close(); closeErr != nil {
-			err = multierror.Append(err, fmt.Errorf("can not close ipread provider: %w", closeErr))
-		}
 
 		m.provider = nil
 	}()

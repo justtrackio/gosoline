@@ -31,14 +31,13 @@ type MaxmindSettings struct {
 }
 
 type maxmindProvider struct {
-	lck         sync.RWMutex
-	clk         clock.Clock
-	logger      log.Logger
-	reader      *geoip2.Reader
-	loader      func(ctx context.Context) (io.ReadCloser, error)
-	currentFile string
-	name        string
-	settings    *MaxmindSettings
+	lck      sync.RWMutex
+	clk      clock.Clock
+	logger   log.Logger
+	reader   *geoip2.Reader
+	loader   func(ctx context.Context) (io.ReadCloser, error)
+	name     string
+	settings *MaxmindSettings
 }
 
 func NewMaxmindProvider(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Provider, error) {
@@ -82,13 +81,11 @@ func (p *maxmindProvider) City(ipAddress net.IP) (*geoip2.City, error) {
 }
 
 func (p *maxmindProvider) Refresh(ctx context.Context) (err error) {
-	var file *os.File
+	var dbBytes []byte
 	var read io.Reader
 	var source io.ReadCloser
-	var written int64
 	var ipreader *geoip2.Reader
 
-	oldFile := p.currentFile
 	p.logger.Info("refreshing maxmind provider %s with database file %s", p.name, p.settings.Database)
 
 	if source, err = p.loader(ctx); err != nil {
@@ -109,46 +106,45 @@ func (p *maxmindProvider) Refresh(ctx context.Context) (err error) {
 		read = source
 	}
 
-	if file, err = os.CreateTemp("", "ipread_database"); err != nil {
-		return fmt.Errorf("can not create temporary file: %w", err)
-	}
-	p.currentFile = file.Name()
-
 	clk := clock.NewRealClock()
 	start := clk.Now()
 
-	if written, err = io.Copy(file, read); err != nil {
-		return fmt.Errorf("can not write database file: %w", err)
+	if dbBytes, err = io.ReadAll(read); err != nil {
+		return fmt.Errorf("can not read database bytes: %w", err)
 	}
 
 	duration := clk.Since(start)
-	p.logger.Info("reading of %s with size %d bytes took %s", p.settings.Database, written, duration)
+	p.logger.Info("reading of %s with size %d bytes took %s", p.settings.Database, len(dbBytes), duration)
 
-	if ipreader, err = geoip2.Open(p.currentFile); err != nil {
-		return fmt.Errorf("can not open database file %s: %w", p.currentFile, err)
+	if ipreader, err = geoip2.FromBytes(dbBytes); err != nil {
+		return fmt.Errorf("can not open database from memory: %w", err)
 	}
 
 	p.lck.Lock()
+	if p.reader != nil {
+		if err := p.reader.Close(); err != nil {
+			return fmt.Errorf("can not close existing reader: %w", err)
+		}
+	}
 	p.reader = ipreader
 	p.lck.Unlock()
 
-	return p.removeDatabaseFile(oldFile)
+	return nil
 }
 
 func (p *maxmindProvider) Close() error {
-	return p.removeDatabaseFile(p.currentFile)
-}
+	p.lck.Lock()
+	defer p.lck.Unlock()
 
-func (p *maxmindProvider) removeDatabaseFile(file string) error {
-	if file == "" {
+	if p.reader == nil {
 		return nil
 	}
 
-	if err := os.Remove(file); err != nil {
-		return fmt.Errorf("can not remove old database file %s: %w", file, err)
+	if err := p.reader.Close(); err != nil {
+		return fmt.Errorf("can not close maxmind reader: %w", err)
 	}
 
-	p.logger.Info("removed old database file %s", file)
+	p.reader = nil
 
 	return nil
 }
