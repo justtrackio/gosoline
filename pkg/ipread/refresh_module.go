@@ -86,7 +86,7 @@ func (m *RefreshModule) Run(ctx context.Context) (err error) {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return m.provider.Close()
 
 		case <-ticker.C:
 			if err = m.provider.Refresh(ctx); err != nil {

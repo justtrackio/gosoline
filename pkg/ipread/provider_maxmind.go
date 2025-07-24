@@ -2,6 +2,7 @@ package ipread
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"fmt"
@@ -23,7 +24,7 @@ import (
 	"github.com/oschwald/geoip2-golang"
 )
 
-type databaseLoader func(ctx context.Context) (io.ReadCloser, error)
+type databaseLoader func(ctx context.Context) (io.ReadCloser, int64, error)
 
 type MaxmindSettings struct {
 	Database     string `cfg:"database"`
@@ -35,7 +36,7 @@ type maxmindProvider struct {
 	clk      clock.Clock
 	logger   log.Logger
 	reader   *geoip2.Reader
-	loader   func(ctx context.Context) (io.ReadCloser, error)
+	loader   databaseLoader
 	name     string
 	settings *MaxmindSettings
 }
@@ -81,14 +82,14 @@ func (p *maxmindProvider) City(ipAddress net.IP) (*geoip2.City, error) {
 }
 
 func (p *maxmindProvider) Refresh(ctx context.Context) (err error) {
-	var dbBytes []byte
 	var read io.Reader
 	var source io.ReadCloser
 	var ipreader *geoip2.Reader
+	var size int64
 
 	p.logger.Info("refreshing maxmind provider %s with database file %s", p.name, p.settings.Database)
 
-	if source, err = p.loader(ctx); err != nil {
+	if source, size, err = p.loader(ctx); err != nil {
 		return fmt.Errorf("can no read database bytes: %w", err)
 	}
 
@@ -109,25 +110,27 @@ func (p *maxmindProvider) Refresh(ctx context.Context) (err error) {
 	clk := clock.NewRealClock()
 	start := clk.Now()
 
-	if dbBytes, err = io.ReadAll(read); err != nil {
+	buf := bytes.NewBuffer(make([]byte, 0, size))
+	if _, err = io.Copy(buf, read); err != nil {
 		return fmt.Errorf("can not read database bytes: %w", err)
 	}
 
 	duration := clk.Since(start)
-	p.logger.Info("reading of %s with size %d bytes took %s", p.settings.Database, len(dbBytes), duration)
+	p.logger.Info("reading of %s with size %d bytes took %s", p.settings.Database, buf.Len(), duration)
 
-	if ipreader, err = geoip2.FromBytes(dbBytes); err != nil {
+	if ipreader, err = geoip2.FromBytes(buf.Bytes()); err != nil {
 		return fmt.Errorf("can not open database from memory: %w", err)
 	}
 
 	p.lck.Lock()
-	if p.reader != nil {
-		if err := p.reader.Close(); err != nil {
+	defer p.lck.Unlock()
+	readerToClose := p.reader
+	p.reader = ipreader
+	if readerToClose != nil {
+		if err := readerToClose.Close(); err != nil {
 			return fmt.Errorf("can not close existing reader: %w", err)
 		}
 	}
-	p.reader = ipreader
-	p.lck.Unlock()
 
 	return nil
 }
@@ -140,11 +143,12 @@ func (p *maxmindProvider) Close() error {
 		return nil
 	}
 
-	if err := p.reader.Close(); err != nil {
+	err := p.reader.Close()
+	p.reader = nil
+
+	if err != nil {
 		return fmt.Errorf("can not close maxmind reader: %w", err)
 	}
-
-	p.reader = nil
 
 	return nil
 }
@@ -168,15 +172,20 @@ func getDatabaseLoader(ctx context.Context, config cfg.Config, logger log.Logger
 }
 
 func readDatabaseLoaderLocal(settings *MaxmindSettings) (databaseLoader, error) {
-	return func(ctx context.Context) (io.ReadCloser, error) {
+	return func(ctx context.Context) (io.ReadCloser, int64, error) {
 		var err error
 		var file io.ReadCloser
+		var info os.FileInfo
 
 		if file, err = os.Open(settings.Database); err != nil {
-			return nil, fmt.Errorf("can not open local file %s: %w", settings.Database, err)
+			return nil, 0, fmt.Errorf("can not open local file %s: %w", settings.Database, err)
 		}
 
-		return file, err
+		if info, err = os.Stat(settings.Database); err != nil {
+			return nil, 0, fmt.Errorf("can not stat local file %s: %w", settings.Database, err)
+		}
+
+		return file, info.Size(), err
 	}, nil
 }
 
@@ -188,13 +197,13 @@ func readDatabaseLoaderS3(ctx context.Context, config cfg.Config, logger log.Log
 		return nil, fmt.Errorf("can not get s3 client: %w", err)
 	}
 
-	return func(ctx context.Context) (io.ReadCloser, error) {
+	return func(ctx context.Context) (io.ReadCloser, int64, error) {
 		var err error
 		var url *urlPkg.URL
 		var output *s3.GetObjectOutput
 
 		if url, err = urlPkg.Parse(settings.Database); err != nil {
-			return nil, fmt.Errorf("can not parse database url: %w", err)
+			return nil, 0, fmt.Errorf("can not parse database url: %w", err)
 		}
 
 		bucket := url.Host
@@ -206,10 +215,10 @@ func readDatabaseLoaderS3(ctx context.Context, config cfg.Config, logger log.Log
 		}
 
 		if output, err = client.GetObject(ctx, input); err != nil {
-			return nil, fmt.Errorf("can not get database from bucket %s and key %s: %w", bucket, key, err)
+			return nil, 0, fmt.Errorf("can not get database from bucket %s and key %s: %w", bucket, key, err)
 		}
 
-		return output.Body, err
+		return output.Body, mdl.EmptyIfNil(output.ContentLength), err
 	}, nil
 }
 
