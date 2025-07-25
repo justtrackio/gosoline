@@ -37,7 +37,7 @@ func TestLoggerIoWriter(t *testing.T) {
 	})
 
 	buf := &bytes.Buffer{}
-	handler := log.NewHandlerIoWriter(config, log.LevelInfo, log.FormatterJson, "main", time.RFC3339, buf)
+	handler := log.NewHandlerIoWriter(config, log.PriorityInfo, log.FormatterJson, "main", time.RFC3339, buf)
 	cl := clock.NewFakeClock()
 
 	logger := log.NewLoggerWithInterfaces(cl, []log.Handler{handler})
@@ -84,6 +84,7 @@ func TestConfigureLoggerIoChannels(t *testing.T) {
 				"main": map[string]any{
 					"type":   "iowriter",
 					"writer": "buffer",
+					"level":  log.LevelInfo,
 					"channels": map[string]any{
 						"debug": map[string]any{
 							"level": log.LevelInfo,
@@ -107,6 +108,7 @@ func TestConfigureLoggerIoChannels(t *testing.T) {
 	logger.WithChannel("default").Info("should be logged")
 	logger.WithChannel("debug").Debug("should also be logged")
 	logger.WithChannel("verbose").Warn("should not be logged")
+	logger.WithChannel("some-other-channel").Debug("should not be logged")
 
 	lines := getLogLines(buf)
 

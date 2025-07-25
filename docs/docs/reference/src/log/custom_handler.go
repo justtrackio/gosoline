@@ -6,7 +6,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type MyCustomHandlerSettings struct {
@@ -36,7 +35,12 @@ func (h *MyCustomHandler) ChannelLevel(name string) (level *int, err error) {
 		return nil, nil
 	}
 
-	return mdl.Box(log.LevelPriority(levelName)), nil
+	priority, ok := log.LevelPriority(levelName)
+	if !ok {
+		return nil, nil
+	}
+
+	return &priority, nil
 }
 
 func (h *MyCustomHandler) Level() int {

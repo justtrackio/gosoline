@@ -219,7 +219,7 @@ Adds global fields to the logger, which will be set on every log message.
 #### Usage
 
 ```go
-	logHandler := log.NewHandlerIoWriter(log.LevelInfo, []string{}, log.FormatterConsole, "", os.Stdout)
+	logHandler := log.NewHandlerIoWriter(cfg.New(), log.PriorityInfo, log.FormatterConsole, "main", "15:04:05.000", os.Stdout)
 	loggerOptions := []log.Option{
 		log.WithHandlers(logHandler),
 	}

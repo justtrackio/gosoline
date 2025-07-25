@@ -17,7 +17,7 @@ func newCliLogger(config cfg.Config) (log.Logger, error) {
 		return nil, fmt.Errorf("can not create io file writer for logger: %w", err)
 	}
 
-	handler := log.NewHandlerIoWriter(config, log.LevelInfo, log.FormatterConsole, "cli", "", writer)
+	handler := log.NewHandlerIoWriter(config, log.PriorityInfo, log.FormatterConsole, "cli", "", writer)
 	logger := log.NewLoggerWithInterfaces(clock.Provider, []log.Handler{handler})
 
 	return logger, nil

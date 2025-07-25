@@ -14,5 +14,5 @@ func NewCliLogger() Logger {
 }
 
 func NewCliHandler() Handler {
-	return NewHandlerIoWriter(cfg.New(), LevelInfo, FormatterConsole, "cli", "15:04:05.000", os.Stdout)
+	return NewHandlerIoWriter(cfg.New(), PriorityInfo, FormatterConsole, "cli", "15:04:05.000", os.Stdout)
 }

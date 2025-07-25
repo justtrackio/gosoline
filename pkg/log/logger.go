@@ -49,8 +49,10 @@ func LevelName(level int) string {
 	return levelNames[level]
 }
 
-func LevelPriority(level string) int {
-	return levelPriorities[level]
+func LevelPriority(level string) (int, bool) {
+	priority, ok := levelPriorities[level]
+
+	return priority, ok
 }
 
 type Data struct {

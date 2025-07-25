@@ -11,7 +11,7 @@ import (
 func main() {
 	// 2
 	logHandler := log.NewHandlerIoWriter(
-		cfg.New(), log.LevelInfo, log.FormatterConsole, "main", "", os.Stdout,
+		cfg.New(), log.PriorityInfo, log.FormatterConsole, "main", "", os.Stdout,
 	)
 
 	// 3

@@ -15,7 +15,7 @@ func main() {
 	ctx := context.Background()
 
 	// 2
-	handler := log.NewHandlerIoWriter(cfg.New(), log.LevelDebug, log.FormatterConsole, "main", "15:04:05.000", os.Stdout)
+	handler := log.NewHandlerIoWriter(cfg.New(), log.PriorityDebug, log.FormatterConsole, "main", "15:04:05.000", os.Stdout)
 	logger := log.NewLoggerWithInterfaces(clock.NewRealClock(), []log.Handler{handler})
 
 	if err := logger.Option(log.WithContextFieldsResolver(log.ContextFieldsResolver)); err != nil {

@@ -50,7 +50,12 @@ func handlerIoWriterFactory(config cfg.Config, name string) (Handler, error) {
 		return nil, fmt.Errorf("io writer formatter of type %s not available", settings.Formatter)
 	}
 
-	return NewHandlerIoWriter(config, settings.Level, formatter, name, settings.TimestampFormat, writer), nil
+	priority, ok := LevelPriority(settings.Level)
+	if !ok {
+		return nil, fmt.Errorf("invalid log level %q", settings.Level)
+	}
+
+	return NewHandlerIoWriter(config, priority, formatter, name, settings.TimestampFormat, writer), nil
 }
 
 type handlerIoWriter struct {
@@ -64,10 +69,10 @@ type handlerIoWriter struct {
 	writer          io.Writer
 }
 
-func NewHandlerIoWriter(config cfg.Config, level string, formatter Formatter, name string, timestampFormat string, writer io.Writer) Handler {
+func NewHandlerIoWriter(config cfg.Config, levelPriority int, formatter Formatter, name string, timestampFormat string, writer io.Writer) Handler {
 	return &handlerIoWriter{
 		config:          config,
-		level:           LevelPriority(level),
+		level:           levelPriority,
 		channels:        make(map[string]*int),
 		formatter:       formatter,
 		name:            name,
@@ -98,7 +103,19 @@ func (h *handlerIoWriter) ChannelLevel(name string) (level *int, err error) {
 		return nil, fmt.Errorf("can not unmarshal channel settings: %w", err)
 	}
 
-	priority := LevelPriority(settings.Level)
+	if settings.Level == "" {
+		h.channels[name] = nil
+
+		return nil, nil
+	}
+
+	priority, ok := LevelPriority(settings.Level)
+	if !ok {
+		h.channels[name] = nil
+
+		return nil, fmt.Errorf("invalid log level priority %q", settings.Level)
+	}
+
 	h.channels[name] = &priority
 
 	return &priority, nil
