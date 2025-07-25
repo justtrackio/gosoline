@@ -31,7 +31,9 @@ type redisListOutput struct {
 }
 
 func NewRedisListOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *RedisListOutputSettings) (Output, error) {
-	settings.PadFromConfig(config)
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
+	}
 
 	client, err := redis.ProvideClient(ctx, config, logger, settings.ServerName)
 	if err != nil {
@@ -77,6 +79,14 @@ func (o *redisListOutput) Write(ctx context.Context, batch []WritableMessage) er
 	o.writeListWriteMetric(len(batch))
 
 	return nil
+}
+
+func (o *redisListOutput) ProvidesCompression() bool {
+	return false
+}
+
+func (o *redisListOutput) SupportsAggregation() bool {
+	return true
 }
 
 func (o *redisListOutput) writeListWriteMetric(length int) {
