@@ -16,6 +16,7 @@ type SubscriberCore interface {
 	GetModelIds() []string
 	GetLatestModelIdVersion(modelId mdl.ModelId) (int, error)
 	GetTransformer(spec *ModelSpecification) (ModelTransformer, error)
+	GetTransformersForModel(modelId mdl.ModelId) (VersionedModelTransformers, error)
 	GetOutput(spec *ModelSpecification) (Output, error)
 	Persist(ctx context.Context, spec *ModelSpecification, model Model) error
 	Transform(ctx context.Context, spec *ModelSpecification, input any) (Model, error)
@@ -103,6 +104,14 @@ func (c *subscriberCore) GetTransformer(spec *ModelSpecification) (ModelTransfor
 	}
 
 	return c.transformers[spec.ModelId][spec.Version], nil
+}
+
+func (c *subscriberCore) GetTransformersForModel(modelId mdl.ModelId) (VersionedModelTransformers, error) {
+	if _, ok := c.transformers[modelId.String()]; !ok {
+		return nil, fmt.Errorf("there is no transformer for modelId %s", modelId.String())
+	}
+
+	return c.transformers[modelId.String()], nil
 }
 
 func (c *subscriberCore) Persist(ctx context.Context, spec *ModelSpecification, model Model) error {

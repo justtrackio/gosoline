@@ -19,6 +19,7 @@ type publisherOutputTypeHandler func(config cfg.Config, publisherSettings *Publi
 
 var publisherOutputTypeHandlers = map[string]publisherOutputTypeHandler{
 	stream.OutputTypeInMemory: handlePublisherOutputTypeInMemory,
+	stream.OutputTypeKafka:    handlePublisherOutputTypeKafka,
 	stream.OutputTypeKinesis:  handlePublisherOutputTypeKinesis,
 	stream.OutputTypeSns:      handlePublisherOutputTypeSns,
 	stream.OutputTypeSqs:      handlePublisherOutputTypeSqs,
@@ -104,6 +105,22 @@ func handlePublisherOutputTypeInMemory(config cfg.Config, _ *PublisherSettings, 
 	if err := config.UnmarshalDefaults(outputSettings); err != nil {
 		return nil, fmt.Errorf("can not unmarshal in-memory output settings: %w", err)
 	}
+
+	return outputSettings, nil
+}
+
+func handlePublisherOutputTypeKafka(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings, _ string) (stream.BaseOutputConfigurationAware, error) {
+	outputSettings := &stream.KafkaOutputConfiguration{}
+	if err := config.UnmarshalDefaults(outputSettings); err != nil {
+		return nil, fmt.Errorf("can not unmarshal kafka output settings for publisher %s: %w", publisherSettings.Name, err)
+	}
+
+	outputSettings.Project = publisherSettings.Project
+	outputSettings.Family = publisherSettings.Family
+	outputSettings.Group = publisherSettings.Group
+	outputSettings.Application = publisherSettings.Application
+	outputSettings.TopicId = publisherSettings.Name
+	outputSettings.Tracing.Enabled = false
 
 	return outputSettings, nil
 }

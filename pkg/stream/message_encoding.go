@@ -20,9 +20,10 @@ func AddDefaultEncodeHandler(handler EncodeHandler) {
 }
 
 type MessageEncoderSettings struct {
-	Encoding       EncodingType
-	Compression    CompressionType
-	EncodeHandlers []EncodeHandler
+	Encoding        EncodingType
+	Compression     CompressionType
+	EncodeHandlers  []EncodeHandler
+	ExternalEncoder MessageBodyEncoder
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name MessageEncoder
@@ -32,9 +33,10 @@ type MessageEncoder interface {
 }
 
 type messageEncoder struct {
-	encoding       EncodingType
-	compression    CompressionType
-	encodeHandlers []EncodeHandler
+	encoding        EncodingType
+	compression     CompressionType
+	encodeHandlers  []EncodeHandler
+	externalEncoder MessageBodyEncoder
 }
 
 func NewMessageEncoder(config *MessageEncoderSettings) *messageEncoder {
@@ -51,9 +53,10 @@ func NewMessageEncoder(config *MessageEncoderSettings) *messageEncoder {
 	}
 
 	return &messageEncoder{
-		encoding:       config.Encoding,
-		compression:    config.Compression,
-		encodeHandlers: config.EncodeHandlers,
+		encoding:        config.Encoding,
+		compression:     config.Compression,
+		encodeHandlers:  config.EncodeHandlers,
+		externalEncoder: config.ExternalEncoder,
 	}
 }
 
@@ -89,6 +92,15 @@ func (e *messageEncoder) Encode(ctx context.Context, data any, attributeSets ...
 }
 
 func (e *messageEncoder) encodeBody(attributes map[string]string, data any) ([]byte, error) {
+	if e.externalEncoder != nil {
+		body, err := e.externalEncoder.Encode(data)
+		if err != nil {
+			return nil, fmt.Errorf("external encoding failed: %w", err)
+		}
+
+		return body, nil
+	}
+
 	body, err := EncodeMessage(e.encoding, data)
 	if err != nil {
 		return nil, err
@@ -169,6 +181,14 @@ func (e *messageEncoder) decompressBody(attributes map[string]string, body []byt
 }
 
 func (e *messageEncoder) decodeBody(attributes map[string]string, body []byte, out any) error {
+	if e.externalEncoder != nil {
+		if err := e.externalEncoder.Decode(body, out); err != nil {
+			return fmt.Errorf("external decoding failed: %w", err)
+		}
+
+		return nil
+	}
+
 	encoding := mdl.Unbox(GetEncodingAttribute(attributes), e.encoding)
 
 	return DecodeMessage(encoding, body, out)
