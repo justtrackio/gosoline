@@ -6,76 +6,84 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/coffin"
 	kafkaConsumer "github.com/justtrackio/gosoline/pkg/kafka/consumer"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-type KafkaInput struct {
-	consumer *kafkaConsumer.Consumer
-	data     chan *Message
-	pool     coffin.Coffin
+type kafkaInput struct {
+	logger           log.Logger
+	partitionManager kafkaConsumer.PartitionManager
+	reader           kafkaConsumer.Reader
+	data             chan *Message
 }
 
-var _ AcknowledgeableInput = &KafkaInput{}
+func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, key string) (Input, error) {
+	data := make(chan *Message)
+	messageHandler := NewKafkaMessageHandler(data)
+	partitionManager := kafkaConsumer.NewPartitionManager(logger, messageHandler)
 
-func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, key string) (*KafkaInput, error) {
-	consumer, err := kafkaConsumer.NewConsumer(ctx, config, logger, key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to init consumer: %w", err)
+	opts := []kgo.Opt{
+		kgo.OnPartitionsAssigned(partitionManager.OnPartitionsAssigned),
+		kgo.OnPartitionsRevoked(partitionManager.OnPartitionsLostOrRevoked),
+		kgo.OnPartitionsLost(partitionManager.OnPartitionsLostOrRevoked),
 	}
 
-	return NewKafkaInputWithInterfaces(consumer)
+	reader, err := kafkaConsumer.NewReader(ctx, config, logger, key, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("can not create kafka reader: %w", err)
+	}
+
+	return NewKafkaInputWithInterfaces(logger, *partitionManager, reader, data)
 }
 
-func NewKafkaInputWithInterfaces(consumer *kafkaConsumer.Consumer) (*KafkaInput, error) {
-	return &KafkaInput{
-		consumer: consumer,
-		data:     make(chan *Message, cap(consumer.Data())),
-		pool:     coffin.New(),
+func NewKafkaInputWithInterfaces(logger log.Logger, partitionManager kafkaConsumer.PartitionManager, reader kafkaConsumer.Reader, data chan *Message) (Input, error) {
+	return &kafkaInput{
+		logger:           logger,
+		partitionManager: partitionManager,
+		reader:           reader,
+		data:             data,
 	}, nil
 }
 
-// Run provides a steady stream of messages, returned via Data. Run does not return until Stop is called and thus
-// should be called in its own go routine. The only exception to this is if we either fail to produce messages and
-// return an error or if the input is depleted (like an InMemoryInput).
-//
-// Run should only be called once, not all inputs can be resumed.
-func (i *KafkaInput) Run(ctx context.Context) error {
-	i.pool.GoWithContext(ctx, i.consumer.Run)
+func (i *kafkaInput) Run(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
 
-	defer close(i.data)
+		fetches := i.reader.PollRecords(ctx, 100) // todo: make configurable
+		if fetches.IsClientClosed() {
+			return nil
+		}
+		if errors.Is(fetches.Err0(), context.Canceled) {
+			return ctx.Err()
+		}
 
-	for msg := range i.consumer.Data() {
-		i.data <- KafkaToGosoMessage(msg)
+		fetches.EachError(func(topic string, partition int32, err error) {
+			// todo: proper error handling
+			i.logger.WithContext(ctx).Error("failed to fetch record (topic: %s. partition: %d): %w", topic, partition, err)
+		})
+
+		fetches.EachPartition(func(p kgo.FetchTopicPartition) {
+			i.partitionManager.AssignRecords(p.Topic, p.Partition, p.Records)
+		})
+
+		i.reader.AllowRebalance()
 	}
-
-	return ctx.Err()
 }
 
-// Stop causes Run to return as fast as possible. Calling Stop is preferable to canceling the context passed to Run
-// as it allows Run to shut down cleaner (and might take a bit longer, e.g., to finish processing the current batch
-// of messages).
-func (i *KafkaInput) Stop() {
-	i.pool.Kill(errors.New("asked to stop"))
+func (i *kafkaInput) Stop() {
+	defer close(i.data)
+	i.reader.CloseAllowingRebalance()
 }
 
-func (i *KafkaInput) IsHealthy() bool {
-	return i.consumer.IsHealthy()
-}
-
-// Data returns a channel containing the messages produced by this input.
-func (i *KafkaInput) Data() <-chan *Message {
+func (i *kafkaInput) Data() <-chan *Message {
 	return i.data
 }
 
-// Ack acknowledges a message. If possible, prefer calling Ack with a batch as it is more efficient.
-func (i *KafkaInput) Ack(ctx context.Context, msg *Message, _ bool) error {
-	return i.consumer.Commit(ctx, GosoToKafkaMessage(msg))
-}
-
-// AckBatch does the same as calling Ack for every single message would, but it might use fewer calls to an external
-// service.
-func (i *KafkaInput) AckBatch(ctx context.Context, msgs []*Message, _ []bool) error {
-	return i.consumer.Commit(ctx, GosoToKafkaMessages(msgs...)...)
+func (i *kafkaInput) IsHealthy() bool {
+	return true // todo: health check
 }

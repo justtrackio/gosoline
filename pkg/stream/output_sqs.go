@@ -122,6 +122,10 @@ func (o *sqsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	return nil
 }
 
+func (o *sqsOutput) ProvidesCompression() bool {
+	return false
+}
+
 func (o *sqsOutput) GetMaxMessageSize() *int {
 	return mdl.Box(256 * 1024)
 }

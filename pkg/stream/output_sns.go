@@ -92,6 +92,10 @@ func (o *snsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	return nil
 }
 
+func (o *snsOutput) ProvidesCompression() bool {
+	return false
+}
+
 func (o *snsOutput) computeMessagesAttributes(batch []WritableMessage) ([]string, []map[string]string, error) {
 	messages := make([]string, 0, len(batch))
 	attributes := make([]map[string]string, 0, len(batch))

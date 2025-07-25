@@ -95,6 +95,10 @@ func (o *kinesisOutput) Write(ctx context.Context, batch []WritableMessage) erro
 	return o.recordWriter.PutRecords(ctx, records)
 }
 
+func (o *kinesisOutput) ProvidesCompression() bool {
+	return false
+}
+
 func (o *kinesisOutput) IsPartitionedOutput() bool {
 	return true
 }

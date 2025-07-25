@@ -3,9 +3,13 @@ package stream
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
+	"github.com/justtrackio/gosoline/pkg/kafka"
+	"github.com/justtrackio/gosoline/pkg/kafka/connection"
+	kafkaProducer "github.com/justtrackio/gosoline/pkg/kafka/producer"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -85,12 +89,6 @@ func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Lo
 	return NewFileOutput(config, logger, settings), nil
 }
 
-func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
-	key := ConfigurableOutputKey(name)
-
-	return NewKafkaOutput(ctx, config, logger, key)
-}
-
 type InMemoryOutputConfiguration struct {
 	BaseOutputConfiguration
 	Type string `cfg:"type" default:"inMemory"`
@@ -127,6 +125,66 @@ func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger l
 		},
 		ClientName: configuration.ClientName,
 		StreamName: configuration.StreamName,
+	})
+}
+
+type KafkaOutputConfiguration struct {
+	BaseOutputConfiguration
+	Type         string        `cfg:"type" default:"kafka"`
+	Project      string        `cfg:"project"`
+	Family       string        `cfg:"family"`
+	Group        string        `cfg:"group"`
+	Application  string        `cfg:"application"`
+	Topic        string        `cfg:"topic"`
+	BatchSize    int           `cfg:"batch_size" default:"100"`
+	Connection   string        `cfg:"connection" default:"default"`
+	BatchTimeout time.Duration `cfg:"idle_timeout"`
+}
+
+func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
+	key := ConfigurableOutputKey(name)
+	configuration := &KafkaOutputConfiguration{}
+	if err := config.UnmarshalKey(key, configuration); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal kinesis output settings for key %q in newKinesisOutputFromConfig: %w", key, err)
+	}
+
+	conn, err := connection.ParseSettings(config, configuration.Connection)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse kafka connection settings for connection %q in ParseSettings: %w", configuration.Connection, err)
+	}
+
+	appId, err := cfg.GetAppIdFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get app id from config: %w", err)
+	}
+
+	topic, err := kafka.FQTopicName(config, appId, configuration.Topic)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get fully qualified topic name for topic %q in ParseSettings: %w", configuration.Topic, err)
+	}
+
+	producerSettings, err := readProducerSettings(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read producer settings for %q: %w", name, err)
+	}
+
+	compression := kafkaProducer.CompressionNone
+
+	switch producerSettings.Compression {
+	case CompressionGZip:
+		compression = kafkaProducer.CompressionGZip
+	case CompressionSnappy:
+		compression = kafkaProducer.CompressionSnappy
+	case CompressionLZ4:
+		compression = kafkaProducer.CompressionLZ4
+	case CompressionZstd:
+		compression = kafkaProducer.CompressionZstd
+	}
+
+	return NewKafkaOutput(ctx, logger, &kafkaProducer.Settings{
+		Connection:  conn,
+		Topic:       topic,
+		Compression: compression,
 	})
 }
 

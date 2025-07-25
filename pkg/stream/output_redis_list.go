@@ -79,6 +79,10 @@ func (o *redisListOutput) Write(ctx context.Context, batch []WritableMessage) er
 	return nil
 }
 
+func (o *redisListOutput) ProvidesCompression() bool {
+	return false
+}
+
 func (o *redisListOutput) writeListWriteMetric(length int) {
 	data := metric.Data{{
 		Priority:   metric.PriorityHigh,

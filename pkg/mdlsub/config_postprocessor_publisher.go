@@ -19,6 +19,7 @@ type publisherOutputTypeHandler func(config cfg.Config, publisherSettings *Publi
 
 var publisherOutputTypeHandlers = map[string]publisherOutputTypeHandler{
 	stream.OutputTypeInMemory: handlePublisherOutputTypeInMemory,
+	stream.OutputTypeKafka:    handlePublisherOutputTypeKafka,
 	stream.OutputTypeKinesis:  handlePublisherOutputTypeKinesis,
 	stream.OutputTypeSns:      handlePublisherOutputTypeSns,
 	stream.OutputTypeSqs:      handlePublisherOutputTypeSqs,
@@ -129,6 +130,30 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 	outputSettings.Application = publisherSettings.Application
 	outputSettings.ClientName = clientName
 	outputSettings.StreamName = publisherSettings.Name
+	outputSettings.Tracing.Enabled = false
+
+	return outputSettings, nil
+}
+
+func handlePublisherOutputTypeKafka(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings, _ string) (stream.BaseOutputConfigurationAware, error) {
+	producerSettings.Daemon.Enabled = true
+	//producerSettings.Daemon.Interval = time.Second
+	//// kinesis batches have a max size of 5mb. we're using 4.5mb to give it some headroom
+	//producerSettings.Daemon.BatchMaxSize = 4_500_000
+	//// kinesis can handle up to 500 records per put records call
+	//producerSettings.Daemon.BatchSize = 500
+	//// kinesis limit for 1 record in size is 1mb, so we limit it to 950kb to give it some headroom
+	//producerSettings.Daemon.AggregationMaxSize = 950_000
+
+	outputSettings := &stream.KafkaOutputConfiguration{}
+	if err := config.UnmarshalDefaults(outputSettings); err != nil {
+		return nil, fmt.Errorf("can not unmarshal kafka output settings for publisher %s: %w", publisherSettings.Name, err)
+	}
+
+	outputSettings.Project = publisherSettings.Project
+	outputSettings.Family = publisherSettings.Family
+	outputSettings.Group = publisherSettings.Group
+	outputSettings.Application = publisherSettings.Application
 	outputSettings.Tracing.Enabled = false
 
 	return outputSettings, nil
