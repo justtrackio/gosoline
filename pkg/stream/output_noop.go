@@ -20,3 +20,7 @@ func (o *NoOpOutput) WriteOne(_ context.Context, _ WritableMessage) error {
 func (o *NoOpOutput) Write(_ context.Context, _ []WritableMessage) error {
 	return nil
 }
+
+func (o *NoOpOutput) ProvidesCompression() bool {
+	return false
+}

@@ -140,6 +140,10 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("can not create output for producer daemon %s: %w", name, err)
 	}
 
+	if output.ProvidesCompression() {
+		settings.Compression = CompressionNone
+	}
+
 	if sro, ok := output.(SizeRestrictedOutput); ok {
 		if maxBatchSize := sro.GetMaxBatchSize(); maxBatchSize != nil && *maxBatchSize < settings.Daemon.BatchSize {
 			settings.Daemon.BatchSize = *maxBatchSize
@@ -274,6 +278,10 @@ func (d *producerDaemon) Write(ctx context.Context, batch []WritableMessage) err
 	}
 
 	return nil
+}
+
+func (d *producerDaemon) ProvidesCompression() bool {
+	return false
 }
 
 func (d *producerDaemon) IsPartitionedOutput() bool {

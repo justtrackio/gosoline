@@ -82,3 +82,7 @@ func (o *fileOutput) Write(_ context.Context, batch []WritableMessage) error {
 
 	return nil
 }
+
+func (o *fileOutput) ProvidesCompression() bool {
+	return false
+}

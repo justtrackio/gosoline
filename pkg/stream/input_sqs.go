@@ -63,7 +63,9 @@ type sqsInput struct {
 }
 
 func NewSqsInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsInputSettings) (*sqsInput, error) {
-	settings.PadFromConfig(config)
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
+	}
 
 	var ok bool
 	var err error

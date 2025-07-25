@@ -55,6 +55,10 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name
 		}
 	}
 
+	if output.ProvidesCompression() {
+		settings.Compression = CompressionNone
+	}
+
 	encodeHandlers := make([]EncodeHandler, 0, len(defaultEncodeHandlers)+len(handlers))
 	encodeHandlers = append(encodeHandlers, defaultEncodeHandlers...)
 	encodeHandlers = append(encodeHandlers, handlers...)

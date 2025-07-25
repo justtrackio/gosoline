@@ -61,6 +61,10 @@ func (o outputTracer) Write(ctx context.Context, batch []WritableMessage) error 
 	return o.base.Write(ctx, batch)
 }
 
+func (o outputTracer) ProvidesCompression() bool {
+	return o.base.ProvidesCompression()
+}
+
 func (o outputTracer) IsPartitionedOutput() bool {
 	po, ok := o.base.(PartitionedOutput)
 
