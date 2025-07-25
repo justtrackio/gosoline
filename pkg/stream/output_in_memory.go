@@ -114,6 +114,14 @@ func (o *InMemoryOutput) Write(_ context.Context, batch []WritableMessage) error
 	return nil
 }
 
+func (o *InMemoryOutput) ProvidesCompression() bool {
+	return false
+}
+
+func (o *InMemoryOutput) SupportsAggregation() bool {
+	return true
+}
+
 func (o *InMemoryOutput) Size() int {
 	return o.Len()
 }

@@ -18,10 +18,11 @@ type ProducerMetadata struct {
 }
 
 type ProducerSettings struct {
-	Output      string                 `cfg:"output"`
-	Encoding    EncodingType           `cfg:"encoding"`
-	Compression CompressionType        `cfg:"compression" default:"none"`
-	Daemon      ProducerDaemonSettings `cfg:"daemon"`
+	Output        string                 `cfg:"output"`
+	SchemaSubject string                 `cfg:"schema_subject"`
+	Encoding      EncodingType           `cfg:"encoding"`
+	Compression   CompressionType        `cfg:"compression" default:"none"`
+	Daemon        ProducerDaemonSettings `cfg:"daemon"`
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Producer
@@ -53,6 +54,10 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name
 		if output, err = ProvideProducerDaemon(ctx, config, logger, name); err != nil {
 			return nil, fmt.Errorf("can not create producer daemon %s: %w", name, err)
 		}
+	}
+
+	if output.ProvidesCompression() {
+		settings.Compression = CompressionNone
 	}
 
 	encodeHandlers := make([]EncodeHandler, 0, len(defaultEncodeHandlers)+len(handlers))

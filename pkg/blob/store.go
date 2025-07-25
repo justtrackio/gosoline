@@ -377,7 +377,9 @@ func ReadStoreSettings(config cfg.Config, name string) (*Settings, error) {
 	if err := config.UnmarshalKey(key, settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal blob store settings for %s: %w", name, err)
 	}
-	settings.PadFromConfig(config)
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
+	}
 
 	if settings.Bucket == "" {
 		settings.Bucket = fmt.Sprintf("%s-%s-%s", settings.Project, settings.Environment, settings.Family)

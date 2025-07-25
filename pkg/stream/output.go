@@ -16,6 +16,8 @@ type WritableMessage interface {
 type Output interface {
 	WriteOne(ctx context.Context, msg WritableMessage) error
 	Write(ctx context.Context, batch []WritableMessage) error
+	ProvidesCompression() bool
+	SupportsAggregation() bool
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name PartitionedOutput

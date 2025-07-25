@@ -2,110 +2,44 @@ package producer
 
 import (
 	"context"
-	"time"
+	"fmt"
 
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kafka"
+	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	"github.com/justtrackio/gosoline/pkg/kafka/logging"
 	"github.com/justtrackio/gosoline/pkg/log"
-
-	"github.com/segmentio/kafka-go"
+	"github.com/justtrackio/gosoline/pkg/reslife"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-const (
-	// RequireAllReplicas means that ALL nodes in the replica-set must to confirm the write for a write
-	// to be considered durable.
-	RequireAllReplicas = -1
-
-	// DefaultWriterWriteTimeout is how much to wait for a write to go through.
-	DefaultWriterWriteTimeout = 30 * time.Second
-
-	// DefaultWriterReadTimeout is how much to wait for reads.
-	DefaultWriterReadTimeout = 30 * time.Second
-
-	// DefaultMaxRetryAttempts is how many times to retry a failed operation.
-	DefaultMaxRetryAttempts = 3
-
-	// DefaultMetadataTTL is the frequency of metadata refreshes.
-	DefaultMetadataTTL = 5 * time.Second
-
-	// DefaultIdleTimeout is the period during which an idle connection can be resued.
-	DefaultIdleTimeout = 30 * time.Second
-)
-
-//go:generate go run github.com/vektra/mockery/v2 --name Writer --unroll-variadic=False --with-expecter=False
+//go:generate go run github.com/vektra/mockery/v2 --name Writer
 type Writer interface {
-	WriteMessages(ctx context.Context, msgs ...kafka.Message) error
-	Stats() kafka.WriterStats
-	Close() error
+	ProduceSync(ctx context.Context, rs ...*kgo.Record) kgo.ProduceResults
 }
 
-func NewWriter(
-	logger log.Logger,
-	dialer *kafka.Dialer,
-	bootstrap []string,
-	opts ...WriterOption,
-) (*kafka.Writer, error) {
-	// Config.
-	conf := &kafka.WriterConfig{
-		Brokers:  bootstrap,
-		Balancer: &kafka.Hash{},
-		Dialer:   dialer,
-
-		// Non-batched by default.
-		BatchSize: 1,
-		Async:     false,
-
-		// Use a safe default for durability.
-		RequiredAcks: RequireAllReplicas,
-		MaxAttempts:  DefaultMaxRetryAttempts,
-
-		ReadTimeout:  DefaultWriterReadTimeout,
-		WriteTimeout: DefaultWriterWriteTimeout,
-
-		CompressionCodec: kafka.Snappy.Codec(),
-
-		Logger:      logging.NewKafkaLogger(logger).DebugLogger(),
-		ErrorLogger: logging.NewKafkaLogger(logger).ErrorLogger(),
-	}
-	for _, opt := range opts {
-		opt(conf)
+func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (Writer, error) {
+	opts := []kgo.Opt{
+		kgo.DefaultProduceTopic(settings.Topic),
+		kgo.ProducerBatchCompression(settings.GetKafkaCompressor()),
+		kgo.WithContext(ctx),
+		kgo.WithLogger(logging.NewKafkaLogger(logger)),
 	}
 
-	// Transport.
-	transport := &kafka.Transport{
-		Dial:        dialer.DialFunc,
-		SASL:        dialer.SASLMechanism,
-		TLS:         dialer.TLS,
-		ClientID:    dialer.ClientID,
-		DialTimeout: dialer.Timeout,
-		IdleTimeout: DefaultIdleTimeout,
+	connOpts, err := connection.BuildConnectionOptions(config, settings.Connection)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build connection options: %w", err)
+	}
+	opts = append(opts, connOpts...)
 
-		MetadataTTL: DefaultMetadataTTL,
+	client, err := kgo.NewClient(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create franz-go client: %w", err)
 	}
 
-	// Writer.
-	writer := &kafka.Writer{
-		Addr:      kafka.TCP(conf.Brokers...),
-		Transport: transport,
-
-		Topic: conf.Topic,
-
-		ReadTimeout:  conf.ReadTimeout,
-		WriteTimeout: conf.WriteTimeout,
-		MaxAttempts:  conf.MaxAttempts,
-
-		Async:        conf.Async,
-		BatchSize:    conf.BatchSize,
-		BatchBytes:   int64(conf.BatchBytes),
-		BatchTimeout: conf.BatchTimeout,
-
-		Balancer:     conf.Balancer,
-		RequiredAcks: kafka.RequiredAcks(conf.RequiredAcks),
-
-		Compression: kafka.Compression(conf.Code()),
-
-		Logger:      conf.Logger,
-		ErrorLogger: conf.ErrorLogger,
+	if err = reslife.AddLifeCycleer(ctx, kafka.NewLifecycleManager(settings.Connection, settings.Topic)); err != nil {
+		return nil, fmt.Errorf("failed to add kafka lifecycle manager: %w", err)
 	}
 
-	return writer, nil
+	return client, nil
 }

@@ -18,6 +18,7 @@ type (
 )
 
 var subscriberInputConfigPostProcessors = map[string]SubscriberInputConfigPostProcessor{
+	stream.InputTypeKafka:   kafkaSubscriberInputConfigPostProcessor,
 	stream.InputTypeKinesis: kinesisSubscriberInputConfigPostProcessor,
 	stream.InputTypeSns:     snsSubscriberInputConfigPostProcessor,
 }
@@ -102,6 +103,31 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 			TopicId:     topicId,
 		},
 	}
+
+	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting)
+}
+
+func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option {
+	inputKey := getInputConfigKey(name, subscriberSettings.SourceModel)
+	topicId := subscriberSettings.SourceModel.Name
+
+	if subscriberSettings.SourceModel.Shared {
+		topicId = sharedName
+	}
+
+	app := subscriberSettings.SourceModel.Application
+
+	inputSettings := &stream.KafkaInputConfiguration{}
+	if err := config.UnmarshalDefaults(inputSettings); err != nil {
+		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
+	}
+
+	inputSettings.Project = subscriberSettings.SourceModel.Project
+	inputSettings.Family = subscriberSettings.SourceModel.Family
+	inputSettings.Group = subscriberSettings.SourceModel.Group
+	inputSettings.Application = app
+	inputSettings.GroupId = fmt.Sprintf("%s-%s", app, topicId)
+	inputSettings.TopicId = topicId
 
 	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting)
 }

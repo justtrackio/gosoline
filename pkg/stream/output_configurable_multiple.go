@@ -33,14 +33,34 @@ func (m *multiOutput) Write(ctx context.Context, batch []WritableMessage) error 
 	return err.ErrorOrNil()
 }
 
-func (m *multiOutput) IsPartitionedOutput() bool {
+func (m *multiOutput) ProvidesCompression() bool {
 	for _, o := range m.outputs {
-		if po, ok := o.(PartitionedOutput); ok && po.IsPartitionedOutput() {
-			return true
+		if o.ProvidesCompression() {
+			return false
 		}
 	}
 
-	return false
+	return true
+}
+
+func (m *multiOutput) SupportsAggregation() bool {
+	for _, o := range m.outputs {
+		if !o.SupportsAggregation() {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *multiOutput) IsPartitionedOutput() bool {
+	for _, o := range m.outputs {
+		if po, ok := o.(PartitionedOutput); !ok || !po.IsPartitionedOutput() {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (m *multiOutput) GetMaxMessageSize() (maxMessageSize *int) {

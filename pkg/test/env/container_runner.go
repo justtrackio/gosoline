@@ -25,6 +25,7 @@ const (
 )
 
 type containerConfig struct {
+	Hostname             string
 	Auth                 authSettings
 	Repository           string
 	Tmpfs                []TmpfsSettings
@@ -315,6 +316,7 @@ func (r *containerRunner) runNewContainer(
 	authConfig := r.getAuthConfig(containerAuth)
 
 	runOptions := &dockertest.RunOptions{
+		Hostname:     config.Hostname,
 		Name:         containerName,
 		Repository:   config.Repository,
 		Tag:          config.Tag,

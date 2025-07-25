@@ -6,19 +6,21 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
+	"github.com/justtrackio/gosoline/pkg/kafka"
+	kafkaProducer "github.com/justtrackio/gosoline/pkg/kafka/producer"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const (
 	OutputTypeFile     = "file"
 	OutputTypeInMemory = "inMemory"
+	OutputTypeKafka    = "kafka"
 	OutputTypeKinesis  = "kinesis"
 	OutputTypeMultiple = "multiple"
 	OutputTypeNoOp     = "noop"
 	OutputTypeRedis    = "redis"
 	OutputTypeSns      = "sns"
 	OutputTypeSqs      = "sqs"
-	OutputTypeKafka    = "kafka"
 )
 
 type BaseOutputConfigurationAware interface {
@@ -41,13 +43,13 @@ func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Lo
 	outputFactories := map[string]OutputFactory{
 		OutputTypeFile:     newFileOutputFromConfig,
 		OutputTypeInMemory: newInMemoryOutputFromConfig,
+		OutputTypeKafka:    newKafkaOutputFromConfig,
 		OutputTypeKinesis:  newKinesisOutputFromConfig,
 		OutputTypeMultiple: NewConfigurableMultiOutput,
 		OutputTypeNoOp:     newNoOpOutput,
 		OutputTypeRedis:    newRedisListOutputFromConfig,
 		OutputTypeSns:      newSnsOutputFromConfig,
 		OutputTypeSqs:      newSqsOutputFromConfig,
-		OutputTypeKafka:    newKafkaOutputFromConfig,
 	}
 
 	key := fmt.Sprintf("%s.type", ConfigurableOutputKey(name))
@@ -85,12 +87,6 @@ func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Lo
 	return NewFileOutput(config, logger, settings), nil
 }
 
-func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
-	key := ConfigurableOutputKey(name)
-
-	return NewKafkaOutput(ctx, config, logger, key)
-}
-
 type InMemoryOutputConfiguration struct {
 	BaseOutputConfiguration
 	Type string `cfg:"type" default:"inMemory"`
@@ -98,6 +94,61 @@ type InMemoryOutputConfiguration struct {
 
 func newInMemoryOutputFromConfig(_ context.Context, _ cfg.Config, _ log.Logger, name string) (Output, error) {
 	return ProvideInMemoryOutput(name), nil
+}
+
+type KafkaOutputConfiguration struct {
+	BaseOutputConfiguration
+	Type        string `cfg:"type" default:"kafka"`
+	Project     string `cfg:"project"`
+	Family      string `cfg:"family"`
+	Group       string `cfg:"group"`
+	Application string `cfg:"application"`
+	TopicId     string `cfg:"topic_id"`
+	Connection  string `cfg:"connection" default:"default"`
+}
+
+func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
+	key := ConfigurableOutputKey(name)
+	configuration := &KafkaOutputConfiguration{}
+	if err := config.UnmarshalKey(key, configuration); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal kafka output settings for key %q in newKafkaOutputFromConfig: %w", key, err)
+	}
+
+	appId := cfg.AppId{
+		Project:     configuration.Project,
+		Family:      configuration.Family,
+		Group:       configuration.Group,
+		Application: configuration.Application,
+	}
+
+	topic, err := kafka.BuildFullTopicName(config, appId, configuration.TopicId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build full topic name for topic id %q: %w", configuration.TopicId, err)
+	}
+
+	producerSettings, err := readProducerSettings(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read producer settings for %q: %w", name, err)
+	}
+
+	compression := kafkaProducer.CompressionNone
+
+	switch producerSettings.Compression {
+	case CompressionGZip:
+		compression = kafkaProducer.CompressionGZip
+	case CompressionSnappy:
+		compression = kafkaProducer.CompressionSnappy
+	case CompressionLZ4:
+		compression = kafkaProducer.CompressionLZ4
+	case CompressionZstd:
+		compression = kafkaProducer.CompressionZstd
+	}
+
+	return NewKafkaOutput(ctx, config, logger, &kafkaProducer.Settings{
+		Connection:  configuration.Connection,
+		Topic:       topic,
+		Compression: compression,
+	})
 }
 
 type KinesisOutputConfiguration struct {

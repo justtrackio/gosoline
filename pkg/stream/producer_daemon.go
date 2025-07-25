@@ -134,10 +134,13 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 	metricWriter := metric.NewWriter(defaultMetrics...)
 
 	var output Output
-	var aggregator ProducerDaemonAggregator
 
 	if output, err = NewConfigurableOutput(ctx, config, logger, settings.Output); err != nil {
 		return nil, fmt.Errorf("can not create output for producer daemon %s: %w", name, err)
+	}
+
+	if output.ProvidesCompression() {
+		settings.Compression = CompressionNone
 	}
 
 	if sro, ok := output.(SizeRestrictedOutput); ok {
@@ -150,11 +153,13 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 		}
 	}
 
+	aggregator := NewProducerDaemonNoopAggregator()
+
 	if po, ok := output.(PartitionedOutput); ok && po.IsPartitionedOutput() && settings.Daemon.PartitionBucketCount > 1 {
 		if aggregator, err = NewProducerDaemonPartitionedAggregator(logger, settings.Daemon, settings.Compression); err != nil {
 			return nil, fmt.Errorf("can not create partitioned aggregator for producer daemon %s: %w", name, err)
 		}
-	} else {
+	} else if output.SupportsAggregation() {
 		if aggregator, err = NewProducerDaemonAggregator(settings.Daemon, settings.Compression); err != nil {
 			return nil, fmt.Errorf("can not create aggregator for producer daemon %s: %w", name, err)
 		}
@@ -276,6 +281,14 @@ func (d *producerDaemon) Write(ctx context.Context, batch []WritableMessage) err
 	return nil
 }
 
+func (d *producerDaemon) ProvidesCompression() bool {
+	return true
+}
+
+func (d *producerDaemon) SupportsAggregation() bool {
+	return false
+}
+
 func (d *producerDaemon) IsPartitionedOutput() bool {
 	po, ok := d.output.(PartitionedOutput)
 
@@ -353,7 +366,11 @@ func (d *producerDaemon) applyAggregation(ctx context.Context, batch []WritableM
 
 		for _, readyMessage := range readyMessages {
 			d.writeMetricAggregateSize(readyMessage.MessageCount)
-			aggregateMessage := BuildAggregateMessage(readyMessage.Body, d.settings.MessageAttributes, readyMessage.Attributes)
+
+			aggregateMessage := NewMessage(readyMessage.Body, d.settings.MessageAttributes, readyMessage.Attributes)
+			if d.output.SupportsAggregation() {
+				aggregateMessage = BuildAggregateMessage(readyMessage.Body, d.settings.MessageAttributes, readyMessage.Attributes)
+			}
 
 			result = append(result, aggregateMessage)
 		}
@@ -375,7 +392,11 @@ func (d *producerDaemon) flushAggregate() ([]*Message, error) {
 		}
 
 		d.writeMetricAggregateSize(aggregate.MessageCount)
-		aggregateMessage := BuildAggregateMessage(aggregate.Body, d.settings.MessageAttributes, aggregate.Attributes)
+
+		aggregateMessage := NewMessage(aggregate.Body, d.settings.MessageAttributes, aggregate.Attributes)
+		if d.output.SupportsAggregation() {
+			aggregateMessage = BuildAggregateMessage(aggregate.Body, d.settings.MessageAttributes, aggregate.Attributes)
+		}
 
 		messages = append(messages, aggregateMessage)
 	}

@@ -47,7 +47,9 @@ type sqsOutput struct {
 }
 
 func NewSqsOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsOutputSettings) (Output, error) {
-	settings.PadFromConfig(config)
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
+	}
 
 	var err error
 	var queueName string
@@ -120,6 +122,14 @@ func (o *sqsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	}
 
 	return nil
+}
+
+func (o *sqsOutput) ProvidesCompression() bool {
+	return false
+}
+
+func (o *sqsOutput) SupportsAggregation() bool {
+	return true
 }
 
 func (o *sqsOutput) GetMaxMessageSize() *int {
