@@ -23,7 +23,7 @@ func (s *ContextEnforcingLoggerTestSuite) SetupTest() {
 	s.clock = clock.NewFakeClock()
 	s.output = &bytes.Buffer{}
 	s.base = log.NewLoggerWithInterfaces(s.clock, []log.Handler{
-		log.NewHandlerIoWriter(cfg.New(), log.LevelInfo, log.FormatterConsole, "test", "15:04:05.000", s.output),
+		log.NewHandlerIoWriter(cfg.New(), log.PriorityInfo, log.FormatterConsole, "test", "15:04:05.000", s.output),
 	})
 
 	s.logger = log.NewContextEnforcingLoggerWithInterfaces(s.base, log.GetMockedStackTrace, s.base)

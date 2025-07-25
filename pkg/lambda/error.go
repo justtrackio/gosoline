@@ -16,7 +16,7 @@ func WithDefaultErrorHandler(handler ErrorHandler) {
 }
 
 var defaultErrorHandler = func(msg string, args ...any) {
-	writerHandler := log.NewHandlerIoWriter(cfg.New(), log.LevelInfo, log.FormatterJson, "lambda", "2006-01-02T15:04:05.999Z07:00", os.Stdout)
+	writerHandler := log.NewHandlerIoWriter(cfg.New(), log.PriorityInfo, log.FormatterJson, "lambda", "2006-01-02T15:04:05.999Z07:00", os.Stdout)
 	metricHandler := metric.NewLoggerHandler()
 
 	logger := log.NewLoggerWithInterfaces(clock.Provider, []log.Handler{

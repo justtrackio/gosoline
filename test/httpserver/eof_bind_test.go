@@ -52,7 +52,7 @@ func (b bindHandler) ChannelLevel(string) (level *int, err error) {
 }
 
 func (b bindHandler) Level() int {
-	return log.LevelPriority(log.LevelWarn)
+	return log.PriorityWarn
 }
 
 func (b bindHandler) Log(_ time.Time, _ int, msg string, args []any, _ error, _ log.Data) error {

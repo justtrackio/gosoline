@@ -20,7 +20,7 @@ func main() {
 		// pass our config to look up if we should log messages in a specific channel
 		config,
 		// the min log level to write (trace, debug, info, warn, error)
-		log.LevelDebug,
+		log.PriorityDebug,
 		// how to format the message. this will format in a console friendly way. log.FormatterJson would format log message as json
 		log.FormatterConsole,
 		// name of our handler. will be used to check if we should filter a channel

@@ -70,8 +70,13 @@ func NewRecordingConsoleLogger(config cfg.Config, options ...LoggerOption) (Reco
 		return nil, err
 	}
 
+	priority, ok := log.LevelPriority(settings.Level)
+	if !ok {
+		return nil, fmt.Errorf("invalid log level %q", settings.Level)
+	}
+
 	cl := clock.NewRealClock()
-	handler := log.NewHandlerIoWriter(config, settings.Level, log.FormatterConsole, "test", "15:04:05.000", os.Stdout)
+	handler := log.NewHandlerIoWriter(config, priority, log.FormatterConsole, "test", "15:04:05.000", os.Stdout)
 
 	logger := log.NewLoggerWithInterfaces(cl, []log.Handler{handler})
 
@@ -83,7 +88,7 @@ func NewRecordingConsoleLogger(config cfg.Config, options ...LoggerOption) (Reco
 
 	if settings.RecordLogs {
 		err = logger.Option(log.WithHandlers(handlerInMemoryWriter{
-			level:   log.LevelPriority(settings.Level),
+			level:   priority,
 			records: recorder.records,
 			mutex:   recorder.mutex,
 		}))
