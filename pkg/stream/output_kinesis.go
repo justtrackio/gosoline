@@ -41,8 +41,15 @@ type kinesisOutput struct {
 	recordWriter gosoKinesis.RecordWriter
 }
 
+var (
+	_ PartitionedOutput    = &kinesisOutput{}
+	_ SizeRestrictedOutput = &kinesisOutput{}
+)
+
 func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *KinesisOutputSettings) (Output, error) {
-	settings.PadFromConfig(config)
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
+	}
 
 	var err error
 	var recordWriter gosoKinesis.RecordWriter
@@ -95,6 +102,14 @@ func (o *kinesisOutput) Write(ctx context.Context, batch []WritableMessage) erro
 	return o.recordWriter.PutRecords(ctx, records)
 }
 
+func (o *kinesisOutput) ProvidesCompression() bool {
+	return false
+}
+
+func (o *kinesisOutput) SupportsAggregation() bool {
+	return true
+}
+
 func (o *kinesisOutput) IsPartitionedOutput() bool {
 	return true
 }
@@ -105,6 +120,10 @@ func (o *kinesisOutput) GetMaxMessageSize() *int {
 
 func (o *kinesisOutput) GetMaxBatchSize() *int {
 	return mdl.Box(500)
+}
+
+func (o *kinesisOutput) IgnoreProducerDaemonBatchSettings() bool {
+	return false
 }
 
 func (o *kinesisOutput) buildRecord(msg WritableMessage) (*gosoKinesis.Record, error) {

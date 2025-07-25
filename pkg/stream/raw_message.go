@@ -5,8 +5,8 @@ type RawMessage struct {
 	Encoder MessageBodyEncoder
 }
 
-// NewRawJsonMessage works like NewRawMessage with the encoder set to marshal the body as JSON.
-func NewRawJsonMessage(body any) *RawMessage {
+// NewRawMessageWithJsonEncoder works like NewRawMessage with the encoder set to marshal the body as JSON.
+func NewRawMessageWithJsonEncoder(body any) *RawMessage {
 	return NewRawMessage(body, jsonEncoder{})
 }
 
