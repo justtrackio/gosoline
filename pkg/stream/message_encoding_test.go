@@ -27,6 +27,21 @@ func (b brokenEncodeHandler) Decode(ctx context.Context, _ any, attributes map[s
 	return ctx, attributes, fmt.Errorf("encode handler decode error")
 }
 
+type externalMessageBodyEncoder struct{}
+
+func (e externalMessageBodyEncoder) Encode(_ any) ([]byte, error) {
+	return []byte("external encoding"), nil
+}
+
+func (e externalMessageBodyEncoder) Decode(_ []byte, out any) error {
+	v := out.(*encodingTestStruct)
+
+	v.Id = 1
+	v.Text = "external decoding"
+
+	return nil
+}
+
 type MessageEncoderSuite struct {
 	suite.Suite
 	clock clock.Clock
@@ -49,6 +64,7 @@ func (s *MessageEncoderSuite) TestEncode() {
 		compression        stream.CompressionType
 		handlers           []stream.EncodeHandler
 		attributes         map[string]string
+		externalEncoder    stream.MessageBodyEncoder
 		expectedError      string
 		expectedBody       string
 		expectedAttributes map[string]string
@@ -106,14 +122,29 @@ func (s *MessageEncoderSuite) TestEncode() {
 				stream.AttributeCompression: stream.CompressionGZip.String(),
 			},
 		},
+		"external_encoding": {
+			encoding:    stream.EncodingJson,
+			compression: stream.CompressionNone,
+			attributes: map[string]string{
+				"attribute1": "5",
+				"attribute2": "test",
+			},
+			externalEncoder: externalMessageBodyEncoder{},
+			expectedBody:    "external encoding",
+			expectedAttributes: map[string]string{
+				"attribute1": "5",
+				"attribute2": "test",
+			},
+		},
 	}
 
 	for name, tt := range tests {
 		s.Run(name, func() {
 			encoder := stream.NewMessageEncoder(&stream.MessageEncoderSettings{
-				Encoding:       tt.encoding,
-				Compression:    tt.compression,
-				EncodeHandlers: tt.handlers,
+				Encoding:        tt.encoding,
+				Compression:     tt.compression,
+				EncodeHandlers:  tt.handlers,
+				ExternalEncoder: tt.externalEncoder,
 			})
 
 			ctx := s.T().Context()
@@ -148,6 +179,7 @@ func (s *MessageEncoderSuite) TestDecode() {
 		handlers           []stream.EncodeHandler
 		message            *stream.Message
 		actualOutput       any
+		externalEncoder    stream.MessageBodyEncoder
 		expectedError      string
 		expectedAttributes map[string]string
 		expectedOutput     any
@@ -242,12 +274,32 @@ func (s *MessageEncoderSuite) TestDecode() {
 				"createdAt": "1984-04-04T00:00:00Z",
 			},
 		},
+		"external_decoding": {
+			message: &stream.Message{
+				Attributes: map[string]string{
+					"attribute1": "5",
+					"attribute2": "test",
+				},
+				Body: "externally decoded data",
+			},
+			actualOutput:    &encodingTestStruct{},
+			externalEncoder: externalMessageBodyEncoder{},
+			expectedAttributes: map[string]string{
+				"attribute1": "5",
+				"attribute2": "test",
+			},
+			expectedOutput: &encodingTestStruct{
+				Id:   1,
+				Text: "external decoding",
+			},
+		},
 	}
 
 	for name, tt := range tests {
 		s.Run(name, func() {
 			encoder := stream.NewMessageEncoder(&stream.MessageEncoderSettings{
-				EncodeHandlers: tt.handlers,
+				EncodeHandlers:  tt.handlers,
+				ExternalEncoder: tt.externalEncoder,
 			})
 
 			ctx := s.T().Context()
