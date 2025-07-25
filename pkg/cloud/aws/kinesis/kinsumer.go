@@ -114,7 +114,10 @@ type runtimeContext struct {
 }
 
 func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (Kinsumer, error) {
-	settings.PadFromConfig(config)
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
+	}
+
 	clientId := ClientId(uuid.New().NewV4())
 
 	var err error

@@ -2,14 +2,23 @@ package stream
 
 import (
 	"fmt"
+
+	schemaRegistry "github.com/justtrackio/gosoline/pkg/kafka/schema-registry"
 )
 
 type EncodingType string
 
 const (
+	EncodingAvro     EncodingType = "application/avro"
 	EncodingJson     EncodingType = "application/json"
 	EncodingProtobuf EncodingType = "application/x-protobuf"
 )
+
+var encodingToSchemaTypeMap = map[EncodingType]schemaRegistry.SchemaType{
+	EncodingAvro:     schemaRegistry.Avro,
+	EncodingJson:     schemaRegistry.Json,
+	EncodingProtobuf: schemaRegistry.Protobuf,
+}
 
 func (s EncodingType) String() string {
 	return string(s)
@@ -30,7 +39,7 @@ type MessageBodyEncoder interface {
 
 var messageBodyEncoders = map[EncodingType]MessageBodyEncoder{
 	EncodingJson:     new(jsonEncoder),
-	EncodingProtobuf: new(protobufEncoder),
+	EncodingProtobuf: new(base64LayeredProtobufEncoder),
 }
 
 func AddMessageBodyEncoder(encoding EncodingType, encoder MessageBodyEncoder) {

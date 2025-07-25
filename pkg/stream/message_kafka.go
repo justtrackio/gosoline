@@ -1,10 +1,10 @@
 package stream
 
 import (
-	"encoding/json"
+	"fmt"
 
-	"github.com/segmentio/kafka-go"
-	"github.com/segmentio/kafka-go/protocol"
+	kafkaConsumer "github.com/justtrackio/gosoline/pkg/kafka/consumer"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 const (
@@ -13,84 +13,99 @@ const (
 )
 
 type KafkaSourceMessage struct {
-	kafka.Message
+	kgo.Record
 }
 
-func (k KafkaSourceMessage) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]any{
-		"Time":      k.Time,
-		"Partition": k.Partition,
-		"Offset":    k.Offset,
-		"Headers":   KafkaHeadersToGosoAttributes(k.Headers),
-		"Key":       string(k.Key),
-	})
-}
-
-func NewKafkaMessageAttrs(key string) map[string]any {
-	return map[string]any{AttributeKafkaKey: key}
-}
-
-func KafkaHeadersToGosoAttributes(headers []kafka.Header) map[string]string {
+func KafkaHeadersToGosoAttributes(kafkaRecordHeaders []kgo.RecordHeader) map[string]string {
 	attributes := make(map[string]string)
 
-	for _, v := range headers {
+	for _, v := range kafkaRecordHeaders {
 		attributes[v.Key] = string(v.Value)
 	}
 
 	return attributes
 }
 
-func KafkaToGosoMessage(k kafka.Message) *Message {
-	attributes := KafkaHeadersToGosoAttributes(k.Headers)
+func KafkaToGosoMessage(kafkaRecord kgo.Record) *Message {
+	attributes := KafkaHeadersToGosoAttributes(kafkaRecord.Headers)
 	metaData := map[string]any{
-		MetaDataKafkaOriginalMessage: KafkaSourceMessage{Message: k},
+		MetaDataKafkaOriginalMessage: KafkaSourceMessage{Record: kafkaRecord},
 	}
 
-	return &Message{Body: string(k.Value), Attributes: attributes, metaData: metaData}
+	return &Message{Body: string(kafkaRecord.Value), Attributes: attributes, metaData: metaData}
 }
 
-func GosoToKafkaMessages(msgs ...*Message) []kafka.Message {
-	ks := []kafka.Message{}
+func NewKafkaMessage(message WritableMessage) (*kgo.Record, error) {
+	kafkaRecord := &kgo.Record{}
+	var body []byte
 
-	for _, m := range msgs {
-		ks = append(ks, GosoToKafkaMessage(m))
+	// if the message comes from the producer daemon it's a rawJsonMessage
+	// otherwise, it's a *Message
+	switch m := message.(type) {
+	case *Message:
+		body = []byte(m.Body)
+	case rawJsonMessage:
+		// the kafka output does not support aggregation, so we can expect a single message in here
+		msg := Message{}
+		if err := msg.UnmarshalFromBytes(m.body); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal message body: %w", err)
+		}
+		body = []byte(msg.Body)
+	default:
+		return nil, fmt.Errorf("unexpected message type: %T", m)
 	}
 
-	return ks
-}
+	kafkaRecord.Value = body
+	attributes := getAttributes(message)
 
-func GosoToKafkaMessage(msg *Message) kafka.Message {
-	return msg.metaData[MetaDataKafkaOriginalMessage].(KafkaSourceMessage).Message
-}
-
-func NewKafkaMessage(writable WritableMessage) kafka.Message {
-	gMessage := writable.(*Message)
-	kMessage := kafka.Message{Value: []byte(gMessage.Body)}
-
-	key, ok := gMessage.GetAttributes()[AttributeKafkaKey]
+	key, ok := attributes[AttributeKafkaKey]
 	if ok {
-		kMessage.Key = []byte(key)
+		kafkaRecord.Key = []byte(key)
 	}
 
-	for k, v := range gMessage.Attributes {
+	for k, v := range attributes {
 		if k == AttributeKafkaKey {
 			continue
 		}
 
-		kMessage.Headers = append(
-			kMessage.Headers,
-			protocol.Header{Key: k, Value: []byte(v)},
+		kafkaRecord.Headers = append(
+			kafkaRecord.Headers,
+			kgo.RecordHeader{Key: k, Value: []byte(v)},
 		)
 	}
 
-	return kMessage
+	return kafkaRecord, nil
 }
 
-func NewKafkaMessages(ms []WritableMessage) []kafka.Message {
-	out := []kafka.Message{}
-	for _, m := range ms {
-		out = append(out, NewKafkaMessage(m))
+func NewKafkaMessages(messages []WritableMessage) ([]*kgo.Record, error) {
+	var err error
+	out := make([]*kgo.Record, len(messages))
+
+	for i, message := range messages {
+		if out[i], err = NewKafkaMessage(message); err != nil {
+			return nil, fmt.Errorf("can not build kafka message: %w", err)
+		}
 	}
 
-	return out
+	return out, nil
+}
+
+type kafkaMessageHandler struct {
+	data chan *Message
+}
+
+func NewKafkaMessageHandler(data chan *Message) kafkaConsumer.KafkaMessageHandler {
+	return &kafkaMessageHandler{
+		data: data,
+	}
+}
+
+func (s kafkaMessageHandler) Handle(kafkaRecords []*kgo.Record) {
+	for _, record := range kafkaRecords {
+		if record == nil {
+			continue
+		}
+
+		s.data <- KafkaToGosoMessage(*record)
+	}
 }
