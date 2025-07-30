@@ -38,52 +38,52 @@ func NewFileReader(basePath string) (Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &FileReader{basePath: absPath}, nil
 }
 
 // Read iterates through files in the base path and sends them over a channel
 func (f *FileReader) Read(ctx context.Context) (<-chan BlobFileInfo, error) {
 	ch := make(chan BlobFileInfo)
-	
+
 	go func() {
 		defer close(ch)
-		
+
 		err := filepath.Walk(f.basePath, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-			
+
 			if info.IsDir() {
 				return nil
 			}
-			
+
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
 			default:
 			}
-			
+
 			body, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}
-			
+
 			key := strings.Replace(path, f.basePath, "", 1)
 			// Remove leading slash if present
 			if len(key) > 0 && key[0] == '/' {
 				key = key[1:]
 			}
-			
+
 			select {
 			case ch <- BlobFileInfo{Key: key, Body: body}:
 			case <-ctx.Done():
 				return ctx.Err()
 			}
-			
+
 			return nil
 		})
-		
+
 		if err != nil {
 			// In case of error, we should log it, but we can't return it from a goroutine
 			// The current implementation doesn't handle walk errors gracefully either
@@ -91,7 +91,7 @@ func (f *FileReader) Read(ctx context.Context) (<-chan BlobFileInfo, error) {
 			return
 		}
 	}()
-	
+
 	return ch, nil
 }
 
@@ -124,7 +124,7 @@ func BlobFixtureSetFactory[T any](settings *BlobFixturesSettings, data fixtures.
 func NewBlobFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *BlobFixturesSettings) (fixtures.FixtureWriter, error) {
 	var reader Reader
 	var err error
-	
+
 	// Support both old BasePath and new Reader approaches
 	if settings.Reader != nil {
 		reader = settings.Reader
@@ -167,7 +167,7 @@ func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
 
 	var batch Batch
 	fileCount := 0
-	
+
 	for fileInfo := range fileCh {
 		object := Object{
 			Key:  aws.String(fileInfo.Key),
