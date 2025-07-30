@@ -83,7 +83,7 @@ func TestFileReader_WithContextCancellation(t *testing.T) {
 
 	// Create a context that we can cancel
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	ch, err := reader.Read(ctx)
 	require.NoError(t, err)
 
@@ -110,7 +110,7 @@ func TestNewFileReader_InvalidPath(t *testing.T) {
 	reader, err := blob.NewFileReader("/non/existent/path")
 	assert.NoError(t, err) // NewFileReader doesn't validate path existence
 	assert.NotNil(t, reader)
-	
+
 	// Test with relative path - should be converted to absolute
 	reader, err = blob.NewFileReader(".")
 	assert.NoError(t, err)
@@ -124,15 +124,15 @@ func TestBlobFixturesSettings_BackwardCompatibility(t *testing.T) {
 		ConfigName: "test",
 		Reader:     nil,
 	}
-	
+
 	assert.Equal(t, "/some/path", settings.BasePath)
 	assert.Equal(t, "test", settings.ConfigName)
 	assert.Nil(t, settings.Reader)
-	
+
 	// Test with Reader
 	reader, err := blob.NewFileReader("/tmp")
 	require.NoError(t, err)
-	
+
 	settings.Reader = reader
 	assert.NotNil(t, settings.Reader)
 }
