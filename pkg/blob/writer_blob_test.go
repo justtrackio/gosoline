@@ -16,9 +16,7 @@ import (
 
 func TestFileReader(t *testing.T) {
 	// Create temporary directory with test files
-	tmpDir, err := os.MkdirTemp("", "blob_reader_test")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// Create test files
 	testFiles := map[string]string{
@@ -31,10 +29,10 @@ func TestFileReader(t *testing.T) {
 		fullPath := filepath.Join(tmpDir, filePath)
 		dir := filepath.Dir(fullPath)
 
-		err := os.MkdirAll(dir, 0755)
+		err := os.MkdirAll(dir, 0o755)
 		require.NoError(t, err)
 
-		err = os.WriteFile(fullPath, []byte(content), 0644)
+		err = os.WriteFile(fullPath, []byte(content), 0o644)
 		require.NoError(t, err)
 	}
 
@@ -42,7 +40,7 @@ func TestFileReader(t *testing.T) {
 	reader, err := blob.NewFileReader(tmpDir)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	ch, err := reader.Chan(ctx)
 	require.NoError(t, err)
 
@@ -69,20 +67,18 @@ func TestFileReader(t *testing.T) {
 
 func TestFileReader_WithContextCancellation(t *testing.T) {
 	// Create temporary directory with test file
-	tmpDir, err := os.MkdirTemp("", "blob_reader_cancel_test")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// Create a test file
 	testFile := filepath.Join(tmpDir, "test.txt")
-	err = os.WriteFile(testFile, []byte("test content"), 0644)
+	err := os.WriteFile(testFile, []byte("test content"), 0o644)
 	require.NoError(t, err)
 
 	reader, err := blob.NewFileReader(tmpDir)
 	require.NoError(t, err)
 
 	// Create a context that we can cancel
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	ch, err := reader.Chan(ctx)
 	require.NoError(t, err)
@@ -138,7 +134,7 @@ func TestBlobFixturesSettings_BackwardCompatibility(t *testing.T) {
 }
 
 func TestNewBlobFixtureWriter_ErrorHandling(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	config := cfg.New()
 	logger := log.NewLogger()
 

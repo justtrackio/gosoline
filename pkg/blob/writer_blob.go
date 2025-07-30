@@ -44,6 +44,44 @@ func NewFileReader(basePath string) (Reader, error) {
 	return &FileReader{basePath: absPath}, nil
 }
 
+// processFile processes a single file and sends it to the channel if successful
+func (f *FileReader) processFile(path string, info os.FileInfo, ch chan<- BlobFileInfo, ctx context.Context) error {
+	if info.IsDir() {
+		return nil
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	key := f.generateKey(path)
+
+	select {
+	case ch <- BlobFileInfo{Key: key, Body: body}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	return nil
+}
+
+// generateKey creates a key from the file path by removing the base path and leading slash
+func (f *FileReader) generateKey(path string) string {
+	key := strings.Replace(path, f.basePath, "", 1)
+	// Remove leading slash if present
+	if key != "" && key[0] == '/' {
+		key = key[1:]
+	}
+	return key
+}
+
 // Chan iterates through files in the base path and sends them over a channel
 func (f *FileReader) Chan(ctx context.Context) (<-chan BlobFileInfo, error) {
 	ch := make(chan BlobFileInfo)
@@ -56,36 +94,8 @@ func (f *FileReader) Chan(ctx context.Context) (<-chan BlobFileInfo, error) {
 				return err
 			}
 
-			if info.IsDir() {
-				return nil
-			}
-
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-
-			body, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-
-			key := strings.Replace(path, f.basePath, "", 1)
-			// Remove leading slash if present
-			if len(key) > 0 && key[0] == '/' {
-				key = key[1:]
-			}
-
-			select {
-			case ch <- BlobFileInfo{Key: key, Body: body}:
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-
-			return nil
+			return f.processFile(path, info, ch, ctx)
 		})
-
 		if err != nil {
 			// In case of error, we should log it, but we can't return it from a goroutine
 			// The current implementation doesn't handle walk errors gracefully either
@@ -128,14 +138,15 @@ func NewBlobFixtureWriter(ctx context.Context, config cfg.Config, logger log.Log
 	var err error
 
 	// Support both old BasePath and new Reader approaches
-	if settings.Reader != nil {
+	switch {
+	case settings.Reader != nil:
 		reader = settings.Reader
-	} else if settings.BasePath != "" {
+	case settings.BasePath != "":
 		reader, err = NewFileReader(settings.BasePath)
 		if err != nil {
 			return nil, err
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("either Reader or BasePath must be provided in BlobFixturesSettings")
 	}
 
