@@ -45,23 +45,28 @@ func TestFileReader(t *testing.T) {
 	require.NoError(t, err)
 
 	// Collect all files
-	var actualFiles []blob.BlobFileInfo
-	for fileInfo := range ch {
-		actualFiles = append(actualFiles, fileInfo)
+	var actualFiles []blob.Object
+	for object := range ch {
+		actualFiles = append(actualFiles, object)
 	}
 
 	// Sort for consistent comparison
 	sort.Slice(actualFiles, func(i, j int) bool {
-		return actualFiles[i].Key < actualFiles[j].Key
+		return *actualFiles[i].Key < *actualFiles[j].Key
 	})
 
 	// Verify we got all expected files
 	assert.Len(t, actualFiles, len(testFiles))
 
-	for _, fileInfo := range actualFiles {
-		expectedContent, exists := testFiles[fileInfo.Key]
-		assert.True(t, exists, "Unexpected file key: %s", fileInfo.Key)
-		assert.Equal(t, expectedContent, string(fileInfo.Body), "Content mismatch for key: %s", fileInfo.Key)
+	for _, object := range actualFiles {
+		key := *object.Key
+		expectedContent, exists := testFiles[key]
+		assert.True(t, exists, "Unexpected file key: %s", key)
+		
+		// Convert stream to bytes for comparison
+		bodyBytes, err := object.Body.ReadAll()
+		require.NoError(t, err)
+		assert.Equal(t, expectedContent, string(bodyBytes), "Content mismatch for key: %s", key)
 	}
 }
 
@@ -89,10 +94,11 @@ func TestFileReader_WithContextCancellation(t *testing.T) {
 	// Channel should be closed (eventually) when context is cancelled
 	// We can't guarantee exact timing, but we should be able to read from it without hanging
 	select {
-	case fileInfo, ok := <-ch:
+	case object, ok := <-ch:
 		if ok {
 			// If we got a file, that's fine - it means the goroutine processed it before cancellation
-			assert.NotEmpty(t, fileInfo.Key)
+			assert.NotNil(t, object.Key)
+			assert.NotEmpty(t, *object.Key)
 		}
 		// If !ok, channel was closed, which is also fine
 	case <-ctx.Done():

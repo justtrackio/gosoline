@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -16,17 +15,11 @@ import (
 // BlobFixture is a dummy struct for writing nicely typed fixture sets, even though the blob fixture loader works a bit differently
 type BlobFixture struct{}
 
-// BlobFileInfo represents a file to be written to blob storage
-type BlobFileInfo struct {
-	Key  string
-	Body []byte
-}
-
 //go:generate go run github.com/vektra/mockery/v2 --name Reader
 
-// Reader provides a channel of BlobFileInfo that can be iterated over for writing fixtures
+// Reader provides a channel of Object that can be iterated over for writing fixtures
 type Reader interface {
-	Chan(ctx context.Context) (<-chan BlobFileInfo, error)
+	Chan(ctx context.Context) (<-chan Object, error)
 }
 
 // FileReader reads files from a directory path, similar to the original basePath behavior
@@ -45,7 +38,7 @@ func NewFileReader(basePath string) (Reader, error) {
 }
 
 // processFile processes a single file and sends it to the channel if successful
-func (f *FileReader) processFile(path string, info os.FileInfo, ch chan<- BlobFileInfo, ctx context.Context) error {
+func (f *FileReader) processFile(ctx context.Context, ch chan Object, info os.FileInfo, path string) error {
 	if info.IsDir() {
 		return nil
 	}
@@ -64,7 +57,7 @@ func (f *FileReader) processFile(path string, info os.FileInfo, ch chan<- BlobFi
 	key := f.generateKey(path)
 
 	select {
-	case ch <- BlobFileInfo{Key: key, Body: body}:
+	case ch <- Object{Key: &key, Body: StreamBytes(body)}:
 	case <-ctx.Done():
 		return ctx.Err()
 	}
@@ -83,8 +76,8 @@ func (f *FileReader) generateKey(path string) string {
 }
 
 // Chan iterates through files in the base path and sends them over a channel
-func (f *FileReader) Chan(ctx context.Context) (<-chan BlobFileInfo, error) {
-	ch := make(chan BlobFileInfo)
+func (f *FileReader) Chan(ctx context.Context) (<-chan Object, error) {
+	ch := make(chan Object)
 
 	go func() {
 		defer close(ch)
@@ -94,7 +87,7 @@ func (f *FileReader) Chan(ctx context.Context) (<-chan BlobFileInfo, error) {
 				return err
 			}
 
-			return f.processFile(path, info, ch, ctx)
+			return f.processFile(ctx, ch, info, path)
 		})
 		if err != nil {
 			// In case of error, we should log it, but we can't return it from a goroutine
@@ -181,12 +174,7 @@ func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
 	var batch Batch
 	fileCount := 0
 
-	for fileInfo := range readCh {
-		object := Object{
-			Key:  aws.String(fileInfo.Key),
-			Body: StreamBytes(fileInfo.Body),
-		}
-
+	for object := range readCh {
 		batch = append(batch, &object)
 		fileCount++
 	}

@@ -24,23 +24,23 @@ func (_m *Reader) EXPECT() *Reader_Expecter {
 }
 
 // Chan provides a mock function with given fields: ctx
-func (_m *Reader) Chan(ctx context.Context) (<-chan blob.BlobFileInfo, error) {
+func (_m *Reader) Chan(ctx context.Context) (<-chan blob.Object, error) {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Chan")
 	}
 
-	var r0 <-chan blob.BlobFileInfo
+	var r0 <-chan blob.Object
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (<-chan blob.BlobFileInfo, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) (<-chan blob.Object, error)); ok {
 		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) <-chan blob.BlobFileInfo); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) <-chan blob.Object); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(<-chan blob.BlobFileInfo)
+			r0 = ret.Get(0).(<-chan blob.Object)
 		}
 	}
 
@@ -71,12 +71,12 @@ func (_c *Reader_Chan_Call) Run(run func(ctx context.Context)) *Reader_Chan_Call
 	return _c
 }
 
-func (_c *Reader_Chan_Call) Return(_a0 <-chan blob.BlobFileInfo, _a1 error) *Reader_Chan_Call {
+func (_c *Reader_Chan_Call) Return(_a0 <-chan blob.Object, _a1 error) *Reader_Chan_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *Reader_Chan_Call) RunAndReturn(run func(context.Context) (<-chan blob.BlobFileInfo, error)) *Reader_Chan_Call {
+func (_c *Reader_Chan_Call) RunAndReturn(run func(context.Context) (<-chan blob.Object, error)) *Reader_Chan_Call {
 	_c.Call.Return(run)
 	return _c
 }
