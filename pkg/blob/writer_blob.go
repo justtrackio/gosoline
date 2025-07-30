@@ -96,7 +96,7 @@ func (f *FileReader) Read(ctx context.Context) (<-chan BlobFileInfo, error) {
 }
 
 type BlobFixturesSettings struct {
-	BasePath   string // Deprecated: use Reader instead
+	BasePath   string // Deprecated: use Reader instead, e.g. `NewFileReader(settings.BasePath)`
 	ConfigName string
 	Reader     Reader
 }
@@ -160,15 +160,15 @@ func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner BatchRunn
 }
 
 func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
-	fileCh, err := s.reader.Read(ctx)
+	readCh, err := s.reader.Read(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to read files: %w", err)
+		return fmt.Errorf("failed to blob fixtures: %w", err)
 	}
 
 	var batch Batch
 	fileCount := 0
 
-	for fileInfo := range fileCh {
+	for fileInfo := range readCh {
 		object := Object{
 			Key:  aws.String(fileInfo.Key),
 			Body: StreamBytes(fileInfo.Body),
