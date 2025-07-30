@@ -24,7 +24,7 @@ type BlobFileInfo struct {
 
 // Reader provides a channel of BlobFileInfo that can be iterated over for writing fixtures
 type Reader interface {
-	Read(ctx context.Context) (<-chan BlobFileInfo, error)
+	Chan(ctx context.Context) (<-chan BlobFileInfo, error)
 }
 
 // FileReader reads files from a directory path, similar to the original basePath behavior
@@ -42,8 +42,8 @@ func NewFileReader(basePath string) (Reader, error) {
 	return &FileReader{basePath: absPath}, nil
 }
 
-// Read iterates through files in the base path and sends them over a channel
-func (f *FileReader) Read(ctx context.Context) (<-chan BlobFileInfo, error) {
+// Chan iterates through files in the base path and sends them over a channel
+func (f *FileReader) Chan(ctx context.Context) (<-chan BlobFileInfo, error) {
 	ch := make(chan BlobFileInfo)
 
 	go func() {
@@ -160,9 +160,9 @@ func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner BatchRunn
 }
 
 func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
-	readCh, err := s.reader.Read(ctx)
+	readCh, err := s.reader.Chan(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to blob fixtures: %w", err)
+		return fmt.Errorf("failed to read blob fixtures: %w", err)
 	}
 
 	var batch Batch
