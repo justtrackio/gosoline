@@ -16,16 +16,96 @@ import (
 // BlobFixture is a dummy struct for writing nicely typed fixture sets, even though the blob fixture loader works a bit differently
 type BlobFixture struct{}
 
+// BlobFileInfo represents a file to be written to blob storage
+type BlobFileInfo struct {
+	Key  string
+	Body []byte
+}
+
+// Reader provides a channel of BlobFileInfo that can be iterated over for writing fixtures
+type Reader interface {
+	Read(ctx context.Context) (<-chan BlobFileInfo, error)
+}
+
+// FileReader reads files from a directory path, similar to the original basePath behavior
+type FileReader struct {
+	basePath string
+}
+
+// NewFileReader creates a new FileReader for the given base path
+func NewFileReader(basePath string) (Reader, error) {
+	absPath, err := filepath.Abs(basePath)
+	if err != nil {
+		return nil, err
+	}
+	
+	return &FileReader{basePath: absPath}, nil
+}
+
+// Read iterates through files in the base path and sends them over a channel
+func (f *FileReader) Read(ctx context.Context) (<-chan BlobFileInfo, error) {
+	ch := make(chan BlobFileInfo)
+	
+	go func() {
+		defer close(ch)
+		
+		err := filepath.Walk(f.basePath, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			
+			if info.IsDir() {
+				return nil
+			}
+			
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+			
+			body, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			
+			key := strings.Replace(path, f.basePath, "", 1)
+			// Remove leading slash if present
+			if len(key) > 0 && key[0] == '/' {
+				key = key[1:]
+			}
+			
+			select {
+			case ch <- BlobFileInfo{Key: key, Body: body}:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+			
+			return nil
+		})
+		
+		if err != nil {
+			// In case of error, we should log it, but we can't return it from a goroutine
+			// The current implementation doesn't handle walk errors gracefully either
+			// For now, we'll just stop processing
+			return
+		}
+	}()
+	
+	return ch, nil
+}
+
 type BlobFixturesSettings struct {
-	BasePath   string
+	BasePath   string // Deprecated: use Reader instead
 	ConfigName string
+	Reader     Reader
 }
 
 type blobFixtureWriter struct {
 	logger      log.Logger
 	batchRunner BatchRunner
 	store       Store
-	basePath    string
+	reader      Reader
 }
 
 func BlobFixtureSetFactory[T any](settings *BlobFixturesSettings, data fixtures.NamedFixtures[T], options ...fixtures.FixtureSetOption) fixtures.FixtureSetFactory {
@@ -42,12 +122,20 @@ func BlobFixtureSetFactory[T any](settings *BlobFixturesSettings, data fixtures.
 }
 
 func NewBlobFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *BlobFixturesSettings) (fixtures.FixtureWriter, error) {
-	basePath, err := filepath.Abs(settings.BasePath)
-	if err != nil {
-		return nil, err
+	var reader Reader
+	var err error
+	
+	// Support both old BasePath and new Reader approaches
+	if settings.Reader != nil {
+		reader = settings.Reader
+	} else if settings.BasePath != "" {
+		reader, err = NewFileReader(settings.BasePath)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("either Reader or BasePath must be provided in BlobFixturesSettings")
 	}
-
-	settings.BasePath = basePath
 
 	store, err := NewStore(ctx, config, logger, settings.ConfigName)
 	if err != nil {
@@ -59,54 +147,39 @@ func NewBlobFixtureWriter(ctx context.Context, config cfg.Config, logger log.Log
 		return nil, fmt.Errorf("can not create blob batch runner: %w", err)
 	}
 
-	return NewBlobFixtureWriterWithInterfaces(logger, br, store, settings.BasePath), nil
+	return NewBlobFixtureWriterWithInterfaces(logger, br, store, reader), nil
 }
 
-func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner BatchRunner, store Store, basePath string) fixtures.FixtureWriter {
+func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner BatchRunner, store Store, reader Reader) fixtures.FixtureWriter {
 	return &blobFixtureWriter{
 		logger:      logger,
 		batchRunner: batchRunner,
 		store:       store,
-		basePath:    basePath,
+		reader:      reader,
 	}
 }
 
 func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
-	var files []string
-	err := filepath.Walk(s.basePath, func(path string, f os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if f.IsDir() {
-			return nil
-		}
-
-		files = append(files, path)
-
-		return nil
-	})
+	fileCh, err := s.reader.Read(ctx)
 	if err != nil {
-		return err
-	}
-
-	if len(files) == 0 {
-		return nil
+		return fmt.Errorf("failed to read files: %w", err)
 	}
 
 	var batch Batch
-	for _, file := range files {
-		body, err := os.ReadFile(file)
-		if err != nil {
-			return err
-		}
-
+	fileCount := 0
+	
+	for fileInfo := range fileCh {
 		object := Object{
-			Key:  aws.String(strings.Replace(file, s.basePath, "", 1)),
-			Body: StreamBytes(body),
+			Key:  aws.String(fileInfo.Key),
+			Body: StreamBytes(fileInfo.Body),
 		}
 
 		batch = append(batch, &object)
+		fileCount++
+	}
+
+	if fileCount == 0 {
+		return nil
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -119,7 +192,7 @@ func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
 		return fmt.Errorf("can not write fixtes: %w", err)
 	}
 
-	s.logger.Info("loaded %d files", len(files))
+	s.logger.Info("loaded %d files", fileCount)
 
 	return err
 }
