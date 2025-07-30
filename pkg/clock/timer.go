@@ -80,7 +80,7 @@ func NewRealTimer(d time.Duration) Timer {
 			output: make(chan time.Time, 1),
 		}
 		timer.timer.Stop()
-		timer.sendTick(time.Now())
+		timer.output <- timer.transformTick(time.Now())
 
 		return timer
 	}
@@ -110,8 +110,8 @@ func (t *realTimer) Stop() bool {
 func (t *realTimer) stop() bool {
 	if t.done != nil {
 		close(t.done)
+		t.done = nil
 	}
-	t.done = nil
 
 	return t.timer.Stop()
 }
@@ -122,8 +122,15 @@ func (t *realTimer) Reset(d time.Duration) {
 
 	// stop the old go routine first (if still running)
 	t.stop()
+
+	// drain the output to make sure we don't leave any stale ticks behind
+	select {
+	case <-t.output:
+	default:
+	}
+
 	if d <= 0 {
-		t.sendTick(time.Now())
+		t.output <- t.transformTick(time.Now())
 
 		return
 	}
@@ -146,16 +153,16 @@ func (t *realTimer) start() {
 		case <-done:
 			return
 		case tick := <-t.timer.C:
-			t.sendTick(tick)
+			t.lck.Lock()
+			if t.done == done {
+				t.sendTick(tick)
+			}
+			t.lck.Unlock()
 		}
 	}(t.done)
 }
 
 func (t *realTimer) sendTick(tick time.Time) {
-	if shouldUseUTC() {
-		tick = tick.UTC()
-	}
-
 	// at this point, we either have a value already in the channel (the channel was not drained after calling Stop)
 	// or an empty channel. Let us drain the channel here to ensure we can always terminate successfully even if
 	// the timer is not 100% correctly used
@@ -165,5 +172,13 @@ func (t *realTimer) sendTick(tick time.Time) {
 	}
 
 	// we can now safely write to the 1-element buffered channel and always return immediately after
-	t.output <- tick
+	t.output <- t.transformTick(tick)
+}
+
+func (t *realTimer) transformTick(tick time.Time) time.Time {
+	if shouldUseUTC() {
+		return tick.UTC()
+	}
+
+	return tick
 }

@@ -24,6 +24,7 @@ type Ticker interface {
 
 type realTicker struct {
 	lck     sync.Mutex
+	wg      sync.WaitGroup
 	ticker  *time.Ticker
 	output  chan time.Time
 	stopped chan struct{}
@@ -39,8 +40,9 @@ func NewRealTicker(d time.Duration) Ticker {
 	t := &realTicker{
 		ticker:  time.NewTicker(d),
 		stopped: make(chan struct{}),
-		output:  make(chan time.Time),
+		output:  make(chan time.Time, 1),
 	}
+	t.wg.Add(1)
 	go t.transformTicks(t.stopped)
 
 	return t
@@ -58,10 +60,18 @@ func (t *realTicker) Reset(d time.Duration) {
 	t.lck.Lock()
 	defer t.lck.Unlock()
 
-	t.stopTransformer()
+	t.stopTransformerAndWait()
+
+	// drain any pending tick from the channel before resetting
+	select {
+	case <-t.output:
+	default:
+	}
+
 	t.ticker.Reset(d)
 	newStopped := make(chan struct{})
 	t.stopped = newStopped
+	t.wg.Add(1)
 	go t.transformTicks(newStopped)
 }
 
@@ -69,18 +79,21 @@ func (t *realTicker) Stop() {
 	t.lck.Lock()
 	defer t.lck.Unlock()
 
-	t.stopTransformer()
+	t.stopTransformerAndWait()
 	t.ticker.Stop()
 }
 
-func (t *realTicker) stopTransformer() {
+func (t *realTicker) stopTransformerAndWait() {
 	if t.stopped != nil {
 		close(t.stopped)
+		t.stopped = nil
+		t.wg.Wait()
 	}
-	t.stopped = nil
 }
 
 func (t *realTicker) transformTicks(stopped <-chan struct{}) {
+	defer t.wg.Done()
+
 	for {
 		select {
 		case <-stopped:

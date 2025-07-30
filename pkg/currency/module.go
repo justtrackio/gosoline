@@ -10,6 +10,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/conc/ddb"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -72,10 +73,18 @@ func (module Module) Run(ctx context.Context) error {
 
 	// load historical and current data, then the module is healthy
 	if err := module.updateExchangeRates(ctx, lockResourceRecentExchangeRates, module.updaterService.EnsureRecentExchangeRates); err != nil {
+		if exec.IsRequestCanceled(err) {
+			return nil
+		}
+
 		return fmt.Errorf("failed to fetch initial recent exchange rates: %w", err)
 	}
 
 	if err := module.updateExchangeRates(ctx, lockResourceHistoricalExchangeRates, module.updaterService.EnsureHistoricalExchangeRates); err != nil {
+		if exec.IsRequestCanceled(err) {
+			return nil
+		}
+
 		return fmt.Errorf("failed to fetch initial historical exchange rates: %w", err)
 	}
 
@@ -89,6 +98,10 @@ func (module Module) Run(ctx context.Context) error {
 
 		case <-ticker.C:
 			if err := module.updateExchangeRates(ctx, lockResourceRecentExchangeRates, module.updaterService.EnsureRecentExchangeRates); err != nil {
+				if exec.IsRequestCanceled(err) {
+					return nil
+				}
+
 				module.logger.Error("failed to refresh recent exchange rates: %w", err)
 			}
 		}
