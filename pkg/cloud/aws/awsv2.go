@@ -156,6 +156,11 @@ func DefaultClientConfig(ctx context.Context, config cfg.Config, logger log.Logg
 		return stack.Initialize.Add(AttemptLoggerInitMiddleware(logger, &settings.Backoff), middleware.After)
 	})
 	awsConfig.APIOptions = append(awsConfig.APIOptions, func(stack *middleware.Stack) error {
+		// S3 presign client drops certain finalizers, also retry, so no need for retry logger middleware
+		if _, ok := stack.Finalize.Get("Retry"); !ok {
+			return nil
+		}
+
 		return stack.Finalize.Insert(AttemptLoggerRetryMiddleware(logger), "Retry", middleware.After)
 	})
 

@@ -27,7 +27,7 @@ type Object struct {
 	ACL  types.ObjectCannedACL
 	Body Stream
 
-	bucket *string
+	Bucket *string
 
 	ContentEncoding *string
 	ContentType     *string
@@ -36,7 +36,7 @@ type Object struct {
 
 	Exists bool
 	Key    *string
-	prefix *string
+	Prefix *string
 	wg     *sync.WaitGroup
 }
 
@@ -76,8 +76,10 @@ type Store interface {
 	Copy(batch CopyBatch)
 	CopyOne(obj *CopyObject) error
 	Delete(batch Batch)
+	DeletePrefix(ctx context.Context, prefix string) error
 	DeleteBucket(ctx context.Context) error
 	DeleteOne(obj *Object) error
+	ListObjects(ctx context.Context, prefix string) (Batch, error)
 	Read(batch Batch)
 	ReadOne(obj *Object) error
 	Write(batch Batch) error
@@ -95,6 +97,81 @@ type s3Store struct {
 	bucket *string
 	prefix *string
 	region string
+}
+
+// ListObjects lists all keys under a certain prefix of the bucket.
+// The prefix of the blob store configuration is already taken into account and must not be part of the prefix parameter
+func (s *s3Store) ListObjects(ctx context.Context, prefix string) (Batch, error) {
+	var continuationToken *string
+	objects := make(Batch, 0)
+
+	// Assemble blob stores prefix and combine it with specified prefix
+	pprefix := s.prefix
+	if prefix != "" {
+		pprefix = mdl.Box(prefix)
+		if mdl.EmptyIfNil(s.prefix) != "" {
+			pprefix = mdl.Box(fmt.Sprintf("%s/%s", mdl.EmptyIfNil(s.prefix), prefix))
+		}
+	}
+
+	for {
+		loi := s3.ListObjectsV2Input{
+			Bucket:            s.bucket,
+			Prefix:            pprefix,
+			ContinuationToken: continuationToken,
+		}
+
+		s.logger.WithContext(ctx).Debug("listing objects in bucket %s with prefix %s", mdl.EmptyIfNil(loi.Bucket), mdl.EmptyIfNil(loi.Prefix))
+		result, err := s.client.ListObjectsV2(ctx, &loi)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, object := range result.Contents {
+			// trim excessive blob store prefix from key, excessive '/' is removed in delete runner
+			oKey := strings.TrimLeft(strings.TrimPrefix(mdl.EmptyIfNil(object.Key), mdl.EmptyIfNil(s.prefix)), "/")
+
+			objects = append(objects, &Object{
+				Bucket: s.bucket,
+				Prefix: s.prefix,
+				Key:    mdl.Box(oKey),
+			})
+		}
+
+		if !mdl.EmptyIfNil(result.IsTruncated) || mdl.EmptyIfNil(result.ContinuationToken) == "" {
+			break
+		}
+
+		continuationToken = result.ContinuationToken
+	}
+
+	return objects, nil
+}
+
+// deletePrefix is a helper function to delete all objects in the given prefix.
+func (s *s3Store) deletePrefix(ctx context.Context, prefix string) error {
+	s.logger.Info("purging blob store %s' prefix %s", *s.bucket, prefix)
+
+	batch, err := s.ListObjects(ctx, prefix)
+	if err != nil {
+		return fmt.Errorf("failed to list blob store objects: %w", err)
+	}
+
+	s.Delete(batch)
+
+	s.logger.Info("purged blob store %d keys in '%s' with prefix '%s' ", len(batch), mdl.EmptyIfNil(s.bucket), prefix)
+
+	return nil
+}
+
+// DeletePrefix deletes all objects in the given prefix.
+func (s *s3Store) DeletePrefix(ctx context.Context, prefix string) error {
+	err := s.deletePrefix(ctx, prefix)
+	if err != nil {
+		return fmt.Errorf("failed to delete prefix %s: %w", prefix, err)
+	}
+
+	return nil
 }
 
 type NamingFactory func() string
@@ -120,6 +197,7 @@ func CreateKey() string {
 	return namingStrategy()
 }
 
+// NewStore creates a new S3 store with the given configuration and logger.
 func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Store, error) {
 	channels, err := ProvideBatchRunnerChannels(config)
 	if err != nil {
@@ -169,8 +247,8 @@ func (s *s3Store) Read(batch Batch) {
 	wg.Add(len(batch))
 
 	for i := 0; i < len(batch); i++ {
-		batch[i].bucket = s.bucket
-		batch[i].prefix = s.prefix
+		batch[i].Bucket = s.bucket
+		batch[i].Prefix = s.prefix
 		batch[i].wg = wg
 	}
 
@@ -194,8 +272,8 @@ func (s *s3Store) Write(batch Batch) error {
 	wg.Add(len(batch))
 
 	for i := 0; i < len(batch); i++ {
-		batch[i].bucket = s.bucket
-		batch[i].prefix = s.prefix
+		batch[i].Bucket = s.bucket
+		batch[i].Prefix = s.prefix
 		batch[i].wg = wg
 	}
 
@@ -249,8 +327,8 @@ func (s *s3Store) Delete(batch Batch) {
 	wg.Add(len(batch))
 
 	for i := 0; i < len(batch); i++ {
-		batch[i].bucket = s.bucket
-		batch[i].prefix = s.prefix
+		batch[i].Bucket = s.bucket
+		batch[i].Prefix = s.prefix
 		batch[i].wg = wg
 	}
 
@@ -261,26 +339,18 @@ func (s *s3Store) Delete(batch Batch) {
 	wg.Wait()
 }
 
+// DeleteBucket deletes the bucket and all objects in it.
 func (s *s3Store) DeleteBucket(ctx context.Context) error {
 	s.logger.Info("purging bucket %s", *s.bucket)
 
-	result, err := s.client.ListObjects(ctx, &s3.ListObjectsInput{Bucket: s.bucket})
+	err := s.deletePrefix(ctx, "")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete all objects from bucket prior to deleting it: %w", err)
 	}
-
-	var batch Batch
-	for _, object := range result.Contents {
-		batch = append(batch, &Object{
-			Key: object.Key,
-		})
-	}
-
-	s.Delete(batch)
 
 	_, err = s.client.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: s.bucket})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete bucket: %w", err)
 	}
 
 	s.logger.Info("purging bucket %s done", *s.bucket)
@@ -289,7 +359,7 @@ func (s *s3Store) DeleteBucket(ctx context.Context) error {
 }
 
 func (o *Object) GetFullKey() string {
-	return getFullKey(o.prefix, o.Key)
+	return getFullKey(o.Prefix, o.Key)
 }
 
 func (o *CopyObject) GetFullKey() string {
