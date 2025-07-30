@@ -22,6 +22,8 @@ type BlobFileInfo struct {
 	Body []byte
 }
 
+//go:generate go run github.com/vektra/mockery/v2 --name Reader
+
 // Reader provides a channel of BlobFileInfo that can be iterated over for writing fixtures
 type Reader interface {
 	Chan(ctx context.Context) (<-chan BlobFileInfo, error)
