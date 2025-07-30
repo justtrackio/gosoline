@@ -43,7 +43,7 @@ func TestFileReader(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	ch, err := reader.Read(ctx)
+	ch, err := reader.Chan(ctx)
 	require.NoError(t, err)
 
 	// Collect all files
@@ -84,7 +84,7 @@ func TestFileReader_WithContextCancellation(t *testing.T) {
 	// Create a context that we can cancel
 	ctx, cancel := context.WithCancel(context.Background())
 
-	ch, err := reader.Read(ctx)
+	ch, err := reader.Chan(ctx)
 	require.NoError(t, err)
 
 	// Cancel the context immediately
