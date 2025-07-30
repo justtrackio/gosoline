@@ -72,7 +72,7 @@ func NewMaxmindProvider(ctx context.Context, config cfg.Config, logger log.Logge
 
 func (p *maxmindProvider) City(ipAddress net.IP) (*geoip2.City, error) {
 	if p.reader == nil {
-		return nil, fmt.Errorf("maxmind geo ip reader is not initialized yet. do you have the refresh mode enabled?")
+		return nil, fmt.Errorf("maxmind geo ip reader is not initialized yet. Do you have the refresh mode enabled?")
 	}
 
 	p.lck.RLock()
