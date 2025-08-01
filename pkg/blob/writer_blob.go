@@ -101,9 +101,9 @@ func (f *FileReader) Chan(ctx context.Context) (<-chan Object, error) {
 }
 
 type BlobFixturesSettings struct {
+	Reader     Reader
 	BasePath   string // Deprecated: use Reader instead, e.g. `NewFileReader(settings.BasePath)`
 	ConfigName string
-	Reader     Reader
 }
 
 type blobFixtureWriter struct {
@@ -113,10 +113,35 @@ type blobFixtureWriter struct {
 	reader      Reader
 }
 
-func BlobFixtureSetFactory[T any](settings *BlobFixturesSettings, data fixtures.NamedFixtures[T], options ...fixtures.FixtureSetOption) fixtures.FixtureSetFactory {
+type ReaderFactory func() (Reader, error)
+
+// FileReaderFactory creates a factory function for generating a file reader
+func FileReaderFactory(basePath string) ReaderFactory {
+	return func() (Reader, error) {
+		reader, err := NewFileReader(basePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create file reader: %w", err)
+		}
+
+		return reader, nil
+	}
+}
+
+func BlobFixtureSetFactory[T any](readerFactory ReaderFactory, configName string, options ...fixtures.FixtureSetOption) fixtures.FixtureSetFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
 		var err error
+		var data fixtures.NamedFixtures[T]
+		var reader Reader
 		var writer fixtures.FixtureWriter
+
+		if reader, err = readerFactory(); err != nil {
+			return nil, fmt.Errorf("failed to create reader")
+		}
+
+		settings := &BlobFixturesSettings{
+			Reader:     reader,
+			ConfigName: configName,
+		}
 
 		if writer, err = NewBlobFixtureWriter(ctx, config, logger, settings); err != nil {
 			return nil, fmt.Errorf("failed to create blob fixture writer: %w", err)
@@ -127,33 +152,19 @@ func BlobFixtureSetFactory[T any](settings *BlobFixturesSettings, data fixtures.
 }
 
 func NewBlobFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *BlobFixturesSettings) (fixtures.FixtureWriter, error) {
-	var reader Reader
-	var err error
-
-	// Support both old BasePath and new Reader approaches
-	switch {
-	case settings.Reader != nil:
-		reader = settings.Reader
-	case settings.BasePath != "":
-		reader, err = NewFileReader(settings.BasePath)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, fmt.Errorf("either Reader or BasePath must be provided in BlobFixturesSettings")
-	}
-
 	store, err := NewStore(ctx, config, logger, settings.ConfigName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create blob store: %w", err)
 	}
 
-	br, err := NewBatchRunner(ctx, config, logger, settings.ConfigName)
+	bri, err := NewBatchRunner(ctx, config, logger, settings.ConfigName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create blob batch runner: %w", err)
 	}
 
-	return NewBlobFixtureWriterWithInterfaces(logger, br, store, reader), nil
+	reader := settings.Reader
+
+	return NewBlobFixtureWriterWithInterfaces(logger, bri, store, reader), nil
 }
 
 func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner BatchRunner, store Store, reader Reader) fixtures.FixtureWriter {

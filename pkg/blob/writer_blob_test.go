@@ -62,7 +62,7 @@ func TestFileReader(t *testing.T) {
 		key := *object.Key
 		expectedContent, exists := testFiles[key]
 		assert.True(t, exists, "Unexpected file key: %s", key)
-		
+
 		// Convert stream to bytes for comparison
 		bodyBytes, err := object.Body.ReadAll()
 		require.NoError(t, err)
@@ -117,26 +117,6 @@ func TestNewFileReader_InvalidPath(t *testing.T) {
 	reader, err = blob.NewFileReader(".")
 	assert.NoError(t, err)
 	assert.NotNil(t, reader)
-}
-
-func TestBlobFixturesSettings_BackwardCompatibility(t *testing.T) {
-	// Test that both BasePath and Reader can be set
-	settings := &blob.BlobFixturesSettings{
-		BasePath:   "/some/path",
-		ConfigName: "test",
-		Reader:     nil,
-	}
-
-	assert.Equal(t, "/some/path", settings.BasePath)
-	assert.Equal(t, "test", settings.ConfigName)
-	assert.Nil(t, settings.Reader)
-
-	// Test with Reader
-	reader, err := blob.NewFileReader("/tmp")
-	require.NoError(t, err)
-
-	settings.Reader = reader
-	assert.NotNil(t, settings.Reader)
 }
 
 func TestNewBlobFixtureWriter_ErrorHandling(t *testing.T) {
