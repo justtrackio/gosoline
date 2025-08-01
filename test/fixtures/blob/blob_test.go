@@ -1,6 +1,6 @@
 //go:build integration && fixtures
 
-package s3_test
+package blob_test
 
 import (
 	"context"
@@ -18,9 +18,8 @@ import (
 )
 
 const (
-	basePath      = "test_data/s3_fixtures_test_data"
-	basePathPurge = "test_data/s3_fixtures_purge_test_data"
-	configName    = "test"
+	basePath   = "test_data/fixtures_test_data"
+	configName = "test"
 )
 
 func TestS3TestSuite(t *testing.T) {
@@ -84,12 +83,17 @@ func (s *S3TestSuite) TestS3() {
 }
 
 func purgeDisabledFixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
+	reader, err := blob.NewFileReader(basePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create file reader writer: %w", err)
+	}
+
 	writer, err := blob.NewBlobFixtureWriter(ctx, config, logger, &blob.BlobFixturesSettings{
 		ConfigName: configName,
-		BasePath:   basePath,
+		Reader:     reader,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create s3 fixture writer: %w", err)
+		return nil, fmt.Errorf("failed to create blob fixture writer: %w", err)
 	}
 
 	return []fixtures.FixtureSet{fixtures.NewSimpleFixtureSet[*blob.BlobFixture](nil, writer)}, nil
