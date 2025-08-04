@@ -2,9 +2,12 @@ package stream
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"sync/atomic"
 
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
@@ -13,6 +16,42 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/stream/health"
 )
+
+// isFatalSqsError determines if an SQS error should cause the application to terminate
+// rather than just being logged and retried.
+func isFatalSqsError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check for specific AWS SQS error types that are fatal
+	var queueDoesNotExist *types.QueueDoesNotExist
+	if errors.As(err, &queueDoesNotExist) {
+		return true
+	}
+
+	// Check for permission-related errors by examining the error message
+	errMsg := strings.ToLower(err.Error())
+	fatalErrorMessages := []string{
+		"unauthorizedoperation",
+		"accessdenied",
+		"access denied",
+		"not authorized",
+		"invaliduserid",
+		"forbidden",
+		"permission denied",
+		"access is denied",
+		"user is not authorized",
+	}
+
+	for _, fatalMsg := range fatalErrorMessages {
+		if strings.Contains(errMsg, fatalMsg) {
+			return true
+		}
+	}
+
+	return false
+}
 
 var (
 	_ AcknowledgeableInput = &sqsInput{}
@@ -165,6 +204,13 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 
 		sqsMessages, err := i.queue.Receive(ctx, i.settings.MaxNumberOfMessages, i.settings.WaitTime)
 		if err != nil {
+			// Check if this is a fatal error that should terminate the application
+			if isFatalSqsError(err) {
+				i.logger.Error("fatal error while receiving messages from sqs, terminating: %w", err)
+				return fmt.Errorf("fatal sqs receive error: %w", err)
+			}
+
+			// For non-fatal errors, log and continue with the loop
 			i.logger.Error("could not get messages from sqs: %w", err)
 
 			continue
