@@ -149,6 +149,8 @@ func (s *kinsumerTestSuite) TearDownTest() {
 }
 
 func (s *kinsumerTestSuite) TestRegisterClientFail() {
+	s.handler.EXPECT().Done().Once()
+
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 0, fmt.Errorf("fail")).Once()
 	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
@@ -157,6 +159,8 @@ func (s *kinsumerTestSuite) TestRegisterClientFail() {
 }
 
 func (s *kinsumerTestSuite) TestRegisterClientDeregisterFailToo() {
+	s.handler.EXPECT().Done().Once()
+
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 0, fmt.Errorf("fail")).Once()
 	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(fmt.Errorf("also fail")).Once()
 
@@ -168,6 +172,8 @@ func (s *kinsumerTestSuite) TestRegisterClientDeregisterFailToo() {
 }
 
 func (s *kinsumerTestSuite) TestInitialListShardsFail() {
+	s.handler.EXPECT().Done().Once()
+
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 1, nil).Once()
 	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
@@ -182,6 +188,8 @@ func (s *kinsumerTestSuite) TestInitialListShardsFail() {
 }
 
 func (s *kinsumerTestSuite) TestInitialListShardsNoSuchStream() {
+	s.handler.EXPECT().Done().Once()
+
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 1, nil).Once()
 	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
@@ -200,6 +208,8 @@ func (s *kinsumerTestSuite) TestInitialListShardsNoSuchStream() {
 }
 
 func (s *kinsumerTestSuite) TestInitialListShardsResourceInUse() {
+	s.handler.EXPECT().Done().Once()
+
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 1, nil).Once()
 	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
