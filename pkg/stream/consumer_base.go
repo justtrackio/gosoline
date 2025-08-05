@@ -84,7 +84,13 @@ type baseConsumer struct {
 	processed        int32
 }
 
-func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, name string, consumerCallback BaseConsumerCallback) (*baseConsumer, error) {
+func NewBaseConsumer(
+	ctx context.Context,
+	config cfg.Config,
+	logger log.Logger,
+	name string,
+	consumerCallback BaseConsumerCallback,
+) (*baseConsumer, error) {
 	uuidGen := uuid.New()
 	logger = logger.WithChannel(fmt.Sprintf("consumer-%s", name))
 	appId, err := cfg.GetAppIdFromConfig(config)
@@ -419,7 +425,12 @@ func (c *baseConsumer) handleError(ctx context.Context, err error, msg string) {
 }
 
 func (c *baseConsumer) isHealthy() bool {
-	return c.input.IsHealthy() && (c.retryInput == nil || c.retryInput.IsHealthy())
+	retryInputHealthy := true
+	if c.retryInput != nil {
+		retryInputHealthy = c.retryInput.IsHealthy()
+	}
+
+	return c.input.IsHealthy() && retryInputHealthy
 }
 
 func (c *baseConsumer) writeMetricDurationAndProcessedCount(duration time.Duration, processedCount int) {
