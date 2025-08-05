@@ -36,7 +36,13 @@ type offsetManager struct {
 	fetching              atomic.Bool
 }
 
-func NewOffsetManager(logger log.Logger, reader Reader, batchSize int, batchTimeout time.Duration, healthCheckTimer clock.HealthCheckTimer) *offsetManager {
+func NewOffsetManager(
+	logger log.Logger,
+	reader Reader,
+	batchSize int,
+	batchTimeout time.Duration,
+	healthCheckTimer clock.HealthCheckTimer,
+) *offsetManager {
 	events := make(chan bool, 1)
 	events <- true
 
@@ -130,7 +136,8 @@ func (m *offsetManager) Batch(ctx context.Context) []kafka.Message {
 
 func isControlMessage(msg kafka.Message) bool {
 	// this is a control message indicating an aborted transactional message.
-	// the kafka-go library does not support transactions currently and is not handling this correctly (https://github.com/segmentio/kafka-go/issues/1348).
+	// the kafka-go library does not support transactions currently and is not handling this correctly
+	// (https://github.com/segmentio/kafka-go/issues/1348).
 	return len(msg.Value) == 6 && msg.Value[0] == 0 && msg.Value[1] == 0 && msg.Value[2] == 0 && msg.Value[3] == 0
 }
 

@@ -435,6 +435,7 @@ func (k *kinsumer) startConsumers(
 
 	if startedConsumers == 0 {
 		// while we have no running consumers, we must not get unhealthy, otherwise we get killed unnecessarily
+		k.healthCheckTimer.MarkHealthy()
 		wg.Add(1)
 		// ensure we issue a tick before we get unhealthy
 		ticker := k.clock.NewTicker(k.settings.Healthcheck.Timeout / 2)
