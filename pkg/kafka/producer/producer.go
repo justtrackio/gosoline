@@ -57,7 +57,7 @@ func NewProducerWithInterfaces(conf *Settings, logger log.Logger, writer Writer)
 		Settings: conf,
 		Writer:   writer,
 		Logger:   logging.NewKafkaLogger(logger),
-		pool:     coffin.New(),
+		pool:     coffin.New(context.Background()),
 	}, nil
 }
 
@@ -66,7 +66,7 @@ func (p *Producer) Run(ctx context.Context) error {
 	p.Logger.Info("starting producer")
 	defer p.Logger.Info("shutdown producer")
 
-	p.pool.GoWithContext(ctx, p.flushOnExit)
+	p.pool.GoWithContext("kafka/flushOnExit", p.flushOnExit, coffin.WithContext(ctx))
 
 	return p.pool.Wait()
 }

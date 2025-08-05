@@ -66,6 +66,8 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 		opt(clientCfg)
 	}
 
+	logger = logger.WithChannel(fmt.Sprintf("cloudwatch-%s", name))
+
 	var err error
 	var awsConfig aws.Config
 

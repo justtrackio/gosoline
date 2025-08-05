@@ -1,11 +1,13 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
@@ -48,10 +50,10 @@ func (m *metricDriver) Open(dsn string) (driver.Conn, error) {
 	return m.Driver.Open(dsn)
 }
 
-func publishConnectionMetrics(conn *sqlx.DB) {
+func publishConnectionMetrics(name string, conn *sqlx.DB) {
 	output := metric.NewWriter()
 
-	go func() {
+	go coffin.RunLabeled(context.Background(), "db/metricWriter", func() {
 		for {
 			stats := conn.Stats()
 
@@ -87,5 +89,7 @@ func publishConnectionMetrics(conn *sqlx.DB) {
 
 			time.Sleep(time.Minute)
 		}
-	}()
+	}, map[string]string{
+		"db": name,
+	})
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -84,7 +85,7 @@ func (l *ddbLock) Release() error {
 	// we should always release the lock, even when our parent gets cancelled.
 	// if we don't manage to do this until it expires anyway, there is no further point in trying.
 	ctx, cancel := exec.WithManualCancelContext(l.ctx)
-	go func() {
+	go coffin.RunLabeled(l.ctx, "conc/ddb/lock/cancelTimer", func() {
 		timer := l.clock.NewTimer(remainingLockTime)
 		defer timer.Stop()
 
@@ -94,7 +95,7 @@ func (l *ddbLock) Release() error {
 		case <-timer.Chan():
 			cancel()
 		}
-	}()
+	})
 
 	return l.manager.ReleaseLock(ctx, l.resource, l.token)
 }

@@ -116,7 +116,7 @@ func NewSqsInputWithInterfaces(
 		settings:         settings,
 		unmarshaler:      unmarshaller,
 		healthCheckTimer: healthCheckTimer,
-		cfn:              coffin.New(),
+		cfn:              coffin.New(context.Background()),
 		channel:          make(chan *Message),
 	}
 }
@@ -136,17 +136,14 @@ func (i *sqsInput) Run(ctx context.Context) error {
 
 	i.logger.Info("starting sqs input with %d runners", i.settings.RunnerCount)
 
-	i.cfn.Go(func() error {
-		for j := 0; j < i.settings.RunnerCount; j++ {
-			i.cfn.Gof(func() error {
-				return i.runLoop(ctx)
-			}, "panic in sqs input runner")
-		}
+	cfn := i.cfn.Entomb()
+	for j := 0; j < i.settings.RunnerCount; j++ {
+		i.cfn.Go(fmt.Sprintf("sqsInput/runLoop%03d", j), func() error {
+			return i.runLoop(ctx)
+		}, coffin.WithErrorWrapper("panic in sqs input runner"))
+	}
 
-		return nil
-	})
-
-	<-i.cfn.Dying()
+	<-cfn.Dying()
 	i.Stop()
 
 	return i.cfn.Wait()

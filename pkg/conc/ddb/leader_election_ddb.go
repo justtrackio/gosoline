@@ -70,7 +70,7 @@ func NewDdbLeaderElectionWithSettings(ctx context.Context, config cfg.Config, lo
 
 func NewDdbLeaderElectionWithInterfaces(logger log.Logger, clock clock.Clock, repository ddb.Repository, settings *DdbLeaderElectionSettings) (*DdbLeaderElection, error) {
 	election := &DdbLeaderElection{
-		logger:     logger,
+		logger:     logger.WithChannel("leader-election"),
 		clock:      clock,
 		repository: repository,
 		settings:   settings,

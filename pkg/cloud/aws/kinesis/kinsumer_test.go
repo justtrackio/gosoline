@@ -375,7 +375,8 @@ func (s *kinsumerTestSuite) TestShardListFinishedShardHandling() {
 	s.mockShard("unfinished shard with finished parent", false, context.Canceled)
 
 	err := s.kinsumer.Run(s.ctx, s.handler)
-	s.EqualError(err, "failed to consume from shard: context canceled")
+	s.Error(err)
+	s.Contains(err.Error(), "failed to consume from shard: context canceled")
 }
 
 func (s *kinsumerTestSuite) TestListShardsNoChangeThenCancel() {
@@ -437,7 +438,7 @@ func (s *kinsumerTestSuite) TestListShardsFailOnRefresh() {
 	}()
 
 	err := s.kinsumer.Run(s.ctx, s.handler)
-	s.EqualError(err, "failed to refresh shards: failed to load shards from kinesis: failed to list shards of stream: fail")
+	s.EqualError(err, `failed to execute task "kinsumer-testData" from package "kinesis": failed to refresh shards: failed to load shards from kinesis: failed to list shards of stream: fail`)
 }
 
 func (s *kinsumerTestSuite) TestConsumeMessagesThenCancel() {
@@ -464,7 +465,7 @@ func (s *kinsumerTestSuite) TestConsumeMessagesThenCancel() {
 	}()
 
 	err := s.kinsumer.Run(s.ctx, s.handler)
-	s.EqualError(err, "failed to consume from shard: context canceled")
+	s.EqualError(err, `failed to execute task "kinsumer/shardReader" from package "kinesis": failed to consume from shard: context canceled`)
 }
 
 func (s *kinsumerTestSuite) TestConsumeMessagesFails() {
@@ -473,7 +474,7 @@ func (s *kinsumerTestSuite) TestConsumeMessagesFails() {
 	s.mockShard("shard1", false, fmt.Errorf("fail"))
 
 	err := s.kinsumer.Run(s.ctx, s.handler)
-	s.EqualError(err, "failed to consume from shard: fail")
+	s.EqualError(err, `failed to execute task "kinsumer/shardReader" from package "kinesis": failed to consume from shard: fail`)
 }
 
 func (s *kinsumerTestSuite) mockBaseSuccess(shards ...string) {

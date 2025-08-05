@@ -231,11 +231,11 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 		return fmt.Errorf("failed to load first list of shard ids and register as client: %w", err)
 	}
 
-	cfn, coffinCtx := coffin.WithContext(ctx)
-	cancelableCoffinCtx, cancel := context.WithCancel(coffinCtx)
+	cfn := coffin.New(ctx)
+	cancelableCoffinCtx, cancel := context.WithCancel(cfn.Ctx())
 	k.setStop(cancel)
 
-	cfn.GoWithContext(cancelableCoffinCtx, func(ctx context.Context) error {
+	cfn.GoWithContext(fmt.Sprintf("kinsumer-%s", k.settings.StreamName), func(ctx context.Context) error {
 		discoverTicker := k.clock.NewTicker(k.settings.DiscoverFrequency)
 		defer discoverTicker.Stop()
 		defer logger.Info("leaving kinsumer")
@@ -276,7 +276,7 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 				discoverTicker.Reset(k.settings.DiscoverFrequency)
 			}
 		}
-	})
+	}, coffin.WithContext(cancelableCoffinCtx))
 
 	return cfn.Wait()
 }
@@ -419,7 +419,7 @@ func (k *kinsumer) startConsumers(
 			"shard_id": shardId,
 		})
 		startedConsumers++
-		cfn.GoWithContext(consumerCtx, func(ctx context.Context) error {
+		cfn.GoWithContext("kinsumer/shardReader", func(ctx context.Context) error {
 			defer wg.Done()
 
 			logger.Info("started consuming shard")
@@ -430,7 +430,7 @@ func (k *kinsumer) startConsumers(
 			}
 
 			return nil
-		})
+		}, coffin.WithContext(consumerCtx))
 	}
 
 	if startedConsumers == 0 {
@@ -439,7 +439,7 @@ func (k *kinsumer) startConsumers(
 		// ensure we issue a tick before we get unhealthy
 		ticker := k.clock.NewTicker(k.settings.Healthcheck.Timeout / 2)
 
-		cfn.GoWithContext(consumerCtx, func(ctx context.Context) error {
+		cfn.GoWithContext("kinsumer/healthMarker", func(ctx context.Context) error {
 			defer wg.Done()
 			defer ticker.Stop()
 
@@ -451,7 +451,7 @@ func (k *kinsumer) startConsumers(
 					k.healthCheckTimer.MarkHealthy()
 				}
 			}
-		})
+		}, coffin.WithContext(consumerCtx))
 	}
 
 	// we want to have one consumer / shard (ideally), so we write a metric which is above 100 if there are not enough
@@ -459,7 +459,7 @@ func (k *kinsumer) startConsumers(
 	// are too many tasks at the moment.
 	// division by 0 can't happen because we are one client running, so there is at least us
 	shardTaskRatio := float64(len(runtimeCtx.shardIds)) / float64(runtimeCtx.totalClients) * 100
-	cfn.GoWithContext(consumerCtx, func(ctx context.Context) error {
+	cfn.GoWithContext("kinsumer/shardTaskRatioWriter", func(ctx context.Context) error {
 		defer wg.Done()
 
 		logger.Info("kinsumer started %d consumers for %d shards", startedConsumers, len(runtimeCtx.shardIds))
@@ -476,7 +476,7 @@ func (k *kinsumer) startConsumers(
 				k.writeShardTaskRatioMetric(shardTaskRatio)
 			}
 		}
-	})
+	}, coffin.WithContext(consumerCtx))
 
 	return wg, stopConsumers
 }

@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -103,23 +104,23 @@ func (s scheduler[T]) ScheduleJob(key string, provider func() (T, error)) (T, er
 }
 
 func (s scheduler[T]) Run(ctx context.Context) error {
-	cfn := coffin.New()
-	cfn.Go(func() error {
-		batchQueue := make(chan jobBatch[T], s.runnerCount)
+	cfn := coffin.New(ctx, coffin.WithLabels(map[string]string{
+		"scheduler": s.name,
+	}))
+	batchQueue := make(chan jobBatch[T], s.runnerCount)
 
-		cfn.Go(func() error {
-			return s.createBatches(ctx, batchQueue)
-		})
-
-		// execute batches of jobs in parallel
-		for i := 0; i < s.runnerCount; i++ {
-			cfn.Go(func() error {
-				return s.executeBatches(ctx, batchQueue)
-			})
-		}
-
-		return nil
+	cfn.Go("batchCreator", func() error {
+		return s.createBatches(ctx, batchQueue)
 	})
+
+	// execute batches of jobs in parallel
+	for i := 0; i < s.runnerCount; i++ {
+		cfn.Go("batchExecutor", func() error {
+			return s.executeBatches(ctx, batchQueue)
+		}, coffin.WithLabels(map[string]string{
+			"instance": strconv.Itoa(i),
+		}))
+	}
 
 	return cfn.Wait()
 }

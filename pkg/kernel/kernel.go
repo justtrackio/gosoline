@@ -3,11 +3,11 @@ package kernel
 import (
 	"cmp"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
 	"runtime"
+	"runtime/pprof"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -120,13 +120,13 @@ func (k *kernel) Run() {
 		close(sig)
 	}()
 
-	go func() {
+	go coffin.RunLabeled(context.Background(), "kernel/signalHandler", func() {
 		receivedSignal, ok := <-sig
 		if ok {
 			reason := fmt.Sprintf("signal %s", receivedSignal.String())
 			k.Stop(reason)
 		}
-	}()
+	})
 
 	runHandler := func() {
 		if err := k.runStages(); err != nil {
@@ -145,7 +145,7 @@ func (k *kernel) Run() {
 
 		hasErr := false
 		for _, stage := range k.stages {
-			if stage.err != nil && !errors.Is(stage.err, ErrKernelStopping) {
+			if stage.err != nil {
 				hasErr = true
 			}
 		}
@@ -170,7 +170,7 @@ func (k *kernel) stop(reason string, moduleStage int, moduleErr error) {
 	k.stopOnce.Do(func() {
 		close(k.stopping)
 
-		go func() {
+		go coffin.RunLabeled(context.Background(), "kernel/stop", func() {
 			k.logger.Info("stopping kernel due to: %s", reason)
 			indices := k.stages.getIndices()
 
@@ -186,7 +186,7 @@ func (k *kernel) stop(reason string, moduleStage int, moduleErr error) {
 
 				k.logger.Info("stopped stage %d", stageIndex)
 			}
-		}()
+		})
 	})
 }
 
@@ -292,6 +292,7 @@ func (k *kernel) runModule(ctx context.Context, name string, ms *moduleState) (m
 		moduleErr = ms.err
 	}(ms)
 
+	ctx = pprof.WithLabels(ctx, pprof.Labels("module", name))
 	ms.err = ms.module.Run(ctx)
 
 	return ms.err
@@ -316,7 +317,7 @@ func (k *kernel) waitStopped() {
 	done := conc.NewSignalOnce()
 	defer done.Signal()
 
-	go func() {
+	go coffin.RunLabeled(context.Background(), "kernel/waitStopped", func() {
 		timer := time.NewTimer(k.killTimeout)
 		defer timer.Stop()
 
@@ -340,7 +341,7 @@ func (k *kernel) waitStopped() {
 		case <-done.Channel():
 			return
 		}
-	}()
+	})
 
 	// we don't need to iterate in order, we just need to block until everything is done
 	for _, stage := range k.stages {
@@ -351,13 +352,13 @@ func (k *kernel) waitStopped() {
 func (k *kernel) waitAllStagesDone() conc.SignalOnce {
 	done := conc.NewSignalOnce()
 
-	go func() {
+	go coffin.RunLabeled(context.Background(), "kernel/waitAllStagesDone", func() {
 		for _, s := range k.stages {
-			<-s.ctx.Done()
+			<-s.cfn.Ctx().Done()
 		}
 
 		done.Signal()
-	}()
+	})
 
 	return done
 }

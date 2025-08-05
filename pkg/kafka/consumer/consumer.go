@@ -68,7 +68,7 @@ func NewConsumerWithInterfaces(settings *Settings, logger log.Logger, manager Of
 	return &Consumer{
 		settings: settings,
 		logger:   logging.NewKafkaLogger(logger),
-		pool:     coffin.New(),
+		pool:     coffin.New(context.Background()),
 		backlog:  make(chan kafka.Message, settings.BatchSize),
 		manager:  manager,
 	}, nil
@@ -78,7 +78,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 	c.logger.Info("starting consumer")
 	defer c.logger.Info("shutdown consumer")
 
-	c.pool.GoWithContext(ctx, c.run)
+	c.pool.GoWithContext("kafka/run", c.run, coffin.WithContext(ctx))
 
 	return c.pool.Wait()
 }
@@ -96,7 +96,7 @@ func (c *Consumer) Commit(ctx context.Context, msgs ...kafka.Message) error {
 }
 
 func (c *Consumer) run(ctx context.Context) error {
-	c.pool.GoWithContext(ctx, c.manager.Start)
+	c.pool.GoWithContext("kafka/manager.Start", c.manager.Start, coffin.WithContext(ctx))
 
 	defer close(c.backlog)
 

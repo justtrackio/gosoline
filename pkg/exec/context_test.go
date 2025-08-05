@@ -165,14 +165,14 @@ func (s *contextTestSuite) TestConcurrentlyPrintable() {
 	for i := 0; i < 1000; i++ {
 		ctx, cancel := exec.WithManualCancelContext(s.T().Context())
 		c := make(chan struct{})
-		cfn := coffin.New()
-		cfn.Go(func() error {
+		cfn := coffin.New(s.T().Context())
+		cfn.Go("cancel task", func() error {
 			<-c
 			cancel()
 
 			return nil
 		})
-		cfn.Go(func() error {
+		cfn.Go("print task", func() error {
 			<-c
 			if s := fmt.Sprintf("%v", ctx); s == "" {
 				return fmt.Errorf("should never happen")

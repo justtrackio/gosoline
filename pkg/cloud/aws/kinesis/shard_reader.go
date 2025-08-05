@@ -115,20 +115,20 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 		return fmt.Errorf("failed to get shard iterator: %w", err)
 	}
 
-	cfn, cfnCtx := coffin.WithContext(ctx)
-	persisterCtx, cancelPersister := exec.WithManualCancelContext(cfnCtx)
+	cfn := coffin.New(ctx)
+	persisterCtx, cancelPersister := exec.WithManualCancelContext(cfn.Ctx())
 	millisecondsBehindChan := make(chan float64)
-	cfn.Go(func() error {
+	cfn.GoWithContext("kinsumer/reportMillisecondsBehind", func(context.Context) error {
 		// we don't use the context here because even when the context gets canceled, we need to keep draining the
 		// millisecondsBehindChan until it is closed - otherwise we might block the producer on the other side
 		s.reportMillisecondsBehind(millisecondsBehindChan)
 
 		return nil
 	})
-	cfn.GoWithContext(persisterCtx, func(ctx context.Context) error {
+	cfn.GoWithContext("kinsumer/persister", func(ctx context.Context) error {
 		return s.runPersister(ctx, releaseCtx)
-	})
-	cfn.GoWithContext(cfnCtx, func(ctx context.Context) (readerErr error) {
+	}, coffin.WithContext(persisterCtx))
+	cfn.GoWithContext("kinsumer/shardIterator", func(ctx context.Context) (readerErr error) {
 		// similar to the outer release function, this additionally cancels the persister (and has a different error to append to)
 		// and closes the channel to report how many milliseconds we lag behind
 		defer func() {

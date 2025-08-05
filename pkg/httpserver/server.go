@@ -16,6 +16,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -154,7 +155,9 @@ func (s *HttpServer) IsHealthy(ctx context.Context) (bool, error) {
 }
 
 func (s *HttpServer) Run(ctx context.Context) error {
-	go s.waitForStop(ctx)
+	go coffin.RunLabeled(ctx, "httpserver/waitForStop", func() {
+		s.waitForStop(ctx)
+	})
 
 	err := s.server.Serve(s.listener)
 
