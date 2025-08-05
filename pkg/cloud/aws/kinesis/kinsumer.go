@@ -204,6 +204,8 @@ func NewKinsumerWithInterfaces(
 }
 
 func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr error) {
+	defer handler.Done()
+
 	deregisterCtx, stop := exec.WithDelayedCancelContext(ctx, k.settings.ReleaseDelay)
 	defer stop()
 
@@ -275,8 +277,6 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 			}
 		}
 	})
-
-	defer handler.Done()
 
 	return cfn.Wait()
 }
