@@ -21,11 +21,11 @@ func (s *InMemoryInputTestSuite) SetupTest() {
 
 func (s *InMemoryInputTestSuite) TestRun() {
 	msg := stream.NewMessage("content")
+	cfn := coffin.New()
 
-	go func() {
-		err := s.input.Run(s.T().Context())
-		s.NoError(err)
-	}()
+	cfn.Go(func() error {
+		return s.input.Run(s.T().Context())
+	})
 
 	s.input.Publish(msg)
 	s.input.Stop()
@@ -35,6 +35,8 @@ func (s *InMemoryInputTestSuite) TestRun() {
 	for msg := range s.input.Data() {
 		readMessages = append(readMessages, msg)
 	}
+
+	s.NoError(cfn.Wait())
 
 	s.Len(readMessages, 1, "1 message should have been read")
 	s.Equal("content", msg.Body, "message body should contain content")

@@ -495,6 +495,9 @@ func (r *containerRunner) Stop() error {
 		}
 	}
 
+	r.resourcesLck.Lock()
+	defer r.resourcesLck.Unlock()
+
 	for name, resource := range r.resources {
 		if err := r.pool.Purge(resource); err != nil {
 			if !alreadyExists.MatchString(err.Error()) && !noSuchContainer.MatchString(err.Error()) {
