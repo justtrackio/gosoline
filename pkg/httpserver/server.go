@@ -16,6 +16,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -114,7 +115,12 @@ func NewWithSettings(name string, definer Definer, settings *Settings) kernel.Mo
 	}
 }
 
-func NewWithInterfaces(logger log.Logger, router *gin.Engine, tracer tracing.Instrumentor, settings *Settings) (*HttpServer, error) {
+func NewWithInterfaces(
+	logger log.Logger,
+	router *gin.Engine,
+	tracer tracing.Instrumentor,
+	settings *Settings,
+) (*HttpServer, error) {
 	server := &http.Server{
 		Addr:         ":" + settings.Port,
 		Handler:      tracer.HttpHandler(router),
@@ -149,17 +155,28 @@ func NewWithInterfaces(logger log.Logger, router *gin.Engine, tracer tracing.Ins
 	return apiServer, nil
 }
 
-func (s *HttpServer) IsHealthy(ctx context.Context) (bool, error) {
+func (s *HttpServer) IsHealthy(context.Context) (bool, error) {
 	return s.healthy.Load(), nil
 }
 
 func (s *HttpServer) Run(ctx context.Context) error {
-	go s.waitForStop(ctx)
+	cfn := coffin.New()
+	cfn.Go(func() error {
+		return s.waitForStop(ctx)
+	})
+	cfn.Go(func() error {
+		err := s.server.Serve(s.listener)
 
-	err := s.server.Serve(s.listener)
+		if !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("server closed unexpectedly: %w", err)
+		}
 
-	if !errors.Is(err, http.ErrServerClosed) {
-		s.logger.Error("server closed unexpected: %w", err)
+		return nil
+	})
+
+	err := cfn.Wait()
+	if err != nil {
+		s.logger.Error("failed to run http server: %w", err)
 
 		return err
 	}
@@ -169,16 +186,14 @@ func (s *HttpServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *HttpServer) waitForStop(ctx context.Context) {
+func (s *HttpServer) waitForStop(ctx context.Context) error {
 	s.healthy.Store(true)
 	<-ctx.Done()
 	s.healthy.Store(false)
 
 	s.logger.Info("waiting %s until shutting down the server", s.settings.Timeout.Drain)
 
-	t := clock.NewRealTimer(s.settings.Timeout.Drain)
-	defer t.Stop()
-	<-t.Chan()
+	<-clock.Provider.After(s.settings.Timeout.Drain)
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), s.settings.Timeout.Shutdown)
 	defer cancel()
@@ -186,8 +201,10 @@ func (s *HttpServer) waitForStop(ctx context.Context) {
 	s.logger.Info("trying to gracefully shutdown httpserver")
 
 	if err := s.server.Shutdown(shutdownCtx); err != nil {
-		s.logger.Error("server shutdown: %w", err)
+		return fmt.Errorf("server shutdown: %w", err)
 	}
+
+	return nil
 }
 
 func (s *HttpServer) GetPort() (*int, error) {
