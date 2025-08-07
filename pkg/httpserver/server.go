@@ -120,7 +120,13 @@ func NewWithSettings(ctx context.Context, name string, definer Definer, settings
 	}
 }
 
-func NewWithInterfaces(ctx context.Context, logger log.Logger, router *gin.Engine, tracer tracing.Instrumentor, settings *Settings) (*HttpServer, error) {
+func NewWithInterfaces(
+	ctx context.Context,
+	logger log.Logger,
+	router *gin.Engine,
+	tracer tracing.Instrumentor,
+	settings *Settings,
+) (*HttpServer, error) {
 	server := &http.Server{
 		Addr:         ":" + settings.Port,
 		Handler:      tracer.HttpHandler(router),
@@ -162,11 +168,19 @@ func (s *HttpServer) IsHealthy(_ context.Context) (bool, error) {
 func (s *HttpServer) Run(ctx context.Context) error {
 	cfn := coffin.New()
 	cfn.GoWithContext(ctx, s.waitForStop)
+	cfn.Go(func() error {
+		err := s.server.Serve(s.listener)
 
-	err := s.server.Serve(s.listener)
+		if !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("server closed unexpectedly: %w", err)
+		}
 
-	if !errors.Is(err, http.ErrServerClosed) {
-		s.logger.Error(ctx, "server closed unexpected: %w", err)
+		return nil
+	})
+
+	err := cfn.Wait()
+	if err != nil {
+		s.logger.Error(ctx, "failed to run http server: %w", err)
 
 		return err
 	}
@@ -183,9 +197,7 @@ func (s *HttpServer) waitForStop(ctx context.Context) error {
 
 	s.logger.Info(ctx, "waiting %s until shutting down the server", s.settings.Timeout.Drain)
 
-	t := clock.NewRealTimer(s.settings.Timeout.Drain)
-	defer t.Stop()
-	<-t.Chan()
+	<-clock.Provider.After(s.settings.Timeout.Drain)
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), s.settings.Timeout.Shutdown)
 	defer cancel()
@@ -193,7 +205,7 @@ func (s *HttpServer) waitForStop(ctx context.Context) error {
 	s.logger.Info(ctx, "trying to gracefully shutdown httpserver")
 
 	if err := s.server.Shutdown(shutdownCtx); err != nil {
-		s.logger.Error(ctx, "server shutdown: %w", err)
+		return fmt.Errorf("server shutdown: %w", err)
 	}
 
 	return nil
