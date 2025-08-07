@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +17,11 @@ import (
 	"github.com/justtrackio/gosoline/pkg/uuid"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+)
+
+const (
+	networkBridge = "bridge"
+	osLinux       = "linux"
 )
 
 type containerConfig struct {
@@ -53,14 +59,14 @@ type container struct {
 
 type healthCheckSettings struct {
 	InitialInterval time.Duration `cfg:"initial_interval" default:"1s"`
-	MaxInterval     time.Duration `cfg:"max_interval" default:"3s"`
+	MaxInterval     time.Duration `cfg:"max_interval"     default:"3s"`
 	MaxElapsedTime  time.Duration `cfg:"max_elapsed_time" default:"1m"`
 }
 
 type authSettings struct {
-	Username      string `cfg:"username" default:""`
-	Password      string `cfg:"password" default:""`
-	Email         string `cfg:"email" default:""`
+	Username      string `cfg:"username"       default:""`
+	Password      string `cfg:"password"       default:""`
+	Email         string `cfg:"email"          default:""`
 	ServerAddress string `cfg:"server_address" default:""`
 }
 
@@ -80,7 +86,7 @@ func (a authSettings) IsEmpty() bool {
 
 type containerRunnerSettings struct {
 	Endpoint    string              `cfg:"endpoint"`
-	NamePrefix  string              `cfg:"name_prefix" default:"goso"`
+	NamePrefix  string              `cfg:"name_prefix"  default:"goso"`
 	HealthCheck healthCheckSettings `cfg:"health_check"`
 	ExpireAfter time.Duration       `cfg:"expire_after"`
 	Auth        authSettings        `cfg:"auth"`
@@ -205,7 +211,13 @@ func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 				var container *container
 
 				if container, err = r.RunContainer(skeleton, name, description); err != nil {
-					return fmt.Errorf("can not run container %s (%s:%s): %w", skeleton.id(), description.containerConfig.Repository, description.containerConfig.Tag, err)
+					return fmt.Errorf(
+						"can not run container %s (%s:%s): %w",
+						skeleton.id(),
+						description.containerConfig.Repository,
+						description.containerConfig.Tag,
+						err,
+					)
 				}
 
 				lck.Lock()
@@ -242,7 +254,11 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton, name string,
 
 	if err = r.waitUntilHealthy(container, description.healthCheck); err != nil {
 		if description.containerConfig.UseExternalContainer {
-			return nil, fmt.Errorf("healthcheck failed on container for component %s. The container is configured to use an external container, is that container running? %w", skeleton.id(), err)
+			return nil, fmt.Errorf(
+				"healthcheck failed on container for component %s. The container is configured to use an external container, is that container running? %w",
+				skeleton.id(),
+				err,
+			)
 		}
 
 		return nil, fmt.Errorf("healthcheck failed on container for component %s: %w", skeleton.id(), err)
@@ -277,7 +293,12 @@ func (r *containerRunner) createExternalContainer(containerName, skeletonTyp str
 	}, nil
 }
 
-func (r *containerRunner) runNewContainer(containerName string, skeleton *componentSkeleton, name string, config *containerConfig) (*container, error) {
+func (r *containerRunner) runNewContainer(
+	containerName string,
+	skeleton *componentSkeleton,
+	name string,
+	config *containerConfig,
+) (*container, error) {
 	r.logger.Debug("run container %s %s:%s %s", skeleton.typ, config.Repository, config.Tag, containerName)
 
 	bindings := make(map[docker.Port][]docker.PortBinding)
@@ -316,7 +337,14 @@ func (r *containerRunner) runNewContainer(containerName string, skeleton *compon
 	return container, nil
 }
 
-func (r *containerRunner) runContainer(options *dockertest.RunOptions, resourceId string, expireAfter time.Duration, bindings portBindings, typ string, tmpfs map[string]string) (*container, error) {
+func (r *containerRunner) runContainer(
+	options *dockertest.RunOptions,
+	resourceId string,
+	expireAfter time.Duration,
+	bindings portBindings,
+	typ string,
+	tmpfs map[string]string,
+) (*container, error) {
 	var resourceContainer *container
 
 	resource, err := r.pool.RunWithOptions(options, func(hc *docker.HostConfig) {
@@ -414,7 +442,12 @@ func (r *containerRunner) resolveBinding(resource *dockertest.Resource, containe
 		return address, fmt.Errorf("could not split hostPort into host and port: %w", err)
 	}
 
-	address.host = resource.Container.NetworkSettings.Networks["bridge"].Gateway
+	// On non-linux environments, the docker containers cannot be reached via the bridge network from outside the network.
+	if runtime.GOOS == osLinux {
+		if network, ok := resource.Container.NetworkSettings.Networks[networkBridge]; ok {
+			address.host = network.Gateway
+		}
+	}
 
 	return address, nil
 }
@@ -461,6 +494,9 @@ func (r *containerRunner) Stop() error {
 			r.logger.Error("shutdown callback failed for container %s: %w", name, err)
 		}
 	}
+
+	r.resourcesLck.Lock()
+	defer r.resourcesLck.Unlock()
 
 	for name, resource := range r.resources {
 		if err := r.pool.Purge(resource); err != nil {
