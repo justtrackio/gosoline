@@ -300,9 +300,9 @@ func (k *kernel) runModule(ctx context.Context, name string, ms *moduleState) (m
 
 		atomic.StoreInt32(&ms.isRunning, 0)
 		if ms.config.essential {
-			k.essentialModuleExited(name)
+			k.essentialModuleExited(name, ms.err)
 		} else if !ms.config.background {
-			k.foregroundModuleExited()
+			k.foregroundModuleExited(ms.err)
 		}
 
 		// make sure we are returning the correct error to our caller
@@ -314,17 +314,37 @@ func (k *kernel) runModule(ctx context.Context, name string, ms *moduleState) (m
 	return ms.err
 }
 
-func (k *kernel) essentialModuleExited(name string) {
+// [Note] Stopping the kernel
+//
+// When stopping the kernel, we kill the coffin for each stage. We have to be careful
+// not to introduce a race at that point between killing the coffin of each stage with
+// the error that the kernel is stopping and the module exiting with an error. If a
+// module returned an error, we had a race condition in the past where we would stop
+// the kernel (which would spawn a go routine to kill the coffin of each stage with
+// ErrKernelStopping) and the function running the module returning the error back to
+// the coffin. If the function returned first, the coffin would carry the correct error,
+// but there was a small chance of the kernel stopping causing the coffin to get killed
+// first and setting the wrong error on the coffin, swallowing the actual error.
+//
+// Thus, you must not stop the kernel if you know that a module will return an error.
+
+func (k *kernel) essentialModuleExited(name string, moduleErr error) {
+	// See [Note] Stopping the kernel
+	if moduleErr != nil {
+		return
+	}
+
 	// actually we would need to decrement k.foregroundModules here, too
 	// however, as we are stopping in any case, we don't have to
 	reason := fmt.Sprintf("the essential module [%s] has stopped running", name)
 	k.Stop(reason)
 }
 
-func (k *kernel) foregroundModuleExited() {
+func (k *kernel) foregroundModuleExited(moduleErr error) {
 	remaining := atomic.AddInt32(&k.foregroundModules, -1)
 
-	if remaining == 0 {
+	// See [Note] Stopping the kernel
+	if remaining == 0 && moduleErr == nil {
 		k.Stop("no more foreground modules in running state")
 	}
 }
