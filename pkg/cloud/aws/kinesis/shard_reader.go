@@ -528,10 +528,22 @@ func (s *shardReader) delayConsume(ctx context.Context, record types.Record) {
 	timer := s.clock.NewTimer(durationToSleep)
 	defer timer.Stop()
 
-	select {
-	case <-ctx.Done():
-	case <-timer.Chan():
-		s.writeMetric(ctx, metricNameSleepDuration, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage)
+	// while we are waiting, we must not get unhealthy, otherwise we get killed unnecessarily
+	s.healthCheckTimer.MarkHealthy()
+	ticker := s.clock.NewTicker(s.settings.Healthcheck.Timeout / 2)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.Chan():
+			s.writeMetric(ctx, metricNameSleepDuration, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage)
+
+			return
+		case <-ticker.Chan():
+			s.healthCheckTimer.MarkHealthy()
+		}
 	}
 }
 
