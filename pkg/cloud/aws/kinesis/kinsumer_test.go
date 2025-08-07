@@ -21,6 +21,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
+	"github.com/justtrackio/gosoline/pkg/stream/health"
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -87,6 +88,9 @@ func (s *kinsumerTestSuite) SetupTest() {
 		DiscoverFrequency: time.Second * 15,
 		ReleaseDelay:      time.Second * 5,
 		KeepShardOrder:    true,
+		Healthcheck: health.HealthCheckSettings{
+			Timeout: time.Minute,
+		},
 	}
 
 	s.kinsumer = gosoKinesis.NewKinsumerWithInterfaces(
