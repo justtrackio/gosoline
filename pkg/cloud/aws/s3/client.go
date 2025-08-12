@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
+	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/justtrackio/gosoline/pkg/appctx"
@@ -13,6 +14,11 @@ import (
 	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
+
+//go:generate go run github.com/vektra/mockery/v2 --name PresignClient
+type PresignClient interface {
+	PresignGetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.PresignOptions)) (*v4.PresignedHTTPRequest, error)
+}
 
 //go:generate go run github.com/vektra/mockery/v2 --name Client
 type Client interface {
@@ -61,11 +67,20 @@ func (c ClientConfig) GetRetryOptions() []func(*retry.StandardOptions) {
 
 type ClientOption func(cfg *ClientConfig)
 
-type clientAppCtxKey string
+type (
+	clientAppCtxKey        string
+	presignClientAppCtxKey string
+)
 
 func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...ClientOption) (*s3.Client, error) {
 	return appctx.Provide(ctx, clientAppCtxKey(name), func() (*s3.Client, error) {
 		return NewClient(ctx, config, logger, name, optFns...)
+	})
+}
+
+func ProvidePresignClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...ClientOption) (*s3.PresignClient, error) {
+	return appctx.Provide(ctx, presignClientAppCtxKey(name), func() (*s3.PresignClient, error) {
+		return NewPresignClient(ctx, config, logger, name, optFns...)
 	})
 }
 
@@ -88,6 +103,21 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 	gosoAws.LogNewClientCreated(ctx, logger, "s3", name, clientCfg.Settings.ClientSettings)
 
 	return client, nil
+}
+
+func NewPresignClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...ClientOption) (*s3.PresignClient, error) {
+	client, err := ProvideClient(ctx, config, logger, name, optFns...)
+	if err != nil {
+		return nil, fmt.Errorf("can not initialize client: %w", err)
+	}
+
+	pClient := s3.NewPresignClient(client)
+
+	// Since this is not really a new client,
+	// but uses an s3 client of the same name,
+	// no logging of new client creation here.
+
+	return pClient, nil
 }
 
 func GetClientConfig(config cfg.Config, name string, optFns ...ClientOption) (*ClientConfig, error) {
