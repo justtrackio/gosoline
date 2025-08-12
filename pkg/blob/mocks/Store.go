@@ -272,6 +272,112 @@ func (_c *Store_DeleteOne_Call) RunAndReturn(run func(*blob.Object) error) *Stor
 	return _c
 }
 
+// DeletePrefix provides a mock function with given fields: ctx, prefix
+func (_m *Store) DeletePrefix(ctx context.Context, prefix string) error {
+	ret := _m.Called(ctx, prefix)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeletePrefix")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, prefix)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Store_DeletePrefix_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeletePrefix'
+type Store_DeletePrefix_Call struct {
+	*mock.Call
+}
+
+// DeletePrefix is a helper method to define mock.On call
+//   - ctx context.Context
+//   - prefix string
+func (_e *Store_Expecter) DeletePrefix(ctx interface{}, prefix interface{}) *Store_DeletePrefix_Call {
+	return &Store_DeletePrefix_Call{Call: _e.mock.On("DeletePrefix", ctx, prefix)}
+}
+
+func (_c *Store_DeletePrefix_Call) Run(run func(ctx context.Context, prefix string)) *Store_DeletePrefix_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Store_DeletePrefix_Call) Return(_a0 error) *Store_DeletePrefix_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Store_DeletePrefix_Call) RunAndReturn(run func(context.Context, string) error) *Store_DeletePrefix_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListObjects provides a mock function with given fields: ctx, prefix
+func (_m *Store) ListObjects(ctx context.Context, prefix string) (blob.Batch, error) {
+	ret := _m.Called(ctx, prefix)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListObjects")
+	}
+
+	var r0 blob.Batch
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (blob.Batch, error)); ok {
+		return rf(ctx, prefix)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) blob.Batch); ok {
+		r0 = rf(ctx, prefix)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(blob.Batch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, prefix)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Store_ListObjects_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListObjects'
+type Store_ListObjects_Call struct {
+	*mock.Call
+}
+
+// ListObjects is a helper method to define mock.On call
+//   - ctx context.Context
+//   - prefix string
+func (_e *Store_Expecter) ListObjects(ctx interface{}, prefix interface{}) *Store_ListObjects_Call {
+	return &Store_ListObjects_Call{Call: _e.mock.On("ListObjects", ctx, prefix)}
+}
+
+func (_c *Store_ListObjects_Call) Run(run func(ctx context.Context, prefix string)) *Store_ListObjects_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Store_ListObjects_Call) Return(_a0 blob.Batch, _a1 error) *Store_ListObjects_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Store_ListObjects_Call) RunAndReturn(run func(context.Context, string) (blob.Batch, error)) *Store_ListObjects_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Read provides a mock function with given fields: batch
 func (_m *Store) Read(batch blob.Batch) {
 	_m.Called(batch)
