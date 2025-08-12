@@ -135,7 +135,7 @@ func (r *batchRunner) executeRead(ctx context.Context) {
 			exists := true
 
 			input := &s3.GetObjectInput{
-				Bucket: object.bucket,
+				Bucket: object.Bucket,
 				Key:    aws.String(key),
 			}
 
@@ -172,7 +172,7 @@ func (r *batchRunner) executeWrite(ctx context.Context) {
 			input := &s3.PutObjectInput{
 				ACL:             object.ACL,
 				Body:            body,
-				Bucket:          object.bucket,
+				Bucket:          object.Bucket,
 				Key:             aws.String(key),
 				ContentEncoding: object.ContentEncoding,
 				ContentType:     object.ContentType,
@@ -237,7 +237,7 @@ func (r *batchRunner) executeDelete(ctx context.Context) {
 			key := object.GetFullKey()
 
 			input := &s3.DeleteObjectInput{
-				Bucket: object.bucket,
+				Bucket: object.Bucket,
 				Key:    aws.String(key),
 			}
 
