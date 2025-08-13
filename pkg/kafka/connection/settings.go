@@ -35,7 +35,7 @@ func ParseSettings(config cfg.Config, name string) (*Settings, error) {
 func BuildConnectionOptions(config cfg.Config, connectionName string) ([]kgo.Opt, error) {
 	conn, err := ParseSettings(config, connectionName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse kafka connection settings for connection %q: %w", connectionName, err)
+		return nil, fmt.Errorf("failed to parse kafka connection settings for connection name %q: %w", connectionName, err)
 	}
 
 	options := []kgo.Opt{

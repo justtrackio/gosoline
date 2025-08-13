@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	"github.com/justtrackio/gosoline/pkg/kafka/logging"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
@@ -61,6 +62,10 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 	client, err := kgo.NewClient(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("can not create franz-go client: %w", err)
+	}
+
+	if err = reslife.AddLifeCycleer(ctx, kafka.NewLifecycleManager(settings.Connection, topicName)); err != nil {
+		return nil, fmt.Errorf("failed to add kafka lifecycle manager: %w", err)
 	}
 
 	return client, nil
