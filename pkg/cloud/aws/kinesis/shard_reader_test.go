@@ -17,6 +17,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
+	"github.com/justtrackio/gosoline/pkg/stream/health"
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -60,6 +61,9 @@ func (s *shardReaderTestSuite) SetupTest() {
 		WaitTime:         time.Second,
 		PersistFrequency: time.Second * 10,
 		ReleaseDelay:     time.Second * 30,
+		Healthcheck: health.HealthCheckSettings{
+			Timeout: time.Minute,
+		},
 	}
 	s.clock = clock.NewFakeClock()
 	s.healthCheckTimer = clock.NewHealthCheckTimerWithInterfaces(s.clock, time.Minute)
