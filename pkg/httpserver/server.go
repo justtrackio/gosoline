@@ -87,6 +87,7 @@ func NewWithSettings(name string, definer Definer, settings *Settings) kernel.Mo
 		}
 
 		router := gin.New()
+		router.UseRawPath = settings.Router.UseRawPath
 		router.Use(metricMiddleware)
 		router.Use(LoggingMiddleware(logger, settings.Logging))
 		router.Use(compressionMiddlewares...)
