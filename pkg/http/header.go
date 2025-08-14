@@ -10,6 +10,7 @@ const (
 
 	MimeTypeApplicationFormUrlencoded = "application/x-www-form-urlencoded"
 	MimeTypeApplicationJson           = "application/json"
+	MimeTypeApplicationOctetStream    = "application/octet-stream"
 	MimeTypeApplicationXml            = "application/xml"
 	MimeTypeTextCsv                   = "text/csv"
 	MimeTypeTextPlain                 = "text/plain"

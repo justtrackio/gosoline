@@ -62,7 +62,8 @@ func (s *ServerTestSuite) TestGetPort() {
 		s.NoError(err)
 		s.NotNil(port)
 
-		_, err = net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", *port))
+		address := net.JoinHostPort("127.0.0.1", fmt.Sprint(*port))
+		_, err = net.Dial("tcp", address)
 		s.NoError(err, "could not establish a connection with server")
 	})
 }

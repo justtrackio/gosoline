@@ -40,6 +40,10 @@ type (
 		Port int `cfg:"port" default:"8091"`
 	}
 
+	RouterSettings struct {
+		UseRawPath bool `cfg:"use_raw_path" default:"false"`
+	}
+
 	// Settings structure for an API server.
 	Settings struct {
 		// Port the API listens to.
@@ -48,6 +52,8 @@ type (
 		Mode string `cfg:"mode"        default:"release" validate:"oneof=release debug test"`
 		// Compression settings.
 		Compression CompressionSettings `cfg:"compression"`
+		// Gin Router settings.
+		Router RouterSettings `cfg:"router"`
 		// Timeout settings.
 		Timeout TimeoutSettings `cfg:"timeout"`
 		// Logging settings
