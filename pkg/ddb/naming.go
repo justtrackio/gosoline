@@ -2,14 +2,13 @@ package ddb
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
 type TableNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{modelId}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{realm}-{modelId}"`
 }
 
 func TableName(config cfg.Config, settings *Settings) (string, error) {
@@ -43,19 +42,20 @@ func GetTableNameWithSettings(tableSettings *Settings, namingSettings *TableNami
 		tableName = tableSettings.TableNamingSettings.Pattern
 	}
 
-	values := map[string]string{
-		"project": tableSettings.ModelId.Project,
-		"env":     tableSettings.ModelId.Environment,
-		"family":  tableSettings.ModelId.Family,
-		"group":   tableSettings.ModelId.Group,
-		"app":     tableSettings.ModelId.Application,
-		"modelId": tableSettings.ModelId.Name,
+	// Convert ModelId to AppId for using the ReplaceMacros method
+	appId := cfg.AppId{
+		Project:     tableSettings.ModelId.Project,
+		Environment: tableSettings.ModelId.Environment,
+		Family:      tableSettings.ModelId.Family,
+		Group:       tableSettings.ModelId.Group,
+		Application: tableSettings.ModelId.Application,
+		Realm:       tableSettings.ModelId.Realm,
 	}
 
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		tableName = strings.ReplaceAll(tableName, templ, val)
+	// Use AppId's ReplaceMacros method with modelId as extra macro
+	extraMacros := []cfg.MacroValue{
+		{"modelId", tableSettings.ModelId.Name},
 	}
 
-	return tableName
+	return appId.ReplaceMacros(tableName, extraMacros...)
 }
