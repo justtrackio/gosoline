@@ -222,6 +222,24 @@ func (s *Struct) Read() (*MapX, error) {
 	return mapValues, nil
 }
 
+func (s *Struct) ReadNonZero() (*MapX, error) {
+	var err error
+	var mpx *MapX
+
+	if mpx, err = s.Read(); err != nil {
+		return nil, fmt.Errorf("can not read struct values: %w", err)
+	}
+
+	nonZero := funk.MapFilter(mpx.Msi(), func(key string, value any) bool {
+		vt := reflect.TypeOf(value)
+		zeroValue := reflect.Zero(vt).Interface()
+
+		return value != zeroValue
+	})
+
+	return NewMapX(nonZero), nil
+}
+
 func (s *Struct) doReadMap(path string, mapValues *MapX, mp any) error {
 	if _, ok := mp.(map[string]any); ok {
 		return s.doReadMsi(path, mapValues, mp.(map[string]any))

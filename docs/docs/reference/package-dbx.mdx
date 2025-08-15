@@ -1,0 +1,302 @@
+---
+title: Package dbx
+---
+
+# dbx package
+
+The dbx package provides a fluent API to build SQL queries.
+
+## Client
+
+The client is the main entry point to the package. It is used to create query builders.
+
+### YourModel struct
+
+```go
+type YourModel struct {
+    Id   int    `db:"id"`
+    Name string `db:"name"`
+}
+```
+
+### [NewClient()](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/client.go#L26)
+
+#### Usage
+
+```go
+client, err := dbx.NewClient[YourModel](ctx, config, logger, "default", "your_table")
+```
+
+#### Description
+
+Creates a new dbx client. You need to provide a model (a struct with `db` tags), which will be used to map the database table to your struct.
+
+The `clientName` argument is the name of the database client to use, as configured in your application's configuration file.  
+The `table` argument is the name of the database table.
+
+## Query Builders
+
+The dbx package provides query builders for SELECT, INSERT, UPDATE and DELETE statements.
+
+### [Select()](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/client.go#L78)
+
+#### Usage
+
+```go
+results, err := client.Select().Where(dbx.Eq{"id": 1}).Exec(ctx)
+```
+```sql
+SELECT id, name FROM your_table WHERE id = 1
+```
+
+#### Description
+
+Creates a new SELECT query builder. You can use the `Where` method to add conditions to your query. The `Exec` method executes the query and returns the results.
+
+You can also pass a struct of type `T` to the `Where` clause. In this case, the struct will be converted to a map and the non-zero fields will be used to build an `Eq` expression.
+This is available for all query builders, not just `Select`.
+
+```go
+results, err := client.Select().Where(YourModel{Id: 1}).Exec(ctx)
+```
+```sql
+SELECT id, name FROM your_table WHERE id = 1
+```
+
+### [Insert()](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/client.go#L60)
+
+#### Usage
+
+```go
+_, err := client.Insert(YourModel{Id: 1, Name: "test"}).Exec(ctx)
+```
+```sql
+INSERT INTO your_table (id,name) VALUES (1,'test')
+```
+
+#### Description
+
+Creates a new INSERT query builder. You need to provide the model with the values to insert. The `Exec` method executes the query.
+
+### [Replace()](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/client.go#L65)
+
+#### Usage
+
+```go
+_, err := client.Replace(YourModel{Id: 1, Name: "test"}).Exec(ctx)
+```
+```sql
+REPLACE INTO your_table (id,name) VALUES (1,'test')
+```
+
+#### Description
+
+Creates a new REPLACE query builder. You need to provide the model with the values to insert. The `Exec` method executes the query.
+
+### [Update()](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/client.go#L89)
+
+#### Usage
+
+```go
+_, err := client.Update(map[string]any{"name": "new_name"}).Where(dbx.Eq{"id": 1}).Exec(ctx)
+```
+```sql
+UPDATE your_table SET name = 'new_name' WHERE id = 1
+```
+
+#### Description
+
+Creates a new UPDATE query builder. You can provide one or more maps with the new values, which will be merged together. You can use the `Where` method to add conditions to your query. The `Exec` method executes the query.
+
+You can also pass a struct of type `T` to the `Update` method. In this case, the struct will be converted to a map and the non-zero fields will be used to build the `SET` clause of the query.
+
+```go
+_, err := client.Update(YourModel{Name: "new_name"}).Where(dbx.Eq{"id": 1}).Exec(ctx)
+```
+```sql
+UPDATE your_table SET name = 'new_name' WHERE id = 1
+```
+
+### [Delete()](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/client.go#L50)
+
+#### Usage
+
+```go
+_, err := client.Delete().Where(dbx.Eq{"id": 1}).Exec(ctx)
+```
+```sql
+DELETE FROM your_table WHERE id = 1
+```
+
+#### Description
+
+Creates a new DELETE query builder. You can use the `Where` method to add conditions to your query. The `Exec` method executes the query.
+
+## Expressions
+
+The `Sqlizer` interface can be converted to SQL. There are many implementations of this interface.
+
+### [Expr](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L22)
+
+Builds an expression from a SQL fragment and arguments.
+
+```go
+client.Select().Where(dbx.Expr("FROM_UNIXTIME(?) > ?", 1672531200, 1000))
+```
+```sql
+SELECT id, name FROM your_table WHERE FROM_UNIXTIME(1672531200) > 1000
+```
+
+### [ConcatExpr](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L88)
+
+Builds an expression by concatenating strings and other expressions.
+
+```go
+client.Select().Column(dbx.ConcatExpr("COALESCE(full_name, ", dbx.Expr("CONCAT(?, ' ', ?)", "first", "last"), ")"))
+```
+```sql
+SELECT COALESCE(full_name, CONCAT('first', ' ', 'last')) FROM your_table
+```
+
+### [Alias](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L100)
+
+Allows to define an alias for a column.
+
+```go
+client.Select().Column(dbx.Alias(dbx.Expr("COUNT(*)"), "total"))
+```
+```sql
+SELECT (COUNT(*)) AS total FROM your_table
+```
+
+### [Eq](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L159)
+
+Creates an "equal" expression.
+
+```go
+client.Select().Where(dbx.Eq{"id": 1})
+```
+```sql
+SELECT id, name FROM your_table WHERE id = 1
+```
+
+### [NotEq](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L246)
+
+Creates a "not equal" expression.
+
+```go
+client.Select().Where(dbx.NotEq{"id": 1})
+```
+```sql
+SELECT id, name FROM your_table WHERE id <> 1
+```
+
+### [Like](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L253)
+
+Creates a "like" expression.
+
+```go
+client.Select().Where(dbx.Like{"name": "%test%"})
+```
+```sql
+SELECT id, name FROM your_table WHERE name LIKE '%test%'
+```
+
+### [NotLike](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L298)
+
+Creates a "not like" expression.
+
+```go
+client.Select().Where(dbx.NotLike{"name": "%test%"})
+```
+```sql
+SELECT id, name FROM your_table WHERE name NOT LIKE '%test%'
+```
+
+### [ILike](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L305)
+
+Creates a case-insensitive "like" expression.
+
+```go
+client.Select().Where(dbx.ILike{"name": "test%"})
+```
+```sql
+SELECT id, name FROM your_table WHERE name ILIKE 'test%'
+```
+
+### [NotILike](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L312)
+
+Creates a case-insensitive "not like" expression.
+
+```go
+client.Select().Where(dbx.NotILike{"name": "test%"})
+```
+```sql
+SELECT id, name FROM your_table WHERE name NOT ILIKE 'test%'
+```
+
+### [Lt](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L319)
+
+Creates a "less than" expression.
+
+```go
+client.Select().Where(dbx.Lt{"age": 18})
+```
+```sql
+SELECT id, name FROM your_table WHERE age < 18
+```
+
+### [LtOrEq](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L372)
+
+Creates a "less than or equal" expression.
+
+```go
+client.Select().Where(dbx.LtOrEq{"age": 18})
+```
+```sql
+SELECT id, name FROM your_table WHERE age <= 18
+```
+
+### [Gt](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L379)
+
+Creates a "greater than" expression.
+
+```go
+client.Select().Where(dbx.Gt{"age": 18})
+```
+```sql
+SELECT id, name FROM your_table WHERE age > 18
+```
+
+### [GtOrEq](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L386)
+
+Creates a "greater than or equal" expression.
+
+```go
+client.Select().Where(dbx.GtOrEq{"age": 18})
+```
+```sql
+SELECT id, name FROM your_table WHERE age >= 18
+```
+
+### [And](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L421)
+
+Creates an "and" conjunction of expressions.
+
+```go
+client.Select().Where(dbx.And(dbx.Eq{"id": 1}, dbx.Like{"name": "%test%"}))
+```
+```sql
+SELECT id, name FROM your_table WHERE (id = 1 AND name LIKE '%test%')
+```
+
+### [Or](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/expr.go#L428)
+
+Creates an "or" conjunction of expressions.
+
+```go
+client.Select().Where(dbx.Or(dbx.Eq{"id": 1}, dbx.Eq{"id": 2}))
+```
+```sql
+SELECT id, name FROM your_table WHERE (id = 1 OR id = 2)
+```
