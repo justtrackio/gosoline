@@ -122,7 +122,7 @@ func CreateKey() string {
 
 // NewStore creates a new S3 store with the given configuration and logger.
 func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Store, error) {
-	channels, err := ProvideBatchRunnerChannels(config)
+	channels, err := ProvideBatchRunnerChannels(ctx, config, name)
 	if err != nil {
 		return nil, fmt.Errorf("can not create batch runner channels: %w", err)
 	}
@@ -137,7 +137,7 @@ func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name st
 		return nil, fmt.Errorf("can not create s3 client with name %s: %w", settings.ClientName, err)
 	}
 
-	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings)); err != nil {
+	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings, name)); err != nil {
 		return nil, fmt.Errorf("can not add life cycle manager: %w", err)
 	}
 
@@ -371,9 +371,13 @@ func (o *CopyObject) getSource() string {
 	return fmt.Sprintf("%s%s", mdl.EmptyIfNil(o.SourceBucket), sourceKey)
 }
 
+func getConfigKey(name string) string {
+	return fmt.Sprintf("blob.%s", name)
+}
+
 func ReadStoreSettings(config cfg.Config, name string) (*Settings, error) {
 	settings := &Settings{}
-	key := fmt.Sprintf("blob.%s", name)
+	key := getConfigKey(name)
 	if err := config.UnmarshalKey(key, settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal blob store settings for %s: %w", name, err)
 	}

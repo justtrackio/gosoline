@@ -127,7 +127,7 @@ func (r *repository) GetOrm() *gorm.DB {
 
 func (r *repository) Create(ctx context.Context, value ModelBased) error {
 	if !r.isQueryableModel(value) {
-		return ErrCrossCreate
+		return fmt.Errorf("table %q: %w", r.orm.NewScope(value).TableName(), ErrCrossCreate)
 	}
 
 	modelId := r.GetModelId()
@@ -170,7 +170,7 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 
 func (r *repository) Read(ctx context.Context, id *uint, out ModelBased) error {
 	if !r.isQueryableModel(out) {
-		return ErrCrossRead
+		return fmt.Errorf("table %q: %w", r.orm.NewScope(out).TableName(), ErrCrossRead)
 	}
 
 	modelId := r.GetModelId()
@@ -188,7 +188,7 @@ func (r *repository) Read(ctx context.Context, id *uint, out ModelBased) error {
 
 func (r *repository) Update(ctx context.Context, value ModelBased) error {
 	if !r.isQueryableModel(value) {
-		return ErrCrossUpdate
+		return fmt.Errorf("table %q: %w", r.orm.NewScope(value).TableName(), ErrCrossUpdate)
 	}
 
 	modelId := r.GetModelId()
@@ -230,7 +230,7 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 
 func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	if !r.isQueryableModel(value) {
-		return ErrCrossDelete
+		return fmt.Errorf("table %q: %w", r.orm.NewScope(value).TableName(), ErrCrossDelete)
 	}
 
 	modelId := r.GetModelId()
@@ -271,7 +271,7 @@ func (r *repository) checkResultModel(result any) error {
 		model := reflect.ValueOf(result).Elem().Interface()
 
 		if !r.isQueryableModel(model) {
-			return fmt.Errorf("cross querying result slice has to be of same model")
+			return fmt.Errorf("table %q: %w", r.orm.NewScope(model).TableName(), fmt.Errorf("cross querying result slice has to be of same model"))
 		}
 	}
 
@@ -297,7 +297,7 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result any) er
 		currentWhere := qb.where[i]
 		if reflect.TypeOf(currentWhere).Kind() == reflect.Ptr || reflect.TypeOf(currentWhere).Kind() == reflect.Struct {
 			if !r.isQueryableModel(currentWhere) {
-				return ErrCrossQuery
+				return fmt.Errorf("table %q: %w", r.orm.NewScope(currentWhere).TableName(), ErrCrossQuery)
 			}
 		}
 
