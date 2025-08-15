@@ -1,3 +1,4 @@
+// Package appctx provides application context and dependency injection container.
 package appctx
 
 import (
