@@ -2,9 +2,7 @@ package dbx
 
 import (
 	"fmt"
-	"reflect"
 
-	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/mapx"
 	"github.com/lann/builder"
 )
@@ -39,25 +37,29 @@ type whereStruct[T any] struct {
 }
 
 func (p whereStruct[T]) ToSql() (sql string, args []interface{}, err error) {
+	var msi map[string]any
+
+	if msi, err = toNonZeroMap(p.val); err != nil {
+		return "", nil, fmt.Errorf("unable to convert struct to map: %w", err)
+	}
+
+	return Eq(msi).ToSql()
+}
+
+func toNonZeroMap[T any](val T) (map[string]any, error) {
 	var st *mapx.Struct
 	var mpx *mapx.MapX
+	var err error
 
-	if st, err = mapx.NewStruct(&p.val, &mapx.StructSettings{FieldTag: "db"}); err != nil {
-		return
+	if st, err = mapx.NewStruct(&val, &mapx.StructSettings{FieldTag: "db"}); err != nil {
+		return nil, err
 	}
 
-	if mpx, err = st.Read(); err != nil {
-		return
+	if mpx, err = st.ReadNonZero(); err != nil {
+		return nil, err
 	}
 
-	values := funk.MapFilter(mpx.Msi(), func(key string, value any) bool {
-		vt := reflect.TypeOf(value)
-		zeroValue := reflect.Zero(vt).Interface()
-
-		return value != zeroValue
-	})
-
-	return Eq(values).ToSql()
+	return mpx.Msi(), nil
 }
 
 func applyWhere[T any](b any, pred interface{}, args ...interface{}) any {

@@ -136,3 +136,13 @@ func (s *ClientTestSuite) TestUpdate() {
 	_, err := s.client.Update().Set("name", "foobar").Where(dbx.Eq{"id": 1}).Exec(context.Background())
 	assert.NoError(s.T(), err)
 }
+
+func (s *ClientTestSuite) TestUpdateStruct() {
+	s.sqlMock.
+		ExpectExec("UPDATE test_table SET name = ? WHERE id = ?").
+		WithArgs("foobar", 1).
+		WillReturnResult(goSqlMock.NewResult(1, 1))
+
+	_, err := s.client.Update(TestEntity{Name: "foobar"}).Where(TestEntity{Id: 1}).Exec(context.Background())
+	assert.NoError(s.T(), err)
+}

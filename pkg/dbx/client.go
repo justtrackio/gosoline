@@ -17,7 +17,7 @@ type Client[T any] interface {
 	Insert(val T) InsertBuilder[T]
 	Replace(val T) InsertBuilder[T]
 	Select() SelectBuilder[T]
-	Update(updateMaps ...map[string]any) UpdateBuilder[T]
+	Update(updateMaps ...any) UpdateBuilder[T]
 }
 
 type client[T any] struct {
@@ -84,23 +84,36 @@ func (c *client[T]) Select() SelectBuilder[T] {
 	builder.Register(SelectBuilder[T]{}, selectData[T]{})
 
 	b := builder.Builder(builder.EmptyBuilder)
-	sb := SelectBuilder[T](b).Columns(c.columns...).From(c.table)
+	sb := SelectBuilder[T](b).columns(c.columns...).from(c.table)
 	sb = sb.placeholderFormat(Question)
 	sb = builder.Set(sb, "Client", c.client).(SelectBuilder[T])
 
 	return sb
 }
 
-func (c *client[T]) Update(updateMaps ...map[string]any) UpdateBuilder[T] {
+func (c *client[T]) Update(updateMaps ...any) UpdateBuilder[T] {
 	builder.Register(UpdateBuilder[T]{}, updateData[T]{})
 
 	b := builder.Builder(builder.EmptyBuilder)
-	sb := UpdateBuilder[T](b).Table(c.table)
+	sb := UpdateBuilder[T](b).table(c.table)
 	sb = sb.placeholderFormat(Question)
 	sb = builder.Set(sb, "Client", c.client).(UpdateBuilder[T])
 
-	finalMap := funk.MergeMaps(updateMaps...)
-	sb.SetMap(finalMap)
+	finalMap := make(map[string]any)
+	for _, updateMap := range updateMaps {
+		switch val := updateMap.(type) {
+		case map[string]any:
+			finalMap = funk.MergeMaps(finalMap, val)
+		case T:
+			msi, err := toNonZeroMap(val)
+			if err != nil {
+				err = fmt.Errorf("unable to convert struct to map: %w", err)
+				sb = builder.Set(sb, "Error", err).(UpdateBuilder[T])
+				continue
+			}
+			finalMap = funk.MergeMaps(finalMap, msi)
+		}
+	}
 
-	return sb
+	return sb.SetMap(finalMap)
 }

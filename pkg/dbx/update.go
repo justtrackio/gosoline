@@ -14,6 +14,7 @@ import (
 
 type updateData[T any] struct {
 	Client db.Client
+	Error  error
 
 	PlaceholderFormat PlaceholderFormat
 	Prefixes          []Sqlizer
@@ -32,6 +33,10 @@ type setClause struct {
 }
 
 func (d *updateData[T]) Exec(ctx context.Context) (sql.Result, error) {
+	if d.Error != nil {
+		return nil, fmt.Errorf("unable to execute update query: %w", d.Error)
+	}
+
 	var err error
 	var res sql.Result
 	var sql string
@@ -157,7 +162,7 @@ func (b UpdateBuilder[T]) PrefixExpr(expr Sqlizer) UpdateBuilder[T] {
 }
 
 // Table sets the table to be updated.
-func (b UpdateBuilder[T]) Table(table string) UpdateBuilder[T] {
+func (b UpdateBuilder[T]) table(table string) UpdateBuilder[T] {
 	return builder.Set(b, "Table", table).(UpdateBuilder[T])
 }
 

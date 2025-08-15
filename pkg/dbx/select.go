@@ -203,7 +203,7 @@ func (b SelectBuilder[T]) Options(options ...string) SelectBuilder[T] {
 }
 
 // Columns adds result columns to the query.
-func (b SelectBuilder[T]) Columns(columns ...string) SelectBuilder[T] {
+func (b SelectBuilder[T]) columns(columns ...string) SelectBuilder[T] {
 	parts := make([]interface{}, 0, len(columns))
 	for _, str := range columns {
 		parts = append(parts, newPart(str))
@@ -221,7 +221,7 @@ func (b SelectBuilder[T]) Column(column interface{}, args ...interface{}) Select
 }
 
 // From sets the FROM clause of the query.
-func (b SelectBuilder[T]) From(from string) SelectBuilder[T] {
+func (b SelectBuilder[T]) from(from string) SelectBuilder[T] {
 	return builder.Set(b, "From", newPart(from)).(SelectBuilder[T])
 }
 
