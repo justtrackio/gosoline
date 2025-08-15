@@ -602,6 +602,25 @@ func TestValuesInt(t *testing.T) {
 	assert.ElementsMatch(t, expected, values, "Values should contain all values in the map regardless of order")
 }
 
+func TestMapFilter(t *testing.T) {
+	m := map[string]int{
+		"a": 1,
+		"b": 2,
+		"c": 3,
+	}
+
+	expected := map[string]int{
+		"b": 2,
+		"c": 3,
+	}
+
+	actual := funk.MapFilter(m, func(key string, value int) bool {
+		return value > 1
+	})
+
+	assert.Equal(t, expected, actual)
+}
+
 func TestMapKeysNil(t *testing.T) {
 	var m1 map[int]string
 
