@@ -12,10 +12,11 @@ import (
 
 type Settings struct {
 	// Connection.
-	Bootstrap          []string      `cfg:"bootstrap" validate:"required"`
-	InsecureSkipVerify bool          `cfg:"insecure_skip_verify"`
-	TlsEnabled         bool          `cfg:"tls_enabled" default:"true"`
-	DialTimeout        time.Duration `cfg:"dial_timeout" default:"10s"`
+	Brokers               []string      `cfg:"brokers" validate:"required"`
+	SchemaRegistryAddress string        `cfg:"schema_registry_address"`
+	InsecureSkipVerify    bool          `cfg:"insecure_skip_verify"`
+	TlsEnabled            bool          `cfg:"tls_enabled" default:"true"`
+	DialTimeout           time.Duration `cfg:"dial_timeout" default:"10s"`
 
 	// Credentials.
 	Username string `cfg:"username"`
@@ -39,7 +40,7 @@ func BuildConnectionOptions(config cfg.Config, connectionName string) ([]kgo.Opt
 	}
 
 	options := []kgo.Opt{
-		kgo.SeedBrokers(conn.Bootstrap...),
+		kgo.SeedBrokers(conn.Brokers...),
 		kgo.DialTimeout(conn.DialTimeout),
 	}
 

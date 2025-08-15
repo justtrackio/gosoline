@@ -4,7 +4,8 @@ import "github.com/justtrackio/gosoline/pkg/cfg"
 
 type KafkaComponent struct {
 	baseComponent
-	brokerAddress string
+	brokerAddress         string
+	schemaRegistryAddress string
 }
 
 func (c KafkaComponent) CfgOptions() []cfg.Option {
@@ -13,14 +14,19 @@ func (c KafkaComponent) CfgOptions() []cfg.Option {
 			"kafka", map[string]any{
 				"connection": map[string]any{
 					"default": map[string]any{
-						"bootstrap":   []string{c.brokerAddress},
-						"tls_enabled": false,
+						"brokers":                 []string{c.brokerAddress},
+						"schema_registry_address": c.schemaRegistryAddress,
+						"tls_enabled":             false,
 					},
 				},
 			}),
 	}
 }
 
-func (c KafkaComponent) Address() string {
+func (c KafkaComponent) BrokerAddress() string {
 	return c.brokerAddress
+}
+
+func (c KafkaComponent) SchemaRegistryAddress() string {
+	return c.schemaRegistryAddress
 }

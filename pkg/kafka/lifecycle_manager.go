@@ -39,7 +39,7 @@ func NewLifecycleManager(connectionName string, topic string) reslife.LifeCyclee
 			return nil, fmt.Errorf("failed to parse kafka connection settings for connection name %q: %w", connectionName, err)
 		}
 
-		service, err := admin.NewService(ctx, logger, topic, conn.Bootstrap)
+		service, err := admin.NewService(ctx, logger, topic, conn.Brokers)
 		if err != nil {
 			return nil, fmt.Errorf("could not create kafka lifecycle manager: %w", err)
 		}

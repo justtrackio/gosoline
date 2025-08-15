@@ -3,6 +3,7 @@ package env
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	kafkaAdmin "github.com/justtrackio/gosoline/pkg/kafka/admin"
@@ -85,7 +86,20 @@ func (f *kafkaFactory) healthCheck() ComponentHealthCheck {
 			return fmt.Errorf("failed to list topics: %w", err)
 		}
 
-		return list.Error()
+		if list.Error() != nil {
+			return fmt.Errorf("failed to list topics: %w", list.Error())
+		}
+
+		resp, err := http.Get(fmt.Sprintf("http://%s/config", f.schemaRegistryAddress(container)))
+		if err != nil {
+			return fmt.Errorf("can not connect to schema registry: %w", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("schema registry status code error: %d %s", resp.StatusCode, resp.Status)
+		}
+
+		return nil
 	}
 }
 
@@ -122,11 +136,19 @@ func (f *kafkaFactory) brokerAddress(container *container) string {
 	return address
 }
 
+func (f *kafkaFactory) schemaRegistryAddress(container *container) string {
+	binding := container.bindings["8081/tcp"]
+	address := fmt.Sprintf("%s:%s", binding.host, binding.port)
+
+	return address
+}
+
 func (f *kafkaFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, _ any) (Component, error) {
 	main := containers["main"]
 
 	return &KafkaComponent{
-		baseComponent: baseComponent{},
-		brokerAddress: f.brokerAddress(main),
+		baseComponent:         baseComponent{},
+		brokerAddress:         f.brokerAddress(main),
+		schemaRegistryAddress: f.schemaRegistryAddress(main),
 	}, nil
 }

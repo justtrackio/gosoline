@@ -7,6 +7,7 @@ import (
 type EncodingType string
 
 const (
+	EncodingAvro     EncodingType = "application/avro"
 	EncodingJson     EncodingType = "application/json"
 	EncodingProtobuf EncodingType = "application/x-protobuf"
 )

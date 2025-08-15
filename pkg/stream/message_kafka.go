@@ -39,6 +39,8 @@ func NewKafkaMessage(message WritableMessage) (*kgo.Record, error) {
 	kafkaRecord := &kgo.Record{}
 	var body []byte
 
+	// if the message comes from the producer daemon it's a rawJsonMessage
+	// otherwise, it's a *Message
 	switch m := message.(type) {
 	case *Message:
 		body = []byte(m.Body)
