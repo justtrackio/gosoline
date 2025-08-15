@@ -2,6 +2,7 @@ package currency_test
 
 import (
 	"context"
+	net "net/http"
 	"testing"
 	"time"
 
@@ -76,6 +77,56 @@ var (
       </Cube>
    </Cube>
 </gesmes:Envelope>`
+	openExchangeRatesApiResponse = `{
+    "timestamp": 1698061860,
+    "base": "EUR",
+    "rates": {
+        "ADA": 3.77,
+        "USD": 1.5,
+        "ZAR": 19.07,
+        "NEWC": 42.42
+    }
+}`
+	openExchangeRatesApiResponseHistorical_2021_05_27 = `{
+    "timestamp": 1622073600,
+    "base": "EUR",
+    "rates": {
+        "ADA": 1.80,
+        "USD": 1.25
+    }
+}`
+	openExchangeRatesApiResponseHistorical_2021_05_26 = `{
+    "timestamp": 1621987200,
+    "base": "EUR",
+    "rates": {
+        "ADA": 1.77,
+        "USD": 1.20
+    }
+}`
+	openExchangeRatesApiResponseHistorical_2021_05_25 = `{
+    "timestamp": 1621900800,
+    "base": "EUR",
+    "rates": {
+        "ADA": 1.70,
+        "USD": 1.19
+    }
+}`
+	openExchangeRatesApiResponseHistorical_2021_05_24 = `{
+    "timestamp": 1621814400,
+    "base": "EUR",
+    "rates": {
+        "ADA": 1.68,
+        "USD": 1.18
+    }
+}`
+	openExchangeRatesApiResponseHistorical_2021_05_23 = `{
+    "timestamp": 1621728000,
+    "base": "EUR",
+    "rates": {
+        "ADA": 1.65,
+        "USD": 1.17
+    }
+}`
 )
 
 type updaterServiceTestSuite struct {
@@ -87,7 +138,8 @@ type updaterServiceTestSuite struct {
 	client *httpMock.Client
 	clock  clock.FakeClock
 
-	updater currency.UpdaterService
+	updater                         currency.UpdaterService
+	updaterWithOpenExchangeRatesApi currency.UpdaterService
 }
 
 func TestNewUpdaterService(t *testing.T) {
@@ -102,9 +154,16 @@ func (s *updaterServiceTestSuite) SetupTest() {
 	s.client = httpMock.NewClient(s.T())
 	s.clock = clock.NewFakeClockAt(time.Date(2021, 5, 27, 0, 0, 0, 0, time.UTC))
 
+	ecbProvider := currency.NewECBProviderWithInterfaces(s.logger, s.client)
+	openExchangeRatesApiProvider := currency.NewOpenExchangeRatesApiProviderWithInterfaces(s.logger, s.client, currency.ProviderSettings{ApiKey: "test", Priority: 1})
+
 	s.updater = currency.NewUpdaterWithInterfaces(s.logger, s.store, s.client, s.clock, &currency.Settings{
-		StartDate: time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC),
-	})
+		StartDate: time.Date(2021, 5, 23, 0, 0, 0, 0, time.UTC),
+	}, []currency.Provider{ecbProvider})
+
+	s.updaterWithOpenExchangeRatesApi = currency.NewUpdaterWithInterfaces(s.logger, s.store, s.client, s.clock, &currency.Settings{
+		StartDate: time.Date(2021, 5, 23, 0, 0, 0, 0, time.UTC),
+	}, []currency.Provider{ecbProvider, openExchangeRatesApiProvider})
 }
 
 func (s *updaterServiceTestSuite) TestEnsureRecentExchangeRates() {
@@ -112,9 +171,22 @@ func (s *updaterServiceTestSuite) TestEnsureRecentExchangeRates() {
 	s.store.EXPECT().Put(s.ctx, currency.ExchangeRateDateKey, mock.AnythingOfType("float64")).Return(nil)
 	s.store.EXPECT().Put(s.ctx, mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Return(nil)
 
-	s.mockHttpRequest(response)
+	s.mockHttpRequest(response, net.StatusOK)
 
 	err := s.updater.EnsureRecentExchangeRates(s.ctx)
+
+	s.NoError(err)
+}
+
+func (s *updaterServiceTestSuite) TestEnsureRecentExchangeRatesWithOpenExchangeRatesApi() {
+	s.mockCurrencyStoreGetTime(currency.ExchangeRateDateKey, s.clock.Now().AddDate(-1, 0, 0), true)
+	s.store.EXPECT().Put(s.ctx, currency.ExchangeRateDateKey, mock.AnythingOfType("float64")).Return(nil)
+	s.store.EXPECT().Put(s.ctx, mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Return(nil)
+
+	s.mockHttpRequest(response, net.StatusOK)
+	s.mockHttpRequest(openExchangeRatesApiResponse, net.StatusOK)
+
+	err := s.updaterWithOpenExchangeRatesApi.EnsureRecentExchangeRates(s.ctx)
 
 	s.NoError(err)
 }
@@ -122,8 +194,10 @@ func (s *updaterServiceTestSuite) TestEnsureRecentExchangeRates() {
 func (s *updaterServiceTestSuite) TestEnsureHistoricalExchangeRates() {
 	exchangeRates := map[string]float64{
 		"2021-05-27-USD": 1.2229,
+		"2021-05-27-JPY": 132.97,
 		"2021-05-27-BGN": 1.9558,
 		"2021-05-26-USD": 1.2229,
+		"2021-05-26-JPY": 132.97,
 		"2021-05-26-BGN": 1.9558,
 		"2021-05-25-USD": 1.2212,
 		"2021-05-25-JPY": 132.97,
@@ -136,9 +210,44 @@ func (s *updaterServiceTestSuite) TestEnsureHistoricalExchangeRates() {
 	s.store.EXPECT().PutBatch(s.ctx, exchangeRates).Return(nil)
 	s.store.EXPECT().Put(s.ctx, currency.HistoricalExchangeRateDateKey, float64(s.clock.Now().Unix())).Return(nil)
 
-	s.mockHttpRequest(historicalResponse)
-
+	s.mockHttpRequest(historicalResponse, net.StatusOK)
 	err := s.updater.EnsureHistoricalExchangeRates(s.ctx)
+
+	s.NoError(err)
+}
+
+func (s *updaterServiceTestSuite) TestEnsureHistoricalExchangeRatesWithOpenExchangeRatesApi() {
+	exchangeRates := map[string]float64{
+		"2021-05-27-USD": 1.25,
+		"2021-05-27-JPY": 132.97,
+		"2021-05-27-BGN": 1.9558,
+		"2021-05-27-ADA": 1.80,
+		"2021-05-26-USD": 1.2229,
+		"2021-05-26-JPY": 132.97,
+		"2021-05-26-BGN": 1.9558,
+		"2021-05-26-ADA": 1.77,
+		"2021-05-25-USD": 1.19,
+		"2021-05-25-JPY": 132.97,
+		"2021-05-25-ADA": 1.70,
+		"2021-05-24-USD": 1.18,
+		"2021-05-24-JPY": 132.97,
+		"2021-05-24-ADA": 1.68,
+		"2021-05-23-USD": 1.2212,
+		"2021-05-23-JPY": 132.97,
+		"2021-05-23-ADA": 1.65,
+	}
+	s.mockCurrencyStoreGetTime(currency.HistoricalExchangeRateDateKey, time.Time{}, false)
+	s.store.EXPECT().PutBatch(s.ctx, exchangeRates).Return(nil)
+	s.store.EXPECT().Put(s.ctx, currency.HistoricalExchangeRateDateKey, float64(s.clock.Now().Unix())).Return(nil)
+
+	s.mockHttpRequest(historicalResponse, net.StatusOK)
+	s.mockHttpRequest(openExchangeRatesApiResponseHistorical_2021_05_23, net.StatusOK)
+	s.mockHttpRequest(openExchangeRatesApiResponseHistorical_2021_05_24, net.StatusOK)
+	s.mockHttpRequest(openExchangeRatesApiResponseHistorical_2021_05_25, net.StatusOK)
+	s.mockHttpRequest(openExchangeRatesApiResponseHistorical_2021_05_26, net.StatusOK)
+	s.mockHttpRequest(openExchangeRatesApiResponseHistorical_2021_05_27, net.StatusOK)
+
+	err := s.updaterWithOpenExchangeRatesApi.EnsureHistoricalExchangeRates(s.ctx)
 
 	s.NoError(err)
 }
@@ -148,10 +257,13 @@ func (s *updaterServiceTestSuite) TestEnsureHistoricalExchangeRatesTwoGapDaysAtE
 
 	exchangeRates := map[string]float64{
 		"2021-05-28-USD": 1.2229,
+		"2021-05-28-JPY": 132.97,
 		"2021-05-28-BGN": 1.9558,
 		"2021-05-27-USD": 1.2229,
+		"2021-05-27-JPY": 132.97,
 		"2021-05-27-BGN": 1.9558,
 		"2021-05-26-USD": 1.2229,
+		"2021-05-26-JPY": 132.97,
 		"2021-05-26-BGN": 1.9558,
 		"2021-05-25-USD": 1.2212,
 		"2021-05-25-JPY": 132.97,
@@ -164,7 +276,7 @@ func (s *updaterServiceTestSuite) TestEnsureHistoricalExchangeRatesTwoGapDaysAtE
 	s.store.EXPECT().PutBatch(s.ctx, exchangeRates).Return(nil)
 	s.store.EXPECT().Put(s.ctx, currency.HistoricalExchangeRateDateKey, float64(s.clock.Now().Unix())).Return(nil)
 
-	s.mockHttpRequest(historicalResponse)
+	s.mockHttpRequest(historicalResponse, net.StatusOK)
 
 	err := s.updater.EnsureHistoricalExchangeRates(s.ctx)
 
@@ -177,9 +289,10 @@ func (s *updaterServiceTestSuite) mockCurrencyStoreGetTime(key string, value tim
 	}).Return(found, nil).Once()
 }
 
-func (s *updaterServiceTestSuite) mockHttpRequest(body string) {
+func (s *updaterServiceTestSuite) mockHttpRequest(body string, statusCode int) {
 	r := &http.Response{
-		Body: []byte(body),
+		Body:       []byte(body),
+		StatusCode: statusCode,
 	}
 
 	s.client.EXPECT().NewRequest().Return(http.NewRequest(nil)).Once()

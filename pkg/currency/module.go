@@ -32,6 +32,10 @@ type Module struct {
 // ensure interface compatibility
 var _ kernel.HealthCheckedModule = Module{}
 
+// NewCurrencyModule returns a kernel module factory for the currency module.
+// The module will start a background process that periodically updates exchange rates from configured providers.
+// By default, it will update historical exchange rates for the last 30 days.
+// If you need to create a new table with all the data, it is recommended to copy data from an existing table.
 func NewCurrencyModule() kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		updater, err := NewUpdater(ctx, config, logger)
