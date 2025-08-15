@@ -38,6 +38,14 @@ type HistoricalExchangeResponse struct {
 	Body    HistoricalBody `xml:"Cube"`
 }
 
+type FxRatesApiResponse struct {
+	Success   bool               `json:"success"`
+	Timestamp int64              `json:"timestamp"`
+	Date      string             `json:"date"`
+	Base      string             `json:"base"`
+	Rates     map[string]float64 `json:"rates"`
+}
+
 func (c Content) GetTime() (time.Time, error) {
 	t, err := time.Parse("2006-01-02", c.Time)
 	if err != nil {

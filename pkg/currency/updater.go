@@ -2,6 +2,7 @@ package currency
 
 import (
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"time"
@@ -15,16 +16,24 @@ import (
 
 const (
 	ExchangeRateRefresh           = 8 * time.Hour
-	ExchangeRateUrl               = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
-	HistoricalExchangeRateUrl     = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml"
+	ExchangeRateECBUrl            = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
+	HistoricalExchangeRateECBUrl  = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml"
 	ExchangeRateDateKey           = "currency_exchange_last_refresh"
 	HistoricalExchangeRateDateKey = "currency_exchange_historical_last_refresh"
+	ExchangeRateFxRatesUrl        = "https://api.fxratesapi.com/"
 )
 
-const YMDLayout = "2006-01-02"
+const (
+	YMDLayout = "2006-01-02"
+	// RatesAmount
+	// We expect to have around 180 currencies in total (ECB + fxratesapi.com).
+	// It's okay to exceed the limit, but it's nice to avoid unnecessary reallocations.
+	RatesAmount = 180
+)
 
 type Settings struct {
-	StartDate time.Time `cfg:"start_date" default:"2015-01-01"`
+	StartDate     time.Time `cfg:"start_date" default:"2015-01-01"`
+	FxRatesApiKey string    `cfg:"fxratesapi_key"`
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name UpdaterService
@@ -57,6 +66,10 @@ func NewUpdater(ctx context.Context, config cfg.Config, logger log.Logger) (Upda
 	settings := &Settings{}
 	if err := config.UnmarshalKey("currency_service", settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal currency updater settings: %w", err)
+	}
+
+	if settings.FxRatesApiKey == "" {
+		logger.Warn("fxratesapi_key not set in config, fxratesapi.com rates will not be used")
 	}
 
 	return NewUpdaterWithInterfaces(logger, store, httpClient, clock.Provider, settings), nil
@@ -143,7 +156,7 @@ func (s *updaterService) needsRefresh(ctx context.Context) bool {
 }
 
 func (s *updaterService) getCurrencyRates(ctx context.Context) ([]Rate, error) {
-	request := s.http.NewRequest().WithUrl(ExchangeRateUrl)
+	request := s.http.NewRequest().WithUrl(ExchangeRateECBUrl)
 
 	response, err := s.http.Get(ctx, request)
 	if err != nil {
@@ -156,7 +169,40 @@ func (s *updaterService) getCurrencyRates(ctx context.Context) ([]Rate, error) {
 		return nil, fmt.Errorf("error unmarshalling exchange rates: %w", err)
 	}
 
-	return exchangeRateResult.Body.Content.Rates, nil
+	rates := make([]Rate, 0, RatesAmount)
+	rates = append(rates, exchangeRateResult.Body.Content.Rates...)
+
+	ecbRateMap := make(map[string]float64)
+	for _, r := range rates {
+		ecbRateMap[r.Currency] = r.Rate
+	}
+
+	if s.settings.FxRatesApiKey == "" {
+		s.logger.Warn("fxrates api key is not provided, skipping request to fxratesapi.com rates for recent data")
+
+		return rates, nil
+	}
+
+	url := ExchangeRateFxRatesUrl + "latest?api_key=" + s.settings.FxRatesApiKey + "&base=EUR"
+
+	fxRates, err := s.getFxRatesApiRates(ctx, url)
+	if err != nil {
+		s.logger.Warn("could not fetch fxratesapi.com rates: %s", err)
+
+		return rates, nil
+	}
+
+	if fxRates == nil {
+		return rates, nil
+	}
+
+	for currency, rate := range fxRates {
+		if _, exists := ecbRateMap[currency]; !exists {
+			rates = append(rates, Rate{Currency: currency, Rate: rate})
+		}
+	}
+
+	return rates, nil
 }
 
 func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) error {
@@ -182,6 +228,15 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 	rates, err = fillInGapDays(rates, s.clock)
 	if err != nil {
 		return fmt.Errorf("error filling in gaps: %w", err)
+	}
+
+	if s.settings.FxRatesApiKey == "" {
+		s.logger.Warn("fxrates api key is not provided, skipping request to fxratesapi.com rates for historical data")
+	} else {
+		rates, err = s.feedWithFxRatesApiRates(ctx, rates)
+		if err != nil {
+			s.logger.Warn("error during feeding historical data with fxrates data: %w", err)
+		}
 	}
 
 	keyValues := make(map[string]float64)
@@ -215,6 +270,61 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 	return nil
 }
 
+func (s *updaterService) getFxRatesApiRates(ctx context.Context, url string) (map[string]float64, error) {
+	request := s.http.NewRequest().WithUrl(url)
+
+	response, err := s.http.Get(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("error requesting fxratesapi.com rates: %w", err)
+	}
+
+	var fxResp FxRatesApiResponse
+
+	err = json.Unmarshal(response.Body, &fxResp)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling fxratesapi.com rates: %w", err)
+	}
+
+	if !fxResp.Success {
+		return nil, fmt.Errorf("fxratesapi.com response not successful")
+	}
+
+	return fxResp.Rates, nil
+}
+
+func (s *updaterService) feedWithFxRatesApiRates(ctx context.Context, rates []Content) ([]Content, error) {
+	for i, dayRates := range rates {
+		date, err := dayRates.GetTime()
+		if err != nil {
+			return rates, fmt.Errorf("error parsing time in historical exchange rates: %w", err)
+		}
+
+		url := ExchangeRateFxRatesUrl + "historical?api_key=" + s.settings.FxRatesApiKey + "&base=EUR" + "&date=" + date.Format(YMDLayout)
+
+		fxRates, err := s.getFxRatesApiRates(ctx, url)
+		if err != nil {
+			s.logger.Warn("could not fetch fxratesapi.com rates for the date %s: %s", date.Format(YMDLayout), err)
+			// we don't fail the whole process if we can't get fxratesapi.com data for a specific day
+			continue
+		}
+
+		present := make(map[string]bool)
+		for _, rate := range dayRates.Rates {
+			present[rate.Currency] = true
+		}
+
+		for currency, rate := range fxRates {
+			if !present[currency] {
+				dayRates.Rates = append(dayRates.Rates, Rate{Currency: currency, Rate: rate})
+			}
+		}
+
+		rates[i] = dayRates
+	}
+
+	return rates, nil
+}
+
 func (s *updaterService) historicalRatesNeedRefresh(ctx context.Context) bool {
 	logger := s.logger.WithContext(ctx)
 
@@ -246,7 +356,7 @@ func (s *updaterService) historicalRatesNeedRefresh(ctx context.Context) bool {
 }
 
 func (s *updaterService) fetchExchangeRates(ctx context.Context) ([]Content, error) {
-	request := s.http.NewRequest().WithUrl(HistoricalExchangeRateUrl)
+	request := s.http.NewRequest().WithUrl(HistoricalExchangeRateECBUrl)
 
 	response, err := s.http.Get(ctx, request)
 	if err != nil {
