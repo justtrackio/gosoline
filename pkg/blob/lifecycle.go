@@ -14,12 +14,14 @@ const MetadataKey = "blob.stores"
 type Metadata struct {
 	AwsClientName string `json:"aws_client_name"`
 	Bucket        string `json:"bucket"`
+	Name          string `json:"name"`
 	Prefix        string `json:"prefix"`
 }
 
 type lifecycleManager struct {
 	service  *Service
 	settings *Settings
+	name     string
 }
 
 type LifecycleManager interface {
@@ -31,7 +33,7 @@ type LifecycleManager interface {
 
 var _ LifecycleManager = (*lifecycleManager)(nil)
 
-func NewLifecycleManager(settings *Settings) reslife.LifeCycleerFactory {
+func NewLifecycleManager(settings *Settings, name string) reslife.LifeCycleerFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (reslife.LifeCycleer, error) {
 		var err error
 		var service *Service
@@ -43,12 +45,13 @@ func NewLifecycleManager(settings *Settings) reslife.LifeCycleerFactory {
 		return &lifecycleManager{
 			service:  service,
 			settings: settings,
+			name:     name,
 		}, nil
 	}
 }
 
 func (l *lifecycleManager) GetId() string {
-	return fmt.Sprintf("blob/%s", l.settings.Bucket)
+	return fmt.Sprintf("blob/%s", l.name)
 }
 
 func (l *lifecycleManager) Create(ctx context.Context) error {
@@ -59,6 +62,7 @@ func (l *lifecycleManager) Register(ctx context.Context) (key string, metadata a
 	metadata = Metadata{
 		AwsClientName: l.settings.ClientName,
 		Bucket:        l.settings.Bucket,
+		Name:          l.name,
 		Prefix:        l.settings.Prefix,
 	}
 

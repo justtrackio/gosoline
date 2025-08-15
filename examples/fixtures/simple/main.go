@@ -154,10 +154,9 @@ func dynamodbFixtureSet(ctx context.Context, config cfg.Config, logger log.Logge
 }
 
 func blobFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
-	blobWriter, err := blob.NewBlobFixtureWriter(ctx, config, logger, &blob.BlobFixturesSettings{
-		ConfigName: "test",
-		BasePath:   "../../../test/fixtures/s3/test_data/s3_fixtures_test_data",
-	})
+	fileReaderFactory := blob.NewFileReader("../../../test/fixtures/blob/test_data/fixtures_test_data")
+
+	blobWriter, err := blob.NewBlobFixtureWriter(ctx, config, logger, fileReaderFactory, "test")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize blob writer: %w", err)
 	}

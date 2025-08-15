@@ -1,32 +1,19 @@
 package blob
 
 import (
+	"context"
 	"fmt"
-	"sync"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
-var brc = struct {
-	sync.Mutex
-	instance *BatchRunnerChannels
-}{}
+type blobRunnerChannelsKey string
 
-func ProvideBatchRunnerChannels(config cfg.Config) (*BatchRunnerChannels, error) {
-	brc.Lock()
-	defer brc.Unlock()
-
-	if brc.instance != nil {
-		return brc.instance, nil
-	}
-
-	instance, err := NewBatchRunnerChannels(config)
-	if err != nil {
-		return nil, err
-	}
-	brc.instance = instance
-
-	return brc.instance, nil
+func ProvideBatchRunnerChannels(ctx context.Context, config cfg.Config, name string) (*BatchRunnerChannels, error) {
+	return appctx.Provide(ctx, blobRunnerChannelsKey(name), func() (*BatchRunnerChannels, error) {
+		return NewBatchRunnerChannels(config, name)
+	})
 }
 
 type BatchRunnerChannels struct {
@@ -36,9 +23,10 @@ type BatchRunnerChannels struct {
 	delete chan *Object
 }
 
-func NewBatchRunnerChannels(config cfg.Config) (*BatchRunnerChannels, error) {
+func NewBatchRunnerChannels(config cfg.Config, name string) (*BatchRunnerChannels, error) {
 	settings := &BatchRunnerSettings{}
-	if err := config.UnmarshalKey("blob", settings); err != nil {
+	configKey := getConfigKey(name)
+	if err := config.UnmarshalKey(configKey, settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal batch runner settings: %w", err)
 	}
 
