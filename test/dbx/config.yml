@@ -1,0 +1,23 @@
+env: test
+
+app_project: justtrack
+app_family: gosoline
+app_group: dbx
+app_name: client_test
+
+db:
+  default:
+    driver: mysql
+    uri:
+      host: 127.0.0.1
+      port: 3306
+      user: root
+      password:
+      database: gosoline
+    migrations:
+      path: .
+
+test:
+  components:
+    mysql:
+      default: ~

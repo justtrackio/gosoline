@@ -122,6 +122,18 @@ func Values[K comparable, V any, M ~map[K]V](m M) []V {
 	return values
 }
 
+func MapFilter[K comparable, V any, M ~map[K]V](m M, f func(key K, value V) bool) map[K]V {
+	filteredMap := map[K]V{}
+
+	for k, v := range m {
+		if f(k, v) {
+			filteredMap[k] = v
+		}
+	}
+
+	return filteredMap
+}
+
 // MapKeys applies a function to every key from a map. If the function maps two keys to the same new value,
 // the result is undefined (one of the values will be randomly chosen).
 func MapKeys[K1 comparable, K2 comparable, V any, M1 ~map[K1]V](m M1, f func(key K1) K2) map[K2]V {
