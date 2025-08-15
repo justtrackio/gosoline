@@ -29,7 +29,7 @@ type updateData[T any] struct {
 
 type setClause struct {
 	column string
-	value  interface{}
+	value  any
 }
 
 func (d *updateData[T]) Exec(ctx context.Context) (sql.Result, error) {
@@ -40,7 +40,7 @@ func (d *updateData[T]) Exec(ctx context.Context) (sql.Result, error) {
 	var err error
 	var res sql.Result
 	var sql string
-	var args []interface{}
+	var args []any
 
 	if sql, args, err = d.toSql(); err != nil {
 		return nil, fmt.Errorf("unable to build update query: %w", err)
@@ -53,7 +53,7 @@ func (d *updateData[T]) Exec(ctx context.Context) (sql.Result, error) {
 	return res, nil
 }
 
-func (d *updateData[T]) toSql() (sqlStr string, args []interface{}, err error) {
+func (d *updateData[T]) toSql() (sqlStr string, args []any, err error) {
 	if len(d.Table) == 0 {
 		err = fmt.Errorf("update statements must specify a table")
 		return
@@ -152,7 +152,7 @@ func (b UpdateBuilder[T]) placeholderFormat(f PlaceholderFormat) UpdateBuilder[T
 // SQL methods
 
 // Prefix adds an expression to the beginning of the query
-func (b UpdateBuilder[T]) Prefix(sql string, args ...interface{}) UpdateBuilder[T] {
+func (b UpdateBuilder[T]) Prefix(sql string, args ...any) UpdateBuilder[T] {
 	return b.PrefixExpr(Expr(sql, args...))
 }
 
@@ -167,12 +167,12 @@ func (b UpdateBuilder[T]) table(table string) UpdateBuilder[T] {
 }
 
 // Set adds SET clauses to the query.
-func (b UpdateBuilder[T]) Set(column string, value interface{}) UpdateBuilder[T] {
+func (b UpdateBuilder[T]) Set(column string, value any) UpdateBuilder[T] {
 	return builder.Append(b, "SetClauses", setClause{column: column, value: value}).(UpdateBuilder[T])
 }
 
 // SetMap is a convenience method which calls .Set for each key/value pair in clauses.
-func (b UpdateBuilder[T]) SetMap(clauses map[string]interface{}) UpdateBuilder[T] {
+func (b UpdateBuilder[T]) SetMap(clauses map[string]any) UpdateBuilder[T] {
 	keys := make([]string, len(clauses))
 	i := 0
 	for key := range clauses {
@@ -190,7 +190,7 @@ func (b UpdateBuilder[T]) SetMap(clauses map[string]interface{}) UpdateBuilder[T
 // Where adds WHERE expressions to the query.
 //
 // See SelectBuilder.Where for more information.
-func (b UpdateBuilder[T]) Where(pred interface{}, args ...interface{}) UpdateBuilder[T] {
+func (b UpdateBuilder[T]) Where(pred any, args ...any) UpdateBuilder[T] {
 	return applyWhere[T](b, pred, args...).(UpdateBuilder[T])
 }
 
@@ -210,7 +210,7 @@ func (b UpdateBuilder[T]) Offset(offset uint64) UpdateBuilder[T] {
 }
 
 // Suffix adds an expression to the end of the query
-func (b UpdateBuilder[T]) Suffix(sql string, args ...interface{}) UpdateBuilder[T] {
+func (b UpdateBuilder[T]) Suffix(sql string, args ...any) UpdateBuilder[T] {
 	return b.SuffixExpr(Expr(sql, args...))
 }
 

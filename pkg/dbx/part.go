@@ -6,15 +6,15 @@ import (
 )
 
 type part struct {
-	pred interface{}
-	args []interface{}
+	pred any
+	args []any
 }
 
-func newPart(pred interface{}, args ...interface{}) Sqlizer {
+func newPart(pred any, args ...any) Sqlizer {
 	return &part{pred, args}
 }
 
-func (p part) ToSql() (sql string, args []interface{}, err error) {
+func (p part) ToSql() (sql string, args []any, err error) {
 	switch pred := p.pred.(type) {
 	case nil:
 		// no-op
@@ -29,7 +29,7 @@ func (p part) ToSql() (sql string, args []interface{}, err error) {
 	return
 }
 
-func nestedToSql(s Sqlizer) (string, []interface{}, error) {
+func nestedToSql(s Sqlizer) (string, []any, error) {
 	if raw, ok := s.(rawSqlizer); ok {
 		return raw.toSqlRaw()
 	} else {
@@ -37,7 +37,7 @@ func nestedToSql(s Sqlizer) (string, []interface{}, error) {
 	}
 }
 
-func appendToSql(parts []Sqlizer, w io.Writer, sep string, args []interface{}) ([]interface{}, error) {
+func appendToSql(parts []Sqlizer, w io.Writer, sep string, args []any) ([]any, error) {
 	for i, p := range parts {
 		partSql, partArgs, err := nestedToSql(p)
 		if err != nil {

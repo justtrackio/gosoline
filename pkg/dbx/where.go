@@ -9,11 +9,11 @@ import (
 
 type wherePart part
 
-func newWherePart(pred interface{}, args ...interface{}) Sqlizer {
+func newWherePart(pred any, args ...any) Sqlizer {
 	return &wherePart{pred: pred, args: args}
 }
 
-func (p wherePart) ToSql() (sql string, args []interface{}, err error) {
+func (p wherePart) ToSql() (sql string, args []any, err error) {
 	switch pred := p.pred.(type) {
 	case nil:
 		// no-op
@@ -21,7 +21,7 @@ func (p wherePart) ToSql() (sql string, args []interface{}, err error) {
 		return pred.toSqlRaw()
 	case Sqlizer:
 		return pred.ToSql()
-	case map[string]interface{}:
+	case map[string]any:
 		return Eq(pred).ToSql()
 	case string:
 		return pred, p.args, nil
@@ -36,7 +36,7 @@ type whereStruct[T any] struct {
 	val T
 }
 
-func (p whereStruct[T]) ToSql() (sql string, args []interface{}, err error) {
+func (p whereStruct[T]) ToSql() (sql string, args []any, err error) {
 	var msi map[string]any
 
 	if msi, err = toNonZeroMap(p.val); err != nil {
@@ -62,7 +62,7 @@ func toNonZeroMap[T any](val T) (map[string]any, error) {
 	return mpx.Msi(), nil
 }
 
-func applyWhere[T any](b any, pred interface{}, args ...interface{}) any {
+func applyWhere[T any](b any, pred any, args ...any) any {
 	if pred == nil || pred == "" {
 		return b
 	}

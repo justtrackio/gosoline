@@ -12,11 +12,27 @@ import (
 	"github.com/lann/builder"
 )
 
+// Client is the main entry point to the package. It is used to create query builders.
 type Client[T any] interface {
+	// Delete creates a new DELETE query builder.
+	//
+	//	_, err := client.Delete().Where(dbx.Eq{"id": 1}).Exec(ctx)
 	Delete() DeleteBuilder[T]
+	// Insert creates a new INSERT query builder.
+	//
+	//	_, err := client.Insert(YourModel{Id: 1, Name: "test"}).Exec(ctx)
 	Insert(val T) InsertBuilder[T]
+	// Replace creates a new REPLACE query builder.
+	//
+	//	_, err := client.Replace(YourModel{Id: 1, Name: "test"}).Exec(ctx)
 	Replace(val T) InsertBuilder[T]
+	// Select creates a new SELECT query builder.
+	//
+	//	results, err := client.Select().Where(dbx.Eq{"id": 1}).Exec(ctx)
 	Select() SelectBuilder[T]
+	// Update creates a new UPDATE query builder.
+	//
+	//	_, err := client.Update(map[string]any{"name": "new_name"}).Where(dbx.Eq{"id": 1}).Exec(ctx)
 	Update(updateMaps ...any) UpdateBuilder[T]
 }
 
@@ -27,6 +43,11 @@ type client[T any] struct {
 	arguments []string
 }
 
+// NewClient creates a new dbx client.
+// It takes a context, a config, a logger, a client name and a table name as arguments.
+// The client name is the name of the database client to use, as configured in your application's configuration file.
+// The table name is the name of the database table.
+// It returns a new client or an error if the client could not be created.
 func NewClient[T any](ctx context.Context, config cfg.Config, logger log.Logger, clientName string, table string) (*client[T], error) {
 	var err error
 	var client db.Client
@@ -38,6 +59,9 @@ func NewClient[T any](ctx context.Context, config cfg.Config, logger log.Logger,
 	return NewClientWithInterfaces[T](client, table), nil
 }
 
+// NewClientWithInterfaces creates a new dbx client with a given database client.
+// It takes a database client and a table name as arguments.
+// It returns a new client.
 func NewClientWithInterfaces[T any](dbClient db.Client, table string) *client[T] {
 	columns := refl.GetTags(new(T), "db")
 	arguments := funk.Map(columns, func(column string) string {
@@ -52,6 +76,9 @@ func NewClientWithInterfaces[T any](dbClient db.Client, table string) *client[T]
 	}
 }
 
+// Delete creates a new DELETE query builder.
+//
+//	_, err := client.Delete().Where(dbx.Eq{"id": 1}).Exec(ctx)
 func (c *client[T]) Delete() DeleteBuilder[T] {
 	builder.Register(DeleteBuilder[T]{}, deleteData[T]{})
 
@@ -63,6 +90,9 @@ func (c *client[T]) Delete() DeleteBuilder[T] {
 	return db
 }
 
+// Insert creates a new INSERT query builder.
+//
+//	_, err := client.Insert(YourModel{Id: 1, Name: "test"}).Exec(ctx)
 func (c *client[T]) Insert(val T) InsertBuilder[T] {
 	builder.Register(InsertBuilder[T]{}, insertData[T]{})
 
@@ -73,6 +103,9 @@ func (c *client[T]) Insert(val T) InsertBuilder[T] {
 	return ib
 }
 
+// Replace creates a new REPLACE query builder.
+//
+//	_, err := client.Replace(YourModel{Id: 1, Name: "test"}).Exec(ctx)
 func (c *client[T]) Replace(val T) InsertBuilder[T] {
 	rb := c.Insert(val)
 	rb = rb.statementKeyword("REPLACE")
@@ -80,6 +113,9 @@ func (c *client[T]) Replace(val T) InsertBuilder[T] {
 	return rb
 }
 
+// Select creates a new SELECT query builder.
+//
+//	results, err := client.Select().Where(dbx.Eq{"id": 1}).Exec(ctx)
 func (c *client[T]) Select() SelectBuilder[T] {
 	builder.Register(SelectBuilder[T]{}, selectData[T]{})
 
@@ -91,6 +127,9 @@ func (c *client[T]) Select() SelectBuilder[T] {
 	return sb
 }
 
+// Update creates a new UPDATE query builder.
+//
+//	_, err := client.Update(map[string]any{"name": "new_name"}).Where(dbx.Eq{"id": 1}).Exec(ctx)
 func (c *client[T]) Update(updateMaps ...any) UpdateBuilder[T] {
 	builder.Register(UpdateBuilder[T]{}, updateData[T]{})
 

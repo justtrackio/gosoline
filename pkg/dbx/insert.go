@@ -98,7 +98,7 @@ func (d *insertData[T]) toSql() (sqlStr string, err error) {
 	return sql.String(), nil
 }
 
-func (d *insertData[T]) appendValuesToSQL(w io.Writer, args []interface{}) ([]interface{}, error) {
+func (d *insertData[T]) appendValuesToSQL(w io.Writer, args []any) ([]any, error) {
 	io.WriteString(w, "VALUES ")
 
 	valueStrings := funk.Map(d.Columns, func(c string) string {
@@ -123,7 +123,7 @@ func (b InsertBuilder[T]) Exec(ctx context.Context) (sql.Result, error) {
 // SQL methods
 
 // Prefix adds an expression to the beginning of the query
-func (b InsertBuilder[T]) Prefix(sql string, args ...interface{}) InsertBuilder[T] {
+func (b InsertBuilder[T]) Prefix(sql string, args ...any) InsertBuilder[T] {
 	return b.PrefixExpr(Expr(sql, args...))
 }
 
@@ -153,7 +153,7 @@ func (b InsertBuilder[T]) value(value T) InsertBuilder[T] {
 }
 
 // Suffix adds an expression to the end of the query
-func (b InsertBuilder[T]) Suffix(sql string, args ...interface{}) InsertBuilder[T] {
+func (b InsertBuilder[T]) Suffix(sql string, args ...any) InsertBuilder[T] {
 	return b.SuffixExpr(Expr(sql, args...))
 }
 

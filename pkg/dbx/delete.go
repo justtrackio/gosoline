@@ -28,7 +28,7 @@ func (d *deleteData[T]) Exec(ctx context.Context) (sql.Result, error) {
 	var err error
 	var res sql.Result
 	var sql string
-	var args []interface{}
+	var args []any
 
 	if sql, args, err = d.toSql(); err != nil {
 		return nil, fmt.Errorf("unable to build update query: %w", err)
@@ -41,7 +41,7 @@ func (d *deleteData[T]) Exec(ctx context.Context) (sql.Result, error) {
 	return res, nil
 }
 
-func (d *deleteData[T]) toSql() (sqlStr string, args []interface{}, err error) {
+func (d *deleteData[T]) toSql() (sqlStr string, args []any, err error) {
 	if len(d.From) == 0 {
 		err = fmt.Errorf("delete statements must specify a From table")
 		return
@@ -120,7 +120,7 @@ func (b DeleteBuilder[T]) Exec(ctx context.Context) (sql.Result, error) {
 // SQL methods
 
 // Prefix adds an expression to the beginning of the query
-func (b DeleteBuilder[T]) Prefix(sql string, args ...interface{}) DeleteBuilder[T] {
+func (b DeleteBuilder[T]) Prefix(sql string, args ...any) DeleteBuilder[T] {
 	return b.PrefixExpr(Expr(sql, args...))
 }
 
@@ -137,7 +137,7 @@ func (b DeleteBuilder[T]) from(from string) DeleteBuilder[T] {
 // Where adds WHERE expressions to the query.
 //
 // See SelectBuilder.Where for more information.
-func (b DeleteBuilder[T]) Where(pred interface{}, args ...interface{}) DeleteBuilder[T] {
+func (b DeleteBuilder[T]) Where(pred any, args ...any) DeleteBuilder[T] {
 	return applyWhere[T](b, pred, args...).(DeleteBuilder[T])
 }
 
@@ -157,7 +157,7 @@ func (b DeleteBuilder[T]) Offset(offset uint64) DeleteBuilder[T] {
 }
 
 // Suffix adds an expression to the end of the query
-func (b DeleteBuilder[T]) Suffix(sql string, args ...interface{}) DeleteBuilder[T] {
+func (b DeleteBuilder[T]) Suffix(sql string, args ...any) DeleteBuilder[T] {
 	return b.SuffixExpr(Expr(sql, args...))
 }
 
