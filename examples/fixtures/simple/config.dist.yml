@@ -1,0 +1,50 @@
+env: test
+
+app_project: mcoins
+app_family: marketing
+app_group: tdm
+app_name: gateway
+
+fixtures:
+  enabled: true
+
+blob:
+  default:
+    prefix: blob-store-fixtures
+
+httpserver:
+  default:
+    port: 8088
+    mode: release
+    timeout:
+      read: 300s
+      write: 300s
+      idle: 300s
+    auth:
+      jwt:
+        signingSecret: 256cdd52-8a47-47c8-852a-664eca74acd0
+        issuer: justtrack
+
+api_cors_allowed_origin_pattern: "([-\\w]+\\.(applike|justtrack|marketing-sandbox|justtest)-?(services|marketing|sales|payout)?\\.(info|io))|(https://n-wwoyw6mubvh7bz54zedvvbyhl4qzcx6lo24c2vq-0lu-script\\.googleusercontent\\.com)"
+api_cors_allowed_headers: [ "X-API-KEY", "X-BUSINESS-UNIT-ID", "X-API-VIEW", "X-Request-ID", "X-Session-ID", "Content-Type", "Cache-Control", "Referer", "Authorization"]
+api_cors_allowed_methods: [ "POST", "GET", "PUT", "PATCH", "DELETE"]
+
+db:
+  default:
+    driver: mysql
+    max_idle_connections: 20
+    max_open_connections: 20
+    connection_max_lifetime: 60s
+    parse_time: true
+    parameters:
+      FOREIGN_KEY_CHECKS: 0
+    uri:
+      host: 127.0.0.1
+      port: 3306
+      user: root
+      password: justtrack
+      database: tdm
+    migrations:
+      enabled: true
+      table_prefixed: false
+      path: ./migrations

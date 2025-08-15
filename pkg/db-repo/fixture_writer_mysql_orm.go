@@ -74,7 +74,7 @@ func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fixtures []any) error
 
 	for _, item := range fixtures {
 		if model, ok = item.(ModelBased); !ok {
-			return fmt.Errorf("can not convert model %T to db_repo.ModelBased", item)
+			return fmt.Errorf("assertion failed: %T is not db_repo.ModelBased", item)
 		}
 
 		err := m.repo.Update(ctx, model)
