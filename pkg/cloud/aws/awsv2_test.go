@@ -74,6 +74,10 @@ func TestUnmarshalClientSettings(t *testing.T) {
 			SecretAccessKey: "secret access key",
 			SessionToken:    "session token",
 		},
+		CredentialsCacheOpts: aws.CredentialsCacheOptions{
+			ExpiryWindow:           5 * time.Minute,
+			ExpiryWindowJitterFrac: 0.1,
+		},
 		HttpClient: aws.ClientHttpSettings{
 			Timeout: time.Second,
 		},
@@ -97,6 +101,10 @@ func TestUnmarshalClientSettings(t *testing.T) {
 			AccessKeyID:     "access key id",
 			SecretAccessKey: "secret access key",
 			SessionToken:    "session token",
+		},
+		CredentialsCacheOpts: aws.CredentialsCacheOptions{
+			ExpiryWindow:           5 * time.Minute,
+			ExpiryWindowJitterFrac: 0.1,
 		},
 		HttpClient: aws.ClientHttpSettings{
 			Timeout: time.Second * 2,

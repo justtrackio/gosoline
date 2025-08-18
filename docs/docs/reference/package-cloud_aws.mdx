@@ -39,6 +39,9 @@ cloud:
                         access_key_id: justtrack
                         secret_access_key: justtrack
                         session_token: ""
+                    credentials_cache:
+                        expiry_window: 5m
+                        expiry_window_jitter_frac: 0.1
                     endpoint: http://localhost:4566
                     http_client:
                         timeout: 0s
@@ -46,18 +49,20 @@ cloud:
                     region: eu-central-1
 
 ```
-| Setting                  | Description                                                                        | Default                       |
-|--------------------------|------------------------------------------------------------------------------------|-------------------------------|
-| assume_role              | If defined, this role will be used to gain access                                  | ""                            |
-| backoff.cancel_delay     | If the request get canceled, how long should the cancel delayed                    | 1s                            |
-| backoff.initial_interval | The initial duration to wait before retrying the request on error                  | 50ms                          |
-| backoff.max_attempts     | How many attempts should be done                                                   | 10 (0 means retry forever)    |
-| backoff.max_interval     | Max duration between 2 calls when retrying                                         | 10s                           |
-| backoff.max_elapsed_time | For how long the service should retry the request                                  | 10m (0m means retry forever)  |
-| endpoint                 | Which service endpoint should be called                                            | http://localhost:4566         |
-| http_client.timeout      | After what duration the request should be canceled, if the server doesn't respond  | 0s (no timeout)               |
-| profile                  | If defined, this aws profile will be used to fetch credentials                     | ""                            |
-| region                   | The region in use                                                                  | eu-central-1                  |
+| Setting                                     | Description                                                                       | Default                       |
+| ------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------- |
+| assume_role                                 | If defined, this role will be used to gain access                                 | ""                            |
+| backoff.cancel_delay                        | If the request get canceled, how long should the cancel delayed                   | 1s                            |
+| backoff.initial_interval                    | The initial duration to wait before retrying the request on error                 | 50ms                          |
+| backoff.max_attempts                        | How many attempts should be done                                                  | 10 (0 means retry forever)    |
+| backoff.max_interval                        | Max duration between 2 calls when retrying                                        | 10s                           |
+| backoff.max_elapsed_time                    | For how long the service should retry the request                                 | 10m (0m means retry forever)  |
+| credentials_cache.expiry_window             | The duration before cached credentials expire                                     | 5m                            |
+| credentials_cache.expiry_window_jitter_frac | The fraction of the expiry window to use as jitter                                | 0.1                           |
+| endpoint                                    | Which service endpoint should be called                                           | http://localhost:4566         |
+| http_client.timeout                         | After what duration the request should be canceled, if the server doesn't respond | 0s (no timeout)               |
+| profile                                     | If defined, this aws profile will be used to fetch credentials                    | ""                            |
+| region                                      | The region in use                                                                 | eu-central-1                  |
 
 ### Cloudwatch
 Call
@@ -87,6 +92,9 @@ cloud:
                         access_key_id: justtrack
                         secret_access_key: justtrack
                         session_token: ""
+                    credentials_cache:
+                        expiry_window: 5m
+                        expiry_window_jitter_frac: 0.1
                     endpoint: http://localhost:4566
                     http_client:
                         timeout: 0s
@@ -174,6 +182,9 @@ cloud:
         access_key_id: "justtrack"
         secret_access_key: "justtrack"
         session_token: "justtrack"
+      credentials_cache:
+        expiry_window: 5m
+        expiry_window_jitter_frac: 0.1
       profile: "sdlc-dev-account"
       endpoint: "http://localhost:4566"
       region: "eu-central-1"

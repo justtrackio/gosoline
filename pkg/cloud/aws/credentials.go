@@ -27,8 +27,6 @@ func GetCredentialsOption(ctx context.Context, settings ClientSettings) (func(op
 		return nil, nil
 	}
 
-	credentialsProvider = aws.NewCredentialsCache(credentialsProvider)
-
 	return awsCfg.WithCredentialsProvider(credentialsProvider), nil
 }
 

@@ -32,18 +32,24 @@ type Credentials struct {
 	SessionToken    string `cfg:"session_token"`
 }
 
+type CredentialsCacheOptions struct {
+	ExpiryWindow           time.Duration `cfg:"expiry_window" default:"5m"`
+	ExpiryWindowJitterFrac float64       `cfg:"expiry_window_jitter_frac" default:"0.1"`
+}
+
 type ClientHttpSettings struct {
 	Timeout time.Duration `cfg:"timeout" default:"0"`
 }
 
 type ClientSettings struct {
-	Region      string             `cfg:"region" default:"eu-central-1"`
-	Endpoint    string             `cfg:"endpoint" default:"http://localhost:4566"`
-	AssumeRole  string             `cfg:"assume_role"`
-	Profile     string             `cfg:"profile"`
-	Credentials Credentials        `cfg:"credentials"`
-	HttpClient  ClientHttpSettings `cfg:"http_client"`
-	Backoff     exec.BackoffSettings
+	Region               string                  `cfg:"region" default:"eu-central-1"`
+	Endpoint             string                  `cfg:"endpoint" default:"http://localhost:4566"`
+	AssumeRole           string                  `cfg:"assume_role"`
+	Profile              string                  `cfg:"profile"`
+	Credentials          Credentials             `cfg:"credentials"`
+	CredentialsCacheOpts CredentialsCacheOptions `cfg:"credentials_cache"`
+	HttpClient           ClientHttpSettings      `cfg:"http_client"`
+	Backoff              exec.BackoffSettings
 }
 
 func (s *ClientSettings) SetBackoff(backoff exec.BackoffSettings) {
@@ -52,15 +58,17 @@ func (s *ClientSettings) SetBackoff(backoff exec.BackoffSettings) {
 
 func (s *ClientSettings) LogFields() log.Fields {
 	return log.Fields{
-		"settings_region":                   s.Region,
-		"settings_endpoint":                 s.Endpoint,
-		"settings_assume_role":              s.AssumeRole,
-		"settings_http_client_timeout":      s.HttpClient.Timeout,
-		"settings_backoff_max_attempts":     s.Backoff.MaxAttempts,
-		"settings_backoff_max_interval":     s.Backoff.MaxInterval,
-		"settings_backoff_initial_interval": s.Backoff.InitialInterval,
-		"settings_backoff_cancel_delay":     s.Backoff.CancelDelay,
-		"settings_backoff_max_elapsed_time": s.Backoff.MaxElapsedTime,
+		"settings_region":                          s.Region,
+		"settings_endpoint":                        s.Endpoint,
+		"settings_assume_role":                     s.AssumeRole,
+		"settings_credentials_cache_expiry_window": s.CredentialsCacheOpts.ExpiryWindow,
+		"settings_credentials_cache_jitter_frac":   s.CredentialsCacheOpts.ExpiryWindowJitterFrac,
+		"settings_http_client_timeout":             s.HttpClient.Timeout,
+		"settings_backoff_max_attempts":            s.Backoff.MaxAttempts,
+		"settings_backoff_max_interval":            s.Backoff.MaxInterval,
+		"settings_backoff_initial_interval":        s.Backoff.InitialInterval,
+		"settings_backoff_cancel_delay":            s.Backoff.CancelDelay,
+		"settings_backoff_max_elapsed_time":        s.Backoff.MaxElapsedTime,
 	}
 }
 
@@ -83,6 +91,7 @@ func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, se
 
 	defaults := []cfg.UnmarshalDefaults{
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.credentials", "credentials"),
+		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.credentials_cache", "credentials_cache"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.region", "region"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.endpoint", "endpoint"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.http_client", "http_client"),
@@ -116,6 +125,10 @@ func DefaultClientOptions(ctx context.Context, _ cfg.Config, logger log.Logger, 
 		awsCfg.WithClientLogMode(aws.ClientLogMode(0)),
 		awsCfg.WithRetryer(func() aws.Retryer {
 			return retry.NewStandard(DefaultClientRetryOptions(clientConfig)...)
+		}),
+		awsCfg.WithCredentialsCacheOptions(func(options *aws.CredentialsCacheOptions) {
+			options.ExpiryWindow = settings.CredentialsCacheOpts.ExpiryWindow
+			options.ExpiryWindowJitterFrac = settings.CredentialsCacheOpts.ExpiryWindowJitterFrac
 		}),
 	}
 
