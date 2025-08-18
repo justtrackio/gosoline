@@ -3,6 +3,7 @@ package aws_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -132,6 +133,87 @@ func (s *CredentialsTestSuite) TestProfileCredentials() {
 			s.NoError(err)
 
 			s.Equal("sdlc-dev-account", awsLoadOptions.SharedConfigProfile)
+		})
+	}
+}
+
+func (s *CredentialsTestSuite) TestCredentialsCacheOptions() {
+	tests := map[string]struct {
+		config   map[string]any
+		expected gosoAws.CredentialsCacheOptions
+	}{
+		"using default credentials cache options": {
+			config: map[string]any{
+				"ddb": map[string]any{
+					"clients": map[string]any{
+						"default": map[string]any{
+							"credentials": map[string]any{
+								"access_key_id":     "AccessKeyID",
+								"secret_access_key": "SecretAccessKey",
+							},
+						},
+					},
+				},
+			},
+			expected: gosoAws.CredentialsCacheOptions{
+				ExpiryWindow:           5 * time.Minute,
+				ExpiryWindowJitterFrac: 0.1,
+			},
+		},
+		"using custom credentials cache options": {
+			config: map[string]any{
+				"ddb": map[string]any{
+					"clients": map[string]any{
+						"default": map[string]any{
+							"credentials": map[string]any{
+								"access_key_id":     "AccessKeyID",
+								"secret_access_key": "SecretAccessKey",
+							},
+							"credentials_cache": map[string]any{
+								"expiry_window":             "10m",
+								"expiry_window_jitter_frac": 0.2,
+							},
+						},
+					},
+				},
+			},
+			expected: gosoAws.CredentialsCacheOptions{
+				ExpiryWindow:           10 * time.Minute,
+				ExpiryWindowJitterFrac: 0.2,
+			},
+		},
+		"using global defaults for credentials cache": {
+			config: map[string]any{
+				"defaults": map[string]any{
+					"credentials_cache": map[string]any{
+						"expiry_window":             "15m",
+						"expiry_window_jitter_frac": 0.15,
+					},
+				},
+				"ddb": map[string]any{
+					"clients": map[string]any{
+						"default": map[string]any{
+							"credentials": map[string]any{
+								"access_key_id":     "AccessKeyID",
+								"secret_access_key": "SecretAccessKey",
+							},
+						},
+					},
+				},
+			},
+			expected: gosoAws.CredentialsCacheOptions{
+				ExpiryWindow:           15 * time.Minute,
+				ExpiryWindowJitterFrac: 0.15,
+			},
+		},
+	}
+
+	for name, test := range tests {
+		s.Run(name, func() {
+			settings := s.unmarshalClientSettings(test.config)
+
+			s.Equal(test.expected.ExpiryWindow, settings.CredentialsCacheOpts.ExpiryWindow)
+			s.Equal(test.expected.ExpiryWindowJitterFrac, settings.CredentialsCacheOpts.ExpiryWindowJitterFrac)
 		})
 	}
 }
