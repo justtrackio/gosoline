@@ -188,3 +188,12 @@ func WithManualCancelContext(parentCtx context.Context) (context.Context, contex
 
 	return ctx, cancel
 }
+
+func IsContextDone(ctx context.Context) (bool, error) {
+	select {
+	case <-ctx.Done():
+		return true, ctx.Err()
+	default:
+		return false, nil
+	}
+}

@@ -1,0 +1,24 @@
+env: test
+
+app_project: goso
+app_family: fam
+app_group: grp
+app_name: name
+
+fixtures:
+  enabled: true
+
+blob:
+  default:
+    prefix: prefix
+
+db:
+  default:
+    driver: mysql
+    uri:
+      user: root
+      password: gosoline
+      database: gosoline
+    migrations:
+      enabled: true
+      path: ./migrations

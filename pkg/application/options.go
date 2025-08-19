@@ -71,12 +71,12 @@ func WithConfigDebug(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
 		return kernelPkg.WithMiddlewareFactory(func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Middleware, error) {
 			return func(next kernelPkg.MiddlewareHandler) kernelPkg.MiddlewareHandler {
-				return func() {
+				return func(ctx context.Context) {
 					if err := cfg.DebugConfig(config, logger); err != nil {
 						logger.Error("can not debug config: %w", err)
 					}
 
-					next()
+					next(ctx)
 				}
 			}, nil
 		}, kernelPkg.PositionEnd)

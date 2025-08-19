@@ -25,7 +25,7 @@ func LifeCycleManagerMiddleware(ctx context.Context, config cfg.Config, logger l
 	}
 
 	return func(next kernel.MiddlewareHandler) kernel.MiddlewareHandler {
-		return func() {
+		return func(ctx context.Context) {
 			if env == "dev" || env == "test" {
 				logger.Warn("lifecycle management is not enabled - add the 'fixtures' build tag")
 			}
@@ -42,7 +42,7 @@ func LifeCycleManagerMiddleware(ctx context.Context, config cfg.Config, logger l
 				return
 			}
 
-			next()
+			next(ctx)
 		}
 	}, nil
 }

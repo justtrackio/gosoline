@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -72,8 +73,21 @@ func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner BatchRunn
 }
 
 func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
-	var files []string
-	err := filepath.Walk(s.basePath, func(path string, f os.FileInfo, err error) error {
+	var files int
+
+	var err error
+
+	bgCtx, cancel := context.WithCancel(context.Background())
+	go func(ctx context.Context) {
+		err = s.batchRunner.Run(ctx)
+	}(bgCtx)
+	defer cancel()
+
+	err = filepath.Walk(s.basePath, func(path string, f os.FileInfo, err error) error {
+		if ok, err := exec.IsContextDone(ctx); ok {
+			return err
+		}
+
 		if err != nil {
 			return err
 		}
@@ -82,44 +96,25 @@ func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
 			return nil
 		}
 
-		files = append(files, path)
-
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	if len(files) == 0 {
-		return nil
-	}
-
-	var batch Batch
-	for _, file := range files {
-		body, err := os.ReadFile(file)
+		body, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
 
 		object := Object{
-			Key:  aws.String(strings.Replace(file, s.basePath, "", 1)),
+			Key:  aws.String(strings.Replace(path, s.basePath, "", 1)),
 			Body: StreamBytes(body),
 		}
 
-		batch = append(batch, &object)
+		files++
+
+		return s.store.WriteOne(&object)
+	})
+	if err != nil {
+		return err
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	go func(ctx context.Context) {
-		err = s.batchRunner.Run(ctx)
-	}(ctx)
-	defer cancel()
+	s.logger.Info("loaded %d files", files)
 
-	if err := s.store.Write(batch); err != nil {
-		return fmt.Errorf("can not write fixtes: %w", err)
-	}
-
-	s.logger.Info("loaded %d files", len(files))
-
-	return err
+	return nil
 }

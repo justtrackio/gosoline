@@ -33,10 +33,10 @@ func (h *helloWorldModule) Run(ctx context.Context) error {
 
 func one(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Middleware, error) {
 	return func(next kernel.MiddlewareHandler) kernel.MiddlewareHandler {
-		return func() {
+		return func(ctx context.Context) {
 			fmt.Println("Beginning of one")
 
-			next()
+			next(ctx)
 
 			fmt.Println("End of one")
 		}
@@ -45,10 +45,10 @@ func one(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Midd
 
 func two(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Middleware, error) {
 	return func(next kernel.MiddlewareHandler) kernel.MiddlewareHandler {
-		return func() {
+		return func(ctx context.Context) {
 			fmt.Println("Beginning of two")
 
-			next()
+			next(ctx)
 
 			fmt.Println("End of two")
 		}

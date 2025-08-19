@@ -45,7 +45,7 @@ func NewFactory(ctx context.Context, config cfg.Config, logger log.Logger, bp *b
 }
 
 func (f *factory) GetKernel() (Kernel, error) {
-	f.kernel.init(f.middlewares, f.stages)
+	f.kernel.init(f.ctx, f.middlewares, f.stages)
 
 	for _, opt := range f.blueprint.kernelOptions {
 		opt(f.kernel)
