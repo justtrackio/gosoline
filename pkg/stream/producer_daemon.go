@@ -155,7 +155,10 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 
 	aggregator := NewProducerDaemonNoopAggregator()
 
-	if po, ok := output.(PartitionedOutput); ok && po.IsPartitionedOutput() && settings.Daemon.PartitionBucketCount > 1 {
+	if po, ok := output.(PartitionedOutput); ok &&
+		po.IsPartitionedOutput() &&
+		output.SupportsAggregation() &&
+		settings.Daemon.PartitionBucketCount > 1 {
 		if aggregator, err = NewProducerDaemonPartitionedAggregator(logger, settings.Daemon, settings.Compression); err != nil {
 			return nil, fmt.Errorf("can not create partitioned aggregator for producer daemon %s: %w", name, err)
 		}
@@ -240,6 +243,19 @@ func (d *producerDaemon) Run(kernelCtx context.Context) error {
 	return cfn.Wait()
 }
 
+func (d *producerDaemon) GetSerde(ctx context.Context, settings SchemaSettingsWithEncoding) (Serde, error) {
+	if srao, ok := d.output.(SchemaRegistryAwareOutput); ok {
+		serde, err := srao.GetSerde(ctx, settings)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get serde for schema: %w", err)
+		}
+
+		return serde, nil
+	}
+
+	return nil, nil
+}
+
 func (d *producerDaemon) WriteOne(ctx context.Context, msg WritableMessage) error {
 	return d.Write(ctx, []WritableMessage{msg})
 }
@@ -282,10 +298,13 @@ func (d *producerDaemon) Write(ctx context.Context, batch []WritableMessage) err
 }
 
 func (d *producerDaemon) ProvidesCompression() bool {
+	// the producer daemon will take care of compression for the whole batch, so we don't need to compress individual messages in the producer
 	return true
 }
 
 func (d *producerDaemon) SupportsAggregation() bool {
+	// aggregating already aggregated messages wouldn't really make sense
+	// and the producer daemon should never be used as the output of another producer daemon anyway
 	return false
 }
 

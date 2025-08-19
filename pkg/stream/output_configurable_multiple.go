@@ -35,7 +35,7 @@ func (m *multiOutput) Write(ctx context.Context, batch []WritableMessage) error 
 
 func (m *multiOutput) ProvidesCompression() bool {
 	for _, o := range m.outputs {
-		if o.ProvidesCompression() {
+		if !o.ProvidesCompression() {
 			return false
 		}
 	}

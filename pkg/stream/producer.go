@@ -36,10 +36,15 @@ type producer struct {
 	output  Output
 }
 
-func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name string, handlers ...EncodeHandler) (*producer, error) {
+func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name string, options ...ProducerOption) (*producer, error) {
 	settings, err := readProducerSettings(config, name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read producer settings for %q: %w", name, err)
+	}
+
+	opts := &producerOptions{}
+	for _, option := range options {
+		option(opts)
 	}
 
 	var output Output
@@ -49,8 +54,6 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name
 			return nil, fmt.Errorf("can not create output %s: %w", settings.Output, err)
 		}
 	} else {
-		// the producer daemon will take care of compression for the whole batch, so we don't need to compress individual messages
-		settings.Compression = CompressionNone
 		if output, err = ProvideProducerDaemon(ctx, config, logger, name); err != nil {
 			return nil, fmt.Errorf("can not create producer daemon %s: %w", name, err)
 		}
@@ -60,15 +63,34 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name
 		settings.Compression = CompressionNone
 	}
 
-	encodeHandlers := make([]EncodeHandler, 0, len(defaultEncodeHandlers)+len(handlers))
+	encodeHandlers := make([]EncodeHandler, 0, len(defaultEncodeHandlers)+len(opts.encodeHandlers))
 	encodeHandlers = append(encodeHandlers, defaultEncodeHandlers...)
-	encodeHandlers = append(encodeHandlers, handlers...)
+	encodeHandlers = append(encodeHandlers, opts.encodeHandlers...)
 
-	encoder := NewMessageEncoder(&MessageEncoderSettings{
+	encoderSettings := &MessageEncoderSettings{
 		Encoding:       settings.Encoding,
 		Compression:    settings.Compression,
 		EncodeHandlers: encodeHandlers,
-	})
+	}
+
+	if schemaRegistryAwareOutput, ok := output.(SchemaRegistryAwareOutput); ok && opts.schemaSettings != nil {
+		schemaSettings := SchemaSettingsWithEncoding{
+			Subject:              opts.schemaSettings.Subject,
+			Schema:               opts.schemaSettings.Schema,
+			Encoding:             settings.Encoding,
+			ProtobufMessageIndex: opts.schemaSettings.ProtobufMessageIndex,
+			Model:                opts.schemaSettings.Model,
+		}
+
+		serde, err := schemaRegistryAwareOutput.GetSerde(ctx, schemaSettings)
+		if err != nil {
+			return nil, fmt.Errorf("can not create schema serde: %w", err)
+		}
+
+		encoderSettings.Serde = serde
+	}
+
+	encoder := NewMessageEncoder(encoderSettings)
 
 	metadata := ProducerMetadata{
 		Name:          name,

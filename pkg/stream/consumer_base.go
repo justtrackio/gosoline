@@ -48,6 +48,11 @@ type RunnableCallback interface {
 	Run(ctx context.Context) error
 }
 
+//go:generate go run github.com/vektra/mockery/v2 --name SchemaSettingsAwareCallback
+type SchemaSettingsAwareCallback interface {
+	GetSchemaSettings() SchemaSettings
+}
+
 type BaseConsumerCallback interface {
 	GetModel(attributes map[string]string) any
 }
@@ -118,9 +123,33 @@ func NewBaseConsumer(
 		return nil, err
 	}
 
-	encoder := NewMessageEncoder(&MessageEncoderSettings{
+	encoderSettings := &MessageEncoderSettings{
 		Encoding: settings.Encoding,
-	})
+	}
+
+	if schemaSettingsAware, ok := consumerCallback.(SchemaSettingsAwareCallback); ok {
+		schemaRegistryAwareInput, ok := input.(SchemaRegistryAwareInput)
+		if !ok {
+			return nil, fmt.Errorf("got schema settings from consumer callback but input %q is not schema registry aware", settings.Input)
+		}
+
+		schemaSettings := SchemaSettingsWithEncoding{
+			Subject:              schemaSettingsAware.GetSchemaSettings().Subject,
+			Schema:               schemaSettingsAware.GetSchemaSettings().Schema,
+			Encoding:             settings.Encoding,
+			ProtobufMessageIndex: schemaSettingsAware.GetSchemaSettings().ProtobufMessageIndex,
+			Model:                schemaSettingsAware.GetSchemaSettings().Model,
+		}
+
+		serde, err := schemaRegistryAwareInput.GetSerde(ctx, schemaSettings)
+		if err != nil {
+			return nil, fmt.Errorf("can not create schema serde: %w", err)
+		}
+
+		encoderSettings.Serde = serde
+	}
+
+	encoder := NewMessageEncoder(encoderSettings)
 
 	// if our input knows how to retry already,
 	if retryingInput, ok := input.(RetryingInput); ok {

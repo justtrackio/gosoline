@@ -23,6 +23,7 @@ type MessageEncoderSettings struct {
 	Encoding       EncodingType
 	Compression    CompressionType
 	EncodeHandlers []EncodeHandler
+	Serde          Serde
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name MessageEncoder
@@ -35,6 +36,7 @@ type messageEncoder struct {
 	encoding       EncodingType
 	compression    CompressionType
 	encodeHandlers []EncodeHandler
+	serde          Serde
 }
 
 func NewMessageEncoder(config *MessageEncoderSettings) *messageEncoder {
@@ -54,6 +56,7 @@ func NewMessageEncoder(config *MessageEncoderSettings) *messageEncoder {
 		encoding:       config.Encoding,
 		compression:    config.Compression,
 		encodeHandlers: config.EncodeHandlers,
+		serde:          config.Serde,
 	}
 }
 
@@ -89,6 +92,15 @@ func (e *messageEncoder) Encode(ctx context.Context, data any, attributeSets ...
 }
 
 func (e *messageEncoder) encodeBody(attributes map[string]string, data any) ([]byte, error) {
+	if e.serde != nil {
+		body, err := e.serde.Encode(data)
+		if err != nil {
+			return nil, fmt.Errorf("serde encoding faield: %w", err)
+		}
+
+		return body, nil
+	}
+
 	body, err := EncodeMessage(e.encoding, data)
 	if err != nil {
 		return nil, err
@@ -169,6 +181,12 @@ func (e *messageEncoder) decompressBody(attributes map[string]string, body []byt
 }
 
 func (e *messageEncoder) decodeBody(attributes map[string]string, body []byte, out any) error {
+	if e.serde != nil {
+		if err := e.serde.Decode(body, out); err != nil {
+			return fmt.Errorf("serde decoding failed: %w", err)
+		}
+	}
+
 	encoding := mdl.Unbox(GetEncodingAttribute(attributes), e.encoding)
 
 	return DecodeMessage(encoding, body, out)

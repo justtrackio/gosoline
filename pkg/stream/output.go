@@ -37,6 +37,12 @@ type SizeRestrictedOutput interface {
 	GetMaxBatchSize() *int
 }
 
+//go:generate go run github.com/vektra/mockery/v2 --name SchemaRegistryAwareOutput
+type SchemaRegistryAwareOutput interface {
+	Output
+	GetSerde(ctx context.Context, settings SchemaSettingsWithEncoding) (Serde, error)
+}
+
 type OutputFactory func(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error)
 
 func MessagesToWritableMessages(batch []*Message) []WritableMessage {

@@ -244,6 +244,8 @@ func (s *ProducerDaemonTestSuite) TestWriteAggregate() {
 	expected := []stream.WritableMessage{aggregateMessage}
 	s.expectMessage(expected)
 
+	s.output.EXPECT().SupportsAggregation().Return(true).Once()
+
 	err = s.daemon.Write(s.T().Context(), messages)
 	s.NoError(err, "there should be no error on write")
 

@@ -41,6 +41,12 @@ type AcknowledgeableInput interface {
 	AckBatch(ctx context.Context, msgs []*Message, acks []bool) error
 }
 
+//go:generate go run github.com/vektra/mockery/v2 --name SchemaRegistryAwareInput
+type SchemaRegistryAwareInput interface {
+	Input
+	GetSerde(ctx context.Context, settings SchemaSettingsWithEncoding) (Serde, error)
+}
+
 type RetryingInput interface {
 	GetRetryHandler() (Input, RetryHandler)
 }

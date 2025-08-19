@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	"github.com/twmb/franz-go/pkg/sr"
 )
 
@@ -17,8 +17,8 @@ type service struct {
 	client Client
 }
 
-func NewService(config cfg.Config, connectionName string) (Service, error) {
-	client, err := NewClient(config, connectionName)
+func NewService(connection connection.Settings) (Service, error) {
+	client, err := NewClient(connection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create schema registry client: %w", err)
 	}

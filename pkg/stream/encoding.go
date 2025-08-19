@@ -2,6 +2,8 @@ package stream
 
 import (
 	"fmt"
+
+	schemaRegistry "github.com/justtrackio/gosoline/pkg/kafka/schema-registry"
 )
 
 type EncodingType string
@@ -11,6 +13,12 @@ const (
 	EncodingJson     EncodingType = "application/json"
 	EncodingProtobuf EncodingType = "application/x-protobuf"
 )
+
+var encodingToSchemaTypeMap = map[EncodingType]schemaRegistry.SchemaType{
+	EncodingAvro:     schemaRegistry.Avro,
+	EncodingJson:     schemaRegistry.Json,
+	EncodingProtobuf: schemaRegistry.Protobuf,
+}
 
 func (s EncodingType) String() string {
 	return string(s)
