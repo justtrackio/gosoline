@@ -52,9 +52,9 @@ type kernel struct {
 	clock  clock.Clock
 	logger log.Logger
 
-	middlewareCtx context.Context
-	middlewareCfn coffin.Coffin
-	middlewares   []Middleware
+	middlewareCtx    context.Context
+	middlewareCancel func()
+	middlewares      []Middleware
 
 	stages            stages
 	running           chan struct{}
@@ -96,7 +96,7 @@ func newKernel(ctx context.Context, config cfg.Config, logger log.Logger) (*kern
 
 func (k *kernel) init(ctx context.Context, middlewares []Middleware, stages map[int]*stage) {
 	k.middlewares = middlewares
-	k.middlewareCfn, k.middlewareCtx = coffin.WithContext(ctx)
+	k.middlewareCtx, k.middlewareCancel = context.WithCancel(ctx)
 	k.stages = stages
 }
 
@@ -191,12 +191,7 @@ func (k *kernel) stop(reason string, moduleStage int, moduleErr error) {
 				k.logger.Info("stopped stage %d", stageIndex)
 			}
 
-			k.middlewareCfn.Kill(ErrKernelStopping)
-
-			err := k.middlewareCfn.Wait()
-			if err != nil && !errors.Is(err, ErrKernelStopping) {
-				k.logger.Error("error during shutdown of middlewares: %w", err)
-			}
+			k.middlewareCancel()
 		}()
 	})
 }

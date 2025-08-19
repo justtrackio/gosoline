@@ -72,7 +72,7 @@ func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner BatchRunn
 }
 
 func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
-	var files []string
+	var files int
 
 	var err error
 
@@ -107,13 +107,15 @@ func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
 			Body: StreamBytes(body),
 		}
 
+		files++
+
 		return s.store.WriteOne(&object)
 	})
 	if err != nil {
 		return err
 	}
 
-	s.logger.Info("loaded %d files", len(files))
+	s.logger.Info("loaded %d files", files)
 
 	return nil
 }
