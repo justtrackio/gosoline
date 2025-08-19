@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -83,10 +84,8 @@ func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
 	defer cancel()
 
 	err = filepath.Walk(s.basePath, func(path string, f os.FileInfo, err error) error {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
+		if ok, err := exec.IsContextDone(ctx); ok {
+			return err
 		}
 
 		if err != nil {
