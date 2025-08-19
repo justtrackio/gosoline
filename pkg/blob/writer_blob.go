@@ -73,7 +73,22 @@ func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner BatchRunn
 
 func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
 	var files []string
-	err := filepath.Walk(s.basePath, func(path string, f os.FileInfo, err error) error {
+
+	var err error
+
+	ctx, cancel := context.WithCancel(ctx)
+	go func(ctx context.Context) {
+		err = s.batchRunner.Run(ctx)
+	}(ctx)
+	defer cancel()
+
+	err = filepath.Walk(s.basePath, func(path string, f os.FileInfo, err error) error {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		if err != nil {
 			return err
 		}
@@ -82,44 +97,23 @@ func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
 			return nil
 		}
 
-		files = append(files, path)
-
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	if len(files) == 0 {
-		return nil
-	}
-
-	var batch Batch
-	for _, file := range files {
-		body, err := os.ReadFile(file)
+		body, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
 
 		object := Object{
-			Key:  aws.String(strings.Replace(file, s.basePath, "", 1)),
+			Key:  aws.String(strings.Replace(path, s.basePath, "", 1)),
 			Body: StreamBytes(body),
 		}
 
-		batch = append(batch, &object)
-	}
-
-	ctx, cancel := context.WithCancel(ctx)
-	go func(ctx context.Context) {
-		err = s.batchRunner.Run(ctx)
-	}(ctx)
-	defer cancel()
-
-	if err := s.store.Write(batch); err != nil {
-		return fmt.Errorf("can not write fixtes: %w", err)
+		return s.store.WriteOne(&object)
+	})
+	if err != nil {
+		return err
 	}
 
 	s.logger.Info("loaded %d files", len(files))
 
-	return err
+	return nil
 }

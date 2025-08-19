@@ -29,7 +29,7 @@ func LifeCycleManagerMiddleware(ctx context.Context, config cfg.Config, logger l
 	}
 
 	return func(next kernel.MiddlewareHandler) kernel.MiddlewareHandler {
-		return func() {
+		return func(ctx context.Context) {
 			if loader, err = container.Build(ctx, config, logger); err != nil {
 				logger.Error("can not build fixture loader: %w", err)
 
@@ -66,7 +66,7 @@ func LifeCycleManagerMiddleware(ctx context.Context, config cfg.Config, logger l
 				return
 			}
 
-			next()
+			next(ctx)
 		}
 	}, nil
 }

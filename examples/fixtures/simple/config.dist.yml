@@ -1,0 +1,46 @@
+env: test
+
+app_project: goso
+app_family: fam
+app_group: grp
+app_name: name
+
+fixtures:
+  enabled: true
+
+blob:
+  default:
+    prefix: prefix
+
+httpserver:
+  default:
+    port: 8088
+    mode: release
+    timeout:
+      read: 300s
+      write: 300s
+      idle: 300s
+    auth:
+      jwt:
+        signingSecret: yourSigningSecret
+        issuer: yourOrg
+
+db:
+  default:
+    driver: mysql
+    max_idle_connections: 20
+    max_open_connections: 20
+    connection_max_lifetime: 60s
+    parse_time: true
+    parameters:
+      FOREIGN_KEY_CHECKS: 0
+    uri:
+      host: 127.0.0.1
+      port: 3306
+      user: root
+      password: gosoline
+      database: gosoline
+    migrations:
+      enabled: true
+      table_prefixed: false
+      path: ./migrations

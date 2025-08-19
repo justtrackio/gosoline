@@ -14,6 +14,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -37,16 +38,17 @@ func mysqlOrmFixtureSet(ctx context.Context, config cfg.Config, logger log.Logge
 		ModelId: mdl.ModelId{
 			Name: "orm_fixture_example",
 		},
+		TableName: "orm_fixture_examples",
 	}
 	mysqlOrmWriter, err := db_repo.NewMysqlOrmFixtureWriter(ctx, config, logger, mysqlMetadata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize mysql orm writer: %w", err)
 	}
 
-	return fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[OrmFixtureExample]{
-		&fixtures.NamedFixture[OrmFixtureExample]{
+	return fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[*OrmFixtureExample]{
+		&fixtures.NamedFixture[*OrmFixtureExample]{
 			Name: "foo",
-			Value: OrmFixtureExample{
+			Value: &OrmFixtureExample{
 				Model: db_repo.Model{
 					Id: autoNumbered.GetNext(),
 				},
@@ -154,7 +156,7 @@ func dynamodbFixtureSet(ctx context.Context, config cfg.Config, logger log.Logge
 func blobFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
 	blobWriter, err := blob.NewBlobFixtureWriter(ctx, config, logger, &blob.BlobFixturesSettings{
 		ConfigName: "test",
-		BasePath:   "../../test/test_data/s3_fixtures_test_data",
+		BasePath:   "../../../test/fixtures/s3/test_data/s3_fixtures_test_data",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize blob writer: %w", err)
@@ -204,9 +206,22 @@ func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logge
 	}, nil
 }
 
+type mod struct {
+	kernel.ForegroundModule
+}
+
+func (m *mod) Run(ctx context.Context) error {
+	<-ctx.Done()
+
+	return nil
+}
+
 func main() {
 	app := application.Default(
 		application.WithFixtureSetFactory("default", fixtureSetsFactory),
+		application.WithModuleFactory("main", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return &mod{}, nil
+		}),
 	)
 
 	app.Run()

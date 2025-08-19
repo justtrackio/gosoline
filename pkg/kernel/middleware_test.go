@@ -65,19 +65,19 @@ func (s *MiddleWareTestSuite) TestMiddleware() {
 	k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
 		kernel.WithMiddlewareFactory(kernel.BuildSimpleMiddleware(func(next kernel.MiddlewareHandler) {
 			callstack = append(callstack, "mid1 start")
-			next()
+			next(s.ctx)
 			callstack = append(callstack, "mid1 end")
 		}), kernel.PositionEnd),
 
 		kernel.WithMiddlewareFactory(kernel.BuildSimpleMiddleware(func(next kernel.MiddlewareHandler) {
 			callstack = append(callstack, "mid2 start")
-			next()
+			next(s.ctx)
 			callstack = append(callstack, "mid2 end")
 		}), kernel.PositionEnd),
 
 		kernel.WithMiddlewareFactory(kernel.BuildSimpleMiddleware(func(next kernel.MiddlewareHandler) {
 			callstack = append(callstack, "mid3 start")
-			next()
+			next(s.ctx)
 			callstack = append(callstack, "mid3 end")
 		}), kernel.PositionBeginning),
 

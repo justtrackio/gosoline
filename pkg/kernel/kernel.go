@@ -52,7 +52,10 @@ type kernel struct {
 	clock  clock.Clock
 	logger log.Logger
 
-	middlewares       []Middleware
+	middlewareCtx context.Context
+	middlewareCfn coffin.Coffin
+	middlewares   []Middleware
+
 	stages            stages
 	running           chan struct{}
 	stopping          chan struct{}
@@ -91,8 +94,9 @@ func newKernel(ctx context.Context, config cfg.Config, logger log.Logger) (*kern
 	return k, err
 }
 
-func (k *kernel) init(middlewares []Middleware, stages map[int]*stage) {
+func (k *kernel) init(ctx context.Context, middlewares []Middleware, stages map[int]*stage) {
 	k.middlewares = middlewares
+	k.middlewareCfn, k.middlewareCtx = coffin.WithContext(ctx)
 	k.stages = stages
 }
 
@@ -128,7 +132,7 @@ func (k *kernel) Run() {
 		}
 	}()
 
-	runHandler := func() {
+	runHandler := func(ctx context.Context) {
 		if err := k.runStages(); err != nil {
 			reason := fmt.Sprintf("error during running all stages: %s", err)
 			k.Stop(reason)
@@ -159,7 +163,7 @@ func (k *kernel) Run() {
 		runHandler = k.middlewares[i](runHandler)
 	}
 
-	runHandler()
+	runHandler(k.middlewareCtx)
 }
 
 func (k *kernel) Stop(reason string) {
@@ -185,6 +189,13 @@ func (k *kernel) stop(reason string, moduleStage int, moduleErr error) {
 				k.stages[stageIndex].stopWait(waitErr)
 
 				k.logger.Info("stopped stage %d", stageIndex)
+			}
+
+			k.middlewareCfn.Kill(ErrKernelStopping)
+
+			err := k.middlewareCfn.Wait()
+			if err != nil && !errors.Is(err, ErrKernelStopping) {
+				k.logger.Error("error during shutdown of middlewares: %w", err)
 			}
 		}()
 	})

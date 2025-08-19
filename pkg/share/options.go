@@ -18,14 +18,14 @@ func KernelMiddlewareShares(ctx context.Context, config cfg.Config, logger log.L
 	}
 
 	return func(next kernel.MiddlewareHandler) kernel.MiddlewareHandler {
-		return func() {
+		return func(ctx context.Context) {
 			if err := manager.SetupShareTable(); err != nil {
 				logger.Error("can not setup share tables: %s", err.Error())
 
 				return
 			}
 
-			next()
+			next(ctx)
 		}
 	}, nil
 }
