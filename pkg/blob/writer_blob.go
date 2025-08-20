@@ -77,10 +77,10 @@ func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
 
 	var err error
 
-	ctx, cancel := context.WithCancel(ctx)
+	bgCtx, cancel := context.WithCancel(context.Background())
 	go func(ctx context.Context) {
 		err = s.batchRunner.Run(ctx)
-	}(ctx)
+	}(bgCtx)
 	defer cancel()
 
 	err = filepath.Walk(s.basePath, func(path string, f os.FileInfo, err error) error {
