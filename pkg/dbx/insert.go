@@ -21,7 +21,7 @@ type insertData[T any] struct {
 	Options          []string
 	Into             string
 	Columns          []string
-	Value            any
+	Values           []any
 	Suffixes         []Sqlizer
 }
 
@@ -34,7 +34,7 @@ func (d *insertData[T]) Exec(ctx context.Context) (sql.Result, error) {
 		return nil, fmt.Errorf("unable to build insert query: %w", err)
 	}
 
-	if res, err = d.Client.NamedExec(ctx, sql, d.Value); err != nil {
+	if res, err = d.Client.NamedExec(ctx, sql, d.Values); err != nil {
 		return nil, fmt.Errorf("unable to execute insert query: %w", err)
 	}
 
@@ -141,8 +141,8 @@ func (b InsertBuilder[T]) columns(columns ...string) InsertBuilder[T] {
 }
 
 // Values adds a single row's values to the query.
-func (b InsertBuilder[T]) value(value T) InsertBuilder[T] {
-	return builder.Set(b, "Value", value).(InsertBuilder[T])
+func (b InsertBuilder[T]) values(value ...T) InsertBuilder[T] {
+	return builder.Extend(b, "Values", value).(InsertBuilder[T])
 }
 
 // Suffix adds an expression to the end of the query

@@ -2,6 +2,7 @@ package dbx_test
 
 import (
 	"context"
+	"database/sql/driver"
 	"testing"
 
 	goSqlMock "github.com/DATA-DOG/go-sqlmock"
@@ -59,6 +60,20 @@ func (s *ClientTestSuite) TestDelete() {
 	s.NotNil(result)
 }
 
+func (s *ClientTestSuite) TestDeleteTyped() {
+	ctx := s.T().Context()
+
+	s.sqlMock.
+		ExpectExec("DELETE FROM test_table WHERE id = ?").
+		WithArgs(1).
+		WillReturnResult(goSqlMock.NewResult(1, 1))
+
+	result, err := s.client.Delete().Where(TestEntity{Id: 1}).Exec(ctx)
+
+	s.NoError(err)
+	s.NotNil(result)
+}
+
 func (s *ClientTestSuite) TestDeleteOptions() {
 	ctx := s.T().Context()
 
@@ -86,6 +101,31 @@ func (s *ClientTestSuite) TestInsert() {
 		WillReturnResult(goSqlMock.NewResult(1, 1))
 
 	result, err := s.client.Insert(testEntity).Exec(ctx)
+
+	s.NoError(err)
+	s.NotNil(result)
+}
+
+func (s *ClientTestSuite) TestInsertBatch() {
+	ctx := s.T().Context()
+
+	testEntities := []TestEntity{
+		{Id: 1, Name: "Test Name"},
+		{Id: 2, Name: "foo"},
+		{Id: 3, Name: "bar"},
+	}
+	args := []driver.Value{
+		testEntities[0].Id, testEntities[0].Name, testEntities[0].Enabled,
+		testEntities[1].Id, testEntities[1].Name, testEntities[1].Enabled,
+		testEntities[2].Id, testEntities[2].Name, testEntities[2].Enabled,
+	}
+
+	s.sqlMock.
+		ExpectExec("INSERT INTO test_table (id,name,enabled) VALUES (?,?,?),(?,?,?),(?,?,?)").
+		WithArgs(args...).
+		WillReturnResult(goSqlMock.NewResult(3, 3))
+
+	result, err := s.client.Insert(testEntities...).Exec(ctx)
 
 	s.NoError(err)
 	s.NotNil(result)

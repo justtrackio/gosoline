@@ -21,7 +21,7 @@ type Client[T any] interface {
 	// Insert creates a new INSERT query builder.
 	//
 	//	_, err := client.Insert(YourModel{Id: 1, Name: "test"}).Exec(ctx)
-	Insert(val T) InsertBuilder[T]
+	Insert(val ...T) InsertBuilder[T]
 	// Replace creates a new REPLACE query builder.
 	//
 	//	_, err := client.Replace(YourModel{Id: 1, Name: "test"}).Exec(ctx)
@@ -36,12 +36,13 @@ type Client[T any] interface {
 	Update(updateMaps ...any) UpdateBuilder[T]
 }
 
+var _ Client[any] = (*client[any])(nil)
+
 type client[T any] struct {
 	client            db.Client
 	table             string
 	placeholderFormat PlaceholderFormat
 	columns           []string
-	arguments         []string
 }
 
 // NewClient creates a new dbx client.
@@ -70,10 +71,6 @@ func NewClientWithInterfaces[T any](dbClient db.Client, table string, placeholde
 		return nil, fmt.Errorf("no db tags found in struct %T", new(T))
 	}
 
-	arguments := funk.Map(columns, func(column string) string {
-		return ":" + column
-	})
-
 	builder.Register(DeleteBuilder[T]{}, deleteData[T]{})
 	builder.Register(InsertBuilder[T]{}, insertData[T]{})
 	builder.Register(SelectBuilder[T]{}, selectData[T]{})
@@ -84,7 +81,6 @@ func NewClientWithInterfaces[T any](dbClient db.Client, table string, placeholde
 		table:             table,
 		placeholderFormat: placeholderFormat,
 		columns:           columns,
-		arguments:         arguments,
 	}, nil
 }
 
@@ -98,8 +94,8 @@ func (c *client[T]) Delete() DeleteBuilder[T] {
 // Insert creates a new INSERT query builder.
 //
 //	_, err := client.Insert(YourModel{Id: 1, Name: "test"}).Exec(ctx)
-func (c *client[T]) Insert(val T) InsertBuilder[T] {
-	return newInsertBuilder[T](c.client, c.table).columns(c.columns...).value(val)
+func (c *client[T]) Insert(values ...T) InsertBuilder[T] {
+	return newInsertBuilder[T](c.client, c.table).columns(c.columns...).values(values...)
 }
 
 // Replace creates a new REPLACE query builder.
