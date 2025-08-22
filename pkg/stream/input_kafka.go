@@ -35,20 +35,24 @@ func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, se
 	messageHandler := NewKafkaMessageHandler(data)
 	partitionManager := kafkaConsumer.NewPartitionManager(logger, messageHandler)
 
-	opts := []kgo.Opt{
-		kgo.OnPartitionsAssigned(partitionManager.OnPartitionsAssigned),
-		kgo.OnPartitionsRevoked(partitionManager.OnPartitionsLostOrRevoked),
-		kgo.OnPartitionsLost(partitionManager.OnPartitionsLostOrRevoked),
-	}
-
-	reader, err := kafkaConsumer.NewReader(ctx, config, logger, settings, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("can not create kafka reader: %w", err)
-	}
-
 	conn, err := connection.ParseSettings(config, settings.Connection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse kafka connection settings for connection name %q: %w", settings.Connection, err)
+	}
+
+	var opts []kgo.Opt
+
+	if !conn.IsReadOnly {
+		opts = append(opts, []kgo.Opt{
+			kgo.OnPartitionsAssigned(partitionManager.OnPartitionsAssigned),
+			kgo.OnPartitionsRevoked(partitionManager.OnPartitionsLostOrRevoked),
+			kgo.OnPartitionsLost(partitionManager.OnPartitionsLostOrRevoked),
+		}...)
+	}
+
+	reader, err := kafkaConsumer.NewReader(ctx, config, logger, settings, conn.IsReadOnly, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("can not create kafka reader: %w", err)
 	}
 
 	service, err := schemaRegistry.NewService(*conn)
@@ -88,12 +92,6 @@ func NewKafkaInputWithInterfaces(
 
 func (i *kafkaInput) Run(ctx context.Context) error {
 	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
 		// while we are polling messages, we can't get unhealthy
 		// (as this code is outside our control to add code to mark us as healthy)
 		i.polling.Store(true)
@@ -124,7 +122,13 @@ func (i *kafkaInput) Run(ctx context.Context) error {
 		})
 
 		fetches.EachPartition(func(p kgo.FetchTopicPartition) {
-			i.partitionManager.AssignRecords(p.Topic, p.Partition, p.Records)
+			if i.connection.IsReadOnly {
+				i.partitionManager.HandleWithoutCommit(p.Records)
+
+				return
+			}
+
+			i.partitionManager.Handle(p.Topic, p.Partition, p.Records)
 		})
 
 		i.reader.AllowRebalance()

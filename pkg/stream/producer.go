@@ -18,11 +18,10 @@ type ProducerMetadata struct {
 }
 
 type ProducerSettings struct {
-	Output        string                 `cfg:"output"`
-	SchemaSubject string                 `cfg:"schema_subject"`
-	Encoding      EncodingType           `cfg:"encoding"`
-	Compression   CompressionType        `cfg:"compression" default:"none"`
-	Daemon        ProducerDaemonSettings `cfg:"daemon"`
+	Output      string                 `cfg:"output"`
+	Encoding    EncodingType           `cfg:"encoding"`
+	Compression CompressionType        `cfg:"compression" default:"none"`
+	Daemon      ProducerDaemonSettings `cfg:"daemon"`
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Producer

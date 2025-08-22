@@ -17,6 +17,7 @@ type Settings struct {
 	InsecureSkipVerify    bool          `cfg:"insecure_skip_verify"`
 	TlsEnabled            bool          `cfg:"tls_enabled" default:"true"`
 	DialTimeout           time.Duration `cfg:"dial_timeout" default:"10s"`
+	IsReadOnly            bool          `cfg:"is_read_only" default:"false"`
 
 	// Credentials.
 	Username string `cfg:"username"`

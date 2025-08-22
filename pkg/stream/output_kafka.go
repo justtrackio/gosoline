@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
@@ -14,9 +15,10 @@ import (
 )
 
 type kafkaOutput struct {
-	connection            connection.Settings
-	schemaRegistryService schemaRegistry.Service
-	writer                kafkaProducer.Writer
+	connection                connection.Settings
+	schemaRegistryService     schemaRegistry.Service
+	schemaRegistryInitialized atomic.Bool
+	writer                    kafkaProducer.Writer
 }
 
 var (
@@ -122,6 +124,8 @@ func (o *kafkaOutput) InitSchemaRegistry(ctx context.Context, settings SchemaSet
 	serde := schemaRegistry.NewSerde()
 	serde.Register(schemaId, settings.Model, options...)
 
+	o.schemaRegistryInitialized.Store(true)
+
 	return serde, nil
 }
 
@@ -129,6 +133,10 @@ func (o *kafkaOutput) WriteOne(ctx context.Context, m WritableMessage) error {
 	message, err := NewKafkaMessage(m)
 	if err != nil {
 		return fmt.Errorf("failed to build kafka message: %w", err)
+	}
+
+	if o.connection.IsReadOnly {
+		return nil
 	}
 
 	return o.writer.ProduceSync(ctx, message).FirstErr()
@@ -140,6 +148,10 @@ func (o *kafkaOutput) Write(ctx context.Context, ms []WritableMessage) error {
 		return fmt.Errorf("failed to build kafka messages: %w", err)
 	}
 
+	if o.connection.IsReadOnly {
+		return nil
+	}
+
 	return o.writer.ProduceSync(ctx, messages...).FirstErr()
 }
 
@@ -148,7 +160,7 @@ func (o *kafkaOutput) ProvidesCompression() bool {
 }
 
 func (o *kafkaOutput) SupportsAggregation() bool {
-	return false
+	return !o.schemaRegistryInitialized.Load()
 }
 
 func (o *kafkaOutput) IsPartitionedOutput() bool {

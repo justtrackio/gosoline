@@ -45,7 +45,6 @@ func NewKafkaMessage(message WritableMessage) (*kgo.Record, error) {
 	case *Message:
 		body = []byte(m.Body)
 	case rawJsonMessage:
-		// the kafka output does not support aggregation, so we can expect a single message in here
 		msg := Message{}
 		if err := msg.UnmarshalFromBytes(m.body); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal message body: %w", err)

@@ -11,6 +11,7 @@ type ProtobufEncodable interface {
 	EmptyMessage() proto.Message
 	FromMessage(message proto.Message) error
 }
+
 type protobufEncoder struct{}
 
 func NewProtobufEncoder() MessageBodyEncoder {

@@ -66,6 +66,10 @@ func (p PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo.
 	}
 }
 
-func (p PartitionManager) AssignRecords(topic string, partition int32, records []*kgo.Record) {
+func (p PartitionManager) Handle(topic string, partition int32, records []*kgo.Record) {
 	p.consumers[assignment{topic, partition}].assignedBatch <- records
+}
+
+func (p PartitionManager) HandleWithoutCommit(records []*kgo.Record) {
+	p.messageHandler.Handle(records)
 }
