@@ -12,6 +12,7 @@ import (
 //go:generate go run github.com/vektra/mockery/v2 --name Client
 type Client interface {
 	CreateTopic(ctx context.Context, partitions int32, replicationFactor int16, configs map[string]*string, topic string) (kadm.CreateTopicResponse, error)
+	ListEndOffsets(ctx context.Context, topics ...string) (kadm.ListedOffsets, error)
 	ListTopics(ctx context.Context, topics ...string) (kadm.TopicDetails, error)
 }
 

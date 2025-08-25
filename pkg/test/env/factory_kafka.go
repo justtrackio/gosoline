@@ -78,7 +78,7 @@ func (f *kafkaFactory) healthCheck() ComponentHealthCheck {
 
 		client, err := kafkaAdmin.NewClient(ctx, log.NewLogger(), []string{brokerAddr})
 		if err != nil {
-			return fmt.Errorf("failed to create kafka client: %w", err)
+			return fmt.Errorf("failed to create kafka admin client: %w", err)
 		}
 
 		list, err := client.ListTopics(ctx)
@@ -143,11 +143,17 @@ func (f *kafkaFactory) schemaRegistryAddress(container *container) string {
 	return address
 }
 
-func (f *kafkaFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, _ any) (Component, error) {
+func (f *kafkaFactory) Component(_ cfg.Config, logger log.Logger, containers map[string]*container, _ any) (Component, error) {
 	main := containers["main"]
+
+	client, err := kafkaAdmin.NewClient(context.Background(), logger, []string{f.brokerAddress(main)})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kafka admin client: %w", err)
+	}
 
 	return &KafkaComponent{
 		baseComponent:         baseComponent{},
+		client:                client,
 		brokerAddress:         f.brokerAddress(main),
 		schemaRegistryAddress: f.schemaRegistryAddress(main),
 	}, nil

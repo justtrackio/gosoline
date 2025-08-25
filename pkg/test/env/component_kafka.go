@@ -1,9 +1,13 @@
 package env
 
-import "github.com/justtrackio/gosoline/pkg/cfg"
+import (
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kafka/admin"
+)
 
 type KafkaComponent struct {
 	baseComponent
+	client                admin.Client
 	brokerAddress         string
 	schemaRegistryAddress string
 }
@@ -21,6 +25,10 @@ func (c KafkaComponent) CfgOptions() []cfg.Option {
 				},
 			}),
 	}
+}
+
+func (c KafkaComponent) Client() admin.Client {
+	return c.client
 }
 
 func (c KafkaComponent) BrokerAddress() string {
