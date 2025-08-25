@@ -1,56 +1,36 @@
 package producer
 
 import (
-	"fmt"
-	"time"
+	"github.com/twmb/franz-go/pkg/kgo"
+)
 
-	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/kafka"
-	"github.com/justtrackio/gosoline/pkg/kafka/connection"
+type KafkaCompressionCodec string
+
+const (
+	CompressionNone   KafkaCompressionCodec = "none"
+	CompressionGZip   KafkaCompressionCodec = "gzip"
+	CompressionSnappy KafkaCompressionCodec = "snappy"
+	CompressionLZ4    KafkaCompressionCodec = "lz4"
+	CompressionZstd   KafkaCompressionCodec = "zstd"
 )
 
 type Settings struct {
-	ConnectionName string `cfg:"connection" default:"default"`
-	Topic          string `cfg:"topic" validate:"required"`
-	// FQTopic is the fully-qualified topic name (with prefixes).
-	FQTopic      string
-	BatchSize    int           `cfg:"batch_size"`
-	BatchTimeout time.Duration `cfg:"idle_timeout"`
-	AsyncWrites  bool          `cfg:"async_writes"`
-	connection   *connection.Settings
+	Compression KafkaCompressionCodec
+	Connection  string
+	Topic       string
 }
 
-func (s *Settings) Connection() *connection.Settings {
-	return s.connection
-}
-
-func (s *Settings) WithConnection(conn *connection.Settings) *Settings {
-	s.connection = conn
-
-	return s
-}
-
-func ParseSettings(config cfg.Config, key string) (*Settings, error) {
-	settings := &Settings{}
-	if err := config.UnmarshalKey(key, settings); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal kafka producer settings for key %q in ParseSettings: %w", key, err)
+func (s Settings) GetKafkaCompressor() kgo.CompressionCodec {
+	switch s.Compression {
+	case CompressionGZip:
+		return kgo.GzipCompression()
+	case CompressionSnappy:
+		return kgo.SnappyCompression()
+	case CompressionLZ4:
+		return kgo.Lz4Compression()
+	case CompressionZstd:
+		return kgo.ZstdCompression()
+	default:
+		return kgo.NoCompression()
 	}
-
-	conn, err := connection.ParseSettings(config, settings.ConnectionName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse kafka connection settings for connection %q in ParseSettings: %w", settings.ConnectionName, err)
-	}
-	settings.connection = conn
-
-	appId, err := cfg.GetAppIdFromConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get app id from config: %w", err)
-	}
-
-	settings.FQTopic, err = kafka.FQTopicName(config, appId, settings.Topic)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get fully qualified topic name for topic %q in ParseSettings: %w", settings.Topic, err)
-	}
-
-	return settings, nil
 }

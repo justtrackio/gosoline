@@ -1,0 +1,17 @@
+env: test
+
+app_project: gosoline
+app_family: test
+app_group: grp
+app_name: output-test
+
+stream:
+  output:
+    testEvent:
+      type: kafka
+      topic_id: testEvent
+
+test:
+  components:
+    kafka:
+      default:

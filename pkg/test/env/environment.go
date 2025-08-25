@@ -215,6 +215,10 @@ func (e *Environment) DynamoDb(name string) *DdbComponent {
 	return e.Component(componentDdb, name).(*DdbComponent)
 }
 
+func (e *Environment) Kafka(name string) *KafkaComponent {
+	return e.Component(componentKafka, name).(*KafkaComponent)
+}
+
 func (e *Environment) Mailpit(name string) *mailpitComponent {
 	return e.Component(componentMailpit, name).(*mailpitComponent)
 }

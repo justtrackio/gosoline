@@ -16,6 +16,8 @@ type WritableMessage interface {
 type Output interface {
 	WriteOne(ctx context.Context, msg WritableMessage) error
 	Write(ctx context.Context, batch []WritableMessage) error
+	ProvidesCompression() bool
+	SupportsAggregation() bool
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name PartitionedOutput
@@ -33,6 +35,13 @@ type SizeRestrictedOutput interface {
 	GetMaxMessageSize() *int
 	// GetMaxBatchSize returns the maximum number of messages we can write at once to the output (or nil if there is no limit).
 	GetMaxBatchSize() *int
+}
+
+//go:generate go run github.com/vektra/mockery/v2 --name SchemaRegistryAwareOutput
+type SchemaRegistryAwareOutput interface {
+	Output
+	// InitSchemaRegistry initializes the schema registry and returns the encoder/decoder corresponding to the schema
+	InitSchemaRegistry(ctx context.Context, settings SchemaSettingsWithEncoding) (MessageBodyEncoder, error)
 }
 
 type OutputFactory func(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error)
