@@ -5,6 +5,12 @@ app_family: fam
 app_group: grp
 app_name: app
 
+blob:
+  default:
+    bucket: default
+  foo:
+    bucket: foo
+
 cloud:
   aws:
     credentials:
