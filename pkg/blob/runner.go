@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 	"github.com/justtrackio/gosoline/pkg/kernel"
@@ -33,24 +33,13 @@ type BatchRunnerSettings struct {
 	WriterRunnerCount int    `cfg:"writer_runner_count" default:"10"`
 }
 
-var br = struct {
-	sync.Mutex
-	instance BatchRunner
-}{}
+type batchRunnerKey string
 
 func ProvideBatchRunner(name string) kernel.ModuleFactory {
-	br.Lock()
-	defer br.Unlock()
-
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		if br.instance != nil {
-			return br.instance, nil
-		}
-
-		var err error
-		br.instance, err = NewBatchRunner(ctx, config, logger, name)
-
-		return br.instance, err
+		return appctx.Provide(ctx, batchRunnerKey(name), func() (BatchRunner, error) {
+			return NewBatchRunner(ctx, config, logger, name)
+		})
 	}
 }
 
