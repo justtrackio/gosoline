@@ -76,6 +76,68 @@ var (
       </Cube>
    </Cube>
 </gesmes:Envelope>`
+	fxRatesApiResponse = `{
+    "success": true,
+    "timestamp": 1698061860,
+    "date": "2023-10-23T11:51:00.000Z",
+    "base": "EUR",
+    "rates": {
+        "ADA": 3.77,
+        "USD": 1.5,
+        "ZAR": 19.07,
+        "NEWC": 42.42
+    }
+}`
+	fxRatesApiResponseHistorical_2021_05_27 = `{
+    "success": true,
+    "timestamp": 1622073600,
+    "date": "2021-05-27",
+    "base": "EUR",
+    "rates": {
+        "ADA": 1.80,
+        "USD": 1.25
+    }
+}`
+	fxRatesApiResponseHistorical_2021_05_26 = `{
+    "success": true,
+    "timestamp": 1621987200,
+    "date": "2021-05-26",
+    "base": "EUR",
+    "rates": {
+        "ADA": 1.77,
+        "USD": 1.20
+    }
+}`
+	fxRatesApiResponseHistorical_2021_05_25 = `{
+    "success": true,
+    "timestamp": 1621900800,
+    "date": "2021-05-25",
+    "base": "EUR",
+    "rates": {
+        "ADA": 1.70,
+        "USD": 1.19
+    }
+}`
+	fxRatesApiResponseHistorical_2021_05_24 = `{
+    "success": true,
+    "timestamp": 1621814400,
+    "date": "2021-05-24",
+    "base": "EUR",
+    "rates": {
+        "ADA": 1.68,
+        "USD": 1.18
+    }
+}`
+	fxRatesApiResponseHistorical_2021_05_23 = `{
+    "success": true,
+    "timestamp": 1621728000,
+    "date": "2021-05-23",
+    "base": "EUR",
+    "rates": {
+        "ADA": 1.65,
+        "USD": 1.17
+    }
+}`
 )
 
 type updaterServiceTestSuite struct {
@@ -87,7 +149,8 @@ type updaterServiceTestSuite struct {
 	client *httpMock.Client
 	clock  clock.FakeClock
 
-	updater currency.UpdaterService
+	updater               currency.UpdaterService
+	updaterWithFxRatesApi currency.UpdaterService
 }
 
 func TestNewUpdaterService(t *testing.T) {
@@ -105,6 +168,11 @@ func (s *updaterServiceTestSuite) SetupTest() {
 	s.updater = currency.NewUpdaterWithInterfaces(s.logger, s.store, s.client, s.clock, &currency.Settings{
 		StartDate: time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC),
 	})
+
+	s.updaterWithFxRatesApi = currency.NewUpdaterWithInterfaces(s.logger, s.store, s.client, s.clock, &currency.Settings{
+		StartDate:     time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC),
+		FxRatesApiKey: "api-key",
+	})
 }
 
 func (s *updaterServiceTestSuite) TestEnsureRecentExchangeRates() {
@@ -115,6 +183,19 @@ func (s *updaterServiceTestSuite) TestEnsureRecentExchangeRates() {
 	s.mockHttpRequest(response)
 
 	err := s.updater.EnsureRecentExchangeRates(s.ctx)
+
+	s.NoError(err)
+}
+
+func (s *updaterServiceTestSuite) TestEnsureRecentExchangeRatesWithFxRatesApi() {
+	s.mockCurrencyStoreGetTime(currency.ExchangeRateDateKey, s.clock.Now().AddDate(-1, 0, 0), true)
+	s.store.EXPECT().Put(s.ctx, currency.ExchangeRateDateKey, mock.AnythingOfType("float64")).Return(nil)
+	s.store.EXPECT().Put(s.ctx, mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Return(nil)
+
+	s.mockHttpRequest(response)
+	s.mockHttpRequest(fxRatesApiResponse)
+
+	err := s.updaterWithFxRatesApi.EnsureRecentExchangeRates(s.ctx)
 
 	s.NoError(err)
 }
@@ -139,6 +220,40 @@ func (s *updaterServiceTestSuite) TestEnsureHistoricalExchangeRates() {
 	s.mockHttpRequest(historicalResponse)
 
 	err := s.updater.EnsureHistoricalExchangeRates(s.ctx)
+
+	s.NoError(err)
+}
+
+func (s *updaterServiceTestSuite) TestEnsureHistoricalExchangeRatesWithFxRatesApi() {
+	exchangeRates := map[string]float64{
+		"2021-05-27-USD": 1.2229,
+		"2021-05-27-BGN": 1.9558,
+		"2021-05-27-ADA": 1.80,
+		"2021-05-26-USD": 1.2229,
+		"2021-05-26-BGN": 1.9558,
+		"2021-05-26-ADA": 1.77,
+		"2021-05-25-USD": 1.2212,
+		"2021-05-25-JPY": 132.97,
+		"2021-05-25-ADA": 1.70,
+		"2021-05-24-USD": 1.2212,
+		"2021-05-24-JPY": 132.97,
+		"2021-05-24-ADA": 1.68,
+		"2021-05-23-USD": 1.2212,
+		"2021-05-23-JPY": 132.97,
+		"2021-05-23-ADA": 1.65,
+	}
+	s.mockCurrencyStoreGetTime(currency.HistoricalExchangeRateDateKey, time.Time{}, false)
+	s.store.EXPECT().PutBatch(s.ctx, exchangeRates).Return(nil)
+	s.store.EXPECT().Put(s.ctx, currency.HistoricalExchangeRateDateKey, float64(s.clock.Now().Unix())).Return(nil)
+
+	s.mockHttpRequest(historicalResponse)
+	s.mockHttpRequest(fxRatesApiResponseHistorical_2021_05_26)
+	s.mockHttpRequest(fxRatesApiResponseHistorical_2021_05_23)
+	s.mockHttpRequest(fxRatesApiResponseHistorical_2021_05_24)
+	s.mockHttpRequest(fxRatesApiResponseHistorical_2021_05_25)
+	s.mockHttpRequest(fxRatesApiResponseHistorical_2021_05_27)
+
+	err := s.updaterWithFxRatesApi.EnsureHistoricalExchangeRates(s.ctx)
 
 	s.NoError(err)
 }
