@@ -121,7 +121,7 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 	cfn.Go(func() error {
 		// we don't use the context here because even when the context gets canceled, we need to keep draining the
 		// millisecondsBehindChan until it is closed - otherwise we might block the producer on the other side
-		s.reportMillisecondsBehind(millisecondsBehindChan)
+		s.reportMillisecondsBehind(ctx, millisecondsBehindChan)
 
 		return nil
 	})
@@ -531,7 +531,7 @@ func (s *shardReader) delayConsume(ctx context.Context, record types.Record) {
 	}
 }
 
-func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float64) {
+func (s *shardReader) reportMillisecondsBehind(ctx context.Context, millisecondsBehindChan chan float64) {
 	// have the ticker trigger a bit faster than once a minute - otherwise we might miss a tick
 	// in a minute if other work delays us getting a chance to run. We will only report the maximum
 	// value to CW anyway, so it doesn't matter too much how often we run
@@ -539,12 +539,12 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 	defer ticker.Stop()
 
 	currentMillisecondsBehind := 0.0
-	s.writeMetric(context.Background(), metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+	s.writeMetric(ctx, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
 
 	for {
 		select {
 		case <-ticker.Chan():
-			s.writeMetric(context.Background(), metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+			s.writeMetric(ctx, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
 		case newMillisecondsBehind, ok := <-millisecondsBehindChan:
 			if !ok {
 				// the producer stopped, so we also need to stop
@@ -552,7 +552,7 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 			}
 
 			currentMillisecondsBehind = newMillisecondsBehind
-			s.writeMetric(context.Background(), metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+			s.writeMetric(ctx, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
 		}
 	}
 }
