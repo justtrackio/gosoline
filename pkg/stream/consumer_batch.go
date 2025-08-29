@@ -42,14 +42,11 @@ type BatchConsumer struct {
 func NewUntypedBatchConsumer(name string, callbackFactory UntypedBatchConsumerCallbackFactory) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		loggerCallback := logger.WithChannel("consumerCallback")
-		contextEnforcingLogger := log.NewContextEnforcingLogger(loggerCallback)
 
-		callback, err := callbackFactory(ctx, config, contextEnforcingLogger)
+		callback, err := callbackFactory(ctx, config, loggerCallback)
 		if err != nil {
 			return nil, fmt.Errorf("can not initiate callback for consumer %s: %w", name, err)
 		}
-
-		contextEnforcingLogger.Enable()
 
 		settings := &BatchConsumerSettings{}
 		key := ConfigurableConsumerKey(name)
@@ -86,8 +83,7 @@ func (c *BatchConsumer) Run(kernelCtx context.Context) error {
 }
 
 func (c *BatchConsumer) readFromInput(ctx context.Context) error {
-	logger := c.logger.WithContext(ctx)
-	defer logger.Debug("run is ending")
+	defer c.logger.Debug(ctx, "run is ending")
 	defer c.wg.Done()
 	defer c.processBatch(context.Background())
 
@@ -125,7 +121,7 @@ func (c *BatchConsumer) processAggregateMessage(ctx context.Context, cdata *cons
 
 	ctx, _, err = c.encoder.Decode(ctx, cdata.msg, &batch)
 	if err != nil {
-		c.logger.WithContext(ctx).Error("an error occurred during disaggregation of the message: %w", err)
+		c.logger.Error(ctx, "an error occurred during disaggregation of the message: %w", err)
 
 		return
 	}
@@ -176,15 +172,13 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData)
 		}
 	}()
 
-	logger := c.logger.WithContext(batchCtx)
-
 	acks, err := c.callback.Consume(batchCtx, models, attributes)
 	if err != nil {
-		logger.Error("an error occurred during the consume batch operation: %w", err)
+		c.logger.Error(batchCtx, "an error occurred during the consume batch operation: %w", err)
 	}
 
 	if len(batch) != len(acks) {
-		logger.Error("number of acks does not match number of messages in batch: %d != %d", len(acks), len(batch))
+		c.logger.Error(batchCtx, "number of acks does not match number of messages in batch: %d != %d", len(acks), len(batch))
 	}
 
 	ackMessages := make([]*consumerData, 0, len(batch))
@@ -200,7 +194,7 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData)
 	duration := c.clock.Now().Sub(start)
 	atomic.AddInt32(&c.processed, int32(len(ackMessages)))
 
-	c.writeMetricDurationAndProcessedCount(duration, len(batch))
+	c.writeMetricDurationAndProcessedCount(batchCtx, duration, len(batch))
 }
 
 func (c *BatchConsumer) decodeMessages(
@@ -217,7 +211,7 @@ func (c *BatchConsumer) decodeMessages(
 
 		msgCtx, attribute, err := c.encoder.Decode(batchCtx, cdata.msg, model)
 		if err != nil {
-			c.logger.WithContext(msgCtx).Error("an error occurred during the batch decode message operation: %w", err)
+			c.logger.Error(msgCtx, "an error occurred during the batch decode message operation: %w", err)
 
 			continue
 		}

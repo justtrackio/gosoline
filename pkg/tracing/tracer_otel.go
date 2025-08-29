@@ -81,7 +81,7 @@ func (t *otelTracer) spanFromTrace(ctx context.Context, trc *Trace, name string)
 	// an empty traceID will be used for the new span.
 	tID, err := trace.TraceIDFromHex(trc.GetTraceId())
 	if err != nil {
-		t.logger.Warn("could not parse trace id %s", err.Error())
+		t.logger.Warn(ctx, "could not parse trace id %s", err.Error())
 		tID = trace.TraceID{}
 	}
 
@@ -89,7 +89,7 @@ func (t *otelTracer) spanFromTrace(ctx context.Context, trc *Trace, name string)
 	// an empty spanID will be used for the new span.
 	sID, err := trace.SpanIDFromHex(trc.GetId())
 	if err != nil {
-		t.logger.Warn("could not parse span id %s", err.Error())
+		t.logger.Warn(ctx, "could not parse span id %s", err.Error())
 		sID = trace.SpanID{}
 	}
 

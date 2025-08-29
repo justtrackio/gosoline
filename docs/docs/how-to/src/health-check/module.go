@@ -32,7 +32,7 @@ func (h *HelloWorldModule) Run(ctx context.Context) error {
 
 	h.healthy.Store(true)
 
-	h.logger.Info("Hello World")
+	h.logger.Info(ctx, "Hello World")
 
 	return nil
 }

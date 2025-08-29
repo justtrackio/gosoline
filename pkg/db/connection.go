@@ -60,7 +60,7 @@ func NewConnectionFromSettings(ctx context.Context, logger log.Logger, name stri
 		return nil, err
 	}
 
-	if err = runMigrations(logger, settings, connection.DB); err != nil {
+	if err = runMigrations(ctx, logger, settings, connection.DB); err != nil {
 		return nil, fmt.Errorf("can not run migrations: %w", err)
 	}
 

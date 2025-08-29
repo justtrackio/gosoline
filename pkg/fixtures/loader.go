@@ -34,29 +34,27 @@ func NewFixtureLoader(_ context.Context, config cfg.Config, logger log.Logger, f
 }
 
 func (f *fixtureLoader) Load(ctx context.Context) error {
-	logger := f.logger.WithContext(ctx)
-
 	if !f.settings.Enabled {
-		logger.Info("fixture loader is not enabled")
+		f.logger.Info(ctx, "fixture loader is not enabled")
 
 		return nil
 	}
 
-	logger.Info("loading fixtures")
+	f.logger.Info(ctx, "loading fixtures")
 	start := time.Now()
 	defer func() {
-		logger.Info("done loading fixtures in %s", time.Since(start))
+		f.logger.Info(ctx, "done loading fixtures in %s", time.Since(start))
 	}()
 
 	for group, fixtureSets := range f.fixtureSets {
 		if !slices.Contains(f.settings.Groups, group) {
-			logger.Info("fixture group %s is not enabled", group)
+			f.logger.Info(ctx, "fixture group %s is not enabled", group)
 
 			continue
 		}
 
 		for _, fixtureSet := range fixtureSets {
-			logger.Info("loading fixtures for set %T", fixtureSet)
+			f.logger.Info(ctx, "loading fixtures for set %T", fixtureSet)
 
 			if err := fixtureSet.Write(ctx); err != nil {
 				return fmt.Errorf("failed to write fixtures: %w", err)

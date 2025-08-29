@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -29,7 +30,7 @@ func (h *MyCustomHandler) Level() int {
 	return log.PriorityInfo
 }
 
-func (h *MyCustomHandler) Log(timestamp time.Time, level int, msg string, args []any, err error, data log.Data) error {
+func (h *MyCustomHandler) Log(ctx context.Context, timestamp time.Time, level int, msg string, args []any, err error, data log.Data) error {
 	fmt.Printf("%s happened at %s", msg, timestamp.Format(time.RFC822))
 
 	return nil

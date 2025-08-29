@@ -72,8 +72,8 @@ func WithConfigDebug(app *App) {
 		return kernelPkg.WithMiddlewareFactory(func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Middleware, error) {
 			return func(next kernelPkg.MiddlewareHandler) kernelPkg.MiddlewareHandler {
 				return func(ctx context.Context) {
-					if err := cfg.DebugConfig(config, logger); err != nil {
-						logger.Error("can not debug config: %w", err)
+					if err := cfg.DebugConfig(ctx, config, logger); err != nil {
+						logger.Error(ctx, "can not debug config: %w", err)
 					}
 
 					next(ctx)

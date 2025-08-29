@@ -137,19 +137,19 @@ func (u *CalculatorModule) calculateMetrics(ctx context.Context) error {
 			return fmt.Errorf("can not decide on leader: %w", err)
 		}
 
-		u.logger.Warn("will assume leader role as election failed: %s", err)
+		u.logger.Warn(ctx, "will assume leader role as election failed: %s", err)
 		isLeader = true
 	}
 
 	if !isLeader {
-		u.logger.Info("not leading: do nothing")
+		u.logger.Info(ctx, "not leading: do nothing")
 
 		return nil
 	}
 
 	for name, handler := range u.handlers {
 		if metrics, err = handler.GetMetrics(ctx); err != nil {
-			u.logger.Warn("can not calculate metrics per runner for handler %s: %s", name, err)
+			u.logger.Warn(ctx, "can not calculate metrics per runner for handler %s: %s", name, err)
 
 			continue
 		}
@@ -157,7 +157,7 @@ func (u *CalculatorModule) calculateMetrics(ctx context.Context) error {
 		allMetrics = append(allMetrics, metrics...)
 	}
 
-	u.metricWriter.Write(allMetrics)
+	u.metricWriter.Write(ctx, allMetrics)
 
 	return nil
 }

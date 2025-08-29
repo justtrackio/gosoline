@@ -146,20 +146,18 @@ func (k KinsumerAutoscaleModule) Run(ctx context.Context) error {
 }
 
 func (k KinsumerAutoscaleModule) autoscaleKinsumer(ctx context.Context) error {
-	logger := k.logger.WithContext(ctx)
-
 	isLeader, err := k.leaderElection.IsLeader(ctx, k.memberId)
 	if err != nil {
 		if conc.IsLeaderElectionFatalError(err) {
 			return fmt.Errorf("can not decide on leader: %w", err)
 		}
 
-		logger.Warn("will assume leader role as election failed: %s", err)
+		k.logger.Warn(ctx, "will assume leader role as election failed: %s", err)
 		isLeader = true
 	}
 
 	if !isLeader {
-		logger.Info("not leading: do nothing")
+		k.logger.Info(ctx, "not leading: do nothing")
 
 		return nil
 	}
@@ -171,7 +169,7 @@ func (k KinsumerAutoscaleModule) autoscaleKinsumer(ctx context.Context) error {
 		}
 
 		if err := k.leaderElection.Resign(ctx, k.memberId); err != nil {
-			logger.Warn("failed to resign leader: %s", err)
+			k.logger.Warn(ctx, "failed to resign leader: %s", err)
 		}
 	}()
 
@@ -198,7 +196,7 @@ func (k KinsumerAutoscaleModule) autoscaleKinsumer(ctx context.Context) error {
 
 	success = true
 
-	logger.Info("scaled task count from %d to %d", currentTaskCount, shardCount)
+	k.logger.Info(ctx, "scaled task count from %d to %d", currentTaskCount, shardCount)
 
 	return nil
 }

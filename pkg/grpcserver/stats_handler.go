@@ -99,7 +99,7 @@ func (s *statsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 		holder.TotalTime = v.EndTime.Sub(v.BeginTime).Nanoseconds()
 
 		s.writeLog(ctx, holder)
-		s.writeMetrics(holder)
+		s.writeMetrics(ctx, holder)
 	}
 }
 
@@ -115,21 +115,20 @@ func (s *statsHandler) HandleConn(_ context.Context, _ stats.ConnStats) {
 
 func (s *statsHandler) writeLog(ctx context.Context, holder *statsHolder) {
 	logger := s.logger.
-		WithContext(ctx).
 		WithFields(holder.GetLoggerFields()).
 		WithChannel(s.settings.Stats.Channel)
 	msg := "handled gRPC method"
 
 	switch s.settings.Stats.LogLevel {
 	case log.LevelDebug:
-		logger.Debug(msg)
+		logger.Debug(ctx, msg)
 	case log.LevelInfo:
-		logger.Info(msg)
+		logger.Info(ctx, msg)
 	}
 }
 
-func (s *statsHandler) writeMetrics(holder *statsHolder) {
-	s.metricWriter.WriteOne(&metric.Datum{
+func (s *statsHandler) writeMetrics(ctx context.Context, holder *statsHolder) {
+	s.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: MetricApiRequestResponseTime,
 		Dimensions: metric.Dimensions{
@@ -139,7 +138,7 @@ func (s *statsHandler) writeMetrics(holder *statsHolder) {
 		Unit:  metric.UnitMillisecondsAverage,
 	})
 
-	s.metricWriter.WriteOne(&metric.Datum{
+	s.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: MetricApiRequestCount,
 		Dimensions: metric.Dimensions{

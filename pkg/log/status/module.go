@@ -42,7 +42,7 @@ func (m *module) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-m.sigChan:
-			m.statusManager.PrintReport(m.logger)
+			m.statusManager.PrintReport(ctx, m.logger)
 		}
 	}
 }

@@ -57,30 +57,28 @@ func (m module) Run(ctx context.Context) error {
 }
 
 func (m module) processMessage(ctx context.Context, msg string) {
-	logger := m.logger.WithContext(ctx)
-
 	items := make([]Item, 0)
 	if err := json.Unmarshal([]byte(msg), &items); err != nil {
-		logger.Error("unable to unmarshall items: %w", err)
+		m.logger.Error(ctx, "unable to unmarshall items: %w", err)
 	}
 
 	for _, item := range items {
 		switch item.Action {
 		case "create":
 			if err := m.repository.Create(ctx, &item); err != nil {
-				logger.Error("unable to create item: %w", err)
+				m.logger.Error(ctx, "unable to create item: %w", err)
 			}
 
 		case "update":
 			if err := m.repository.Update(ctx, &item); err != nil {
-				logger.Error("unable to update item: %w", err)
+				m.logger.Error(ctx, "unable to update item: %w", err)
 			}
 		case "delete":
 			if err := m.repository.Delete(ctx, &item); err != nil {
-				logger.Error("unable to delete item: %w", err)
+				m.logger.Error(ctx, "unable to delete item: %w", err)
 			}
 		default:
-			logger.Error("unknown action %s", item.Action)
+			m.logger.Error(ctx, "unknown action %s", item.Action)
 		}
 	}
 }

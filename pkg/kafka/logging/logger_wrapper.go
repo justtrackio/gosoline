@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -30,7 +31,7 @@ func isNonCriticalKafkaError(msg string) bool {
 type DebugLoggerWrapper KafkaLogger
 
 func (logger DebugLoggerWrapper) Printf(msg string, args ...any) {
-	logger.Debug(msg, args...)
+	logger.Debug(context.Background(), msg, args...)
 }
 
 type ErrorLoggerWrapper KafkaLogger
@@ -46,10 +47,10 @@ func (logger ErrorLoggerWrapper) Printf(format string, args ...any) {
 		exec.IsIoTimeoutError(err) ||
 		exec.IsUsedClosedConnectionError(err) ||
 		exec.IsOperationWasCanceledError(err) {
-		logger.Info(format, args...)
+		logger.Info(context.Background(), format, args...)
 
 		return
 	}
 
-	logger.Error(format, args...)
+	logger.Error(context.Background(), format, args...)
 }

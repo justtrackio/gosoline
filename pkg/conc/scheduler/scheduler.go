@@ -19,7 +19,7 @@ const (
 
 //go:generate go run github.com/vektra/mockery/v2 --name Scheduler
 type Scheduler[T any] interface {
-	ScheduleJob(key string, provider func() (T, error)) (T, error)
+	ScheduleJob(ctx context.Context, key string, provider func() (T, error)) (T, error)
 	Run(ctx context.Context) error
 }
 
@@ -83,7 +83,7 @@ func NewSchedulerWithSettings[T any](batchRunner BatchRunner[T], metricWriter me
 	}
 }
 
-func (s scheduler[T]) ScheduleJob(key string, provider func() (T, error)) (T, error) {
+func (s scheduler[T]) ScheduleJob(ctx context.Context, key string, provider func() (T, error)) (T, error) {
 	start := s.clock.Now()
 	resultChan := make(chan result[T])
 	s.workQueue <- job[T]{
@@ -93,7 +93,7 @@ func (s scheduler[T]) ScheduleJob(key string, provider func() (T, error)) (T, er
 	}
 
 	resultValue := <-resultChan
-	s.writeTaskDelayMetric(s.clock.Since(start))
+	s.writeTaskDelayMetric(ctx, s.clock.Since(start))
 
 	if resultValue.success != nil {
 		return *resultValue.success, nil
@@ -174,7 +174,7 @@ func (s scheduler[T]) createBatches(ctx context.Context, batchQueue chan jobBatc
 
 func (s scheduler[T]) executeBatches(ctx context.Context, batchQueue chan jobBatch[T]) error {
 	for batch := range batchQueue {
-		s.writeBatchSizeMetric(len(batch.keys))
+		s.writeBatchSizeMetric(ctx, len(batch.keys))
 
 		results, err := s.batchRunner(ctx, batch.keys, batch.providers)
 		if err != nil {
@@ -195,8 +195,8 @@ func (s scheduler[T]) executeBatches(ctx context.Context, batchQueue chan jobBat
 	return nil
 }
 
-func (s scheduler[T]) writeTaskDelayMetric(took time.Duration) {
-	s.metricWriter.WriteOne(&metric.Datum{
+func (s scheduler[T]) writeTaskDelayMetric(ctx context.Context, took time.Duration) {
+	s.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: metricNameTaskDelay,
 		Dimensions: map[string]string{
@@ -207,8 +207,8 @@ func (s scheduler[T]) writeTaskDelayMetric(took time.Duration) {
 	})
 }
 
-func (s scheduler[T]) writeBatchSizeMetric(batchSize int) {
-	s.metricWriter.WriteOne(&metric.Datum{
+func (s scheduler[T]) writeBatchSizeMetric(ctx context.Context, batchSize int) {
+	s.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: metricNameBatchSize,
 		Dimensions: map[string]string{

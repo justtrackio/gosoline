@@ -39,8 +39,8 @@ func ProvideElasticsearchWriter(ctx context.Context, config cfg.Config, logger l
 	})
 }
 
-func NewElasticsearchWriter(_ context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
-	client, err := es.ProvideClient(config, logger, "metric")
+func NewElasticsearchWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
+	client, err := es.ProvideClient(config, es.NewLogger(logger), "metric")
 	if err != nil {
 		return nil, fmt.Errorf("can not create es client: %w", err)
 	}
@@ -69,12 +69,12 @@ func (w elasticsearchWriter) GetPriority() int {
 	return PriorityLow
 }
 
-func (w elasticsearchWriter) bulkWriteToES(buf bytes.Buffer) {
+func (w elasticsearchWriter) bulkWriteToES(ctx context.Context, buf bytes.Buffer) {
 	batchReader := bytes.NewReader(buf.Bytes())
 
 	res, err := w.client.Bulk(batchReader)
 	if err != nil {
-		w.logger.Error("could not write metric data to es: %w", err)
+		w.logger.Error(ctx, "could not write metric data to es: %w", err)
 
 		return
 	}
@@ -83,11 +83,11 @@ func (w elasticsearchWriter) bulkWriteToES(buf bytes.Buffer) {
 		// A successful response might still contain errors for particular documents
 		w.logger.WithFields(log.Fields{
 			"status_code": res.StatusCode,
-		}).Error("not all metrics have been written to es: %w", err)
+		}).Error(ctx, "not all metrics have been written to es: %w", err)
 	}
 }
 
-func (w elasticsearchWriter) Write(batch Data) {
+func (w elasticsearchWriter) Write(ctx context.Context, batch Data) {
 	var buf bytes.Buffer
 
 	if len(batch) == 0 {
@@ -106,7 +106,7 @@ func (w elasticsearchWriter) Write(batch Data) {
 
 		data, err := json.Marshal(m)
 		if err != nil {
-			w.logger.Error("could not marshal metric data and write to es: %w", err)
+			w.logger.Error(ctx, "could not marshal metric data and write to es: %w", err)
 
 			continue
 		}
@@ -121,11 +121,11 @@ func (w elasticsearchWriter) Write(batch Data) {
 		buf.Write([]byte{10})
 	}
 
-	w.bulkWriteToES(buf)
+	w.bulkWriteToES(ctx, buf)
 
-	w.logger.Debug("written %d metric data sets to elasticsearch", len(batch))
+	w.logger.Debug(ctx, "written %d metric data sets to elasticsearch", len(batch))
 }
 
-func (w elasticsearchWriter) WriteOne(data *Datum) {
-	w.Write(Data{data})
+func (w elasticsearchWriter) WriteOne(ctx context.Context, data *Datum) {
+	w.Write(ctx, Data{data})
 }

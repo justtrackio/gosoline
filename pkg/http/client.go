@@ -424,7 +424,7 @@ func (c *client) AddRetryCondition(f RetryConditionFunc) {
 	c.http.AddRetryCondition(func(r *resty.Response, e error) bool {
 		conditionResult := f(buildResponse(r, nil), e)
 		if conditionResult {
-			c.logger.Warn("retry attempt %d for request %s", r.Request.Attempt, r.Request.URL)
+			c.logger.Warn(r.Request.Context(), "retry attempt %d for request %s", r.Request.Attempt, r.Request.URL)
 		}
 
 		return conditionResult
@@ -466,13 +466,13 @@ func (c *client) Put(ctx context.Context, request *Request) (*Response, error) {
 
 func (c *client) do(ctx context.Context, method string, request *Request) (*Response, error) {
 	req, url, err := request.build()
-	logger := c.logger.WithContext(ctx).WithFields(log.Fields{
+	logger := c.logger.WithFields(log.Fields{
 		"url":    url,
 		"method": method,
 	})
 
 	if err != nil {
-		logger.Error("failed to assemble request: %w", err)
+		logger.Error(ctx, "failed to assemble request: %w", err)
 
 		return nil, fmt.Errorf("failed to assemble request: %w", err)
 	}
@@ -490,7 +490,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 		req.SetOutput(*request.outputFile)
 	}
 
-	c.writeMetric(metricRequest, method, metric.UnitCount, 1.0)
+	c.writeMetric(ctx, metricRequest, method, metric.UnitCount, 1.0)
 	start := c.clock.Now()
 	resp, err := req.Execute(method, url)
 
@@ -504,13 +504,13 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	// Otherwise a user might spam our error logs by just canceling a lot of requests
 	// (or many users spam us because sometimes they cancel requests)
 	if err != nil {
-		c.writeMetric(metricError, method, metric.UnitCount, 1.0)
+		c.writeMetric(ctx, metricError, method, metric.UnitCount, 1.0)
 
 		return nil, fmt.Errorf("failed to perform %s request to %s: %w", request.restyRequest.Method, request.url.String(), err)
 	}
 
 	metricName := fmt.Sprintf("%s%dXX", metricResponseCode, resp.StatusCode()/100)
-	c.writeMetric(metricName, method, metric.UnitCount, 1.0)
+	c.writeMetric(ctx, metricName, method, metric.UnitCount, 1.0)
 
 	response := buildResponse(resp, &totalDuration)
 
@@ -519,13 +519,13 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	// so the duration will be very low. If we get back an error (e.g., status 500),
 	// we log the duration as this is just a valid http response.
 	requestDurationMs := float64(resp.Time() / time.Millisecond)
-	c.writeMetric(metricRequestDuration, method, metric.UnitMillisecondsAverage, requestDurationMs)
+	c.writeMetric(ctx, metricRequestDuration, method, metric.UnitMillisecondsAverage, requestDurationMs)
 
 	return response, nil
 }
 
-func (c *client) writeMetric(metricName string, method string, unit metric.StandardUnit, value float64) {
-	c.metricWriter.WriteOne(&metric.Datum{
+func (c *client) writeMetric(ctx context.Context, metricName string, method string, unit metric.StandardUnit, value float64) {
+	c.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: metricName,

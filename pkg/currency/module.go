@@ -102,7 +102,7 @@ func (module Module) Run(ctx context.Context) error {
 					return nil
 				}
 
-				module.logger.Error("failed to refresh recent exchange rates: %w", err)
+				module.logger.Error(ctx, "failed to refresh recent exchange rates: %w", err)
 			}
 		}
 	}

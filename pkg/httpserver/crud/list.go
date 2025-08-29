@@ -37,15 +37,13 @@ func (lh listHandler) GetInput() any {
 func (lh listHandler) Handle(ctx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
 	inp := request.Body.(*sql.Input)
 
-	logger := lh.logger.WithContext(ctx)
-
 	repo := lh.transformer.GetRepository()
 	metadata := repo.GetMetadata()
 
 	lqb := sql.NewOrmQueryBuilder(metadata)
 	qb, err := lqb.Build(inp)
 	if err != nil {
-		return HandleErrorOnRead(logger, &validation.Error{
+		return HandleErrorOnRead(ctx, lh.logger, &validation.Error{
 			Errors: []error{err},
 		})
 	}
@@ -53,13 +51,13 @@ func (lh listHandler) Handle(ctx context.Context, request *httpserver.Request) (
 	apiView := GetApiViewFromHeader(request.Header)
 	results, err := lh.transformer.List(ctx, qb, apiView)
 	if err != nil {
-		return HandleErrorOnRead(logger, err)
+		return HandleErrorOnRead(ctx, lh.logger, err)
 	}
 
 	model := lh.transformer.GetModel()
 	total, err := repo.Count(ctx, qb, model)
 	if err != nil {
-		return HandleErrorOnRead(logger, err)
+		return HandleErrorOnRead(ctx, lh.logger, err)
 	}
 
 	out := Output{

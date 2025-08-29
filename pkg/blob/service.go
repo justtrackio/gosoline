@@ -49,7 +49,7 @@ func (l *Service) CreateBucket(ctx context.Context) error {
 	})
 
 	if isBucketAlreadyExistsError(err) {
-		l.logger.Info("s3 bucket %s did already exist", l.settings.Bucket)
+		l.logger.Info(ctx, "s3 bucket %s did already exist", l.settings.Bucket)
 
 		return nil
 	}
@@ -58,7 +58,7 @@ func (l *Service) CreateBucket(ctx context.Context) error {
 		return fmt.Errorf("could not create s3 bucket %s: %w", l.settings.Bucket, err)
 	}
 
-	l.logger.Info("created s3 bucket %s", l.settings.Bucket)
+	l.logger.Info(ctx, "created s3 bucket %s", l.settings.Bucket)
 
 	return nil
 }

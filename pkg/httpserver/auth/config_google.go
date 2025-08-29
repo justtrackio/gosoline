@@ -107,7 +107,6 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	}
 
 	reqCtx := ginCtx.Request.Context()
-	logger := a.logger.WithContext(reqCtx)
 
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
@@ -117,13 +116,13 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	var tokenInfo *oauth2.Tokeninfo
 
 	if tokenInfo, ok = a.tokenCache[idToken]; ok && tokenInfo == nil {
-		logger.Debug("token was in cache but invalid")
+		a.logger.Debug(reqCtx, "token was in cache but invalid")
 
 		return false, fmt.Errorf("token from cache invalidated the user")
 	}
 
 	if tokenInfo, ok = a.tokenCache[idToken]; ok {
-		logger.Debug("idToken was already in cache and valid")
+		a.logger.Debug(reqCtx, "idToken was already in cache and valid")
 
 		user := a.getSubjectForToken(tokenInfo)
 		RequestWithSubject(ginCtx, user)
@@ -131,9 +130,9 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 		return true, nil
 	}
 
-	logger.WithFields(log.Fields{
+	a.logger.WithFields(log.Fields{
 		"id_token": idToken,
-	}).Info("token not in cache, will perform request")
+	}).Info(reqCtx, "token not in cache, will perform request")
 
 	tokenInfo, err = a.tokenProvider.GetTokenInfo(idToken)
 	if err != nil {

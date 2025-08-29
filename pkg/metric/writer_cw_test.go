@@ -65,5 +65,5 @@ func buildMocksAndWrite(t *testing.T, now time.Time, metricTimeStamp time.Time, 
 		},
 	}
 
-	mo.Write(data)
+	mo.Write(t.Context(), data)
 }

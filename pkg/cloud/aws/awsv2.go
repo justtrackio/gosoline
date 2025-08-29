@@ -73,10 +73,10 @@ func (s *ClientSettings) LogFields() log.Fields {
 }
 
 func LogNewClientCreated(ctx context.Context, logger log.Logger, service string, clientName string, settings ClientSettings) {
-	logger.WithContext(ctx).WithFields(settings.LogFields()).WithFields(log.Fields{
+	logger.WithFields(settings.LogFields()).WithFields(log.Fields{
 		"aws_service":     service,
 		"aws_client_name": clientName,
-	}).Info("created new %s client %s", service, clientName)
+	}).Info(ctx, "created new %s client %s", service, clientName)
 }
 
 func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, service string, name string) error {
@@ -197,15 +197,9 @@ func NewLogger(base log.Logger) *Logger {
 func (l Logger) Logf(classification logging.Classification, format string, v ...any) {
 	switch classification {
 	case logging.Warn:
-		l.base.Warn(format, v...)
+		l.base.Warn(context.Background(), format, v...)
 	default:
-		l.base.Info(format, v...)
-	}
-}
-
-func (l Logger) WithContext(ctx context.Context) logging.Logger {
-	return &Logger{
-		base: l.base.WithContext(ctx),
+		l.base.Info(context.Background(), format, v...)
 	}
 }
 

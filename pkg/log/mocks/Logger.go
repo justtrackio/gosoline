@@ -22,10 +22,10 @@ func (_m *Logger) EXPECT() *Logger_Expecter {
 	return &Logger_Expecter{mock: &_m.Mock}
 }
 
-// Debug provides a mock function with given fields: format, args
-func (_m *Logger) Debug(format string, args ...interface{}) {
+// Debug provides a mock function with given fields: ctx, format, args
+func (_m *Logger) Debug(ctx context.Context, format string, args ...interface{}) {
 	var _ca []interface{}
-	_ca = append(_ca, format)
+	_ca = append(_ca, ctx, format)
 	_ca = append(_ca, args...)
 	_m.Called(_ca...)
 }
@@ -36,22 +36,23 @@ type Logger_Debug_Call struct {
 }
 
 // Debug is a helper method to define mock.On call
+//   - ctx context.Context
 //   - format string
 //   - args ...interface{}
-func (_e *Logger_Expecter) Debug(format interface{}, args ...interface{}) *Logger_Debug_Call {
+func (_e *Logger_Expecter) Debug(ctx interface{}, format interface{}, args ...interface{}) *Logger_Debug_Call {
 	return &Logger_Debug_Call{Call: _e.mock.On("Debug",
-		append([]interface{}{format}, args...)...)}
+		append([]interface{}{ctx, format}, args...)...)}
 }
 
-func (_c *Logger_Debug_Call) Run(run func(format string, args ...interface{})) *Logger_Debug_Call {
+func (_c *Logger_Debug_Call) Run(run func(ctx context.Context, format string, args ...interface{})) *Logger_Debug_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]interface{}, len(args)-1)
-		for i, a := range args[1:] {
+		variadicArgs := make([]interface{}, len(args)-2)
+		for i, a := range args[2:] {
 			if a != nil {
 				variadicArgs[i] = a.(interface{})
 			}
 		}
-		run(args[0].(string), variadicArgs...)
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
 	})
 	return _c
 }
@@ -61,15 +62,15 @@ func (_c *Logger_Debug_Call) Return() *Logger_Debug_Call {
 	return _c
 }
 
-func (_c *Logger_Debug_Call) RunAndReturn(run func(string, ...interface{})) *Logger_Debug_Call {
+func (_c *Logger_Debug_Call) RunAndReturn(run func(context.Context, string, ...interface{})) *Logger_Debug_Call {
 	_c.Run(run)
 	return _c
 }
 
-// Error provides a mock function with given fields: format, args
-func (_m *Logger) Error(format string, args ...interface{}) {
+// Error provides a mock function with given fields: ctx, format, args
+func (_m *Logger) Error(ctx context.Context, format string, args ...interface{}) {
 	var _ca []interface{}
-	_ca = append(_ca, format)
+	_ca = append(_ca, ctx, format)
 	_ca = append(_ca, args...)
 	_m.Called(_ca...)
 }
@@ -80,22 +81,23 @@ type Logger_Error_Call struct {
 }
 
 // Error is a helper method to define mock.On call
+//   - ctx context.Context
 //   - format string
 //   - args ...interface{}
-func (_e *Logger_Expecter) Error(format interface{}, args ...interface{}) *Logger_Error_Call {
+func (_e *Logger_Expecter) Error(ctx interface{}, format interface{}, args ...interface{}) *Logger_Error_Call {
 	return &Logger_Error_Call{Call: _e.mock.On("Error",
-		append([]interface{}{format}, args...)...)}
+		append([]interface{}{ctx, format}, args...)...)}
 }
 
-func (_c *Logger_Error_Call) Run(run func(format string, args ...interface{})) *Logger_Error_Call {
+func (_c *Logger_Error_Call) Run(run func(ctx context.Context, format string, args ...interface{})) *Logger_Error_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]interface{}, len(args)-1)
-		for i, a := range args[1:] {
+		variadicArgs := make([]interface{}, len(args)-2)
+		for i, a := range args[2:] {
 			if a != nil {
 				variadicArgs[i] = a.(interface{})
 			}
 		}
-		run(args[0].(string), variadicArgs...)
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
 	})
 	return _c
 }
@@ -105,15 +107,15 @@ func (_c *Logger_Error_Call) Return() *Logger_Error_Call {
 	return _c
 }
 
-func (_c *Logger_Error_Call) RunAndReturn(run func(string, ...interface{})) *Logger_Error_Call {
+func (_c *Logger_Error_Call) RunAndReturn(run func(context.Context, string, ...interface{})) *Logger_Error_Call {
 	_c.Run(run)
 	return _c
 }
 
-// Info provides a mock function with given fields: format, args
-func (_m *Logger) Info(format string, args ...interface{}) {
+// Info provides a mock function with given fields: ctx, format, args
+func (_m *Logger) Info(ctx context.Context, format string, args ...interface{}) {
 	var _ca []interface{}
-	_ca = append(_ca, format)
+	_ca = append(_ca, ctx, format)
 	_ca = append(_ca, args...)
 	_m.Called(_ca...)
 }
@@ -124,22 +126,23 @@ type Logger_Info_Call struct {
 }
 
 // Info is a helper method to define mock.On call
+//   - ctx context.Context
 //   - format string
 //   - args ...interface{}
-func (_e *Logger_Expecter) Info(format interface{}, args ...interface{}) *Logger_Info_Call {
+func (_e *Logger_Expecter) Info(ctx interface{}, format interface{}, args ...interface{}) *Logger_Info_Call {
 	return &Logger_Info_Call{Call: _e.mock.On("Info",
-		append([]interface{}{format}, args...)...)}
+		append([]interface{}{ctx, format}, args...)...)}
 }
 
-func (_c *Logger_Info_Call) Run(run func(format string, args ...interface{})) *Logger_Info_Call {
+func (_c *Logger_Info_Call) Run(run func(ctx context.Context, format string, args ...interface{})) *Logger_Info_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]interface{}, len(args)-1)
-		for i, a := range args[1:] {
+		variadicArgs := make([]interface{}, len(args)-2)
+		for i, a := range args[2:] {
 			if a != nil {
 				variadicArgs[i] = a.(interface{})
 			}
 		}
-		run(args[0].(string), variadicArgs...)
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
 	})
 	return _c
 }
@@ -149,15 +152,15 @@ func (_c *Logger_Info_Call) Return() *Logger_Info_Call {
 	return _c
 }
 
-func (_c *Logger_Info_Call) RunAndReturn(run func(string, ...interface{})) *Logger_Info_Call {
+func (_c *Logger_Info_Call) RunAndReturn(run func(context.Context, string, ...interface{})) *Logger_Info_Call {
 	_c.Run(run)
 	return _c
 }
 
-// Warn provides a mock function with given fields: format, args
-func (_m *Logger) Warn(format string, args ...interface{}) {
+// Warn provides a mock function with given fields: ctx, format, args
+func (_m *Logger) Warn(ctx context.Context, format string, args ...interface{}) {
 	var _ca []interface{}
-	_ca = append(_ca, format)
+	_ca = append(_ca, ctx, format)
 	_ca = append(_ca, args...)
 	_m.Called(_ca...)
 }
@@ -168,22 +171,23 @@ type Logger_Warn_Call struct {
 }
 
 // Warn is a helper method to define mock.On call
+//   - ctx context.Context
 //   - format string
 //   - args ...interface{}
-func (_e *Logger_Expecter) Warn(format interface{}, args ...interface{}) *Logger_Warn_Call {
+func (_e *Logger_Expecter) Warn(ctx interface{}, format interface{}, args ...interface{}) *Logger_Warn_Call {
 	return &Logger_Warn_Call{Call: _e.mock.On("Warn",
-		append([]interface{}{format}, args...)...)}
+		append([]interface{}{ctx, format}, args...)...)}
 }
 
-func (_c *Logger_Warn_Call) Run(run func(format string, args ...interface{})) *Logger_Warn_Call {
+func (_c *Logger_Warn_Call) Run(run func(ctx context.Context, format string, args ...interface{})) *Logger_Warn_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]interface{}, len(args)-1)
-		for i, a := range args[1:] {
+		variadicArgs := make([]interface{}, len(args)-2)
+		for i, a := range args[2:] {
 			if a != nil {
 				variadicArgs[i] = a.(interface{})
 			}
 		}
-		run(args[0].(string), variadicArgs...)
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
 	})
 	return _c
 }
@@ -193,7 +197,7 @@ func (_c *Logger_Warn_Call) Return() *Logger_Warn_Call {
 	return _c
 }
 
-func (_c *Logger_Warn_Call) RunAndReturn(run func(string, ...interface{})) *Logger_Warn_Call {
+func (_c *Logger_Warn_Call) RunAndReturn(run func(context.Context, string, ...interface{})) *Logger_Warn_Call {
 	_c.Run(run)
 	return _c
 }
@@ -242,54 +246,6 @@ func (_c *Logger_WithChannel_Call) Return(_a0 log.Logger) *Logger_WithChannel_Ca
 }
 
 func (_c *Logger_WithChannel_Call) RunAndReturn(run func(string) log.Logger) *Logger_WithChannel_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// WithContext provides a mock function with given fields: ctx
-func (_m *Logger) WithContext(ctx context.Context) log.Logger {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for WithContext")
-	}
-
-	var r0 log.Logger
-	if rf, ok := ret.Get(0).(func(context.Context) log.Logger); ok {
-		r0 = rf(ctx)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(log.Logger)
-		}
-	}
-
-	return r0
-}
-
-// Logger_WithContext_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithContext'
-type Logger_WithContext_Call struct {
-	*mock.Call
-}
-
-// WithContext is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *Logger_Expecter) WithContext(ctx interface{}) *Logger_WithContext_Call {
-	return &Logger_WithContext_Call{Call: _e.mock.On("WithContext", ctx)}
-}
-
-func (_c *Logger_WithContext_Call) Run(run func(ctx context.Context)) *Logger_WithContext_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
-	})
-	return _c
-}
-
-func (_c *Logger_WithContext_Call) Return(_a0 log.Logger) *Logger_WithContext_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *Logger_WithContext_Call) RunAndReturn(run func(context.Context) log.Logger) *Logger_WithContext_Call {
 	_c.Call.Return(run)
 	return _c
 }

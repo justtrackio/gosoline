@@ -23,22 +23,21 @@ func main() {
 	}
 
 	// 3
-	logger.Info("log a number %d", 4)
+	logger.Info(ctx, "log a number %d", 4)
 
 	// 4
-	logger.WithChannel("strings").Warn("a dangerous string appeared: %s", "foobar")
+	logger.WithChannel("strings").Warn(ctx, "a dangerous string appeared: %s", "foobar")
 
 	// 5
 	loggerWithFields := logger.WithFields(log.Fields{
 		"b": true,
 	})
-	loggerWithFields.Debug("just some debug line")
-	loggerWithFields.Error("it happens: %w", fmt.Errorf("should not happen"))
+	loggerWithFields.Debug(ctx, "just some debug line")
+	loggerWithFields.Error(ctx, "it happens: %w", fmt.Errorf("should not happen"))
 
 	// 6
 	ctx = log.AppendContextFields(ctx, map[string]any{
 		"id": 1337,
 	})
-	contextAwareLogger := logger.WithContext(ctx)
-	contextAwareLogger.Info("some info")
+	logger.Info(ctx, "some info")
 }

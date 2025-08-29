@@ -52,11 +52,11 @@ func New(name string, definer Definer) kernel.ModuleFactory {
 			return nil, fmt.Errorf("failed to unmarshal httpserver settings: %w", err)
 		}
 
-		return NewWithSettings(name, definer, settings)(ctx, config, logger)
+		return NewWithSettings(ctx, name, definer, settings)(ctx, config, logger)
 	}
 }
 
-func NewWithSettings(name string, definer Definer, settings *Settings) kernel.ModuleFactory {
+func NewWithSettings(ctx context.Context, name string, definer Definer, settings *Settings) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		channel := fmt.Sprintf("httpserver-%s", name)
 		logger = logger.WithChannel(channel)
@@ -111,11 +111,11 @@ func NewWithSettings(name string, definer Definer, settings *Settings) kernel.Mo
 			return nil, fmt.Errorf("can not append metadata: %w", err)
 		}
 
-		return NewWithInterfaces(logger, router, tracingInstrumentor, settings)
+		return NewWithInterfaces(ctx, logger, router, tracingInstrumentor, settings)
 	}
 }
 
-func NewWithInterfaces(logger log.Logger, router *gin.Engine, tracer tracing.Instrumentor, settings *Settings) (*HttpServer, error) {
+func NewWithInterfaces(ctx context.Context, logger log.Logger, router *gin.Engine, tracer tracing.Instrumentor, settings *Settings) (*HttpServer, error) {
 	server := &http.Server{
 		Addr:         ":" + settings.Port,
 		Handler:      tracer.HttpHandler(router),
@@ -138,7 +138,7 @@ func NewWithInterfaces(logger log.Logger, router *gin.Engine, tracer tracing.Ins
 		return nil, err
 	}
 
-	logger.Info("serving httpserver requests on address %s", listener.Addr().String())
+	logger.Info(ctx, "serving httpserver requests on address %s", listener.Addr().String())
 
 	apiServer := &HttpServer{
 		logger:   logger,
@@ -160,12 +160,12 @@ func (s *HttpServer) Run(ctx context.Context) error {
 	err := s.server.Serve(s.listener)
 
 	if !errors.Is(err, http.ErrServerClosed) {
-		s.logger.Error("server closed unexpected: %w", err)
+		s.logger.Error(ctx, "server closed unexpected: %w", err)
 
 		return err
 	}
 
-	s.logger.Info("leaving httpserver")
+	s.logger.Info(ctx, "leaving httpserver")
 
 	return nil
 }
@@ -175,7 +175,7 @@ func (s *HttpServer) waitForStop(ctx context.Context) {
 	<-ctx.Done()
 	s.healthy.Store(false)
 
-	s.logger.Info("waiting %s until shutting down the server", s.settings.Timeout.Drain)
+	s.logger.Info(ctx, "waiting %s until shutting down the server", s.settings.Timeout.Drain)
 
 	t := clock.NewRealTimer(s.settings.Timeout.Drain)
 	defer t.Stop()
@@ -184,10 +184,10 @@ func (s *HttpServer) waitForStop(ctx context.Context) {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), s.settings.Timeout.Shutdown)
 	defer cancel()
 
-	s.logger.Info("trying to gracefully shutdown httpserver")
+	s.logger.Info(ctx, "trying to gracefully shutdown httpserver")
 
 	if err := s.server.Shutdown(shutdownCtx); err != nil {
-		s.logger.Error("server shutdown: %w", err)
+		s.logger.Error(ctx, "server shutdown: %w", err)
 	}
 }
 

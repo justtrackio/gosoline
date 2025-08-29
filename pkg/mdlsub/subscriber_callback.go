@@ -70,10 +70,10 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 	}
 
 	defer func() {
-		s.writeMetric(err, spec)
+		s.writeMetric(ctx, err, spec)
 	}()
 
-	logger := s.logger.WithContext(ctx).WithFields(log.Fields{
+	logger := s.logger.WithFields(log.Fields{
 		"modelId": spec.ModelId,
 		"type":    spec.CrudType,
 		"version": spec.Version,
@@ -85,7 +85,7 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 
 	if model, err = transformer.transform(ctx, input); err != nil {
 		if IsDelayOpError(err) {
-			logger.Info("delaying %s op for subscription for modelId %s and version %d: %s", spec.CrudType, spec.ModelId, spec.Version, err.Error())
+			logger.Info(ctx, "delaying %s op for subscription for modelId %s and version %d: %s", spec.CrudType, spec.ModelId, spec.Version, err.Error())
 
 			return false, nil
 		}
@@ -94,7 +94,7 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 	}
 
 	if model == nil {
-		logger.Info("skipping %s op for subscription for modelId %s and version %d", spec.CrudType, spec.ModelId, spec.Version)
+		logger.Info(ctx, "skipping %s op for subscription for modelId %s and version %d", spec.CrudType, spec.ModelId, spec.Version)
 
 		return true, nil
 	}
@@ -108,19 +108,19 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 		return false, fmt.Errorf("can not persist subscription of model %s and version %d: %w", spec.ModelId, spec.Version, err)
 	}
 
-	logger.Info("persisted %s op for subscription for modelId %s and version %d with id %v", spec.CrudType, spec.ModelId, spec.Version, model.GetId())
+	logger.Info(ctx, "persisted %s op for subscription for modelId %s and version %d with id %v", spec.CrudType, spec.ModelId, spec.Version, model.GetId())
 
 	return true, nil
 }
 
-func (s *SubscriberCallback) writeMetric(err error, spec *ModelSpecification) {
+func (s *SubscriberCallback) writeMetric(ctx context.Context, err error, spec *ModelSpecification) {
 	metricName := MetricNameSuccess
 
 	if err != nil {
 		metricName = MetricNameFailure
 	}
 
-	s.metric.WriteOne(&metric.Datum{
+	s.metric.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: metricName,

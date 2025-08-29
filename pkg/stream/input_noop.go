@@ -26,7 +26,7 @@ func (i *noopInput) Run(context.Context) error {
 	return nil
 }
 
-func (i *noopInput) Stop() {
+func (i *noopInput) Stop(ctx context.Context) {
 	i.once.Do(func() {
 		close(i.ch)
 	})

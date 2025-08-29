@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	metric "github.com/justtrackio/gosoline/pkg/metric"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -65,9 +67,9 @@ func (_c *Writer_GetPriority_Call) RunAndReturn(run func() int) *Writer_GetPrior
 	return _c
 }
 
-// Write provides a mock function with given fields: batch
-func (_m *Writer) Write(batch metric.Data) {
-	_m.Called(batch)
+// Write provides a mock function with given fields: ctx, batch
+func (_m *Writer) Write(ctx context.Context, batch metric.Data) {
+	_m.Called(ctx, batch)
 }
 
 // Writer_Write_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Write'
@@ -76,14 +78,15 @@ type Writer_Write_Call struct {
 }
 
 // Write is a helper method to define mock.On call
+//   - ctx context.Context
 //   - batch metric.Data
-func (_e *Writer_Expecter) Write(batch interface{}) *Writer_Write_Call {
-	return &Writer_Write_Call{Call: _e.mock.On("Write", batch)}
+func (_e *Writer_Expecter) Write(ctx interface{}, batch interface{}) *Writer_Write_Call {
+	return &Writer_Write_Call{Call: _e.mock.On("Write", ctx, batch)}
 }
 
-func (_c *Writer_Write_Call) Run(run func(batch metric.Data)) *Writer_Write_Call {
+func (_c *Writer_Write_Call) Run(run func(ctx context.Context, batch metric.Data)) *Writer_Write_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(metric.Data))
+		run(args[0].(context.Context), args[1].(metric.Data))
 	})
 	return _c
 }
@@ -93,14 +96,14 @@ func (_c *Writer_Write_Call) Return() *Writer_Write_Call {
 	return _c
 }
 
-func (_c *Writer_Write_Call) RunAndReturn(run func(metric.Data)) *Writer_Write_Call {
+func (_c *Writer_Write_Call) RunAndReturn(run func(context.Context, metric.Data)) *Writer_Write_Call {
 	_c.Run(run)
 	return _c
 }
 
-// WriteOne provides a mock function with given fields: data
-func (_m *Writer) WriteOne(data *metric.Datum) {
-	_m.Called(data)
+// WriteOne provides a mock function with given fields: ctx, data
+func (_m *Writer) WriteOne(ctx context.Context, data *metric.Datum) {
+	_m.Called(ctx, data)
 }
 
 // Writer_WriteOne_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteOne'
@@ -109,14 +112,15 @@ type Writer_WriteOne_Call struct {
 }
 
 // WriteOne is a helper method to define mock.On call
+//   - ctx context.Context
 //   - data *metric.Datum
-func (_e *Writer_Expecter) WriteOne(data interface{}) *Writer_WriteOne_Call {
-	return &Writer_WriteOne_Call{Call: _e.mock.On("WriteOne", data)}
+func (_e *Writer_Expecter) WriteOne(ctx interface{}, data interface{}) *Writer_WriteOne_Call {
+	return &Writer_WriteOne_Call{Call: _e.mock.On("WriteOne", ctx, data)}
 }
 
-func (_c *Writer_WriteOne_Call) Run(run func(data *metric.Datum)) *Writer_WriteOne_Call {
+func (_c *Writer_WriteOne_Call) Run(run func(ctx context.Context, data *metric.Datum)) *Writer_WriteOne_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*metric.Datum))
+		run(args[0].(context.Context), args[1].(*metric.Datum))
 	})
 	return _c
 }
@@ -126,7 +130,7 @@ func (_c *Writer_WriteOne_Call) Return() *Writer_WriteOne_Call {
 	return _c
 }
 
-func (_c *Writer_WriteOne_Call) RunAndReturn(run func(*metric.Datum)) *Writer_WriteOne_Call {
+func (_c *Writer_WriteOne_Call) RunAndReturn(run func(context.Context, *metric.Datum)) *Writer_WriteOne_Call {
 	_c.Run(run)
 	return _c
 }

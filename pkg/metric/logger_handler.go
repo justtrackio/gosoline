@@ -1,6 +1,7 @@
 package metric
 
 import (
+	"context"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -36,12 +37,12 @@ func (h LoggerHandler) Level() int {
 	return log.PriorityWarn
 }
 
-func (h LoggerHandler) Log(_ time.Time, level int, _ string, _ []any, _ error, _ log.Data) error {
+func (h LoggerHandler) Log(ctx context.Context, _ time.Time, level int, _ string, _ []any, _ error, _ log.Data) error {
 	if level != log.PriorityWarn && level != log.PriorityError {
 		return nil
 	}
 
-	h.writer.WriteOne(&Datum{
+	h.writer.WriteOne(ctx, &Datum{
 		Priority:   PriorityHigh,
 		MetricName: log.LevelName(level),
 		Unit:       UnitCount,

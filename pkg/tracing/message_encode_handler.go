@@ -33,7 +33,7 @@ func (m MessageWithTraceEncoder) Decode(ctx context.Context, _ any, attributes m
 	trace, err := StringToTrace(attributes["traceId"])
 	if err != nil {
 		err := fmt.Errorf("the traceId attribute is invalid: %w", err)
-		err = m.strategy.TraceIdInvalid(err)
+		err = m.strategy.TraceIdInvalid(ctx, err)
 
 		return ctx, attributes, err
 	}

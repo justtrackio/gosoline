@@ -126,7 +126,7 @@ func (m *mysqlPlainFixtureWriter) Write(ctx context.Context, fixtures []any) err
 
 	ress, err = m.client.ExecMultiInTx(ctx, sqls...)
 	if err != nil {
-		m.logger.Error("error writing fixtures: %w", err)
+		m.logger.Error(ctx, "error writing fixtures: %w", err)
 
 		return fmt.Errorf("failed to execute fixture loading queries in transaction: %w", err)
 	}
@@ -135,7 +135,7 @@ func (m *mysqlPlainFixtureWriter) Write(ctx context.Context, fixtures []any) err
 		return fmt.Errorf("expected %d results, got %d", len(sqls), len(ress))
 	}
 
-	m.logger.Info("loaded %d plain mysql fixtures", len(fixtures))
+	m.logger.Info(ctx, "loaded %d plain mysql fixtures", len(fixtures))
 
 	return nil
 }

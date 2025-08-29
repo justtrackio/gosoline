@@ -8,6 +8,7 @@ import (
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/stream/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -33,10 +34,10 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) SetupTest() {
 	var err error
 	next := 0
 	expectedExplicitHashKeys := []string{
-		"42535295865117307932921825928971026431",  // floor((2 ^ 128 - 1) / 4 / 2)
-		"127605887595351923798765477786913079294", // floor((2 ^ 128 - 1) / 4) * 1 + floor((2 ^ 128 - 1) / 4 / 2)
-		"212676479325586539664609129644855132157", // floor((2 ^ 128 - 1) / 4) * 2 + floor((2 ^ 128 - 1) / 4 / 2)
-		"297747071055821155530452781502797185020", // floor((2 ^ 128 - 1) / 4) * 3 + floor((2 ^ 128 - 1) / 4 / 2)
+		"42535295865117307932921825928971026431",  // equals hash key of: floor((2 ^ 128 - 1) / 4 / 2)
+		"127605887595351923798765477786913079294", // equals hash key of: floor((2 ^ 128 - 1) / 4) * 1 + floor((2 ^ 128 - 1) / 4 / 2)
+		"212676479325586539664609129644855132157", // equals hash key of: floor((2 ^ 128 - 1) / 4) * 2 + floor((2 ^ 128 - 1) / 4 / 2)
+		"297747071055821155530452781502797185020", // equals hash key of: floor((2 ^ 128 - 1) / 4) * 3 + floor((2 ^ 128 - 1) / 4 / 2)
 	}
 	createAggregator := func(attributes map[string]string) (stream.ProducerDaemonAggregator, error) {
 		defer func() {
@@ -114,7 +115,7 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregateMixedMessage
 }
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) TestGettingExplicitHashKeyFails() {
-	s.logger.EXPECT().Error("failed to determine partition or explicit hash key, will choose one at random: %w", fmt.Errorf("invalid explicit hash key: not a number")).Once()
+	s.logger.EXPECT().Error(matcher.Context, "failed to determine partition or explicit hash key, will choose one at random: %w", fmt.Errorf("invalid explicit hash key: not a number")).Once()
 	s.rand.EXPECT().Intn(4).Return(3).Once()
 	s.aggregators[3].EXPECT().Write(s.ctx, &stream.Message{
 		Attributes: map[string]string{

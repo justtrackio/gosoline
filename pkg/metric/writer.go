@@ -1,6 +1,8 @@
 package metric
 
 import (
+	"context"
+
 	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
@@ -18,8 +20,8 @@ const (
 type (
 	Writer interface {
 		GetPriority() int
-		Write(batch Data)
-		WriteOne(data *Datum)
+		Write(ctx context.Context, batch Data)
+		WriteOne(ctx context.Context, data *Datum)
 	}
 
 	writer struct {
@@ -49,7 +51,7 @@ func (w writer) GetPriority() int {
 	return PriorityLow
 }
 
-func (w writer) Write(batch Data) {
+func (w writer) Write(_ context.Context, batch Data) {
 	if !w.channel.enabled || len(batch) == 0 {
 		return
 	}
@@ -63,6 +65,6 @@ func (w writer) Write(batch Data) {
 	w.channel.write(batch)
 }
 
-func (w writer) WriteOne(data *Datum) {
-	w.Write(Data{data})
+func (w writer) WriteOne(ctx context.Context, data *Datum) {
+	w.Write(ctx, Data{data})
 }

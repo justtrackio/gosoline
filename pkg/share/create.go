@@ -36,8 +36,6 @@ func (s shareCreateHandler) GetInput() any {
 }
 
 func (s shareCreateHandler) Handle(ctx context.Context, req *httpserver.Request) (*httpserver.Response, error) {
-	logger := s.logger.WithContext(ctx)
-
 	id, valid := httpserver.GetUintFromRequest(req, "id")
 	if !valid {
 		return nil, errors.New("no valid id provided")
@@ -46,7 +44,7 @@ func (s shareCreateHandler) Handle(ctx context.Context, req *httpserver.Request)
 	entity, err := s.getEntity(ctx, id)
 	var notFound db_repo.RecordNotFoundError
 	if errors.As(err, &notFound) {
-		logger.Warn("failed to read entity: %s", err.Error())
+		s.logger.Warn(ctx, "failed to read entity: %s", err.Error())
 
 		return httpserver.NewStatusResponse(http.StatusNotFound), nil
 	}

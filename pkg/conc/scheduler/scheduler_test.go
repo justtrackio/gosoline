@@ -57,7 +57,7 @@ func TestScheduler(t *testing.T) {
 				jobRunner := func() (int, error) {
 					return -j, nil
 				}
-				result, err := taskScheduler.ScheduleJob(strconv.Itoa(j), jobRunner)
+				result, err := taskScheduler.ScheduleJob(ctx, strconv.Itoa(j), jobRunner)
 				assert.Equal(t, result, -j)
 				assert.NoError(t, err)
 			}

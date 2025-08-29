@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net"
@@ -72,5 +73,5 @@ type mysqlLogger struct {
 
 func (m mysqlLogger) Print(v ...any) {
 	msg := fmt.Sprint(v...)
-	m.logger.Warn(msg)
+	m.logger.Warn(context.Background(), msg)
 }

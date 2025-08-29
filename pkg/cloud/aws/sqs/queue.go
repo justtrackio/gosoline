@@ -127,7 +127,6 @@ func (q *queue) Send(ctx context.Context, msg *Message) error {
 }
 
 func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
-	logger := q.logger.WithContext(ctx)
 	if len(messages) == 0 {
 		return nil
 	}
@@ -157,7 +156,7 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 
 	var errRequestTooLong *types.BatchRequestTooLong
 	if errors.As(err, &errRequestTooLong) && len(messages) > 1 {
-		logger.Info("messages were bigger than the allowed max, splitting them up")
+		q.logger.Info(ctx, "messages were bigger than the allowed max, splitting them up")
 
 		half := float64(len(messages)) / 2
 		chunkSize := int(math.Ceil(half))

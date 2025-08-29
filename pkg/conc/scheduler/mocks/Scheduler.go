@@ -67,9 +67,9 @@ func (_c *Scheduler_Run_Call[T]) RunAndReturn(run func(context.Context) error) *
 	return _c
 }
 
-// ScheduleJob provides a mock function with given fields: key, provider
-func (_m *Scheduler[T]) ScheduleJob(key string, provider func() (T, error)) (T, error) {
-	ret := _m.Called(key, provider)
+// ScheduleJob provides a mock function with given fields: ctx, key, provider
+func (_m *Scheduler[T]) ScheduleJob(ctx context.Context, key string, provider func() (T, error)) (T, error) {
+	ret := _m.Called(ctx, key, provider)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ScheduleJob")
@@ -77,19 +77,19 @@ func (_m *Scheduler[T]) ScheduleJob(key string, provider func() (T, error)) (T, 
 
 	var r0 T
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, func() (T, error)) (T, error)); ok {
-		return rf(key, provider)
+	if rf, ok := ret.Get(0).(func(context.Context, string, func() (T, error)) (T, error)); ok {
+		return rf(ctx, key, provider)
 	}
-	if rf, ok := ret.Get(0).(func(string, func() (T, error)) T); ok {
-		r0 = rf(key, provider)
+	if rf, ok := ret.Get(0).(func(context.Context, string, func() (T, error)) T); ok {
+		r0 = rf(ctx, key, provider)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(T)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, func() (T, error)) error); ok {
-		r1 = rf(key, provider)
+	if rf, ok := ret.Get(1).(func(context.Context, string, func() (T, error)) error); ok {
+		r1 = rf(ctx, key, provider)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -103,15 +103,16 @@ type Scheduler_ScheduleJob_Call[T interface{}] struct {
 }
 
 // ScheduleJob is a helper method to define mock.On call
+//   - ctx context.Context
 //   - key string
 //   - provider func()(T , error)
-func (_e *Scheduler_Expecter[T]) ScheduleJob(key interface{}, provider interface{}) *Scheduler_ScheduleJob_Call[T] {
-	return &Scheduler_ScheduleJob_Call[T]{Call: _e.mock.On("ScheduleJob", key, provider)}
+func (_e *Scheduler_Expecter[T]) ScheduleJob(ctx interface{}, key interface{}, provider interface{}) *Scheduler_ScheduleJob_Call[T] {
+	return &Scheduler_ScheduleJob_Call[T]{Call: _e.mock.On("ScheduleJob", ctx, key, provider)}
 }
 
-func (_c *Scheduler_ScheduleJob_Call[T]) Run(run func(key string, provider func() (T, error))) *Scheduler_ScheduleJob_Call[T] {
+func (_c *Scheduler_ScheduleJob_Call[T]) Run(run func(ctx context.Context, key string, provider func() (T, error))) *Scheduler_ScheduleJob_Call[T] {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(func() (T, error)))
+		run(args[0].(context.Context), args[1].(string), args[2].(func() (T, error)))
 	})
 	return _c
 }
@@ -121,7 +122,7 @@ func (_c *Scheduler_ScheduleJob_Call[T]) Return(_a0 T, _a1 error) *Scheduler_Sch
 	return _c
 }
 
-func (_c *Scheduler_ScheduleJob_Call[T]) RunAndReturn(run func(string, func() (T, error)) (T, error)) *Scheduler_ScheduleJob_Call[T] {
+func (_c *Scheduler_ScheduleJob_Call[T]) RunAndReturn(run func(context.Context, string, func() (T, error)) (T, error)) *Scheduler_ScheduleJob_Call[T] {
 	_c.Call.Return(run)
 	return _c
 }

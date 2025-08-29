@@ -1,6 +1,7 @@
 package env
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -190,7 +191,7 @@ func (r *containerRunner) getAuthConfig(containerAuth authSettings) docker.AuthC
 	return r.settings.Auth.GetAuthConfig()
 }
 
-func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
+func (r *containerRunner) RunContainers(ctx context.Context, skeletons []*componentSkeleton) error {
 	if len(skeletons) == 0 {
 		return nil
 	}
@@ -210,7 +211,7 @@ func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 				var err error
 				var container *container
 
-				if container, err = r.RunContainer(skeleton, name, description); err != nil {
+				if container, err = r.RunContainer(ctx, skeleton, name, description); err != nil {
 					return fmt.Errorf(
 						"can not run container %s (%s:%s): %w",
 						skeleton.id(),
@@ -233,7 +234,7 @@ func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 	return cfn.Wait()
 }
 
-func (r *containerRunner) RunContainer(skeleton *componentSkeleton, name string, description *componentContainerDescription) (*container, error) {
+func (r *containerRunner) RunContainer(ctx context.Context, skeleton *componentSkeleton, name string, description *componentContainerDescription) (*container, error) {
 	config := description.containerConfig
 	containerName := fmt.Sprintf("%s-%s-%s-%s", r.settings.NamePrefix, r.id, skeleton.id(), name)
 
@@ -241,18 +242,18 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton, name string,
 	var err error
 
 	if config.UseExternalContainer {
-		container, err = r.createExternalContainer(containerName, skeleton.typ, description.containerConfig)
+		container, err = r.createExternalContainer(ctx, containerName, skeleton.typ, description.containerConfig)
 		if err != nil {
 			return nil, fmt.Errorf("could not create external container: %w", err)
 		}
 	} else {
-		container, err = r.runNewContainer(containerName, skeleton, name, config)
+		container, err = r.runNewContainer(ctx, containerName, skeleton, name, config)
 		if err != nil {
 			return nil, fmt.Errorf("could not run new container: %w", err)
 		}
 	}
 
-	if err = r.waitUntilHealthy(container, description.healthCheck); err != nil {
+	if err = r.waitUntilHealthy(ctx, container, description.healthCheck); err != nil {
 		if description.containerConfig.UseExternalContainer {
 			return nil, fmt.Errorf(
 				"healthcheck failed on container for component %s. The container is configured to use an external container, is that container running? %w",
@@ -275,8 +276,8 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton, name string,
 	return container, err
 }
 
-func (r *containerRunner) createExternalContainer(containerName, skeletonTyp string, config *containerConfig) (*container, error) {
-	r.logger.Debug("create external container %s %s", skeletonTyp, containerName)
+func (r *containerRunner) createExternalContainer(ctx context.Context, containerName, skeletonTyp string, config *containerConfig) (*container, error) {
+	r.logger.Debug(ctx, "create external container %s %s", skeletonTyp, containerName)
 
 	containerBindings := make(map[string]containerBinding, len(config.ContainerBindings))
 	for key, cb := range config.ContainerBindings {
@@ -294,12 +295,13 @@ func (r *containerRunner) createExternalContainer(containerName, skeletonTyp str
 }
 
 func (r *containerRunner) runNewContainer(
+	ctx context.Context,
 	containerName string,
 	skeleton *componentSkeleton,
 	name string,
 	config *containerConfig,
 ) (*container, error) {
-	r.logger.Debug("run container %s %s:%s %s", skeleton.typ, config.Repository, config.Tag, containerName)
+	r.logger.Debug(ctx, "run container %s %s:%s %s", skeleton.typ, config.Repository, config.Tag, containerName)
 
 	bindings := make(map[docker.Port][]docker.PortBinding)
 
@@ -452,7 +454,7 @@ func (r *containerRunner) resolveBinding(resource *dockertest.Resource, containe
 	return address, nil
 }
 
-func (r *containerRunner) waitUntilHealthy(container *container, healthCheck ComponentHealthCheck) error {
+func (r *containerRunner) waitUntilHealthy(ctx context.Context, container *container, healthCheck ComponentHealthCheck) error {
 	backoffSetting := backoff.NewExponentialBackOff()
 	backoffSetting.InitialInterval = r.settings.HealthCheck.InitialInterval
 	backoffSetting.MaxInterval = r.settings.HealthCheck.MaxInterval
@@ -467,7 +469,7 @@ func (r *containerRunner) waitUntilHealthy(container *container, healthCheck Com
 	name := container.name
 
 	notify := func(err error, _ time.Duration) {
-		r.logger.Debug("%s %s is still unhealthy since %v: %s", typ, name, time.Since(start), err)
+		r.logger.Debug(ctx, "%s %s is still unhealthy since %v: %s", typ, name, time.Since(start), err)
 	}
 
 	err := backoff.RetryNotify(func() error {
@@ -477,7 +479,7 @@ func (r *containerRunner) waitUntilHealthy(container *container, healthCheck Com
 		return err
 	}
 
-	r.logger.Debug("%s %s got healthy after %s", typ, name, time.Since(start))
+	r.logger.Debug(ctx, "%s %s got healthy after %s", typ, name, time.Since(start))
 
 	return nil
 }
@@ -487,11 +489,11 @@ var (
 	noSuchContainer = regexp.MustCompile(`No such container: (\w+)`)
 )
 
-func (r *containerRunner) Stop() error {
+func (r *containerRunner) Stop(ctx context.Context) error {
 	for name, cb := range r.shutdownCallbacks {
 		err := cb()
 		if err != nil {
-			r.logger.Error("shutdown callback failed for container %s: %w", name, err)
+			r.logger.Error(ctx, "shutdown callback failed for container %s: %w", name, err)
 		}
 	}
 
@@ -504,10 +506,10 @@ func (r *containerRunner) Stop() error {
 				return fmt.Errorf("could not stop container %s: %w", name, err)
 			}
 
-			r.logger.Debug("someone else is already stopping container %s, ignoring error %s", name, err.Error())
+			r.logger.Debug(ctx, "someone else is already stopping container %s, ignoring error %s", name, err.Error())
 		}
 
-		r.logger.Debug("stopping container %s", name)
+		r.logger.Debug(ctx, "stopping container %s", name)
 	}
 
 	return nil

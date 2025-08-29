@@ -5,6 +5,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/assert"
 )
@@ -73,6 +74,7 @@ func TestMessageWithTraceEncoder_Decode_Warning(t *testing.T) {
 		"stacktrace": "mocked trace",
 	}).Return(logger).Once()
 	logger.EXPECT().Warn(
+		matcher.Context,
 		"trace id is invalid: %s",
 		"the traceId attribute is invalid: the trace id [1-5e3d557d-d06c248cc50169bd71b44fec] should contain a root part",
 	).Once()

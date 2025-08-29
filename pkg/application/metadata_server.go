@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -65,7 +66,7 @@ func (s *MetadataServer) Run(ctx context.Context) error {
 		return fmt.Errorf("can not listen on address %s: %w", addr, err)
 	}
 
-	s.logger.Info("serving metadata on address %s", listener.Addr())
+	s.logger.Info(ctx, "serving metadata on address %s", listener.Addr())
 
 	handler := http.NewServeMux()
 	handler.HandleFunc("/", s.handleMetadata(metadata))
@@ -75,7 +76,7 @@ func (s *MetadataServer) Run(ctx context.Context) error {
 	s.server.Handler = handler
 	go s.waitForStop(ctx)
 
-	if err = s.server.Serve(listener); err != http.ErrServerClosed {
+	if err = s.server.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 
@@ -87,38 +88,41 @@ func (s *MetadataServer) handleMetadata(metadata *appctx.Metadata) func(http.Res
 		var err error
 		var bytes []byte
 
+		ctx := request.Context()
 		data := metadata.Msi()
 
 		if bytes, err = json.Marshal(data); err != nil {
-			s.logger.Warn("can not marshal metadata %s", err.Error())
+			s.logger.Warn(ctx, "can not marshal metadata %s", err.Error())
 			writer.WriteHeader(http.StatusInternalServerError)
 
 			return
 		}
 
 		if _, err = writer.Write(bytes); err != nil {
-			s.logger.Warn("can not write config %s", err.Error())
+			s.logger.Warn(ctx, "can not write config %s", err.Error())
 		}
 	}
 }
 
 func (s *MetadataServer) handleConfig(writer http.ResponseWriter, request *http.Request) {
+	ctx := request.Context()
 	settings := s.config.AllSettings()
-	s.formattedResponse(writer, request, settings)
+	s.formattedResponse(ctx, writer, request, settings)
 }
 
 func (s *MetadataServer) handleMemory(writer http.ResponseWriter, request *http.Request) {
 	var memMstats runtime.MemStats
+	ctx := request.Context()
 
 	if gc := request.URL.Query().Get("gc"); gc == "true" {
 		runtime.GC()
 	}
 
 	runtime.ReadMemStats(&memMstats)
-	s.formattedResponse(writer, request, memMstats)
+	s.formattedResponse(ctx, writer, request, memMstats)
 }
 
-func (s *MetadataServer) formattedResponse(writer http.ResponseWriter, request *http.Request, response any) {
+func (s *MetadataServer) formattedResponse(ctx context.Context, writer http.ResponseWriter, request *http.Request, response any) {
 	var err error
 	var bytes []byte
 	marshaller := yaml.Marshal
@@ -128,14 +132,14 @@ func (s *MetadataServer) formattedResponse(writer http.ResponseWriter, request *
 	}
 
 	if bytes, err = marshaller(response); err != nil {
-		s.logger.Warn("can not marshal response %s", err.Error())
+		s.logger.Warn(ctx, "can not marshal response %s", err.Error())
 		writer.WriteHeader(http.StatusInternalServerError)
 
 		return
 	}
 
 	if _, err = writer.Write(bytes); err != nil {
-		s.logger.Warn("can not write response %s", err.Error())
+		s.logger.Warn(ctx, "can not write response %s", err.Error())
 	}
 }
 
@@ -143,6 +147,6 @@ func (s *MetadataServer) waitForStop(ctx context.Context) {
 	<-ctx.Done()
 	err := s.server.Close()
 	if err != nil {
-		s.logger.Error("could not close config server: %w", err)
+		s.logger.Error(ctx, "could not close config server: %w", err)
 	}
 }

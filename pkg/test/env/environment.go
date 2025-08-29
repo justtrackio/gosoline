@@ -74,7 +74,7 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 		return env, fmt.Errorf("can not create container runner: %w", err)
 	}
 
-	if err := env.runner.RunContainers(skeletons); err != nil {
+	if err := env.runner.RunContainers(env.ctx, skeletons); err != nil {
 		return env, err
 	}
 
@@ -97,6 +97,7 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 }
 
 func (e *Environment) init(options ...Option) error {
+	ctx := context.Background()
 	start := time.Now()
 
 	var err error
@@ -129,14 +130,14 @@ func (e *Environment) init(options ...Option) error {
 	}
 
 	defer func() {
-		logger.Debug("booted env in %s", time.Since(start))
+		logger.Debug(ctx, "booted env in %s", time.Since(start))
 	}()
 
 	for name, priority := range cfgPostProcessors {
-		logger.Info("applied priority %d config post processor '%s'", priority, name)
+		logger.Info(ctx, "applied priority %d config post processor '%s'", priority, name)
 	}
 
-	e.ctx = appctx.WithContainer(context.Background())
+	e.ctx = appctx.WithContainer(ctx)
 	e.logger = logger
 	e.config = config
 	e.filesystem = newFilesystem(e.t)
@@ -161,7 +162,7 @@ func (e *Environment) addLoggerOption(opt LoggerOption) {
 }
 
 func (e *Environment) Stop() error {
-	return e.runner.Stop()
+	return e.runner.Stop(e.ctx)
 }
 
 func (e *Environment) Context() context.Context {

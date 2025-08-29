@@ -9,6 +9,7 @@ import (
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
 	redisMocks "github.com/justtrackio/gosoline/pkg/redis/mocks"
 	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -52,7 +53,8 @@ func TestRedisListOutput_Write_Chunked(t *testing.T) {
 func setup(batchSize int, t *testing.T) (context.Context, stream.Output, *redisMocks.Client) {
 	ctx := t.Context()
 	loggerMock := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
-	mw := metricMocks.NewWriterMockedAll()
+	mw := metricMocks.NewWriter(t)
+	mw.EXPECT().Write(matcher.Context, mock.Anything).Return().Maybe()
 
 	redisMock := redisMocks.NewClient(t)
 	output := stream.NewRedisListOutputWithInterfaces(loggerMock, mw, redisMock, getSettings(batchSize))

@@ -38,14 +38,14 @@ type ConsumerTestSuite struct {
 	inputData     chan *stream.Message
 	inputDataOut  <-chan *stream.Message
 	inputStopOnce sync.Once
-	inputStop     func()
+	inputStop     func(context.Context)
 
 	retryInput    *mocks.Input
 	retryHandler  *mocks.RetryHandler
 	retryData     chan *stream.Message
 	retryDataOut  <-chan *stream.Message
 	retryStopOnce sync.Once
-	retryStop     func()
+	retryStop     func(context.Context)
 
 	uuidGen  *uuidMocks.Uuid
 	callback *mocks.RunnableUntypedConsumerCallback
@@ -58,7 +58,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 	s.inputData = make(chan *stream.Message, 10)
 	s.inputDataOut = s.inputData
 	s.inputStopOnce = sync.Once{}
-	s.inputStop = func() {
+	s.inputStop = func(context.Context) {
 		s.inputStopOnce.Do(func() {
 			close(s.inputData)
 		})
@@ -66,12 +66,12 @@ func (s *ConsumerTestSuite) SetupTest() {
 
 	s.input = mocks.NewAcknowledgeableInput(s.T())
 	s.input.EXPECT().Data().Return(s.inputDataOut)
-	s.input.EXPECT().Stop().Run(s.inputStop).Once()
+	s.input.EXPECT().Stop(matcher.Context).Run(s.inputStop).Once()
 
 	s.retryData = make(chan *stream.Message, 10)
 	s.retryDataOut = s.retryData
 	s.retryStopOnce = sync.Once{}
-	s.retryStop = func() {
+	s.retryStop = func(context.Context) {
 		s.retryStopOnce.Do(func() {
 			close(s.retryData)
 		})
@@ -79,7 +79,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 
 	s.retryInput = mocks.NewInput(s.T())
 	s.retryInput.EXPECT().Data().Return(s.retryDataOut)
-	s.retryInput.EXPECT().Stop().Run(s.retryStop).Once()
+	s.retryInput.EXPECT().Stop(matcher.Context).Run(s.retryStop).Once()
 
 	s.retryHandler = mocks.NewRetryHandler(s.T())
 
@@ -88,7 +88,8 @@ func (s *ConsumerTestSuite) SetupTest() {
 
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	tracer := tracing.NewLocalTracer()
-	mw := metricMocks.NewWriterMockedAll()
+	mw := metricMocks.NewWriter(s.T())
+	mw.EXPECT().Write(matcher.Context, mock.Anything).Return().Maybe()
 	me := stream.NewMessageEncoder(&stream.MessageEncoderSettings{})
 
 	settings := stream.ConsumerSettings{

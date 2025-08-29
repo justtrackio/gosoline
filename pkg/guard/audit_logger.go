@@ -45,18 +45,17 @@ func (a auditLogger) LogRejectedAccessRequest(ctx context.Context, request *lado
 	}
 
 	logger := a.logger.
-		WithContext(ctx).
 		WithFields(buildLogFields(request, deciders))
 
 	if len(deciders) == 0 {
-		logger.Info("no policy allowed access for %s on %s", request.Subject, request.Resource)
+		logger.Info(ctx, "no policy allowed access for %s on %s", request.Subject, request.Resource)
 
 		return
 	}
 
 	rejecter := deciders[len(deciders)-1]
 
-	logger.Info("%d policy(s) allow access, but policy %s denied the access for %s on %s", len(deciders)-1, rejecter.GetID(), request.Subject, request.Resource)
+	logger.Info(ctx, "%d policy(s) allow access, but policy %s denied the access for %s on %s", len(deciders)-1, rejecter.GetID(), request.Subject, request.Resource)
 }
 
 func (a auditLogger) LogGrantedAccessRequest(ctx context.Context, request *ladon.Request, pool ladon.Policies, deciders ladon.Policies) {
@@ -65,10 +64,9 @@ func (a auditLogger) LogGrantedAccessRequest(ctx context.Context, request *ladon
 	}
 
 	logger := a.logger.
-		WithContext(ctx).
 		WithFields(buildLogFields(request, deciders))
 
-	logger.Info("%d policy(s) allow access for %s on %s", len(deciders), request.Subject, request.Resource)
+	logger.Info(ctx, "%d policy(s) allow access for %s on %s", len(deciders), request.Subject, request.Resource)
 }
 
 func buildLogFields(request *ladon.Request, deciders ladon.Policies) log.Fields {

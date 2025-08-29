@@ -83,7 +83,7 @@ func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fixtures []any) error
 		}
 	}
 
-	m.logger.Info("loaded %d mysql fixtures", len(fixtures))
+	m.logger.Info(ctx, "loaded %d mysql fixtures", len(fixtures))
 
 	return nil
 }

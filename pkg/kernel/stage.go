@@ -146,7 +146,7 @@ func (s *stage) waitUntilHealthy() error {
 		result = s.healthcheck()
 
 		if result.Err() != nil {
-			s.logger.Warn("errors during health checks in stage %d: %s", s.index, result.Err())
+			s.logger.Warn(s.ctx, "errors during health checks in stage %d: %s", s.index, result.Err())
 		}
 
 		if result.IsHealthy() {
@@ -156,6 +156,7 @@ func (s *stage) waitUntilHealthy() error {
 		for _, unhealthy := range result.GetUnhealthy() {
 			timeLeft := s.healthCheckSettings.Timeout - s.clk.Since(waitStart)
 			s.logger.Info(
+				s.ctx,
 				"waiting %s for module %s in stage %d to get healthy: time left %s",
 				s.healthCheckSettings.WaitInterval,
 				unhealthy.Name,
@@ -195,7 +196,7 @@ func (s *stage) stopWait(killErr error) {
 	s.err = s.cfn.Wait()
 
 	if s.err != nil && !errors.Is(s.err, ErrKernelStopping) {
-		s.logger.Error("error during the execution of stage %d: %w", s.index, s.err)
+		s.logger.Error(s.ctx, "error during the execution of stage %d: %w", s.index, s.err)
 	}
 
 	s.terminated.Signal()

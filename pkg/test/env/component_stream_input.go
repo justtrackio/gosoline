@@ -1,6 +1,7 @@
 package env
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -71,9 +72,9 @@ func (s *StreamInputComponent) PublishFromJsonFile(fileName string) {
 		s.input.Publish(msg)
 	}
 
-	s.input.Stop()
+	s.Stop()
 }
 
 func (s *StreamInputComponent) Stop() {
-	s.input.Stop()
+	s.input.Stop(context.Background())
 }

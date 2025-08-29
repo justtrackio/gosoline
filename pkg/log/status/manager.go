@@ -14,7 +14,7 @@ type Manager interface {
 	// initialize a new work item (e.g. working through the files of a day) with the given number of steps (e.g. days) to do
 	StartWork(key string, steps int) WorkItem
 	// print the report to the logger
-	PrintReport(logger log.Logger)
+	PrintReport(ctx context.Context, logger log.Logger)
 	// monitor execution of a method and set the correct result status upon return
 	Monitor(key string, f func() error) func() error
 	// like Monitor, but pass along a context
@@ -141,7 +141,7 @@ func (h *workItemHandle) Monitor(f func() error) func() error {
 	}
 }
 
-func (m *manager) PrintReport(logger log.Logger) {
+func (m *manager) PrintReport(ctx context.Context, logger log.Logger) {
 	m.lck.Lock()
 	defer m.lck.Unlock()
 
@@ -155,12 +155,13 @@ func (m *manager) PrintReport(logger log.Logger) {
 
 	for _, key := range keys {
 		work := m.work[key]
-		if work.err != nil {
-			logger.Info("Work item %s: failed with error %s", key, work.err.Error())
-		} else if work.step < work.totalSteps || work.progress < 100 {
-			logger.Info("Work item %s: step %d / %d (%.2f %%)", key, work.step, work.totalSteps, work.progress)
-		} else {
-			logger.Info("Work item %s: done", key)
+		switch {
+		case work.err != nil:
+			logger.Info(ctx, "Work item %s: failed with error %s", key, work.err.Error())
+		case work.step < work.totalSteps || work.progress < 100:
+			logger.Info(ctx, "Work item %s: step %d / %d (%.2f %%)", key, work.step, work.totalSteps, work.progress)
+		default:
+			logger.Info(ctx, "Work item %s: done", key)
 		}
 	}
 }

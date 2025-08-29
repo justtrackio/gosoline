@@ -1,6 +1,8 @@
 package cfg
 
+import "context"
+
 type Logger interface {
-	Info(format string, args ...any)
-	Error(format string, args ...any)
+	Info(ctx context.Context, format string, args ...any)
+	Error(ctx context.Context, format string, args ...any)
 }

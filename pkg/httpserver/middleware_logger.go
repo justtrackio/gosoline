@@ -54,9 +54,6 @@ func NewLoggingMiddlewareWithInterfaces(logger log.Logger, settings LoggingSetti
 
 		ginCtx.Next()
 
-		req := ginCtx.Request
-		ctx = req.Context()
-
 		requestTimeSeconds := clock.Since(start).Seconds()
 
 		lp.finalize(ginCtx, requestTimeSeconds)
@@ -92,7 +89,7 @@ func (lc *logCall) prepare(ginCtx *gin.Context) {
 
 	buf, err := io.ReadAll(req.Body)
 	if err != nil {
-		lc.logger.WithContext(req.Context()).Warn("can not read request body: %s", err.Error())
+		lc.logger.Warn(req.Context(), "can not read request body: %s", err.Error())
 
 		return
 	}
@@ -128,14 +125,12 @@ func (lc *logCall) finalize(ginCtx *gin.Context, requestTimeSecond float64) {
 		lc.fields["request_query_parameters"] = queryParameters
 	}
 
-	logger := lc.logger.
-		WithContext(ginCtx.Request.Context()).
-		WithFields(lc.fields)
-
+	ctx := ginCtx.Request.Context()
+	logger := lc.logger.WithFields(lc.fields)
 	method, path, proto := lc.fields["request_method"], lc.fields["request_path"], lc.fields["protocol"]
 
 	if len(ginCtx.Errors) == 0 {
-		logger.Info("%s %s %s", method, path, proto)
+		logger.Info(ctx, "%s %s %s", method, path, proto)
 
 		return
 	}
@@ -143,15 +138,15 @@ func (lc *logCall) finalize(ginCtx *gin.Context, requestTimeSecond float64) {
 	for _, e := range ginCtx.Errors {
 		switch {
 		case exec.IsRequestCanceled(e):
-			logger.Info("%s %s %s - request canceled: %s", method, path, proto, e.Error())
+			logger.Info(ctx, "%s %s %s - request canceled: %s", method, path, proto, e.Error())
 		case exec.IsConnectionError(e):
-			logger.Info("%s %s %s - connection error: %s", method, path, proto, e.Error())
+			logger.Info(ctx, "%s %s %s - connection error: %s", method, path, proto, e.Error())
 		case e.IsType(gin.ErrorTypeBind):
-			logger.Warn("%s %s %s - bind error: %s", method, path, proto, e.Err.Error())
+			logger.Warn(ctx, "%s %s %s - bind error: %s", method, path, proto, e.Err.Error())
 		case e.IsType(gin.ErrorTypeRender):
-			logger.Warn("%s %s %s - render error: %s", method, path, proto, e.Err.Error())
+			logger.Warn(ctx, "%s %s %s - render error: %s", method, path, proto, e.Err.Error())
 		default:
-			logger.Error("%s %s %s: %w", method, path, proto, e.Err)
+			logger.Error(ctx, "%s %s %s: %w", method, path, proto, e.Err)
 		}
 	}
 }

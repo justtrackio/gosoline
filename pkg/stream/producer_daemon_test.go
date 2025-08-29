@@ -44,7 +44,8 @@ func (s *ProducerDaemonTestSuite) SetupTest() {
 
 func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel int, batchSize int, aggregationSize int, interval time.Duration) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockUntilLevel(maxLogLevel))
-	metric := metricMocks.NewWriterMockedAll()
+	metric := metricMocks.NewWriter(s.T())
+	metric.EXPECT().WriteOne(matcher.Context, mock.Anything).Return().Maybe()
 
 	s.output = streamMocks.NewOutput(s.T())
 	s.clock = clock.NewFakeClock()

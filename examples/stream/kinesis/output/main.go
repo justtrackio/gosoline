@@ -45,7 +45,9 @@ func newOutputModule(ctx context.Context, config cfg.Config, logger log.Logger) 
 	modelId := mdl.ModelId{
 		Name: "exampleRecord",
 	}
-	modelId.PadFromConfig(config)
+	if err = modelId.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("can not pad model id: %w", err)
+	}
 
 	module := &outputModule{
 		logger:  logger,
@@ -84,7 +86,7 @@ func (p outputModule) Run(ctx context.Context) error {
 				return fmt.Errorf("can not publish %d records: %w", len(records), err)
 			}
 
-			p.logger.Info("published %d records", len(records))
+			p.logger.Info(ctx, "published %d records", len(records))
 		}
 	}
 }

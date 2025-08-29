@@ -102,7 +102,7 @@ func (m *LifeCycleManager) Create(ctx context.Context) error {
 	}
 
 	if !ok {
-		m.logger.Info("create lifecycle not enabled, skipping")
+		m.logger.Info(ctx, "create lifecycle not enabled, skipping")
 
 		return nil
 	}
@@ -112,7 +112,7 @@ func (m *LifeCycleManager) Create(ctx context.Context) error {
 	}
 
 	for _, res := range m.resources {
-		if m.shouldSkip(res.GetId(), m.created, regexps) {
+		if m.shouldSkip(ctx, res.GetId(), m.created, regexps) {
 			continue
 		}
 
@@ -126,10 +126,10 @@ func (m *LifeCycleManager) Create(ctx context.Context) error {
 		}
 
 		took := m.clock.Since(now)
-		m.logger.Info("created resource %s in %s", res.GetId(), took)
+		m.logger.Info(ctx, "created resource %s in %s", res.GetId(), took)
 	}
 
-	m.logger.Info("executed the create lifecycle")
+	m.logger.Info(ctx, "executed the create lifecycle")
 
 	return nil
 }
@@ -145,7 +145,7 @@ func (m *LifeCycleManager) Init(ctx context.Context) error {
 	}
 
 	if !ok {
-		m.logger.Info("init lifecycle not enabled, skipping")
+		m.logger.Info(ctx, "init lifecycle not enabled, skipping")
 
 		return nil
 	}
@@ -155,7 +155,7 @@ func (m *LifeCycleManager) Init(ctx context.Context) error {
 	}
 
 	for _, res := range m.resources {
-		if m.shouldSkip(res.GetId(), funk.Set[string]{}, regexps) {
+		if m.shouldSkip(ctx, res.GetId(), funk.Set[string]{}, regexps) {
 			continue
 		}
 
@@ -168,7 +168,7 @@ func (m *LifeCycleManager) Init(ctx context.Context) error {
 		}
 	}
 
-	m.logger.Info("executed the init lifecycle")
+	m.logger.Info(ctx, "executed the init lifecycle")
 
 	return nil
 }
@@ -186,7 +186,7 @@ func (m *LifeCycleManager) Register(ctx context.Context) error {
 	}
 
 	if !ok {
-		m.logger.Info("register lifecycle not enabled, skipping")
+		m.logger.Info(ctx, "register lifecycle not enabled, skipping")
 
 		return nil
 	}
@@ -196,7 +196,7 @@ func (m *LifeCycleManager) Register(ctx context.Context) error {
 	}
 
 	for _, res := range m.resources {
-		if m.shouldSkip(res.GetId(), m.registered, regexps) {
+		if m.shouldSkip(ctx, res.GetId(), m.registered, regexps) {
 			continue
 		}
 
@@ -217,7 +217,7 @@ func (m *LifeCycleManager) Register(ctx context.Context) error {
 		}
 	}
 
-	m.logger.Info("executed the register lifecycle")
+	m.logger.Info(ctx, "executed the register lifecycle")
 
 	return nil
 }
@@ -233,7 +233,7 @@ func (m *LifeCycleManager) Purge(ctx context.Context) error {
 	}
 
 	if !ok {
-		m.logger.Info("purge lifecycle not enabled, skipping")
+		m.logger.Info(ctx, "purge lifecycle not enabled, skipping")
 
 		return nil
 	}
@@ -243,7 +243,7 @@ func (m *LifeCycleManager) Purge(ctx context.Context) error {
 	}
 
 	for _, res := range m.resources {
-		if m.shouldSkip(res.GetId(), m.purged, regexps) {
+		if m.shouldSkip(ctx, res.GetId(), m.purged, regexps) {
 			continue
 		}
 
@@ -257,10 +257,10 @@ func (m *LifeCycleManager) Purge(ctx context.Context) error {
 		}
 
 		took := m.clock.Since(now)
-		m.logger.Info("purged resource %s in %s", res.GetId(), took)
+		m.logger.Info(ctx, "purged resource %s in %s", res.GetId(), took)
 	}
 
-	m.logger.Info("executed the purge lifecycle")
+	m.logger.Info(ctx, "executed the purge lifecycle")
 
 	return nil
 }
@@ -280,7 +280,7 @@ func (m *LifeCycleManager) prepareCycle(settings SettingsCycle) (enabled bool, e
 	return true, regexps, nil
 }
 
-func (m *LifeCycleManager) shouldSkip(id string, visited funk.Set[string], excludes []*regexp.Regexp) bool {
+func (m *LifeCycleManager) shouldSkip(ctx context.Context, id string, visited funk.Set[string], excludes []*regexp.Regexp) bool {
 	if visited.Contains(id) {
 		return true
 	}
@@ -289,7 +289,7 @@ func (m *LifeCycleManager) shouldSkip(id string, visited funk.Set[string], exclu
 
 	for _, exclude := range excludes {
 		if exclude.MatchString(id) {
-			m.logger.Info("skipping resource %q as it is excluded", id)
+			m.logger.Info(ctx, "skipping resource %q as it is excluded", id)
 
 			return true
 		}

@@ -83,9 +83,7 @@ func (s *LoggingSuite) TestLoggerErrorHook() {
 	s.span.EXPECT().AddError(errToLog).Once()
 
 	hook := tracing.NewLoggerErrorHandler()
-	err := hook.Log(time.Time{}, 0, "", []any{}, errToLog, log.Data{
-		Context: s.ctx,
-	})
+	err := hook.Log(s.ctx, time.Time{}, 0, "", []any{}, errToLog, log.Data{})
 
 	s.NoError(err)
 }

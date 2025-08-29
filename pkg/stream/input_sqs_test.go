@@ -114,7 +114,7 @@ func TestSqsInput_Run(t *testing.T) {
 			}()
 
 			<-waitReadDone
-			input.Stop()
+			input.Stop(ctx)
 			close(waitStopDone)
 
 			<-waitRunDone

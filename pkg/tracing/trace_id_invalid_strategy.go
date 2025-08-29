@@ -1,18 +1,19 @@
 package tracing
 
 import (
+	"context"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type TraceIdErrorStrategy interface {
-	TraceIdInvalid(err error) error
+	TraceIdInvalid(ctx context.Context, err error) error
 }
 
 type TraceIdErrorReturnStrategy struct{}
 
-func (t TraceIdErrorReturnStrategy) TraceIdInvalid(err error) error {
+func (t TraceIdErrorReturnStrategy) TraceIdInvalid(_ context.Context, err error) error {
 	return err
 }
 
@@ -35,12 +36,12 @@ func NewTraceIdErrorWarningStrategyWithInterfaces(logger log.Logger, stacktraceP
 	}
 }
 
-func (t TraceIdErrorWarningStrategy) TraceIdInvalid(err error) error {
+func (t TraceIdErrorWarningStrategy) TraceIdInvalid(ctx context.Context, err error) error {
 	stacktrace := t.stacktraceProvider(2)
 
 	t.logger.WithFields(log.Fields{
 		"stacktrace": stacktrace,
-	}).Warn("trace id is invalid: %s", err.Error())
+	}).Warn(ctx, "trace id is invalid: %s", err.Error())
 
 	return nil
 }

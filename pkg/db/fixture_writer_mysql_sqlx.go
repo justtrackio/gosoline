@@ -66,7 +66,7 @@ func (m *mysqlSqlxFixtureWriter) Write(ctx context.Context, fixtures []any) erro
 		}
 	}
 
-	m.logger.Info("loaded %d sqlx mysql fixtures", len(fixtures))
+	m.logger.Info(ctx, "loaded %d sqlx mysql fixtures", len(fixtures))
 
 	return nil
 }

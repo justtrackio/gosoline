@@ -30,24 +30,24 @@ func NewMetricMiddlewareWithInterfaces(metricWriter metric.Writer) *metricMiddle
 	}
 }
 
-func (m metricMiddleware) OnTake(_ context.Context, i Invocation) {
-	m.write(m.buildMetric(MetricNameRateLimitTake, i))
+func (m metricMiddleware) OnTake(ctx context.Context, i Invocation) {
+	m.write(ctx, m.buildMetric(MetricNameRateLimitTake, i))
 }
 
-func (m metricMiddleware) OnRelease(_ context.Context, i Invocation) {
-	m.write(m.buildMetric(MetricNameRateLimitRelease, i))
+func (m metricMiddleware) OnRelease(ctx context.Context, i Invocation) {
+	m.write(ctx, m.buildMetric(MetricNameRateLimitRelease, i))
 }
 
-func (m metricMiddleware) OnThrottle(_ context.Context, i Invocation) {
-	m.write(m.buildMetric(MetricNameRateLimitThrottle, i))
+func (m metricMiddleware) OnThrottle(ctx context.Context, i Invocation) {
+	m.write(ctx, m.buildMetric(MetricNameRateLimitThrottle, i))
 }
 
-func (m metricMiddleware) OnError(_ context.Context, i Invocation) {
-	m.write(m.buildMetric(MetricNameRateLimitError, i))
+func (m metricMiddleware) OnError(ctx context.Context, i Invocation) {
+	m.write(ctx, m.buildMetric(MetricNameRateLimitError, i))
 }
 
-func (m metricMiddleware) write(metric *metric.Datum) {
-	m.metricWriter.WriteOne(metric)
+func (m metricMiddleware) write(ctx context.Context, metric *metric.Datum) {
+	m.metricWriter.WriteOne(ctx, metric)
 }
 
 func (m metricMiddleware) buildMetric(metricName string, i Invocation) *metric.Datum {

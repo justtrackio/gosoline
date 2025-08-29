@@ -43,19 +43,17 @@ func (uh updateHandler) Handle(reqCtx context.Context, request *httpserver.Reque
 	ctx, cancel := exec.WithDelayedCancelContext(reqCtx, uh.settings.WriteTimeout)
 	defer cancel()
 
-	logger := uh.logger.WithContext(ctx)
-
 	id, valid := httpserver.GetUintFromRequest(request, "id")
 
 	if !valid {
-		return HandleErrorOnWrite(ctx, logger, &validation.Error{
+		return HandleErrorOnWrite(ctx, uh.logger, &validation.Error{
 			Errors: []error{
 				errors.New("no valid id provided"),
 			},
 		})
 	}
 
-	logger = logger.WithFields(log.Fields{
+	logger := uh.logger.WithFields(log.Fields{
 		"entity_id": id,
 	})
 

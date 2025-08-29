@@ -99,7 +99,7 @@ func (s *shardReaderTestSuite) TestAcquireShardNotSuccessful() {
 	cancel()
 
 	s.metadataRepository.EXPECT().AcquireShard(ctx, s.shardId).Return(nil, nil).Once()
-	s.logger.EXPECT().Info("could not acquire shard, leaving").Once()
+	s.logger.EXPECT().Info(matcher.Context, "could not acquire shard, leaving").Once()
 
 	err := s.shardReader.Run(ctx, s.consumeRecord)
 	s.NoError(err)
@@ -115,8 +115,8 @@ func (s *shardReaderTestSuite) TestGetShardIteratorFails() {
 	checkpoint.EXPECT().GetShardIterator().Return("").Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.EXPECT().Info("acquired shard").Once()
-	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "acquired shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "releasing shard").Once()
 	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
@@ -141,8 +141,8 @@ func (s *shardReaderTestSuite) TestGetShardIteratorReturnsEmpty() {
 	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.EXPECT().Info("acquired shard").Once()
-	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "acquired shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "releasing shard").Once()
 	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:           aws.String(string(s.shardId)),
 		ShardIteratorType: "LATEST",
@@ -167,8 +167,8 @@ func (s *shardReaderTestSuite) TestGetRecordsAndReleaseFails() {
 	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.EXPECT().Info("acquired shard").Once()
-	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "acquired shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "releasing shard").Once()
 	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:           aws.String(string(s.shardId)),
 		ShardIteratorType: "LATEST",
@@ -198,8 +198,8 @@ func (s *shardReaderTestSuite) TestReleaseFailsAfterShardIteratorFailed() {
 	checkpoint.EXPECT().GetShardIterator().Return("").Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.EXPECT().Info("acquired shard").Once()
-	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "acquired shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "releasing shard").Once()
 	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
@@ -235,11 +235,11 @@ func (s *shardReaderTestSuite) TestConsumeTwoBatches() {
 	s.mockMetricCall("WaitDuration", 1000, metric.UnitMillisecondsAverage).Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.EXPECT().Info("acquired shard").Once()
-	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "acquired shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "releasing shard").Once()
 	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
 	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.EXPECT().Info("processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Twice()
+	s.logger.EXPECT().Info(matcher.Context, "processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Twice()
 
 	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
@@ -309,11 +309,11 @@ func (s *shardReaderTestSuite) TestConsumeStartFromConsumeEmptyStream() {
 	s.mockMetricCall("WaitDuration", 1000, metric.UnitMillisecondsAverage).Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.EXPECT().Info("acquired shard").Once()
-	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "acquired shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "releasing shard").Once()
 	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
 	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.EXPECT().Info("processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Twice()
+	s.logger.EXPECT().Info(matcher.Context, "processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Twice()
 
 	s.kinesisClient.EXPECT().GetRecords(s.ctx, &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("initial iterator"),
@@ -368,13 +368,13 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 	s.mockMetricCall("WaitDuration", 1000, metric.UnitMillisecondsAverage).Twice()
 
 	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.EXPECT().Info("acquired shard").Once()
-	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "acquired shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "releasing shard").Once()
 	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
 	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.EXPECT().Info("processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Once()
-	s.logger.EXPECT().Info("processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
-	s.logger.EXPECT().Error("failed to handle record %s: %w", "seq 1", fmt.Errorf("parse error"))
+	s.logger.EXPECT().Info(matcher.Context, "processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Once()
+	s.logger.EXPECT().Info(matcher.Context, "processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
+	s.logger.EXPECT().Error(matcher.Context, "failed to handle record %s: %w", "seq 1", fmt.Errorf("parse error"))
 
 	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
@@ -474,11 +474,11 @@ func (s *shardReaderTestSuite) TestPersisterPersistCanceled() {
 	s.mockMetricCall("WaitDuration", 0, metric.UnitMillisecondsAverage).Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.EXPECT().Info("acquired shard").Once()
-	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "acquired shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "releasing shard").Once()
 	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
 	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.EXPECT().Info("processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
+	s.logger.EXPECT().Info(matcher.Context, "processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
 	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
@@ -487,7 +487,7 @@ func (s *shardReaderTestSuite) TestPersisterPersistCanceled() {
 	}).Return(&kinesis.GetShardIteratorOutput{
 		ShardIterator: aws.String("shard iterator"),
 	}, nil).Once()
-	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(matcher.Context, &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("shard iterator"),
 		Limit:         aws.Int32(10000),
 	}).Run(func(ctx context.Context, params *kinesis.GetRecordsInput, optFns ...func(*kinesis.Options)) {
@@ -497,7 +497,7 @@ func (s *shardReaderTestSuite) TestPersisterPersistCanceled() {
 		MillisBehindLatest: aws.Int64(0),
 		NextShardIterator:  aws.String("next iterator"),
 	}, nil).Once()
-	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(matcher.Context, &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("next iterator"),
 		Limit:         aws.Int32(10000),
 	}).Return(nil, context.Canceled).Once()
@@ -526,11 +526,11 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithWait() {
 	s.mockMetricCall("WaitDuration", 0, metric.UnitMillisecondsAverage).Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.EXPECT().Info("acquired shard").Once()
-	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "acquired shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "releasing shard").Once()
 	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
 	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.EXPECT().Info("processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Once()
+	s.logger.EXPECT().Info(matcher.Context, "processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Once()
 
 	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
@@ -591,11 +591,11 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithOldRecord() {
 	s.mockMetricCall("WaitDuration", 1000, metric.UnitMillisecondsAverage).Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.EXPECT().Info("acquired shard").Once()
-	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "acquired shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "releasing shard").Once()
 	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
 	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.EXPECT().Info("processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Once()
+	s.logger.EXPECT().Info(matcher.Context, "processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Once()
 
 	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
@@ -648,11 +648,11 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWait() {
 	s.mockMetricCall("WaitDuration", 1000, metric.UnitMillisecondsAverage).Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.EXPECT().Info("acquired shard").Once()
-	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "acquired shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "releasing shard").Once()
 	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
 	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.EXPECT().Info("processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
+	s.logger.EXPECT().Info(matcher.Context, "processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
 
 	s.kinesisClient.EXPECT().GetShardIterator(ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
@@ -714,11 +714,11 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWaitNoRecords() {
 	s.mockMetricCall("WaitDuration", 1000, metric.UnitMillisecondsAverage).Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.EXPECT().Info("acquired shard").Once()
-	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "acquired shard").Once()
+	s.logger.EXPECT().Info(matcher.Context, "releasing shard").Once()
 	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
 	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.EXPECT().Info("processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
+	s.logger.EXPECT().Info(matcher.Context, "processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
 
 	s.kinesisClient.EXPECT().GetShardIterator(ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
@@ -752,7 +752,7 @@ func (s *shardReaderTestSuite) consumeRecord(record []byte) error {
 }
 
 func (s *shardReaderTestSuite) mockMetricCall(metricName string, value float64, unit metric.StandardUnit) *metricMocks.Writer_Write_Call {
-	return s.metricWriter.EXPECT().Write(metric.Data{
+	return s.metricWriter.EXPECT().Write(matcher.Context, metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricName,

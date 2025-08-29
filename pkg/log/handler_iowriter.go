@@ -1,6 +1,7 @@
 package log
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"sync"
@@ -125,7 +126,7 @@ func (h *handlerIoWriter) Level() int {
 	return h.level
 }
 
-func (h *handlerIoWriter) Log(timestamp time.Time, level int, msg string, args []any, logErr error, data Data) error {
+func (h *handlerIoWriter) Log(_ context.Context, timestamp time.Time, level int, msg string, args []any, logErr error, data Data) error {
 	var err error
 	var bytes []byte
 	timestampStr := timestamp.Format(h.timestampFormat)

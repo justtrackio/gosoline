@@ -12,6 +12,7 @@ import (
 func RecoveryWithSentry(logger log.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
+			ctx := c.Request.Context()
 			err := recover()
 
 			switch rval := err.(type) {
@@ -19,14 +20,14 @@ func RecoveryWithSentry(logger log.Logger) gin.HandlerFunc {
 				return
 			case error:
 				if errors.Is(rval, ResponseBodyWriterError{}) && exec.IsConnectionError(rval) {
-					logger.Warn("connection error: %s", rval.Error())
+					logger.Warn(ctx, "connection error: %s", rval.Error())
 
 					return
 				}
 
-				logger.Error("%w", rval)
+				logger.Error(ctx, "%w", rval)
 			case string:
-				logger.Error(rval)
+				logger.Error(ctx, rval)
 			default:
 			}
 

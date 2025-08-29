@@ -45,14 +45,14 @@ func newNotifier(logger log.Logger, modelId mdl.ModelId, version int) notifier {
 	}
 }
 
-func (n *notifier) writeMetric(err error) {
+func (n *notifier) writeMetric(ctx context.Context, err error) {
 	metricName := "ModelEventNotifySuccess"
 
 	if err != nil {
 		metricName = "ModelEventNotifyFailure"
 	}
 
-	n.metric.WriteOne(&metric.Datum{
+	n.metric.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: metricName,

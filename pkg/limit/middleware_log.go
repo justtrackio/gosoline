@@ -28,28 +28,24 @@ func (l loggingMiddleware) getFields(i Invocation) log.Fields {
 
 func (l loggingMiddleware) OnTake(ctx context.Context, i Invocation) {
 	l.logger.
-		WithContext(ctx).
 		WithFields(l.getFields(i)).
-		Info("trying to take from limiter")
+		Info(ctx, "trying to take from limiter")
 }
 
 func (l loggingMiddleware) OnRelease(ctx context.Context, i Invocation) {
 	l.logger.
-		WithContext(ctx).
 		WithFields(l.getFields(i)).
-		Info("releasing request from limiting")
+		Info(ctx, "releasing request from limiting")
 }
 
 func (l loggingMiddleware) OnError(ctx context.Context, i Invocation) {
 	l.logger.
-		WithContext(ctx).
 		WithFields(l.getFields(i)).
-		Warn("error while getting rate limit")
+		Warn(ctx, "error while getting rate limit")
 }
 
 func (l loggingMiddleware) OnThrottle(ctx context.Context, i Invocation) {
 	l.logger.
-		WithContext(ctx).
 		WithFields(l.getFields(i)).
-		Info("throttling request as rate limit was reached")
+		Info(ctx, "throttling request as rate limit was reached")
 }

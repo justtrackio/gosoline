@@ -40,9 +40,13 @@ type redisListInput struct {
 }
 
 func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *RedisListInputSettings) (Input, error) {
-	settings.PadFromConfig(config)
+	err := settings.PadFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("can not pad settings from config: %w", err)
+	}
 
-	client, err := redis.ProvideClient(ctx, config, logger, settings.ServerName)
+	var client redis.Client
+	client, err = redis.ProvideClient(ctx, config, logger, settings.ServerName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
@@ -101,7 +105,7 @@ func (i *redisListInput) Run(ctx context.Context) error {
 		rawMessage, err := i.client.BLPop(ctx, i.settings.WaitTime, i.fullyQualifiedKey)
 
 		if err != nil && err.Error() != redis.Nil.Error() {
-			i.logger.Error("could not BLPop from redis: %w", err)
+			i.logger.Error(ctx, "could not BLPop from redis: %w", err)
 			i.stopped = true
 
 			return err
@@ -114,17 +118,17 @@ func (i *redisListInput) Run(ctx context.Context) error {
 		msg := Message{}
 		err = json.Unmarshal([]byte(rawMessage[1]), &msg)
 		if err != nil {
-			i.logger.Error("could not unmarshal message: %w", err)
+			i.logger.Error(ctx, "could not unmarshal message: %w", err)
 
 			continue
 		}
 
 		i.channel <- &msg
-		i.writeListReadMetric()
+		i.writeListReadMetric(ctx)
 	}
 }
 
-func (i *redisListInput) Stop() {
+func (i *redisListInput) Stop(ctx context.Context) {
 	i.stopped = true
 }
 
@@ -144,7 +148,7 @@ func (i *redisListInput) runMetricLoop(ctx context.Context) {
 func (i *redisListInput) writeListLengthMetric(ctx context.Context) {
 	llen, err := i.client.LLen(ctx, i.fullyQualifiedKey)
 	if err != nil {
-		i.logger.Error("can not publish stream list metric data: %w", err)
+		i.logger.Error(ctx, "can not publish stream list metric data: %w", err)
 
 		return
 	}
@@ -159,10 +163,10 @@ func (i *redisListInput) writeListLengthMetric(ctx context.Context) {
 		Value: float64(llen),
 	}}
 
-	i.mw.Write(data)
+	i.mw.Write(ctx, data)
 }
 
-func (i *redisListInput) writeListReadMetric() {
+func (i *redisListInput) writeListReadMetric(ctx context.Context) {
 	data := metric.Data{{
 		MetricName: metricNameRedisListInputReads,
 		Dimensions: map[string]string{
@@ -171,7 +175,7 @@ func (i *redisListInput) writeListReadMetric() {
 		Value: 1.0,
 	}}
 
-	i.mw.Write(data)
+	i.mw.Write(ctx, data)
 }
 
 func getRedisListInputDefaultMetrics(appId cfg.AppId, key string) metric.Data {

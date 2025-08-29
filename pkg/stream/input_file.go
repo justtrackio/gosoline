@@ -39,7 +39,7 @@ func (i *fileInput) Data() <-chan *Message {
 	return i.channel
 }
 
-func (i *fileInput) Run(_ context.Context) error {
+func (i *fileInput) Run(ctx context.Context) error {
 	defer func() {
 		if !i.settings.Blocking {
 			close(i.channel)
@@ -48,7 +48,7 @@ func (i *fileInput) Run(_ context.Context) error {
 
 	file, err := os.Open(i.settings.Filename)
 	if err != nil {
-		i.logger.Error("can not open file: %w", err)
+		i.logger.Error(ctx, "can not open file: %w", err)
 
 		return err
 	}
@@ -64,7 +64,7 @@ func (i *fileInput) Run(_ context.Context) error {
 		msg := Message{}
 		err = json.Unmarshal([]byte(rawMessage), &msg)
 		if err != nil {
-			i.logger.Error("could not unmarshal message: %w", err)
+			i.logger.Error(ctx, "could not unmarshal message: %w", err)
 
 			continue
 		}
@@ -75,7 +75,7 @@ func (i *fileInput) Run(_ context.Context) error {
 	return nil
 }
 
-func (i *fileInput) Stop() {
+func (i *fileInput) Stop(ctx context.Context) {
 	i.stopped = true
 }
 

@@ -31,19 +31,19 @@ func Start(handlerFactory HandlerFactory, configOptions ...cfg.Option) {
 	}, configOptions...)
 
 	if err = config.Option(mergedConfigOptions...); err != nil {
-		defaultErrorHandler("failed to apply config options: %w", err)
+		defaultErrorHandler(ctx, "failed to apply config options: %w", err)
 
 		return
 	}
 
 	if cfgPostProcessors, err = cfg.ApplyPostProcessors(config); err != nil {
-		defaultErrorHandler("can not apply post processor on config: %w", err)
+		defaultErrorHandler(ctx, "can not apply post processor on config: %w", err)
 
 		return
 	}
 
 	if handlers, err = log.NewHandlersFromConfig(config); err != nil {
-		defaultErrorHandler("can not create handlers from config: %w", err)
+		defaultErrorHandler(ctx, "can not create handlers from config: %w", err)
 
 		return
 	}
@@ -54,20 +54,20 @@ func Start(handlerFactory HandlerFactory, configOptions ...cfg.Option) {
 	}
 
 	if err = logger.Option(loggerOptions...); err != nil {
-		defaultErrorHandler("failed to apply logger options: %w", err)
+		defaultErrorHandler(ctx, "failed to apply logger options: %w", err)
 
 		return
 	}
 
 	for name, priority := range cfgPostProcessors {
-		logger.Debug("applied priority %d config post processor '%s'", priority, name)
+		logger.Debug(ctx, "applied priority %d config post processor '%s'", priority, name)
 	}
 
 	stream.AddDefaultEncodeHandler(log.NewMessageWithLoggingFieldsEncoder(config, logger))
 
 	// create handler function and give lambda control
 	if lambdaHandler, err = handlerFactory(ctx, config, logger); err != nil {
-		defaultErrorHandler("failed to create lambda handler: %w", err)
+		defaultErrorHandler(ctx, "failed to create lambda handler: %w", err)
 
 		return
 	}

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"time"
@@ -35,7 +36,7 @@ func newMetricDriver(driver driver.Driver) string {
 }
 
 func (m *metricDriver) Open(dsn string) (driver.Conn, error) {
-	m.metricWriter.WriteOne(&metric.Datum{
+	m.metricWriter.WriteOne(context.Background(), &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: metricNameDbConnectionCount,
 		Dimensions: map[string]string{
@@ -55,7 +56,7 @@ func publishConnectionMetrics(conn *sqlx.DB) {
 		for {
 			stats := conn.Stats()
 
-			output.Write(metric.Data{
+			output.Write(context.Background(), metric.Data{
 				&metric.Datum{
 					Priority:   metric.PriorityHigh,
 					MetricName: metricNameDbConnectionCount,

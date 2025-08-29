@@ -79,7 +79,7 @@ func (i *InMemoryInput) Run(ctx context.Context) error {
 	return nil
 }
 
-func (i *InMemoryInput) Stop() {
+func (i *InMemoryInput) Stop(ctx context.Context) {
 	i.lck.Lock()
 	defer i.lck.Unlock()
 

@@ -1,6 +1,7 @@
 package log
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -47,7 +48,7 @@ func (h *HandlerSentry) Level() int {
 	return PriorityError
 }
 
-func (h *HandlerSentry) Log(_ time.Time, _ int, _ string, _ []any, err error, data Data) error {
+func (h *HandlerSentry) Log(_ context.Context, _ time.Time, _ int, _ string, _ []any, err error, data Data) error {
 	if err == nil {
 		return nil
 	}

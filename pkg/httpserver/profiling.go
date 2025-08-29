@@ -63,7 +63,7 @@ func (p *Profiling) Run(ctx context.Context) error {
 	err := p.server.ListenAndServe()
 
 	if !errors.Is(err, http.ErrServerClosed) {
-		p.logger.Error("profiling api server closed unexpected", err)
+		p.logger.Error(ctx, "profiling api server closed unexpected", err)
 
 		return err
 	}
@@ -75,6 +75,6 @@ func (p *Profiling) waitForStop(ctx context.Context) {
 	<-ctx.Done()
 	err := p.server.Close()
 	if err != nil {
-		p.logger.Error("profiling api server close", err)
+		p.logger.Error(ctx, "profiling api server close", err)
 	}
 }

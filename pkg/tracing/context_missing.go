@@ -1,6 +1,7 @@
 package tracing
 
 import (
+	"context"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -36,5 +37,5 @@ func (c ContextMissingWarnStrategy) ContextMissing(v any) {
 
 	c.logger.WithFields(log.Fields{
 		"stacktrace": stacktrace,
-	}).Warn("can not trace the action: %s", v)
+	}).Warn(context.Background(), "can not trace the action: %s", v)
 }

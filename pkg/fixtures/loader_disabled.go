@@ -17,7 +17,7 @@ func NewFixtureLoaderDisabled(logger log.Logger) FixtureLoader {
 }
 
 func (l *disabledFixtureLoader) Load(ctx context.Context) error {
-	l.logger.WithContext(ctx).Info("fixture loader is not enabled")
+	l.logger.Info(ctx, "fixture loader is not enabled")
 
 	return nil
 }

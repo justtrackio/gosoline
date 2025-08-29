@@ -6,6 +6,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/kafka/logging"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 )
 
 func TestKafkaLogger(t *testing.T) {
@@ -17,11 +18,11 @@ func TestKafkaLogger(t *testing.T) {
 
 	logger.EXPECT().WithChannel("stream.kafka").Return(loggerWithChannel).Once()
 
-	loggerWithChannel.EXPECT().Debug("debug message").Once()
-	loggerWithChannel.EXPECT().Error("error message").Once()
-	loggerWithChannel.EXPECT().Info("not the leader").Once()
-	loggerWithChannel.EXPECT().Info("error: %s", nonCriticalError).Once()
-	loggerWithChannel.EXPECT().Info("unexpected EOF").Once()
+	loggerWithChannel.EXPECT().Debug(matcher.Context, "debug message").Once()
+	loggerWithChannel.EXPECT().Error(matcher.Context, "error message").Once()
+	loggerWithChannel.EXPECT().Info(matcher.Context, "not the leader").Once()
+	loggerWithChannel.EXPECT().Info(matcher.Context, "error: %s", nonCriticalError).Once()
+	loggerWithChannel.EXPECT().Info(matcher.Context, "unexpected EOF").Once()
 
 	kLogger := logging.NewKafkaLogger(logger)
 	kLogger.DebugLogger().Printf("debug message")

@@ -112,7 +112,7 @@ func (s *service) CreateQueue(ctx context.Context) (*Properties, error) {
 func (s *service) QueueExists(ctx context.Context, name string) (bool, error) {
 	s.logger.WithFields(log.Fields{
 		"name": name,
-	}).Info("checking the existence of sqs queue")
+	}).Info(ctx, "checking the existence of sqs queue")
 
 	var err error
 	var url string
@@ -122,14 +122,14 @@ func (s *service) QueueExists(ctx context.Context, name string) (bool, error) {
 	}
 
 	if url != "" {
-		s.logger.Info("found queue %s with url %s", name, url)
+		s.logger.Info(ctx, "found queue %s with url %s", name, url)
 
 		return true, nil
 	}
 
 	s.logger.WithFields(log.Fields{
 		"name": name,
-	}).Info("could not find queue")
+	}).Info(ctx, "could not find queue")
 
 	return false, nil
 }
@@ -171,7 +171,7 @@ func (s *service) createDeadLetterQueue(ctx context.Context, settings *Settings)
 
 	props, err := s.doCreateQueue(ctx, deadLetterInput)
 	if err != nil {
-		s.logger.Error("could not get arn of dead letter sqs queue %v: %w", deadLetterName, err)
+		s.logger.Error(ctx, "could not get arn of dead letter sqs queue %v: %w", deadLetterName, err)
 
 		return attributes, err
 	}
@@ -193,15 +193,15 @@ func (s *service) createDeadLetterQueue(ctx context.Context, settings *Settings)
 
 func (s *service) doCreateQueue(ctx context.Context, input *sqs.CreateQueueInput) (*Properties, error) {
 	name := *input.QueueName
-	s.logger.Info("trying to create sqs queue: %v", name)
+	s.logger.Info(ctx, "trying to create sqs queue: %v", name)
 
 	if _, err := s.client.CreateQueue(ctx, input); err != nil {
-		s.logger.Error("could not create sqs queue %v: %w", name, err)
+		s.logger.Error(ctx, "could not create sqs queue %v: %w", name, err)
 
 		return nil, err
 	}
 
-	s.logger.Info("created sqs queue %v", name)
+	s.logger.Info(ctx, "created sqs queue %v", name)
 
 	return s.GetPropertiesByName(ctx, name)
 }

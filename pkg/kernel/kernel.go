@@ -107,13 +107,13 @@ func (k *kernel) Run() {
 	defer k.exit()
 	defer func() {
 		if err := coffin.ResolveRecovery(recover()); err != nil {
-			k.logger.WithContext(k.ctx).Error("failed to run kernel: %w", err)
+			k.logger.Error(k.ctx, "failed to run kernel: %w", err)
 			k.exitCode = ExitCodeErr
 		}
 	}()
 
 	startedAt := k.clock.Now()
-	k.logger.Info("starting kernel")
+	k.logger.Info(k.ctx, "starting kernel")
 	k.foregroundModules = k.stages.countForegroundModules()
 
 	sig := make(chan os.Signal, 2)
@@ -139,7 +139,7 @@ func (k *kernel) Run() {
 		}
 
 		took := k.clock.Since(startedAt)
-		k.logger.Info("kernel up and running after %s", took)
+		k.logger.Info(k.ctx, "kernel up and running after %s", took)
 		close(k.running)
 
 		<-k.waitAllStagesDone().Channel()
@@ -175,12 +175,12 @@ func (k *kernel) stop(reason string, moduleStage int, moduleErr error) {
 		close(k.stopping)
 
 		go func() {
-			k.logger.Info("stopping kernel due to: %s", reason)
+			k.logger.Info(k.ctx, "stopping kernel due to: %s", reason)
 			indices := k.stages.getIndices()
 
 			for i := len(indices) - 1; i >= 0; i-- {
 				stageIndex := indices[i]
-				k.logger.Info("stopping stage %d", stageIndex)
+				k.logger.Info(k.ctx, "stopping stage %d", stageIndex)
 
 				waitErr := moduleErr
 				if stageIndex != moduleStage {
@@ -188,7 +188,7 @@ func (k *kernel) stop(reason string, moduleStage int, moduleErr error) {
 				}
 				k.stages[stageIndex].stopWait(waitErr)
 
-				k.logger.Info("stopped stage %d", stageIndex)
+				k.logger.Info(k.ctx, "stopped stage %d", stageIndex)
 			}
 
 			k.middlewareCancel()
@@ -244,12 +244,12 @@ func (k *kernel) reportFailedHealthcheck(result HealthCheckResult) {
 	written := runtime.Stack(buf, true)
 	buf = buf[:written]
 
-	k.logger.WithContext(k.ctx).Error("healthcheck failed, unhealthy modules: %s\n%s", unhealthy, string(buf))
+	k.logger.Error(k.ctx, "healthcheck failed, unhealthy modules: %s\n%s", unhealthy, string(buf))
 }
 
 func (k *kernel) exit() {
 	k.exitOnce.Do(func() {
-		k.logger.Info("leaving kernel with exit code %d", k.exitCode)
+		k.logger.Info(k.ctx, "leaving kernel with exit code %d", k.exitCode)
 		k.exitHandler(k.exitCode)
 	})
 }
@@ -260,16 +260,16 @@ func (k *kernel) runStages() error {
 			return fmt.Errorf("can not run stage %d: %w", stageIndex, err)
 		}
 
-		k.logger.Info("stage %d up and running with %d modules", stageIndex, k.stages[stageIndex].len())
+		k.logger.Info(k.ctx, "stage %d up and running with %d modules", stageIndex, k.stages[stageIndex].len())
 	}
 
 	return nil
 }
 
 func (k *kernel) runModule(ctx context.Context, name string, ms *moduleState) (moduleErr error) {
-	defer k.logger.Info("stopped %s module %s", ms.config.GetType(), name)
+	defer k.logger.Info(ctx, "stopped %s module %s", ms.config.GetType(), name)
 
-	k.logger.Info("running %s module %s in stage %d", ms.config.GetType(), name, ms.config.stage)
+	k.logger.Info(ctx, "running %s module %s in stage %d", ms.config.GetType(), name, ms.config.stage)
 
 	atomic.StoreInt32(&ms.isRunning, 1)
 
@@ -284,7 +284,7 @@ func (k *kernel) runModule(ctx context.Context, name string, ms *moduleState) (m
 		}
 
 		if ms.err != nil {
-			k.logger.Error("error running %s module %s: %w", ms.config.GetType(), name, ms.err)
+			k.logger.Error(ctx, "error running %s module %s: %w", ms.config.GetType(), name, ms.err)
 		}
 
 		atomic.StoreInt32(&ms.isRunning, 0)
@@ -329,14 +329,14 @@ func (k *kernel) waitStopped() {
 		select {
 		case <-timer.C:
 			err := fmt.Errorf("kernel was not able to shutdown in %v", k.killTimeout)
-			k.logger.Error("kernel shutdown seems to be blocking.. exiting...: %w", err)
+			k.logger.Error(k.ctx, "kernel shutdown seems to be blocking.. exiting...: %w", err)
 
 			// we don't need to iterate in order, but doing so is much nicer, so let's do it
 			for _, stageIndex := range k.stages.getIndices() {
 				s := k.stages[stageIndex]
 				for name, ms := range s.modules.modules {
 					if atomic.LoadInt32(&ms.isRunning) != 0 {
-						k.logger.Info("module in stage %d blocking the shutdown: %s", stageIndex, name)
+						k.logger.Info(k.ctx, "module in stage %d blocking the shutdown: %s", stageIndex, name)
 					}
 				}
 			}

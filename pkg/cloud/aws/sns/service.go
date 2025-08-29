@@ -35,9 +35,9 @@ func NewServiceWithInterfaces(logger log.Logger, client Client) *Service {
 }
 
 func (s *Service) CreateTopic(ctx context.Context, topicName string) (string, error) {
-	s.logger.WithContext(ctx).WithFields(log.Fields{
+	s.logger.WithFields(log.Fields{
 		"name": topicName,
-	}).Info("looking for sns topic")
+	}).Info(ctx, "looking for sns topic")
 
 	input := &sns.CreateTopicInput{
 		Name: aws.String(topicName),
@@ -50,10 +50,10 @@ func (s *Service) CreateTopic(ctx context.Context, topicName string) (string, er
 		return "", err
 	}
 
-	s.logger.WithContext(ctx).WithFields(log.Fields{
+	s.logger.WithFields(log.Fields{
 		"name": topicName,
 		"arn":  *out.TopicArn,
-	}).Info("found sns topic")
+	}).Info(ctx, "found sns topic")
 
 	return *out.TopicArn, nil
 }
@@ -72,7 +72,7 @@ func (s *Service) SubscribeSqs(ctx context.Context, queueArn string, topicArn st
 		s.logger.WithFields(log.Fields{
 			"topicArn": topicArn,
 			"queueArn": queueArn,
-		}).Info("already subscribed to sns topic")
+		}).Info(ctx, "already subscribed to sns topic")
 
 		return nil
 	}
@@ -100,7 +100,7 @@ func (s *Service) SubscribeSqs(ctx context.Context, queueArn string, topicArn st
 	s.logger.WithFields(log.Fields{
 		"topicArn": topicArn,
 		"queueArn": queueArn,
-	}).Info("successful subscribed to sns topic")
+	}).Info(ctx, "successful subscribed to sns topic")
 
 	return nil
 }
@@ -131,7 +131,7 @@ func (s *Service) subscriptionExists(ctx context.Context, queueArn string, topic
 			"topicArn":        *subscription.TopicArn,
 			"subscriptionArt": *subscription.SubscriptionArn,
 			"queueArn":        queueArn,
-		}).Info("found not matching subscription for queue %s, deleting %s", queueArn, *subscription.SubscriptionArn)
+		}).Info(ctx, "found not matching subscription for queue %s, deleting %s", queueArn, *subscription.SubscriptionArn)
 
 		if err = s.deleteSubscription(ctx, subscription.SubscriptionArn); err != nil {
 			return false, fmt.Errorf("can not delete subscription: %w", err)

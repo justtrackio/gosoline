@@ -24,7 +24,7 @@ func (c consumerCallback) Consume(ctx context.Context, input map[string]string, 
 		return false, err
 	}
 
-	c.logger.WithContext(ctx).Info("Received new message: %s", string(str))
+	c.logger.Info(ctx, "Received new message: %s", string(str))
 
 	return true, nil
 }

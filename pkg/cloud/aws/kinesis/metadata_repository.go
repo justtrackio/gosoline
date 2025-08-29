@@ -138,7 +138,9 @@ func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Lo
 	// we need the app id from the application we are running at, not the app id from the settings as this is the same
 	// for different kinsumers of the same stream!
 	appId := cfg.AppId{}
-	appId.PadFromConfig(config)
+	if err = appId.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("can not pad app id from config: %w", err)
+	}
 
 	return NewMetadataRepositoryWithInterfaces(logger, stream, clientId, repo, settings, appId, clock.Provider), nil
 }
@@ -258,7 +260,7 @@ func (m *metadataRepository) AcquireShard(ctx context.Context, shardId ShardId) 
 	}
 
 	if !getResult.IsFound {
-		m.logger.Info("trying to use unused shard %s", shardId)
+		m.logger.Info(ctx, "trying to use unused shard %s", shardId)
 
 		record = &CheckpointRecord{
 			BaseRecord: BaseRecord{
@@ -273,27 +275,14 @@ func (m *metadataRepository) AcquireShard(ctx context.Context, shardId ShardId) 
 			FinishedAt:        nil,
 		}
 	} else {
-		if record.OwningClientId != "" && record.UpdatedAt.After(timedOutBefore) {
-			m.logger.Info("not trying to take over shard %s from %s, it is still in use", shardId, record.OwningClientId)
-
+		var err error
+		record, err = m.handleExistingRecord(ctx, record, shardId, timedOutBefore)
+		if err != nil {
+			return nil, err
+		}
+		if record == nil {
 			return nil, nil
 		}
-
-		if record.FinishedAt != nil {
-			m.logger.Info("not trying to take over shard %s, it is already finished", shardId)
-
-			return nil, ErrShardAlreadyFinished
-		}
-
-		owner := record.OwningClientId
-		if owner == "" {
-			owner = "nobody"
-		}
-		m.logger.Info("trying to take over shard %s from %s", shardId, owner)
-
-		record.OwningClientId = m.clientId
-		record.UpdatedAt = m.clock.Now()
-		record.Ttl = mdl.Box(m.clock.Now().Add(ShardTimeout).Unix())
 	}
 
 	// use a delayed context to work around context cancels during acquiring the shard.
@@ -307,7 +296,7 @@ func (m *metadataRepository) AcquireShard(ctx context.Context, shardId ShardId) 
 	if putResult, err := m.repo.PutItem(delayedCtx, putQb, record); err != nil {
 		return nil, fmt.Errorf("failed to write checkpoint record: %w", err)
 	} else if putResult.ConditionalCheckFailed {
-		m.logger.Info("failed to acquire shard %s", shardId)
+		m.logger.Info(delayedCtx, "failed to acquire shard %s", shardId)
 
 		return nil, nil
 	}
@@ -324,7 +313,7 @@ func (m *metadataRepository) AcquireShard(ctx context.Context, shardId ShardId) 
 		if putResult, err := m.repo.PutItem(delayedCtx, putQb, record); err != nil {
 			return nil, fmt.Errorf("failed to release checkpoint record: %w", err)
 		} else if putResult.ConditionalCheckFailed {
-			m.logger.Info("failed to release shard %s", shardId)
+			m.logger.Info(delayedCtx, "failed to release shard %s", shardId)
 
 			return nil, nil
 		}
@@ -351,6 +340,32 @@ func (m *metadataRepository) AcquireShard(ctx context.Context, shardId ShardId) 
 		finalSequenceNumber: finalSequenceNumber,
 		finishedAt:          record.FinishedAt,
 	}, nil
+}
+
+func (m *metadataRepository) handleExistingRecord(ctx context.Context, record *CheckpointRecord, shardId ShardId, timedOutBefore time.Time) (*CheckpointRecord, error) {
+	if record.OwningClientId != "" && record.UpdatedAt.After(timedOutBefore) {
+		m.logger.Info(ctx, "not trying to take over shard %s from %s, it is still in use", shardId, record.OwningClientId)
+
+		return nil, nil
+	}
+
+	if record.FinishedAt != nil {
+		m.logger.Info(ctx, "not trying to take over shard %s, it is already finished", shardId)
+
+		return nil, ErrShardAlreadyFinished
+	}
+
+	owner := record.OwningClientId
+	if owner == "" {
+		owner = "nobody"
+	}
+	m.logger.Info(ctx, "trying to take over shard %s from %s", shardId, owner)
+
+	record.OwningClientId = m.clientId
+	record.UpdatedAt = m.clock.Now()
+	record.Ttl = mdl.Box(m.clock.Now().Add(ShardTimeout).Unix())
+
+	return record, nil
 }
 
 func (m *metadataRepository) getClientNamespace() string {

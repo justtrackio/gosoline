@@ -88,7 +88,7 @@ func (s Settings) GetStreamName() string {
 //go:generate go run github.com/vektra/mockery/v2 --name Kinsumer
 type Kinsumer interface {
 	Run(ctx context.Context, handler MessageHandler) error
-	Stop()
+	Stop(ctx context.Context)
 	IsHealthy() bool
 }
 
@@ -114,10 +114,12 @@ type runtimeContext struct {
 }
 
 func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (Kinsumer, error) {
-	settings.PadFromConfig(config)
+	var err error
+	if err = settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("can not pad settings from config: %w", err)
+	}
 	clientId := ClientId(uuid.New().NewV4())
 
-	var err error
 	var fullStreamName Stream
 
 	if fullStreamName, err = GetStreamName(config, settings); err != nil {
@@ -209,11 +211,9 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 	deregisterCtx, stop := exec.WithDelayedCancelContext(ctx, k.settings.ReleaseDelay)
 	defer stop()
 
-	logger := k.logger.WithContext(ctx)
-
 	// always remove the client again in the end to leave a clean client table if possible
 	defer func() {
-		logger.Info("removing client registration")
+		k.logger.Info(deregisterCtx, "removing client registration")
 		if err := k.metadataRepository.DeregisterClient(deregisterCtx); err != nil {
 			finalErr = multierror.Append(finalErr, fmt.Errorf("failed to deregister client: %w", err))
 		}
@@ -238,7 +238,7 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 	cfn.GoWithContext(cancelableCoffinCtx, func(ctx context.Context) error {
 		discoverTicker := k.clock.NewTicker(k.settings.DiscoverFrequency)
 		defer discoverTicker.Stop()
-		defer logger.Info("leaving kinsumer")
+		defer k.logger.Info(ctx, "leaving kinsumer")
 
 		consumersWaitGroup, stopConsumers := k.startConsumers(ctx, cfn, runtimeCtx, handler)
 
@@ -265,7 +265,7 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 					continue
 				}
 
-				logger.Info("discovered new shards or clients, restarting consumers for %d shards", len(runtimeCtx.shardIds))
+				k.logger.Info(ctx, "discovered new shards or clients, restarting consumers for %d shards", len(runtimeCtx.shardIds))
 				discoverTicker.Stop()
 				stopConsumers()
 				consumersWaitGroup.Wait()
@@ -282,14 +282,12 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 }
 
 func (k *kinsumer) refreshShards(ctx context.Context, runtimeCtx *runtimeContext) (bool, error) {
-	logger := k.logger.WithContext(ctx)
-
 	clientIndex, totalClients, err := k.metadataRepository.RegisterClient(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to register as client: %w", err)
 	}
 
-	logger.Info("we are client %d / %d, refreshing %d shards", clientIndex+1, totalClients, len(runtimeCtx.shardIds))
+	k.logger.Info(ctx, "we are client %d / %d, refreshing %d shards", clientIndex+1, totalClients, len(runtimeCtx.shardIds))
 
 	shardIds, err := k.listShardIds(ctx)
 	if err != nil {
@@ -409,21 +407,20 @@ func (k *kinsumer) startConsumers(
 	// task already finishes
 	wg.Add(1)
 
-	logger := k.logger.WithContext(consumerCtx)
 	startedConsumers := 0
 
 	for i := runtimeCtx.clientIndex; i < len(runtimeCtx.shardIds); i += runtimeCtx.totalClients {
 		wg.Add(1)
 		shardId := runtimeCtx.shardIds[i]
-		logger := logger.WithFields(log.Fields{
+		logger := k.logger.WithFields(log.Fields{
 			"shard_id": shardId,
 		})
 		startedConsumers++
 		cfn.GoWithContext(consumerCtx, func(ctx context.Context) error {
 			defer wg.Done()
 
-			logger.Info("started consuming shard")
-			defer logger.Info("done consuming shard")
+			logger.Info(ctx, "started consuming shard")
+			defer logger.Info(ctx, "done consuming shard")
 
 			if err := k.shardReaderFactory(logger, shardId).Run(ctx, handler.Handle); err != nil {
 				return fmt.Errorf("failed to consume from shard: %w", err)
@@ -463,18 +460,18 @@ func (k *kinsumer) startConsumers(
 	cfn.GoWithContext(consumerCtx, func(ctx context.Context) error {
 		defer wg.Done()
 
-		logger.Info("kinsumer started %d consumers for %d shards", startedConsumers, len(runtimeCtx.shardIds))
+		k.logger.Info(consumerCtx, "kinsumer started %d consumers for %d shards", startedConsumers, len(runtimeCtx.shardIds))
 		ticker := k.clock.NewTicker(time.Minute)
 		defer ticker.Stop()
 
-		k.writeShardTaskRatioMetric(shardTaskRatio)
+		k.writeShardTaskRatioMetric(consumerCtx, shardTaskRatio)
 
 		for {
 			select {
 			case <-ctx.Done():
 				return nil
 			case <-ticker.Chan():
-				k.writeShardTaskRatioMetric(shardTaskRatio)
+				k.writeShardTaskRatioMetric(consumerCtx, shardTaskRatio)
 			}
 		}
 	})
@@ -482,11 +479,11 @@ func (k *kinsumer) startConsumers(
 	return wg, stopConsumers
 }
 
-func (k *kinsumer) writeShardTaskRatioMetric(shardTaskRatio float64) {
+func (k *kinsumer) writeShardTaskRatioMetric(ctx context.Context, shardTaskRatio float64) {
 	// we write the shard / task ratio once for our stream (so you can track this on a per-stream basis to investigate
 	// problems) and once for the whole application (taking the minimum), so if you consume two streams in one app (e.g.,
 	// a subscriber), you scale to the higher number of shards of the two streams
-	k.metricWriter.Write(metric.Data{
+	k.metricWriter.Write(ctx, metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameShardTaskRatioMax,
@@ -505,7 +502,7 @@ func (k *kinsumer) writeShardTaskRatioMetric(shardTaskRatio float64) {
 	})
 }
 
-func (k *kinsumer) Stop() {
+func (k *kinsumer) Stop(ctx context.Context) {
 	var stop func()
 	k.stopLck.Lock()
 	stop = k.stop
@@ -513,7 +510,7 @@ func (k *kinsumer) Stop() {
 	k.stopped = true
 	k.stopLck.Unlock()
 
-	k.logger.Info("stopping kinsumer")
+	k.logger.Info(ctx, "stopping kinsumer")
 
 	if stop != nil {
 		stop()

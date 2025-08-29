@@ -78,7 +78,7 @@ func New(options ...Option) kernel.Kernel {
 	logger := log.NewLogger()
 
 	if ker, err = NewWithInterfaces(ctx, config, logger, options...); err != nil {
-		defaultErrorHandler("can not initialize the app: %w", err)
+		defaultErrorHandler(ctx, "can not initialize the app: %w", err)
 	}
 
 	return ker
@@ -117,13 +117,13 @@ func NewWithInterfaces(ctx context.Context, config cfg.GosoConf, logger log.Goso
 	// switch the default error handler to use our logger - this ensures any application name or other setting we already
 	// configured for our logger gets picked up by the default error handler. We can only configure this here after we
 	// set up our logger successfully (otherwise the logger might not write any messages at all).
-	withDefaultErrorHandler(func(msg string, args ...any) {
-		logger.Error(msg, args...)
+	withDefaultErrorHandler(func(ctx context.Context, msg string, args ...any) {
+		logger.Error(ctx, msg, args...)
 		os.Exit(1)
 	})
 
 	for name, priority := range cfgPostProcessors {
-		logger.Info("applied priority %d config post processor '%s'", priority, name)
+		logger.Info(ctx, "applied priority %d config post processor '%s'", priority, name)
 	}
 
 	for _, opt := range app.setupOptions {

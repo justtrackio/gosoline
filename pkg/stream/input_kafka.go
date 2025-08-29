@@ -56,7 +56,7 @@ func (i *KafkaInput) Run(ctx context.Context) error {
 // Stop causes Run to return as fast as possible. Calling Stop is preferable to canceling the context passed to Run
 // as it allows Run to shut down cleaner (and might take a bit longer, e.g., to finish processing the current batch
 // of messages).
-func (i *KafkaInput) Stop() {
+func (i *KafkaInput) Stop(ctx context.Context) {
 	i.pool.Kill(errors.New("asked to stop"))
 }
 

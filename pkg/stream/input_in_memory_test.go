@@ -20,6 +20,7 @@ func (s *InMemoryInputTestSuite) SetupTest() {
 }
 
 func (s *InMemoryInputTestSuite) TestRun() {
+	ctx := s.T().Context()
 	msg := stream.NewMessage("content")
 	cfn := coffin.New()
 
@@ -28,7 +29,7 @@ func (s *InMemoryInputTestSuite) TestRun() {
 	})
 
 	s.input.Publish(msg)
-	s.input.Stop()
+	s.input.Stop(ctx)
 
 	readMessages := make([]*stream.Message, 0)
 
@@ -43,6 +44,7 @@ func (s *InMemoryInputTestSuite) TestRun() {
 }
 
 func (s *InMemoryInputTestSuite) TestReset() {
+	ctx := s.T().Context()
 	input := stream.NewInMemoryInput(&stream.InMemorySettings{})
 	wait := make(chan struct{})
 	cfn := coffin.New()
@@ -51,7 +53,7 @@ func (s *InMemoryInputTestSuite) TestReset() {
 		cfn.Go(func() error {
 			<-wait
 			// these two calls should be thread safe and not interfere with each other
-			input.Stop()
+			input.Stop(ctx)
 			input.Reset()
 
 			return nil

@@ -131,7 +131,6 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 	}
 
 	modelId := r.GetModelId()
-	logger := r.logger.WithContext(ctx)
 
 	ctx, span := r.startSubSpan(ctx, "Create")
 	defer span.Finish()
@@ -143,7 +142,7 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 	err := r.orm.Create(value).Error
 
 	if db.IsDuplicateEntryError(err) {
-		logger.Warn("could not create model of type %s due to duplicate entry error: %s", modelId, err.Error())
+		r.logger.Warn(ctx, "could not create model of type %s due to duplicate entry error: %s", modelId, err.Error())
 
 		return &db.DuplicateEntryError{
 			Err: err,
@@ -151,19 +150,19 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 	}
 
 	if err != nil {
-		logger.Error("could not create model of type %v: %w", modelId, err)
+		r.logger.Error(ctx, "could not create model of type %v: %w", modelId, err)
 
 		return err
 	}
 
 	err = r.refreshAssociations(value, Create)
 	if err != nil {
-		logger.Error("could not update associations of model type %v: %w", modelId, err)
+		r.logger.Error(ctx, "could not update associations of model type %v: %w", modelId, err)
 
 		return err
 	}
 
-	logger.Info("created model of type %s with id %d", modelId, *value.GetId())
+	r.logger.Info(ctx, "created model of type %s with id %d", modelId, *value.GetId())
 
 	return r.Read(ctx, value.GetId(), value)
 }
@@ -192,7 +191,6 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 	}
 
 	modelId := r.GetModelId()
-	logger := r.logger.WithContext(ctx)
 
 	ctx, span := r.startSubSpan(ctx, "UpdateItem")
 	defer span.Finish()
@@ -203,7 +201,7 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 	err := r.orm.Save(value).Error
 
 	if db.IsDuplicateEntryError(err) {
-		logger.Warn("could not update model of type %s with id %d due to duplicate entry error: %s", modelId, mdl.EmptyIfNil(value.GetId()), err.Error())
+		r.logger.Warn(ctx, "could not update model of type %s with id %d due to duplicate entry error: %s", modelId, mdl.EmptyIfNil(value.GetId()), err.Error())
 
 		return &db.DuplicateEntryError{
 			Err: err,
@@ -211,19 +209,19 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 	}
 
 	if err != nil {
-		logger.Error("could not update model of type %s with id %d: %w", modelId, mdl.EmptyIfNil(value.GetId()), err)
+		r.logger.Error(ctx, "could not update model of type %s with id %d: %w", modelId, mdl.EmptyIfNil(value.GetId()), err)
 
 		return err
 	}
 
 	err = r.refreshAssociations(value, Update)
 	if err != nil {
-		logger.Error("could not update associations of model type %s with id %d: %w", modelId, *value.GetId(), err)
+		r.logger.Error(ctx, "could not update associations of model type %s with id %d: %w", modelId, *value.GetId(), err)
 
 		return err
 	}
 
-	logger.Info("updated model of type %s with id %d", modelId, *value.GetId())
+	r.logger.Info(ctx, "updated model of type %s with id %d", modelId, *value.GetId())
 
 	return r.Read(ctx, value.GetId(), value)
 }
@@ -234,24 +232,23 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	}
 
 	modelId := r.GetModelId()
-	logger := r.logger.WithContext(ctx)
 
 	_, span := r.startSubSpan(ctx, "Delete")
 	defer span.Finish()
 
 	err := r.refreshAssociations(value, Delete)
 	if err != nil {
-		logger.Error("could not delete associations of model type %s with id %d: %w", modelId, *value.GetId(), err)
+		r.logger.Error(ctx, "could not delete associations of model type %s with id %d: %w", modelId, *value.GetId(), err)
 
 		return err
 	}
 
 	err = r.orm.Delete(value).Error
 	if err != nil {
-		logger.Error("could not delete model of type %s with id %d: %w", modelId, *value.GetId(), err)
+		r.logger.Error(ctx, "could not delete model of type %s with id %d: %w", modelId, *value.GetId(), err)
 	}
 
-	logger.Info("deleted model of type %s with id %d", modelId, *value.GetId())
+	r.logger.Info(ctx, "deleted model of type %s with id %d", modelId, *value.GetId())
 
 	return err
 }

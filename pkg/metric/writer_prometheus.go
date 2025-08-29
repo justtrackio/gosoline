@@ -113,7 +113,7 @@ func (w *prometheusWriter) shouldFilterMetric(datum *Datum) bool {
 	return datum.Priority < w.GetPriority() || datum.Kind == KindTotal
 }
 
-func (w *prometheusWriter) Write(batch Data) {
+func (w *prometheusWriter) Write(ctx context.Context, batch Data) {
 	if len(batch) == 0 {
 		return
 	}
@@ -126,38 +126,38 @@ func (w *prometheusWriter) Write(batch Data) {
 			continue
 		}
 
-		w.writeMetricFromDatum(datum)
+		w.writeMetricFromDatum(ctx, datum)
 	}
 
-	w.logger.Debug("written %d metric data sets to prometheus", len(batch))
+	w.logger.Debug(ctx, "written %d metric data sets to prometheus", len(batch))
 }
 
-func (w *prometheusWriter) WriteOne(data *Datum) {
-	w.Write(Data{data})
+func (w *prometheusWriter) WriteOne(ctx context.Context, data *Datum) {
+	w.Write(ctx, Data{data})
 }
 
-func (w *prometheusWriter) writeMetricFromDatum(datum *Datum) {
+func (w *prometheusWriter) writeMetricFromDatum(ctx context.Context, datum *Datum) {
 	defer func() {
 		err := coffin.ResolveRecovery(recover())
 		if err != nil {
-			w.logger.Error("writing prometheus metric from datum for id %s: %w", w.DatumId(datum), err)
+			w.logger.Error(ctx, "writing prometheus metric from datum for id %s: %w", w.DatumId(datum), err)
 		}
 	}()
 
 	if strings.Contains(datum.MetricName, "-") {
-		w.logger.Error("metric name %s is invalid, as it contains a - characters, gracefully replacing with an _ character", datum.MetricName)
+		w.logger.Error(ctx, "metric name %s is invalid, as it contains a - characters, gracefully replacing with an _ character", datum.MetricName)
 		datum.MetricName = replacer.Replace(datum.MetricName)
 	}
 
 	switch datum.Unit {
 	case UnitCount, UnitPromCounter:
-		w.counter(datum)
+		w.counter(ctx, datum)
 	case UnitPromSummary, UnitMilliseconds, UnitSeconds:
-		w.summary(datum)
+		w.summary(ctx, datum)
 	case UnitPromHistogram:
-		w.histogram(datum)
+		w.histogram(ctx, datum)
 	default:
-		w.gauge(datum)
+		w.gauge(ctx, datum)
 	}
 }
 
@@ -236,7 +236,7 @@ func (w *prometheusWriter) registerAndProcessMetric(metric prometheus.Collector,
 	return nil
 }
 
-func (w *prometheusWriter) counter(datum *Datum) {
+func (w *prometheusWriter) counter(ctx context.Context, datum *Datum) {
 	metric := w.createCounter(datum)
 
 	err := w.registerAndProcessMetric(metric, datum.MetricName, func(metric prometheus.Collector) {
@@ -245,11 +245,11 @@ func (w *prometheusWriter) counter(datum *Datum) {
 			Add(datum.Value)
 	})
 	if err != nil {
-		w.logger.Error("writing prometheus counter for datum %s: %v", datum.MetricName, err)
+		w.logger.Error(ctx, "writing prometheus counter for datum %s: %v", datum.MetricName, err)
 	}
 }
 
-func (w *prometheusWriter) gauge(datum *Datum) {
+func (w *prometheusWriter) gauge(ctx context.Context, datum *Datum) {
 	metric := w.createGauge(datum)
 
 	err := w.registerAndProcessMetric(metric, datum.MetricName, func(metric prometheus.Collector) {
@@ -258,11 +258,11 @@ func (w *prometheusWriter) gauge(datum *Datum) {
 			Set(datum.Value)
 	})
 	if err != nil {
-		w.logger.Error("writing prometheus gauge for datum %s: %v", datum.MetricName, err)
+		w.logger.Error(ctx, "writing prometheus gauge for datum %s: %v", datum.MetricName, err)
 	}
 }
 
-func (w *prometheusWriter) summary(datum *Datum) {
+func (w *prometheusWriter) summary(ctx context.Context, datum *Datum) {
 	metric := w.createSummary(datum)
 
 	err := w.registerAndProcessMetric(metric, datum.MetricName, func(metric prometheus.Collector) {
@@ -271,11 +271,11 @@ func (w *prometheusWriter) summary(datum *Datum) {
 			Observe(datum.Value)
 	})
 	if err != nil {
-		w.logger.Error("writing prometheus summary for datum %s: %v", datum.MetricName, err)
+		w.logger.Error(ctx, "writing prometheus summary for datum %s: %v", datum.MetricName, err)
 	}
 }
 
-func (w *prometheusWriter) histogram(datum *Datum) {
+func (w *prometheusWriter) histogram(ctx context.Context, datum *Datum) {
 	metric := w.createHistogram(datum)
 
 	err := w.registerAndProcessMetric(metric, datum.MetricName, func(metric prometheus.Collector) {
@@ -284,7 +284,7 @@ func (w *prometheusWriter) histogram(datum *Datum) {
 			Observe(datum.Value)
 	})
 	if err != nil {
-		w.logger.Error("writing prometheus histogram for datum %s: %v", datum.MetricName, err)
+		w.logger.Error(ctx, "writing prometheus histogram for datum %s: %v", datum.MetricName, err)
 	}
 }
 

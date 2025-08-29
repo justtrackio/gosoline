@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"context"
 	"crypto/md5"
 	"fmt"
 	"sort"
@@ -10,7 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/funk"
 )
 
-func DebugConfig(config Config, logger Logger) error {
+func DebugConfig(ctx context.Context, config Config, logger Logger) error {
 	settings := config.AllSettings()
 	flattened, err := flatten.Flatten(settings, "", flatten.DotStyle)
 	if err != nil {
@@ -23,13 +24,13 @@ func DebugConfig(config Config, logger Logger) error {
 
 	for i, key := range keys {
 		hashValues[i] = fmt.Sprintf("%v=%v", key, flattened[key])
-		logger.Info("cfg %s", hashValues[i])
+		logger.Info(ctx, "cfg %s", hashValues[i])
 	}
 
 	hashString := strings.Join(hashValues, ";")
 	hashBytes := md5.Sum([]byte(hashString))
 
-	logger.Info("cfg fingerprint: %x", hashBytes)
+	logger.Info(ctx, "cfg fingerprint: %x", hashBytes)
 
 	return nil
 }

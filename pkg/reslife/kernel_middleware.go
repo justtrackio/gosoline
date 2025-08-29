@@ -31,37 +31,37 @@ func LifeCycleManagerMiddleware(ctx context.Context, config cfg.Config, logger l
 	return func(next kernel.MiddlewareHandler) kernel.MiddlewareHandler {
 		return func(ctx context.Context) {
 			if loader, err = container.Build(ctx, config, logger); err != nil {
-				logger.Error("can not build fixture loader: %w", err)
+				logger.Error(ctx, "can not build fixture loader: %w", err)
 
 				return
 			}
 
 			if err := manager.Create(ctx); err != nil {
-				logger.Error("can not handle the create lifecycle: %w", err)
+				logger.Error(ctx, "can not handle the create lifecycle: %w", err)
 
 				return
 			}
 
 			if err := manager.Init(ctx); err != nil {
-				logger.Error("can not handle the init lifecycle: %w", err)
+				logger.Error(ctx, "can not handle the init lifecycle: %w", err)
 
 				return
 			}
 
 			if err := manager.Register(ctx); err != nil {
-				logger.Error("can not handle the register lifecycle: %w", err)
+				logger.Error(ctx, "can not handle the register lifecycle: %w", err)
 
 				return
 			}
 
 			if err := manager.Purge(ctx); err != nil {
-				logger.Error("can not handle the purge lifecycle: %w", err)
+				logger.Error(ctx, "can not handle the purge lifecycle: %w", err)
 
 				return
 			}
 
 			if err := loader.Load(ctx); err != nil {
-				logger.Error("can not load fixtures: %w", err)
+				logger.Error(ctx, "can not load fixtures: %w", err)
 
 				return
 			}

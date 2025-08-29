@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -17,7 +18,7 @@ type MigrationSettings struct {
 	Provider       string `cfg:"provider" default:"goose"`
 }
 
-type MigrationProvider func(logger log.Logger, settings *Settings, db *sql.DB) error
+type MigrationProvider func(ctx context.Context, logger log.Logger, settings *Settings, db *sql.DB) error
 
 func AddMigrationProvider(name string, provider MigrationProvider) {
 	migrationProviders[name] = provider
@@ -28,17 +29,17 @@ var migrationProviders = map[string]MigrationProvider{
 	"goose":          runMigrationGoose,
 }
 
-func runMigrations(logger log.Logger, settings *Settings, db *sql.DB) error {
+func runMigrations(ctx context.Context, logger log.Logger, settings *Settings, db *sql.DB) error {
 	logger = logger.WithChannel("db-migrations")
 
 	if !settings.Migrations.Enabled || settings.Migrations.Path == "" {
-		logger.Info("migrations not enabled")
+		logger.Info(ctx, "migrations not enabled")
 
 		return nil
 	}
 
 	if settings.Migrations.Path == "" {
-		logger.Info("migrations enabled but no path provided")
+		logger.Info(ctx, "migrations enabled but no path provided")
 
 		return nil
 	}
@@ -53,25 +54,25 @@ func runMigrations(logger log.Logger, settings *Settings, db *sql.DB) error {
 
 	start := time.Now()
 
-	if err = resetMigrations(logger, settings, db); err != nil {
+	if err = resetMigrations(ctx, logger, settings, db); err != nil {
 		return fmt.Errorf("could not reset migrations: %w", err)
 	}
 
-	if err = provider(logger, settings, db); err != nil {
+	if err = provider(ctx, logger, settings, db); err != nil {
 		return fmt.Errorf("running migration provider %s failed: %w", settings.Migrations.Provider, err)
 	}
 
-	logger.Info("migrated db in %s", time.Since(start))
+	logger.Info(ctx, "migrated db in %s", time.Since(start))
 
 	return nil
 }
 
-func resetMigrations(logger log.Logger, settings *Settings, db *sql.DB) error {
+func resetMigrations(ctx context.Context, logger log.Logger, settings *Settings, db *sql.DB) error {
 	if !settings.Migrations.Reset {
 		return nil
 	}
 
-	logger.Info("resetting database %s to rerun migrations", settings.Uri.Database)
+	logger.Info(ctx, "resetting database %s to rerun migrations", settings.Uri.Database)
 
 	sql := fmt.Sprintf("DROP DATABASE IF EXISTS %s", settings.Uri.Database)
 	if _, err := db.Exec(sql); err != nil {

@@ -78,7 +78,6 @@ func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner BatchRunn
 func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
 	var err error
 	objectCount := 0
-	logger := s.logger.WithContext(ctx)
 
 	writerCtx, cancelWriter := context.WithCancel(context.Background())
 
@@ -117,7 +116,7 @@ func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
 		return fmt.Errorf("can not write fixtures: %w", err)
 	}
 
-	logger.Info("loaded %d objects from %s", objectCount, s.reader.Source())
+	s.logger.Info(ctx, "loaded %d objects from %s", objectCount, s.reader.Source())
 
 	return nil
 }

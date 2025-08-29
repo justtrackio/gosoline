@@ -130,10 +130,10 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.Di
 			return conc.ErrOwnedLock
 		}
 
-		m.logger.WithContext(ctx).WithFields(log.Fields{
+		m.logger.WithFields(log.Fields{
 			"ddb_lock_token":    token,
 			"ddb_lock_resource": resource,
-		}).Debug("acquired lock")
+		}).Debug(ctx, "acquired lock")
 
 		lock = NewDdbLockFromInterfaces(m, m.clock, m.logger, ctx, resource, token, expires)
 		go lock.runWatcher()
@@ -168,10 +168,10 @@ func (m *ddbLockProvider) RenewLock(ctx context.Context, lockTime time.Duration,
 			return backoff.Permanent(conc.ErrNotOwned)
 		}
 
-		m.logger.WithContext(ctx).WithFields(log.Fields{
+		m.logger.WithFields(log.Fields{
 			"ddb_lock_token":    token,
 			"ddb_lock_resource": resource,
-		}).Debug("renewed lock")
+		}).Debug(ctx, "renewed lock")
 
 		return nil
 	}, m.backOff)
@@ -194,10 +194,10 @@ func (m *ddbLockProvider) ReleaseLock(ctx context.Context, resource string, toke
 		return conc.ErrNotOwned
 	}
 
-	m.logger.WithContext(ctx).WithFields(log.Fields{
+	m.logger.WithFields(log.Fields{
 		"ddb_lock_token":    token,
 		"ddb_lock_resource": resource,
-	}).Debug("released lock")
+	}).Debug(ctx, "released lock")
 
 	return nil
 }

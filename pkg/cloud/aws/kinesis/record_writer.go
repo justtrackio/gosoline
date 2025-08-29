@@ -69,9 +69,11 @@ type recordWriter struct {
 }
 
 func NewRecordWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *RecordWriterSettings) (RecordWriter, error) {
-	settings.PadFromConfig(config)
-
 	var err error
+	if err = settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("can not pad settings from config: %w", err)
+	}
+
 	var fullStreamName Stream
 	var client *kinesis.Client
 
@@ -175,24 +177,25 @@ func (w *recordWriter) putRecordsBatch(ctx context.Context, batch []*Record) err
 			return fmt.Errorf("can not write batch to stream: %w", err)
 		}
 
-		w.writeMetrics(len(records), len(failedRecords))
+		w.writeMetrics(ctx, len(records), len(failedRecords))
 		took := w.clock.Now().Sub(start)
 
 		if len(failedRecords) == 0 && attempt == 1 {
 			break
 		}
 
-		logger := w.logger.WithContext(ctx).WithFields(log.Fields{
+		logger := w.logger.WithFields(log.Fields{
 			"batch_id": batchId,
 		})
 
 		if len(failedRecords) == 0 && attempt > 1 {
-			logger.Warn("PutRecords successful after %d attempts in %s", attempt, took)
+			logger.Warn(ctx, "PutRecords successful after %d attempts in %s", attempt, took)
 
 			break
 		}
 
 		logger.Warn(
+			ctx,
 			"PutRecords failed %d of %d records with reason: %s: after %d attempts in %s",
 			len(failedRecords),
 			len(records),
@@ -253,8 +256,8 @@ func (w *recordWriter) putRecordsAndCollectFailed(
 	return failedRecords, reason, nil
 }
 
-func (w *recordWriter) writeMetrics(records int, failed int) {
-	w.metricWriter.Write(metric.Data{
+func (w *recordWriter) writeMetrics(ctx context.Context, records int, failed int) {
+	w.metricWriter.Write(ctx, metric.Data{
 		&metric.Datum{
 			MetricName: metricNamePutRecords,
 			Dimensions: map[string]string{

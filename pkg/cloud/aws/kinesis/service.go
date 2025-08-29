@@ -46,14 +46,14 @@ func NewService(ctx context.Context, config cfg.Config, logger log.Logger, setti
 }
 
 func (s *Service) Create(ctx context.Context) error {
-	s.logger.Info("looking for kinesis stream: %s", s.fullStreamName)
+	s.logger.Info(ctx, "looking for kinesis stream: %s", s.fullStreamName)
 
 	_, err := s.client.DescribeStreamSummary(ctx, &kinesis.DescribeStreamSummaryInput{
 		StreamName: aws.String(s.fullStreamName),
 	})
 
 	if err == nil {
-		s.logger.Info("found kinesis stream: %s", s.fullStreamName)
+		s.logger.Info(ctx, "found kinesis stream: %s", s.fullStreamName)
 
 		return nil
 	}
@@ -63,7 +63,7 @@ func (s *Service) Create(ctx context.Context) error {
 		return fmt.Errorf("failed to describe kinesis streams: %w", err)
 	}
 
-	s.logger.Info("trying to create kinesis stream: %s", s.fullStreamName)
+	s.logger.Info(ctx, "trying to create kinesis stream: %s", s.fullStreamName)
 
 	_, err = s.client.CreateStream(ctx, &kinesis.CreateStreamInput{
 		ShardCount: aws.Int32(1),
@@ -73,7 +73,7 @@ func (s *Service) Create(ctx context.Context) error {
 		return fmt.Errorf("failed to create kinesis stream %s: %w", s.fullStreamName, err)
 	}
 
-	s.logger.Info("created kinesis stream: %s", s.fullStreamName)
+	s.logger.Info(ctx, "created kinesis stream: %s", s.fullStreamName)
 
 	return nil
 }

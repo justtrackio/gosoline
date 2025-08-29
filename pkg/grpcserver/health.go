@@ -61,12 +61,12 @@ func (s *healthServer) Check(ctx context.Context, in *protobuf.HealthCheckReques
 
 		// unhealthy
 		s.Shutdown()
-		s.SetServingStatus(in.Service, serviceServingStatus)
+		s.SetServingStatus(ctx, in.Service, serviceServingStatus)
 		s.cancelFunc()
 
-		s.logger.WithContext(ctx).WithFields(log.Fields{
+		s.logger.WithFields(log.Fields{
 			"health_status": serviceServingStatus.String(),
-		}).Info("health-check")
+		}).Info(ctx, "health-check")
 
 		return &protobuf.HealthCheckResponse{
 			Status: serviceServingStatus,
@@ -76,16 +76,16 @@ func (s *healthServer) Check(ctx context.Context, in *protobuf.HealthCheckReques
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if servingStatus, ok := s.statusMap[in.Service]; ok {
-		s.logger.WithContext(ctx).WithFields(log.Fields{
+		s.logger.WithFields(log.Fields{
 			"health_status": servingStatus.String(),
-		}).Info("health-check")
+		}).Info(ctx, "health-check")
 
 		return &protobuf.HealthCheckResponse{
 			Status: servingStatus,
 		}, nil
 	}
 
-	s.logger.WithContext(ctx).Info("health-check failed")
+	s.logger.Info(ctx, "health-check failed")
 
 	return nil, status.Error(codes.NotFound, "unknown service")
 }
@@ -146,11 +146,11 @@ func (s *healthServer) AddCallback(serviceName string, healthCallback HealthChec
 
 // SetServingStatus is called when need to reset the serving status of a service
 // or insert a new service entry into the statusMap.
-func (s *healthServer) SetServingStatus(service string, servingStatus protobuf.HealthCheckResponse_ServingStatus) {
+func (s *healthServer) SetServingStatus(ctx context.Context, service string, servingStatus protobuf.HealthCheckResponse_ServingStatus) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.shutdown {
-		s.logger.Info("health: status changing for %s to %v is ignored because health service is shutdown", service, servingStatus)
+		s.logger.Info(ctx, "health: status changing for %s to %v is ignored because health service is shutdown", service, servingStatus)
 
 		return
 	}

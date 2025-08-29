@@ -63,8 +63,8 @@ func NewProducerWithInterfaces(conf *Settings, logger log.Logger, writer Writer)
 
 // Run starts background routine for flushing messages.
 func (p *Producer) Run(ctx context.Context) error {
-	p.Logger.Info("starting producer")
-	defer p.Logger.Info("shutdown producer")
+	p.Logger.Info(ctx, "starting producer")
+	defer p.Logger.Info(ctx, "shutdown producer")
 
 	p.pool.GoWithContext(ctx, p.flushOnExit)
 
@@ -83,7 +83,7 @@ func (p *Producer) write(ctx context.Context, ms ...kafka.Message) error {
 	ctx, cancel := context.WithTimeout(ctx, DefaultWriterWriteTimeout)
 	defer cancel()
 
-	p.Logger.Debug("producing messages")
+	p.Logger.Debug(ctx, "producing messages")
 
 	// Prepare batch.
 	batch := []kafka.Message{}
@@ -103,11 +103,11 @@ func (p *Producer) write(ctx context.Context, ms ...kafka.Message) error {
 func (p *Producer) flushOnExit(ctx context.Context) error {
 	<-ctx.Done()
 
-	p.Logger.Info("flushing messages")
-	defer p.Logger.Info("flushed messages")
+	p.Logger.Info(ctx, "flushing messages")
+	defer p.Logger.Info(ctx, "flushed messages")
 
 	if err := p.Writer.Close(); err != nil {
-		p.Logger.WithFields(log.Fields{"Error": err}).Error("failed to flush messages")
+		p.Logger.WithFields(log.Fields{"Error": err}).Error(ctx, "failed to flush messages")
 	}
 
 	return nil

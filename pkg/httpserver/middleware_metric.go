@@ -54,7 +54,7 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer) {
 	status := ginCtx.Writer.Status() / 100
 	statusMetric := fmt.Sprintf("%s%dXX", MetricHttpStatus, status)
 
-	writer.Write(createMetricsWithDimensions(metric.Data{
+	writer.Write(ginCtx.Request.Context(), createMetricsWithDimensions(metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: MetricHttpRequestResponseTime,

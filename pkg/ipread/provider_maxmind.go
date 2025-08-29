@@ -87,7 +87,7 @@ func (p *maxmindProvider) Refresh(ctx context.Context) (err error) {
 	var ipreader *geoip2.Reader
 	var size int64
 
-	p.logger.Info("refreshing maxmind provider %s with database file %s", p.name, p.settings.Database)
+	p.logger.Info(ctx, "refreshing maxmind provider %s with database file %s", p.name, p.settings.Database)
 
 	if source, size, err = p.loader(ctx); err != nil {
 		return fmt.Errorf("can no read database bytes: %w", err)
@@ -116,7 +116,7 @@ func (p *maxmindProvider) Refresh(ctx context.Context) (err error) {
 	}
 
 	duration := clk.Since(start)
-	p.logger.Info("reading of %s with size %d bytes took %s", p.settings.Database, buf.Len(), duration)
+	p.logger.Info(ctx, "reading of %s with size %d bytes took %s", p.settings.Database, buf.Len(), duration)
 
 	if ipreader, err = geoip2.FromBytes(buf.Bytes()); err != nil {
 		return fmt.Errorf("can not open database from memory: %w", err)

@@ -131,17 +131,17 @@ func (_c *OffsetManager_Commit_Call) RunAndReturn(run func(context.Context, ...k
 	return _c
 }
 
-// Flush provides a mock function with no fields
-func (_m *OffsetManager) Flush() error {
-	ret := _m.Called()
+// Flush provides a mock function with given fields: ctx
+func (_m *OffsetManager) Flush(ctx context.Context) error {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Flush")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -155,13 +155,14 @@ type OffsetManager_Flush_Call struct {
 }
 
 // Flush is a helper method to define mock.On call
-func (_e *OffsetManager_Expecter) Flush() *OffsetManager_Flush_Call {
-	return &OffsetManager_Flush_Call{Call: _e.mock.On("Flush")}
+//   - ctx context.Context
+func (_e *OffsetManager_Expecter) Flush(ctx interface{}) *OffsetManager_Flush_Call {
+	return &OffsetManager_Flush_Call{Call: _e.mock.On("Flush", ctx)}
 }
 
-func (_c *OffsetManager_Flush_Call) Run(run func()) *OffsetManager_Flush_Call {
+func (_c *OffsetManager_Flush_Call) Run(run func(ctx context.Context)) *OffsetManager_Flush_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -171,7 +172,7 @@ func (_c *OffsetManager_Flush_Call) Return(_a0 error) *OffsetManager_Flush_Call 
 	return _c
 }
 
-func (_c *OffsetManager_Flush_Call) RunAndReturn(run func() error) *OffsetManager_Flush_Call {
+func (_c *OffsetManager_Flush_Call) RunAndReturn(run func(context.Context) error) *OffsetManager_Flush_Call {
 	_c.Call.Return(run)
 	return _c
 }

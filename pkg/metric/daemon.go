@@ -123,55 +123,55 @@ func (d *Daemon) GetStage() int {
 }
 
 func (d *Daemon) Run(ctx context.Context) error {
-	d.resetBatch()
+	d.resetBatch(ctx)
 
 	// initialize the default metrics upon daemon module Run for raw writers
 	metricDefaultsLock.Lock()
-	d.rawFanout(funk.Values(metricDefaults))
+	d.rawFanout(ctx, funk.Values(metricDefaults))
 	metricDefaultsLock.Unlock()
 
 	for {
 		select {
 		case <-ctx.Done():
 			d.ticker.Stop()
-			d.emptyChannel()
-			d.publish()
+			d.emptyChannel(ctx)
+			d.publish(ctx)
 
 			return nil
 
 		case <-d.channel.hasData:
 			data := d.channel.read()
-			d.rawFanout(data)
-			d.appendBatch(data)
+			d.rawFanout(ctx, data)
+			d.appendBatch(ctx, data)
 
 		case <-d.ticker.C:
-			d.publish()
+			d.publish(ctx)
 		}
 	}
 }
 
-func (d *Daemon) emptyChannel() {
+func (d *Daemon) emptyChannel(ctx context.Context) {
 	d.channel.close()
 
 	if data := d.channel.read(); len(data) > 0 {
-		d.rawFanout(data)
-		d.appendBatch(data)
+		d.rawFanout(ctx, data)
+		d.appendBatch(ctx, data)
 	}
 }
 
-func (d *Daemon) rawFanout(data Data) {
+func (d *Daemon) rawFanout(ctx context.Context, data Data) {
 	for _, w := range d.rawMetricWriters {
-		w.Write(data)
+		w.Write(ctx, data)
 	}
 }
 
-func (d *Daemon) appendBatch(data Data) {
+func (d *Daemon) appendBatch(ctx context.Context, data Data) {
 	for _, dat := range data {
-		d.append(dat)
+		d.append(ctx, dat)
 	}
 }
 
-func (d *Daemon) append(datum *Datum) {
+func (d *Daemon) append(ctx context.Context, datum *Datum) {
 	d.dataPointCount++
 
 	dimKV := datum.DimensionKV()
@@ -184,7 +184,7 @@ func (d *Daemon) append(datum *Datum) {
 
 		if err := datum.IsValid(); err != nil {
 			if d.throttleError(err.Error()) {
-				d.logger.Error("invalid metric: %s", err.Error())
+				d.logger.Error(ctx, "invalid metric: %s", err.Error())
 			}
 
 			return
@@ -206,7 +206,7 @@ func (d *Daemon) append(datum *Datum) {
 	existing.Values = append(existing.Values, datum.Value)
 }
 
-func (d *Daemon) resetBatch() {
+func (d *Daemon) resetBatch(ctx context.Context) {
 	d.batch = make(map[string]*BatchedMetricDatum)
 	d.dataPointCount = 0
 
@@ -214,11 +214,11 @@ func (d *Daemon) resetBatch() {
 		cpy := *def
 		cpy.Timestamp = time.Now()
 
-		d.append(&cpy)
+		d.append(ctx, &cpy)
 	}
 }
 
-func (d *Daemon) publish() {
+func (d *Daemon) publish(ctx context.Context) {
 	size := len(d.batch)
 
 	if size == 0 {
@@ -228,11 +228,11 @@ func (d *Daemon) publish() {
 	data := d.buildMetricData()
 
 	for _, w := range d.aggregatedMetricWriters {
-		w.Write(data)
+		w.Write(ctx, data)
 	}
 
-	d.logger.Info("published %d data points in %d metrics", d.dataPointCount, size)
-	d.resetBatch()
+	d.logger.Info(ctx, "published %d data points in %d metrics", d.dataPointCount, size)
+	d.resetBatch(ctx)
 }
 
 func (d *Daemon) buildMetricData() Data {

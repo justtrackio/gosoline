@@ -28,12 +28,12 @@ func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRep
 func (r metricRepository) PutItem(ctx context.Context, _ PutItemBuilder, item any) (*PutItemResult, error) {
 	start := time.Time{}
 	saved, err := r.Repository.PutItem(ctx, nil, item)
-	r.writeMetric(OpSave, err, start)
+	r.writeMetric(ctx, OpSave, err, start)
 
 	return saved, err
 }
 
-func (r metricRepository) writeMetric(op string, err error, start time.Time) {
+func (r metricRepository) writeMetric(ctx context.Context, op string, err error, start time.Time) {
 	latencyNano := time.Since(start)
 	modelId := r.GetModelId()
 	metricName := MetricNameAccessSuccess
@@ -42,7 +42,7 @@ func (r metricRepository) writeMetric(op string, err error, start time.Time) {
 		metricName = MetricNameAccessFailure
 	}
 
-	r.metric.WriteOne(&metric.Datum{
+	r.metric.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: metricName,
@@ -56,7 +56,7 @@ func (r metricRepository) writeMetric(op string, err error, start time.Time) {
 
 	latencyMillisecond := float64(latencyNano) / float64(time.Millisecond)
 
-	r.metric.WriteOne(&metric.Datum{
+	r.metric.WriteOne(ctx, &metric.Datum{
 		Timestamp:  time.Now(),
 		MetricName: MetricNameAccessLatency,
 		Dimensions: map[string]string{
