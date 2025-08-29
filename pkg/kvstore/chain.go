@@ -30,7 +30,10 @@ func NewChainKvStore[T any](ctx context.Context, config cfg.Config, logger log.L
 		return nil, fmt.Errorf("the generic type T should not be a pointer type but is of type %T", *new(T))
 	}
 
-	settings.PadFromConfig(config)
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
+	}
+
 	factory := buildFactory[T](ctx, config, logger)
 
 	var err error

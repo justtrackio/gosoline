@@ -61,6 +61,22 @@ func (o outputTracer) Write(ctx context.Context, batch []WritableMessage) error 
 	return o.base.Write(ctx, batch)
 }
 
+func (o outputTracer) ProvidesCompression() bool {
+	return o.base.ProvidesCompression()
+}
+
+func (o outputTracer) SupportsAggregation() bool {
+	return o.base.SupportsAggregation()
+}
+
+func (o outputTracer) InitSchemaRegistry(ctx context.Context, settings SchemaSettingsWithEncoding) (MessageBodyEncoder, error) {
+	if schemaRegistryAwareOutput, ok := o.base.(SchemaRegistryAwareOutput); ok {
+		return schemaRegistryAwareOutput.InitSchemaRegistry(ctx, settings)
+	}
+
+	return nil, fmt.Errorf("output does not support a schema registry")
+}
+
 func (o outputTracer) IsPartitionedOutput() bool {
 	po, ok := o.base.(PartitionedOutput)
 

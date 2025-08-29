@@ -35,10 +35,15 @@ type producer struct {
 	output  Output
 }
 
-func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name string, handlers ...EncodeHandler) (*producer, error) {
+func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name string, options ...ProducerOption) (*producer, error) {
 	settings, err := readProducerSettings(config, name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read producer settings for %q: %w", name, err)
+	}
+
+	opts := &producerOptions{}
+	for _, option := range options {
+		option(opts)
 	}
 
 	var output Output
@@ -48,22 +53,35 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name
 			return nil, fmt.Errorf("can not create output %s: %w", settings.Output, err)
 		}
 	} else {
-		// the producer daemon will take care of compression for the whole batch, so we don't need to compress individual messages
-		settings.Compression = CompressionNone
 		if output, err = ProvideProducerDaemon(ctx, config, logger, name); err != nil {
 			return nil, fmt.Errorf("can not create producer daemon %s: %w", name, err)
 		}
 	}
 
-	encodeHandlers := make([]EncodeHandler, 0, len(defaultEncodeHandlers)+len(handlers))
-	encodeHandlers = append(encodeHandlers, defaultEncodeHandlers...)
-	encodeHandlers = append(encodeHandlers, handlers...)
+	if output.ProvidesCompression() {
+		settings.Compression = CompressionNone
+	}
 
-	encoder := NewMessageEncoder(&MessageEncoderSettings{
+	encodeHandlers := make([]EncodeHandler, 0, len(defaultEncodeHandlers)+len(opts.encodeHandlers))
+	encodeHandlers = append(encodeHandlers, defaultEncodeHandlers...)
+	encodeHandlers = append(encodeHandlers, opts.encodeHandlers...)
+
+	encoderSettings := &MessageEncoderSettings{
 		Encoding:       settings.Encoding,
 		Compression:    settings.Compression,
 		EncodeHandlers: encodeHandlers,
-	})
+	}
+
+	if schemaRegistryAwareOutput, ok := output.(SchemaRegistryAwareOutput); ok && opts.schemaSettings != nil {
+		externalEncoder, err := schemaRegistryAwareOutput.InitSchemaRegistry(ctx, opts.schemaSettings.WithEncoding(settings.Encoding))
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize schema registry: %w", err)
+		}
+
+		encoderSettings.ExternalEncoder = externalEncoder
+	}
+
+	encoder := NewMessageEncoder(encoderSettings)
 
 	metadata := ProducerMetadata{
 		Name:          name,

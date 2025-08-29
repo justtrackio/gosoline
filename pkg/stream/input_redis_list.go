@@ -40,7 +40,9 @@ type redisListInput struct {
 }
 
 func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *RedisListInputSettings) (Input, error) {
-	settings.PadFromConfig(config)
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
+	}
 
 	client, err := redis.ProvideClient(ctx, config, logger, settings.ServerName)
 	if err != nil {

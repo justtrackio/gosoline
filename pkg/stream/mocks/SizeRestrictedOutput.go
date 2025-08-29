@@ -116,6 +116,96 @@ func (_c *SizeRestrictedOutput_GetMaxMessageSize_Call) RunAndReturn(run func() *
 	return _c
 }
 
+// ProvidesCompression provides a mock function with no fields
+func (_m *SizeRestrictedOutput) ProvidesCompression() bool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ProvidesCompression")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// SizeRestrictedOutput_ProvidesCompression_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ProvidesCompression'
+type SizeRestrictedOutput_ProvidesCompression_Call struct {
+	*mock.Call
+}
+
+// ProvidesCompression is a helper method to define mock.On call
+func (_e *SizeRestrictedOutput_Expecter) ProvidesCompression() *SizeRestrictedOutput_ProvidesCompression_Call {
+	return &SizeRestrictedOutput_ProvidesCompression_Call{Call: _e.mock.On("ProvidesCompression")}
+}
+
+func (_c *SizeRestrictedOutput_ProvidesCompression_Call) Run(run func()) *SizeRestrictedOutput_ProvidesCompression_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *SizeRestrictedOutput_ProvidesCompression_Call) Return(_a0 bool) *SizeRestrictedOutput_ProvidesCompression_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SizeRestrictedOutput_ProvidesCompression_Call) RunAndReturn(run func() bool) *SizeRestrictedOutput_ProvidesCompression_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SupportsAggregation provides a mock function with no fields
+func (_m *SizeRestrictedOutput) SupportsAggregation() bool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for SupportsAggregation")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// SizeRestrictedOutput_SupportsAggregation_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SupportsAggregation'
+type SizeRestrictedOutput_SupportsAggregation_Call struct {
+	*mock.Call
+}
+
+// SupportsAggregation is a helper method to define mock.On call
+func (_e *SizeRestrictedOutput_Expecter) SupportsAggregation() *SizeRestrictedOutput_SupportsAggregation_Call {
+	return &SizeRestrictedOutput_SupportsAggregation_Call{Call: _e.mock.On("SupportsAggregation")}
+}
+
+func (_c *SizeRestrictedOutput_SupportsAggregation_Call) Run(run func()) *SizeRestrictedOutput_SupportsAggregation_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *SizeRestrictedOutput_SupportsAggregation_Call) Return(_a0 bool) *SizeRestrictedOutput_SupportsAggregation_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SizeRestrictedOutput_SupportsAggregation_Call) RunAndReturn(run func() bool) *SizeRestrictedOutput_SupportsAggregation_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Write provides a mock function with given fields: ctx, batch
 func (_m *SizeRestrictedOutput) Write(ctx context.Context, batch []stream.WritableMessage) error {
 	ret := _m.Called(ctx, batch)
