@@ -128,9 +128,14 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerD
 		return
 	}
 
-	c.Acknowledge(ctx, cdata, true)
+	if c.settings.AggregateMessageMode == AggregateMessageModeAtMostOnce {
+		c.Acknowledge(ctx, cdata, true)
+	}
 	for _, m := range batch {
 		_ = c.process(ctx, m, false) // we can't natively retry aggregate messages
+	}
+	if c.settings.AggregateMessageMode == AggregateMessageModeAtLeastOnce {
+		c.Acknowledge(ctx, cdata, true)
 	}
 
 	duration := c.clock.Now().Sub(start)

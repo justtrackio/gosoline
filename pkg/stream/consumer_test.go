@@ -102,6 +102,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 		Healthcheck: health.HealthCheckSettings{
 			Timeout: time.Minute,
 		},
+		AggregateMessageMode: stream.AggregateMessageModeAtMostOnce,
 	}
 
 	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), settings.Healthcheck.Timeout)
