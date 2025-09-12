@@ -68,17 +68,17 @@ func (_c *TaskRunner_Run_Call) RunAndReturn(run func(context.Context) error) *Ta
 	return _c
 }
 
-// RunTask provides a mock function with given fields: task
-func (_m *TaskRunner) RunTask(task kernel.Module) error {
-	ret := _m.Called(task)
+// RunTask provides a mock function with given fields: ctx, task
+func (_m *TaskRunner) RunTask(ctx context.Context, task kernel.Module) error {
+	ret := _m.Called(ctx, task)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RunTask")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(kernel.Module) error); ok {
-		r0 = rf(task)
+	if rf, ok := ret.Get(0).(func(context.Context, kernel.Module) error); ok {
+		r0 = rf(ctx, task)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -92,14 +92,15 @@ type TaskRunner_RunTask_Call struct {
 }
 
 // RunTask is a helper method to define mock.On call
+//   - ctx context.Context
 //   - task kernel.Module
-func (_e *TaskRunner_Expecter) RunTask(task interface{}) *TaskRunner_RunTask_Call {
-	return &TaskRunner_RunTask_Call{Call: _e.mock.On("RunTask", task)}
+func (_e *TaskRunner_Expecter) RunTask(ctx interface{}, task interface{}) *TaskRunner_RunTask_Call {
+	return &TaskRunner_RunTask_Call{Call: _e.mock.On("RunTask", ctx, task)}
 }
 
-func (_c *TaskRunner_RunTask_Call) Run(run func(task kernel.Module)) *TaskRunner_RunTask_Call {
+func (_c *TaskRunner_RunTask_Call) Run(run func(ctx context.Context, task kernel.Module)) *TaskRunner_RunTask_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(kernel.Module))
+		run(args[0].(context.Context), args[1].(kernel.Module))
 	})
 	return _c
 }
@@ -109,7 +110,7 @@ func (_c *TaskRunner_RunTask_Call) Return(_a0 error) *TaskRunner_RunTask_Call {
 	return _c
 }
 
-func (_c *TaskRunner_RunTask_Call) RunAndReturn(run func(kernel.Module) error) *TaskRunner_RunTask_Call {
+func (_c *TaskRunner_RunTask_Call) RunAndReturn(run func(context.Context, kernel.Module) error) *TaskRunner_RunTask_Call {
 	_c.Call.Return(run)
 	return _c
 }
