@@ -29,6 +29,7 @@ func TestReadConsumerSettings_Empty(t *testing.T) {
 		Healthcheck: health.HealthCheckSettings{
 			Timeout: 5 * time.Minute,
 		},
+		AggregateMessageMode: stream.AggregateMessageModeAtMostOnce,
 	}, settings)
 }
 
@@ -55,6 +56,7 @@ func TestReadConsumerSettings_ReadKernelKillTimeout(t *testing.T) {
 		Healthcheck: health.HealthCheckSettings{
 			Timeout: 5 * time.Minute,
 		},
+		AggregateMessageMode: stream.AggregateMessageModeAtMostOnce,
 	}, settings)
 }
 
@@ -75,6 +77,7 @@ func TestReadConsumerSettings_SpecifyAll(t *testing.T) {
 					"healthcheck": map[string]any{
 						"timeout": "3m",
 					},
+					"aggregate_message_mode": "atLeastOnce",
 				},
 			},
 		},
@@ -99,5 +102,6 @@ func TestReadConsumerSettings_SpecifyAll(t *testing.T) {
 		Healthcheck: health.HealthCheckSettings{
 			Timeout: 3 * time.Minute,
 		},
+		AggregateMessageMode: stream.AggregateMessageModeAtLeastOnce,
 	}, settings)
 }

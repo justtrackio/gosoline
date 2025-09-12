@@ -9,13 +9,19 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream/health"
 )
 
+const (
+	AggregateMessageModeAtLeastOnce = "atLeastOnce"
+	AggregateMessageModeAtMostOnce  = "atMostOnce"
+)
+
 type ConsumerSettings struct {
-	Input       string                     `cfg:"input" default:"consumer" validate:"required"`
-	RunnerCount int                        `cfg:"runner_count" default:"1" validate:"min=1"`
-	Encoding    EncodingType               `cfg:"encoding" default:"application/json"`
-	IdleTimeout time.Duration              `cfg:"idle_timeout" default:"10s"`
-	Retry       ConsumerRetrySettings      `cfg:"retry"`
-	Healthcheck health.HealthCheckSettings `cfg:"healthcheck"`
+	Input                string                     `cfg:"input" default:"consumer" validate:"required"`
+	RunnerCount          int                        `cfg:"runner_count" default:"1" validate:"min=1"`
+	Encoding             EncodingType               `cfg:"encoding" default:"application/json"`
+	IdleTimeout          time.Duration              `cfg:"idle_timeout" default:"10s"`
+	Retry                ConsumerRetrySettings      `cfg:"retry"`
+	Healthcheck          health.HealthCheckSettings `cfg:"healthcheck"`
+	AggregateMessageMode string                     `cfg:"aggregate_message_mode" default:"atMostOnce" validate:"oneof=atLeastOnce atMostOnce"`
 }
 
 type ConsumerRetrySettings struct {
