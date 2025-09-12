@@ -48,7 +48,7 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 		}
 
 		opts = append(opts, []kgo.Opt{
-			kgo.Balancers(settings.GetBalancer()),
+			kgo.Balancers(settings.GetBalancers()...),
 			kgo.BlockRebalanceOnPoll(),
 			kgo.ConsumerGroup(consumerGroupId),
 			kgo.DisableAutoCommit(),
