@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	registerTestCaseDefinition("httpserverExtended", isTestCaseHttpserverExtended, buildTestCaseHttpserverExtended)
+	RegisterTestCaseDefinition("httpserverExtended", isTestCaseHttpserverExtended, buildTestCaseHttpserverExtended)
 }
 
 const expectedTestCaseHttpserverExtendedSignature = "func (s TestingSuite) TestFunc() T"
@@ -154,7 +154,11 @@ func (c *HttpserverTestCase) request(client *resty.Client) (*resty.Response, err
 	return req.Execute(c.Method, c.Url)
 }
 
-func isTestCaseHttpserverExtended(method reflect.Method) error {
+func isTestCaseHttpserverExtended(s TestingSuite, method reflect.Method) error {
+	if _, ok := s.(TestingSuiteApiDefinitionsAware); !ok {
+		return fmt.Errorf("the suite has to implement the TestingSuiteApiDefinitionsAware interface to be able to run httpserver test cases")
+	}
+
 	if method.Func.Type().NumIn() != 1 {
 		return fmt.Errorf("expected %q, but function has %d arguments", expectedTestCaseHttpserverExtendedSignature, method.Func.Type().NumIn())
 	}
@@ -208,7 +212,7 @@ func isTestCaseMapHttpserverExtended(method reflect.Method) bool {
 		actualTypeResult == expectedProviderMapType
 }
 
-func buildTestCaseHttpserverExtended(suite TestingSuite, method reflect.Method) (testCaseRunner, error) {
+func buildTestCaseHttpserverExtended(suite TestingSuite, method reflect.Method) (TestCaseRunner, error) {
 	if isTestCaseMapHttpserverExtended(method) {
 		out := method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})[0].Interface()
 
@@ -252,8 +256,8 @@ func buildTestCaseHttpserverExtended(suite TestingSuite, method reflect.Method) 
 	})
 }
 
-func runHttpServerExtendedTestsMap(suite TestingSuite, testCases map[string]ToHttpserverTestCaseList) (testCaseRunner, error) {
-	testCaseRunners := make([]testCaseRunner, 0, len(testCases))
+func runHttpServerExtendedTestsMap(suite TestingSuite, testCases map[string]ToHttpserverTestCaseList) (TestCaseRunner, error) {
+	testCaseRunners := make([]TestCaseRunner, 0, len(testCases))
 
 	for name, testCasesProvider := range testCases {
 		runner, err := runHttpServerExtendedTests(suite, func() []*HttpserverTestCase {
@@ -267,27 +271,27 @@ func runHttpServerExtendedTestsMap(suite TestingSuite, testCases map[string]ToHt
 			return nil, fmt.Errorf("failed to create http test case runner for %q: %w", name, err)
 		}
 
-		testCaseRunners = append(testCaseRunners, func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
+		testCaseRunners = append(testCaseRunners, func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment) {
 			t.Run(name, func(t *testing.T) {
-				runner(t, suite, suiteOptions, environment)
+				runner(t, suite, suiteConf, environment)
 			})
 		})
 	}
 
-	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
+	return func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment) {
 		if len(testCaseRunners) == 0 {
 			suite.T().SkipNow()
 		}
 
 		for _, testCaseRunner := range testCaseRunners {
-			testCaseRunner(t, suite, suiteOptions, environment)
+			testCaseRunner(t, suite, suiteConf, environment)
 		}
 	}, nil
 }
 
-func runHttpServerExtendedTests(suite TestingSuite, getTestCases func() []*HttpserverTestCase) (testCaseRunner, error) {
-	return runTestCaseHttpserver(suite, func(suite TestingSuite, app *appUnderTest, client *resty.Client) {
-		runTestCaseInSuite(suite.T(), suite, func() {
+func runHttpServerExtendedTests(suite TestingSuite, getTestCases func() []*HttpserverTestCase) (TestCaseRunner, error) {
+	return runTestCaseHttpserver(suite, func(suite TestingSuite, app AppUnderTest, client *resty.Client) {
+		RunTestCaseInSuite(suite.T(), suite, func() {
 			testCases := funk.Filter(getTestCases(), func(elem *HttpserverTestCase) bool {
 				return elem != nil
 			})

@@ -18,7 +18,7 @@ import (
 )
 
 func init() {
-	registerTestCaseDefinition("subscriber", isTestCaseSubscriber, buildTestCaseSubscriber)
+	RegisterTestCaseDefinition("subscriber", isTestCaseSubscriber, buildTestCaseSubscriber)
 }
 
 type SubscriberTestCase interface {
@@ -54,7 +54,7 @@ func (s subscriberTestCase) GetVersion() int {
 
 const expectedTestCaseSubscriberSignature = "func (s TestingSuite) TestFunc() (SubscriberTestCase, error)"
 
-func isTestCaseSubscriber(method reflect.Method) error {
+func isTestCaseSubscriber(_ TestingSuite, method reflect.Method) error {
 	if method.Func.Type().NumIn() != 1 {
 		return fmt.Errorf("expected %q, but function has %d arguments", expectedTestCaseSubscriberSignature, method.Func.Type().NumIn())
 	}
@@ -87,11 +87,11 @@ func isTestCaseSubscriber(method reflect.Method) error {
 	return nil
 }
 
-func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRunner, error) {
-	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
+func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (TestCaseRunner, error) {
+	return func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment) {
 		suite.SetT(t)
 
-		suiteOptions.addAppOption(application.WithConfigMap(map[string]any{
+		suiteConf.addAppOption(application.WithConfigMap(map[string]any{
 			"httpserver": map[string]any{
 				"default": map[string]any{
 					"port": 0,
@@ -99,7 +99,7 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 			},
 		}))
 
-		runTestCaseApplication(t, suite, suiteOptions, environment, func(app *appUnderTest) {
+		RunTestCaseApplication(t, suite, suiteConf, environment, func(app AppUnderTest) {
 			ret := method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})
 			err := ret[1].Interface()
 			if err != nil {
@@ -121,89 +121,101 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 			app.WaitDone()
 
 			config := suite.Env().Config()
-			logger := suite.Env().Logger()
-
 			configKey := mdlsub.GetSubscriberOutputConfigKey(tc.GetName())
 			outputType, err := config.GetString(configKey)
 			if err != nil {
 				assert.FailNow(t, "can't read subscriber output type", "the test case for the subscription of %s can't be initialized: %v", tc.GetName(), err)
 			}
 
-			switch outputType {
-			case mdlsub.OutputTypeDb:
-				dbSub, ok := tc.(dbSubscriberTestCase)
+			switch typedTc := tc.(type) {
+			case dbSubscriberTestCase:
+				assertDb(t, suite, typedTc, outputType)
 
-				if !ok {
-					assert.FailNow(t, "invalid subscription test case", "the test case for the subscription of %s has to be of the db type", tc.GetName())
+			case ddbSubscriberTestCase:
+				assertDdb(environment.Context(), t, suite, typedTc, outputType)
 
-					return
-				}
+			case kvstoreSubscriberTestCase:
+				assertKvStore(environment.Context(), t, suite, typedTc, outputType)
 
-				orm, err := db_repo.NewOrm(suite.Env().Context(), config, logger, "default")
-				if err != nil {
-					assert.FailNow(t, "can't initialize orm", "the test case for the subscription of %s can't be initialized", tc.GetName())
-				}
-
-				fetcher := &DbSubscriberFetcher{
-					t:    t,
-					orm:  orm,
-					name: tc.GetName(),
-				}
-
-				dbSub.Assert(t, fetcher)
-
-			case mdlsub.OutputTypeDdb:
-				ctx := environment.Context()
-				ddbSub, ok := tc.(ddbSubscriberTestCase)
-
-				if !ok {
-					assert.FailNow(t, "invalid subscription test case", "the test case for the subscription of %s has to be of the ddb type", tc.GetName())
-
-					return
-				}
-
-				fetcher := &DdbSubscriberFetcher{
-					t: t,
-					repo: func(model any) (ddb.Repository, error) {
-						return ddb.NewRepository(ctx, config, logger, &ddb.Settings{
-							ModelId: ddbSub.ModelIdTarget,
-							Main: ddb.MainSettings{
-								Model:              model,
-								ReadCapacityUnits:  5,
-								WriteCapacityUnits: 5,
-							},
-						})
-					},
-					name: tc.GetName(),
-				}
-
-				ddbSub.Assert(t, fetcher)
-
-			case mdlsub.OutputTypeKvstore:
-				ctx := environment.Context()
-				dbSub, ok := tc.(kvstoreSubscriberTestCase)
-
-				if !ok {
-					assert.FailNow(t, "invalid subscription test case", "the test case for the subscription of %s has to be of the kvstore type", tc.GetName())
-
-					return
-				}
-
-				store, err := kvstore.NewConfigurableKvStore[mdlsub.Model](ctx, config, logger, tc.GetName())
-				if err != nil {
-					assert.FailNow(t, err.Error(), "the test case for the subscription of %s can't be initialized", tc.GetName())
-				}
-
-				fetcher := &KvstoreSubscriberFetcher{
-					t:     t,
-					store: store,
-					name:  tc.GetName(),
-				}
-
-				dbSub.Assert(t, fetcher)
+			default:
+				assert.FailNow(t, "invalid subscriber output type", "the test case for the subscription of %s has an invalid output type: %s", tc.GetName(), outputType)
 			}
 		})
 	}, nil
+}
+
+func assertDb(t *testing.T, suite TestingSuite, tc dbSubscriberTestCase, outputType string) {
+	config := suite.Env().Config()
+	logger := suite.Env().Logger()
+
+	if outputType != mdlsub.OutputTypeDb {
+		assert.FailNow(t, "invalid subscription test case", "the test case for the subscription of %s has to be of the db type", tc.GetName())
+
+		return
+	}
+
+	orm, err := db_repo.NewOrm(suite.Env().Context(), config, logger, "default")
+	if err != nil {
+		assert.FailNow(t, "can't initialize orm", "the test case for the subscription of %s can't be initialized", tc.GetName())
+	}
+
+	fetcher := &DbSubscriberFetcher{
+		t:    t,
+		orm:  orm,
+		name: tc.GetName(),
+	}
+
+	tc.Assert(t, fetcher)
+}
+
+func assertDdb(ctx context.Context, t *testing.T, suite TestingSuite, tc ddbSubscriberTestCase, outputType string) {
+	config := suite.Env().Config()
+	logger := suite.Env().Logger()
+
+	if outputType != mdlsub.OutputTypeDdb {
+		assert.FailNow(t, "invalid subscription test case", "the test case for the subscription of %s has to be of the ddb type", tc.GetName())
+
+		return
+	}
+
+	fetcher := &DdbSubscriberFetcher{
+		t: t,
+		repo: func(model any) (ddb.Repository, error) {
+			return ddb.NewRepository(ctx, config, logger, &ddb.Settings{
+				ModelId: tc.ModelIdTarget,
+				Main: ddb.MainSettings{
+					Model: model,
+				},
+			})
+		},
+		name: tc.GetName(),
+	}
+
+	tc.Assert(t, fetcher)
+}
+
+func assertKvStore(ctx context.Context, t *testing.T, suite TestingSuite, tc kvstoreSubscriberTestCase, outputType string) {
+	config := suite.Env().Config()
+	logger := suite.Env().Logger()
+
+	if outputType != mdlsub.OutputTypeKvstore {
+		assert.FailNow(t, "invalid subscription test case", "the test case for the subscription of %s has to be of the kvstore type", tc.GetName())
+
+		return
+	}
+
+	store, err := kvstore.NewConfigurableKvStore[mdlsub.Model](ctx, config, logger, tc.GetName())
+	if err != nil {
+		assert.FailNow(t, err.Error(), "the test case for the subscription of %s can't be initialized", tc.GetName())
+	}
+
+	fetcher := &KvstoreSubscriberFetcher{
+		t:     t,
+		store: store,
+		name:  tc.GetName(),
+	}
+
+	tc.Assert(t, fetcher)
 }
 
 func DbTestCase(testCase DbSubscriberTestCase) (SubscriberTestCase, error) {

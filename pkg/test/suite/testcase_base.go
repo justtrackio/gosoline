@@ -10,12 +10,12 @@ import (
 )
 
 func init() {
-	registerTestCaseDefinition("base", isTestCaseBase, buildTestCaseBase)
+	RegisterTestCaseDefinition("base", isTestCaseBase, buildTestCaseBase)
 }
 
 const expectedTestCaseBaseSignature = "func (s TestingSuite) TestFunc()"
 
-func isTestCaseBase(method reflect.Method) error {
+func isTestCaseBase(_ TestingSuite, method reflect.Method) error {
 	if method.Func.Type().NumIn() != 1 {
 		return fmt.Errorf("expected %q, but function has %d arguments", expectedTestCaseBaseSignature, method.Func.Type().NumIn())
 	}
@@ -34,8 +34,8 @@ func isTestCaseBase(method reflect.Method) error {
 	return nil
 }
 
-func buildTestCaseBase(_ TestingSuite, method reflect.Method) (testCaseRunner, error) {
-	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
+func buildTestCaseBase(_ TestingSuite, method reflect.Method) (TestCaseRunner, error) {
+	return func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment) {
 		suite.SetT(t)
 		if err := environment.LifeCyleCreate(); err != nil {
 			t.Fatalf("failed to run the create lifecycle: %v", err)
@@ -44,7 +44,7 @@ func buildTestCaseBase(_ TestingSuite, method reflect.Method) (testCaseRunner, e
 		}
 
 		start := time.Now()
-		if err := environment.LoadFixtureSets(suiteOptions.fixtureSetFactories, suiteOptions.fixtureSetPostProcessorFactories...); err != nil {
+		if err := environment.LoadFixtureSets(suiteConf.fixtureSetFactories, suiteConf.fixtureSetPostProcessorFactories...); err != nil {
 			t.Fatalf("failed to load fixtures from factories: %v", err)
 
 			return
