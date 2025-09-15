@@ -15,14 +15,14 @@ import (
 )
 
 type (
-	testCaseMatcher func(method reflect.Method) error
-	testCaseBuilder func(suite TestingSuite, method reflect.Method) (testCaseRunner, error)
-	testCaseRunner  func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment)
+	TestCaseMatcher func(suite TestingSuite, method reflect.Method) error
+	TestCaseBuilder func(suite TestingSuite, method reflect.Method) (TestCaseRunner, error)
+	TestCaseRunner  func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment)
 )
 
 type testCaseDefinition struct {
-	matcher testCaseMatcher
-	builder testCaseBuilder
+	matcher TestCaseMatcher
+	builder TestCaseBuilder
 }
 
 var testCaseDefinitions = map[string]testCaseDefinition{}
@@ -38,7 +38,7 @@ var testCaseDefinitions = map[string]testCaseDefinition{}
 //     Or the execution of the method might be part of running the actual test (base and application test cases work like this).
 //
 // This function is not thread safe and should only be called from an init() method.
-func registerTestCaseDefinition(name string, matcher testCaseMatcher, builder testCaseBuilder) {
+func RegisterTestCaseDefinition(name string, matcher TestCaseMatcher, builder TestCaseBuilder) {
 	if _, ok := testCaseDefinitions[name]; ok {
 		panic(fmt.Sprintf("test case definition %q was already registered", name))
 	}
@@ -53,10 +53,10 @@ func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
 	suite.SetT(t)
 
 	var err error
-	var testCases map[string]testCaseRunner
-	suiteOptions := suiteApplyOptions(suite, extraOptions)
+	var testCases map[string]TestCaseRunner
+	suiteConf := suiteConfApplyOptions(suite, extraOptions)
 
-	if testCases, err = suiteFindTestCases(suite, suiteOptions); err != nil {
+	if testCases, err = suiteFindTestCases(suite, suiteConf); err != nil {
 		assert.FailNow(t, err.Error())
 
 		return
@@ -66,18 +66,31 @@ func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
 		return
 	}
 
-	for i := 0; i < suiteOptions.testCaseRepeatCount; i++ {
-		if suiteOptions.envIsShared {
-			runTestCaseWithSharedEnvironment(t, suite, suiteOptions, testCases)
+	for i := 0; i < suiteConf.testCaseRepeatCount; i++ {
+		if suiteConf.envIsShared {
+			runTestCaseWithSharedEnvironment(t, suite, suiteConf, testCases)
 		} else {
-			runTestCaseWithIsolatedEnvironment(t, suite, suiteOptions, testCases)
+			runTestCaseWithIsolatedEnvironment(t, suite, suiteConf, testCases)
 		}
 	}
 }
 
-func suiteFindTestCases(suite TestingSuite, options *suiteOptions) (map[string]testCaseRunner, error) {
+func suiteConfApplyOptions(suite TestingSuite, extraOptions []Option) *SuiteConfiguration {
+	options := []Option{
+		WithClockProvider(clock.NewFakeClock()),
+		WithConfigMap(map[string]any{
+			"cloud.aws.default.ec2.metadata.available": false,
+		}),
+	}
+	options = append(options, suite.SetupSuite()...)
+	options = append(options, extraOptions...)
+
+	return newSuiteConfiguration(options)
+}
+
+func suiteFindTestCases(suite TestingSuite, conf *SuiteConfiguration) (map[string]TestCaseRunner, error) {
 	var err error
-	testCases := make(map[string]testCaseRunner)
+	testCases := make(map[string]TestCaseRunner)
 	methodFinder := reflect.TypeOf(suite)
 
 	for i := 0; i < methodFinder.NumMethod(); i++ {
@@ -89,7 +102,7 @@ func suiteFindTestCases(suite TestingSuite, options *suiteOptions) (map[string]t
 
 		var matcherErr *multierror.Error
 		for typ, def := range testCaseDefinitions {
-			if err := def.matcher(method); err != nil {
+			if err := def.matcher(suite, method); err != nil {
 				matcherErr = multierror.Append(matcherErr, fmt.Errorf("matcher for test case type %s failed: %w", typ, err))
 
 				continue
@@ -97,8 +110,8 @@ func suiteFindTestCases(suite TestingSuite, options *suiteOptions) (map[string]t
 
 			matcherErr = nil
 
-			if options.shouldSkip(method.Name) {
-				testCases[method.Name] = func(t *testing.T, _ TestingSuite, _ *suiteOptions, _ *env.Environment) {
+			if conf.shouldSkip(method.Name) {
+				testCases[method.Name] = func(t *testing.T, _ TestingSuite, _ *SuiteConfiguration, _ *env.Environment) {
 					t.SkipNow()
 				}
 
@@ -124,26 +137,7 @@ func suiteFindTestCases(suite TestingSuite, options *suiteOptions) (map[string]t
 	return testCases, nil
 }
 
-func suiteApplyOptions(suite TestingSuite, extraOptions []Option) *suiteOptions {
-	setupOptions := []Option{
-		WithClockProvider(clock.NewFakeClock()),
-		WithConfigMap(map[string]any{
-			"cloud.aws.default.ec2.metadata.available": false,
-		}),
-	}
-	setupOptions = append(setupOptions, suite.SetupSuite()...)
-	setupOptions = append(setupOptions, extraOptions...)
-
-	options := newSuiteOptions()
-
-	for _, opt := range setupOptions {
-		opt(options)
-	}
-
-	return options
-}
-
-func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, testCases map[string]testCaseRunner) {
+func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, testCases map[string]TestCaseRunner) {
 	envOptions := []env.Option{
 		env.WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
 		env.WithConfigMap(map[string]any{
@@ -153,7 +147,7 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 			"app_name":    "test",
 		}),
 	}
-	envOptions = append(envOptions, suiteOptions.envOptions...)
+	envOptions = append(envOptions, suiteConf.envOptions...)
 	envOptions = append(envOptions, env.WithConfigMap(map[string]any{
 		"env":              "test",
 		"fixtures.enabled": true,
@@ -177,34 +171,34 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 
 	suite.SetEnv(environment)
 
-	for _, envSetup := range suiteOptions.envSetup {
+	for _, envSetup := range suiteConf.envSetup {
 		if err := envSetup(); err != nil {
 			assert.FailNow(t, "failed to execute additional environment setup", err.Error())
 		}
 	}
 
 	for name, testCase := range testCases {
-		runTestCaseInSuite(t, suite, func() {
+		RunTestCaseInSuite(t, suite, func() {
 			t.Run(name, func(t *testing.T) {
 				parentT := suite.T()
 				suite.SetT(t)
 				defer suite.SetT(parentT)
 
-				testCase(t, suite, suiteOptions, environment)
+				testCase(t, suite, suiteConf, environment)
 			})
 		})
 	}
 }
 
-func runTestCaseWithIsolatedEnvironment(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, testCases map[string]testCaseRunner) {
+func runTestCaseWithIsolatedEnvironment(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, testCases map[string]TestCaseRunner) {
 	for name, testCase := range testCases {
-		runTestCaseWithSharedEnvironment(t, suite, suiteOptions, map[string]testCaseRunner{
+		runTestCaseWithSharedEnvironment(t, suite, suiteConf, map[string]TestCaseRunner{
 			name: testCase,
 		})
 	}
 }
 
-func runTestCaseInSuite(t *testing.T, suite TestingSuite, testCase func()) {
+func RunTestCaseInSuite(t *testing.T, suite TestingSuite, testCase func()) {
 	parentT := suite.T()
 	suite.SetT(t)
 	defer suite.SetT(parentT)

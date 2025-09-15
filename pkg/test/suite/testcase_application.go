@@ -16,12 +16,12 @@ import (
 )
 
 func init() {
-	registerTestCaseDefinition("application", isTestCaseApplication, buildTestCaseApplication)
+	RegisterTestCaseDefinition("application", isTestCaseApplication, buildTestCaseApplication)
 }
 
 const expectedTestCaseApplicationSignature = "func (s TestingSuite) TestFunc(AppUnderTest)"
 
-func isTestCaseApplication(method reflect.Method) error {
+func isTestCaseApplication(_ TestingSuite, method reflect.Method) error {
 	if method.Func.Type().NumIn() != 2 {
 		return fmt.Errorf("expected %q, but function has %d arguments", expectedTestCaseApplicationSignature, method.Func.Type().NumIn())
 	}
@@ -47,24 +47,28 @@ func isTestCaseApplication(method reflect.Method) error {
 	return nil
 }
 
-func buildTestCaseApplication(_ TestingSuite, method reflect.Method) (testCaseRunner, error) {
-	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
+func buildTestCaseApplication(_ TestingSuite, method reflect.Method) (TestCaseRunner, error) {
+	return func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment) {
 		suite.SetT(t)
 
-		runTestCaseApplication(t, suite, suiteOptions, environment, func(aut *appUnderTest) {
+		RunTestCaseApplication(t, suite, suiteConf, environment, func(aut AppUnderTest) {
 			method.Func.Call([]reflect.Value{reflect.ValueOf(suite), reflect.ValueOf(aut)})
 		})
 	}, nil
 }
 
-func runTestCaseApplication(t *testing.T, _ TestingSuite, suiteOptions *suiteOptions, environment *env.Environment, testcase func(aut *appUnderTest)) {
+func RunTestCaseApplication(t *testing.T, _ TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment, testcase func(aut AppUnderTest), extraOptions ...Option) {
 	var appOptions []application.Option
 
-	for k, factory := range suiteOptions.appModules {
-		suiteOptions.appModules[k] = newEssentialModuleFactory(factory)
+	for _, opt := range extraOptions {
+		opt(suiteConf)
 	}
 
-	appOptions = append(appOptions, suiteOptions.appOptions...)
+	for k, factory := range suiteConf.appModules {
+		suiteConf.appModules[k] = newEssentialModuleFactory(factory)
+	}
+
+	appOptions = append(appOptions, suiteConf.appOptions...)
 	appOptions = append(appOptions, []application.Option{
 		application.WithConfigMap(map[string]any{
 			"env": "test",
@@ -74,18 +78,18 @@ func runTestCaseApplication(t *testing.T, _ TestingSuite, suiteOptions *suiteOpt
 			assert.Equal(t, kernel.ExitCodeOk, code, "exit code should be %d", kernel.ExitCodeOk)
 		}),
 		application.WithMiddlewareFactory(reslife.LifeCycleManagerMiddleware, kernel.PositionBeginning),
-		application.WithFixtureSetPostProcessorFactories(suiteOptions.fixtureSetPostProcessorFactories...),
+		application.WithFixtureSetPostProcessorFactories(suiteConf.fixtureSetPostProcessorFactories...),
 	}...)
 
-	for _, factory := range suiteOptions.fixtureSetFactories {
+	for _, factory := range suiteConf.fixtureSetFactories {
 		appOptions = append(appOptions, application.WithFixtureSetFactory("default", factory))
 	}
 
-	for name, module := range suiteOptions.appModules {
+	for name, module := range suiteConf.appModules {
 		appOptions = append(appOptions, application.WithModuleFactory(name, module))
 	}
 
-	for _, factory := range suiteOptions.appFactories {
+	for _, factory := range suiteConf.appFactories {
 		appOptions = append(appOptions, application.WithModuleMultiFactory(factory))
 	}
 

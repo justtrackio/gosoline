@@ -2,7 +2,6 @@ package suite
 
 import (
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/application"
@@ -17,49 +16,10 @@ import (
 	"github.com/spf13/cast"
 )
 
-type suiteOptions struct {
-	envOptions  []env.Option
-	envSetup    []func() error
-	envIsShared bool
-
-	fixtureSetFactories              []fixtures.FixtureSetsFactory
-	fixtureSetPostProcessorFactories []fixtures.PostProcessorFactory
-
-	appOptions   []application.Option
-	appModules   map[string]kernel.ModuleFactory
-	appFactories []kernel.ModuleMultiFactory
-
-	testCaseWhitelist   []string
-	testCaseRepeatCount int
-}
-
-func newSuiteOptions() *suiteOptions {
-	return &suiteOptions{
-		envOptions:          make([]env.Option, 0),
-		envSetup:            make([]func() error, 0),
-		appOptions:          make([]application.Option, 0),
-		appModules:          make(map[string]kernel.ModuleFactory),
-		appFactories:        make([]kernel.ModuleMultiFactory, 0),
-		testCaseRepeatCount: 1,
-	}
-}
-
-func (s *suiteOptions) addAppOption(opt application.Option) {
-	s.appOptions = append(s.appOptions, opt)
-}
-
-func (s *suiteOptions) addEnvOption(opt env.Option) {
-	s.envOptions = append(s.envOptions, opt)
-}
-
-func (s *suiteOptions) shouldSkip(name string) bool {
-	return len(s.testCaseWhitelist) > 0 && !slices.Contains(s.testCaseWhitelist, name)
-}
-
-type Option func(s *suiteOptions)
+type Option func(s *SuiteConfiguration)
 
 func WithClockProvider(clk clock.Clock) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.envSetup = append(s.envSetup, func() error {
 			clock.Provider = clk
 
@@ -69,7 +29,7 @@ func WithClockProvider(clk clock.Clock) Option {
 }
 
 func WithClockProviderAt(datetime string) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.envSetup = append(s.envSetup, func() error {
 			var err error
 			var dt time.Time
@@ -86,29 +46,29 @@ func WithClockProviderAt(datetime string) Option {
 }
 
 func WithComponent(settings env.ComponentBaseSettingsAware) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.addEnvOption(env.WithComponent(settings))
 	}
 }
 
-func WithConfigDebug(s *suiteOptions) {
+func WithConfigDebug(s *SuiteConfiguration) {
 	s.addAppOption(application.WithConfigDebug)
 }
 
 func WithConfigFile(file string) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.addEnvOption(env.WithConfigFile(file))
 	}
 }
 
 func WithConfigMap(settings map[string]any) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.addEnvOption(env.WithConfigMap(settings))
 	}
 }
 
 func WithContainerExpireAfter(expireAfter time.Duration) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.addEnvOption(env.WithContainerExpireAfter(expireAfter))
 	}
 }
@@ -122,33 +82,33 @@ func WithConsumer[M any](callback stream.ConsumerCallbackFactory[M]) Option {
 }
 
 func WithEnvSetup(setups ...func() error) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.envSetup = append(s.envSetup, setups...)
 	}
 }
 
 func WithFixtureSetFactory(factory fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.fixtureSetFactories = append(s.fixtureSetFactories, factory)
 		s.fixtureSetPostProcessorFactories = append(s.fixtureSetPostProcessorFactories, postProcessorFactories...)
 	}
 }
 
 func WithFixtureSetFactories(factories []fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.fixtureSetFactories = append(s.fixtureSetFactories, factories...)
 		s.fixtureSetPostProcessorFactories = append(s.fixtureSetPostProcessorFactories, postProcessorFactories...)
 	}
 }
 
 func WithLogLevel(level string) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.addEnvOption(env.WithLoggerLevel(level))
 	}
 }
 
 func WithLogRecording() Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.addEnvOption(env.WithLogRecording())
 	}
 }
@@ -160,31 +120,31 @@ func WithIpReadFromMemory(name string, records map[string]ipread.MemoryRecord) O
 		provider.AddRecord(ip, record)
 	}
 
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		key := fmt.Sprintf("ipread.%s.provider", name)
 		s.addEnvOption(env.WithConfigSetting(key, "memory"))
 	}
 }
 
 func WithModule(name string, essentialModule kernel.ModuleFactory) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.appModules[name] = essentialModule
 	}
 }
 
 func WithModuleFactory(factory kernel.ModuleMultiFactory) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.appFactories = append(s.appFactories, factory)
 	}
 }
 
 func WithSharedEnvironment() Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.envIsShared = true
 	}
 }
 
-func WithStreamConsumerRetryDisabled(s *suiteOptions) {
+func WithStreamConsumerRetryDisabled(s *SuiteConfiguration) {
 	s.addAppOption(application.WithConfigCallback(func(config cfg.GosoConf) error {
 		consumerNames, err := stream.GetAllConsumerNames(config)
 		if err != nil {
@@ -209,19 +169,19 @@ func WithSubscribers(transformerFactoryMap mdlsub.TransformerMapTypeVersionFacto
 }
 
 func WithoutAutoDetectedComponents(components ...string) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.addEnvOption(env.WithoutAutoDetectedComponents(components...))
 	}
 }
 
 func WithDbRepoChangeHistory() Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.addAppOption(application.WithDbRepoChangeHistory)
 	}
 }
 
 func WithHttpServerShares() Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.addAppOption(application.WithHttpServerShares)
 	}
 }
@@ -229,7 +189,7 @@ func WithHttpServerShares() Option {
 // WithTestCaseWhitelist returns an option which only runs the tests contained in the given whitelist. A test not in the
 // whitelist is skipped instead, allowing you to easily run a single test (e.g., for debugging).
 func WithTestCaseWhitelist(testCases ...string) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.testCaseWhitelist = testCases
 	}
 }
@@ -237,7 +197,7 @@ func WithTestCaseWhitelist(testCases ...string) Option {
 // WithTestCaseRepeatCount repeats the whole test suite the given number of times. This can be useful if a problem doesn't
 // happen on every run (e.g., because it is timing dependent).
 func WithTestCaseRepeatCount(repeatCount int) Option {
-	return func(s *suiteOptions) {
+	return func(s *SuiteConfiguration) {
 		s.testCaseRepeatCount = repeatCount
 	}
 }

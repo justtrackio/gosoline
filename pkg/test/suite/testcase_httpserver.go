@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	registerTestCaseDefinition("httpserver", isTestCaseHttpserver, buildTestCaseHttpserver)
+	RegisterTestCaseDefinition("httpserver", isTestCaseHttpserver, buildTestCaseHttpserver)
 }
 
 const expectedTestCaseHttpserverSignature = "func (s TestingSuite) TestFunc(AppUnderTest, *resty.Client) error"
@@ -26,7 +26,11 @@ type TestingSuiteApiDefinitionsAware interface {
 	SetupApiDefinitions() httpserver.Definer
 }
 
-func isTestCaseHttpserver(method reflect.Method) error {
+func isTestCaseHttpserver(s TestingSuite, method reflect.Method) error {
+	if _, ok := s.(TestingSuiteApiDefinitionsAware); !ok {
+		return fmt.Errorf("the suite has to implement the TestingSuiteApiDefinitionsAware interface to be able to run httpserver test cases")
+	}
+
 	if method.Func.Type().NumIn() != 3 {
 		return fmt.Errorf("expected %q, but function has %d arguments", expectedTestCaseHttpserverSignature, method.Func.Type().NumIn())
 	}
@@ -66,8 +70,8 @@ func isTestCaseHttpserver(method reflect.Method) error {
 	return nil
 }
 
-func buildTestCaseHttpserver(suite TestingSuite, method reflect.Method) (testCaseRunner, error) {
-	return runTestCaseHttpserver(suite, func(suite TestingSuite, app *appUnderTest, client *resty.Client) {
+func buildTestCaseHttpserver(suite TestingSuite, method reflect.Method) (TestCaseRunner, error) {
+	return runTestCaseHttpserver(suite, func(suite TestingSuite, app AppUnderTest, client *resty.Client) {
 		out := method.Func.Call([]reflect.Value{
 			reflect.ValueOf(suite),
 			reflect.ValueOf(app),
@@ -86,7 +90,7 @@ func buildTestCaseHttpserver(suite TestingSuite, method reflect.Method) (testCas
 	})
 }
 
-func runTestCaseHttpserver(suite TestingSuite, testCase func(suite TestingSuite, app *appUnderTest, client *resty.Client)) (testCaseRunner, error) {
+func runTestCaseHttpserver(suite TestingSuite, testCase func(suite TestingSuite, app AppUnderTest, client *resty.Client)) (TestCaseRunner, error) {
 	var ok bool
 	var apiDefinitionAware TestingSuiteApiDefinitionsAware
 	var server *httpserver.HttpServer
@@ -95,14 +99,14 @@ func runTestCaseHttpserver(suite TestingSuite, testCase func(suite TestingSuite,
 		return nil, fmt.Errorf("the suite has to implement the TestingSuiteApiDefinitionsAware interface to be able to run httpserver test cases")
 	}
 
-	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
+	return func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment) {
 		// we first have to set up t, otherwise the test suite can't assert that there are no errors when setting up
 		// route definitions or test cases
 		suite.SetT(t)
 
 		apiDefinitions := apiDefinitionAware.SetupApiDefinitions()
 
-		suiteOptions.appModules["api"] = func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+		suiteConf.appModules["api"] = func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			module, err := httpserver.New("default", apiDefinitions)(ctx, config, logger)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create test http server: %w", err)
@@ -113,7 +117,7 @@ func runTestCaseHttpserver(suite TestingSuite, testCase func(suite TestingSuite,
 			return server, nil
 		}
 
-		suiteOptions.addAppOption(application.WithConfigMap(map[string]any{
+		suiteConf.addAppOption(application.WithConfigMap(map[string]any{
 			"httpserver": map[string]any{
 				"default": map[string]any{
 					"port": 0,
@@ -121,7 +125,7 @@ func runTestCaseHttpserver(suite TestingSuite, testCase func(suite TestingSuite,
 			},
 		}))
 
-		runTestCaseApplication(t, suite, suiteOptions, environment, func(app *appUnderTest) {
+		RunTestCaseApplication(t, suite, suiteConf, environment, func(app AppUnderTest) {
 			port, err := server.GetPort()
 			if err != nil {
 				assert.FailNow(t, err.Error(), "can not get port of server")

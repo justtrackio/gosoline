@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	registerTestCaseDefinition("stream", isTestCaseStream, buildTestCaseStream)
+	RegisterTestCaseDefinition("stream", isTestCaseStream, buildTestCaseStream)
 }
 
 const expectedTestCaseStreamSignature = "func (s TestingSuite) TestFunc() T"
@@ -48,7 +48,7 @@ func (c *StreamTestCase) ToTestCase() *StreamTestCase {
 	return c
 }
 
-func isTestCaseStream(method reflect.Method) error {
+func isTestCaseStream(_ TestingSuite, method reflect.Method) error {
 	if method.Func.Type().NumIn() != 1 {
 		return fmt.Errorf("expected %q, but function has %d arguments", expectedTestCaseStreamSignature, method.Func.Type().NumIn())
 	}
@@ -96,7 +96,7 @@ func isTestCaseMapStream(method reflect.Method) bool {
 		actualTypeResult == expectedProviderMapType
 }
 
-func buildTestCaseStream(suite TestingSuite, method reflect.Method) (testCaseRunner, error) {
+func buildTestCaseStream(suite TestingSuite, method reflect.Method) (TestCaseRunner, error) {
 	if isTestCaseMapStream(method) {
 		out := method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})[0].Interface()
 
@@ -130,8 +130,8 @@ func buildTestCaseStream(suite TestingSuite, method reflect.Method) (testCaseRun
 	}), nil
 }
 
-func runStreamTestMap(testCases map[string]ToStreamTestCase) (testCaseRunner, error) {
-	testCaseRunners := make([]testCaseRunner, 0, len(testCases))
+func runStreamTestMap(testCases map[string]ToStreamTestCase) (TestCaseRunner, error) {
+	testCaseRunners := make([]TestCaseRunner, 0, len(testCases))
 
 	for name, testCasesProvider := range testCases {
 		runner := runStreamTest(func() *StreamTestCase {
@@ -142,28 +142,28 @@ func runStreamTestMap(testCases map[string]ToStreamTestCase) (testCaseRunner, er
 			return testCasesProvider.ToTestCase()
 		})
 
-		testCaseRunners = append(testCaseRunners, func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
+		testCaseRunners = append(testCaseRunners, func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment) {
 			t.Run(name, func(t *testing.T) {
-				runner(t, suite, suiteOptions, environment)
+				runner(t, suite, suiteConf, environment)
 			})
 		})
 	}
 
-	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
+	return func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment) {
 		if len(testCaseRunners) == 0 {
 			t.SkipNow()
 		}
 
 		for _, testCaseRunner := range testCaseRunners {
-			testCaseRunner(t, suite, suiteOptions, environment)
+			testCaseRunner(t, suite, suiteConf, environment)
 		}
 	}, nil
 }
 
-func runStreamTest(getTestCase func() *StreamTestCase) testCaseRunner {
-	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
-		runTestCaseApplication(t, suite, suiteOptions, environment, func(app *appUnderTest) {
-			runTestCaseInSuite(t, suite, func() {
+func runStreamTest(getTestCase func() *StreamTestCase) TestCaseRunner {
+	return func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment) {
+		RunTestCaseApplication(t, suite, suiteConf, environment, func(app AppUnderTest) {
+			RunTestCaseInSuite(t, suite, func() {
 				tc := getTestCase()
 
 				if tc == nil {
