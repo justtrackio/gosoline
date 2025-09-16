@@ -78,7 +78,7 @@ func (s *currencyService) HasCurrencyAtDate(ctx context.Context, currency string
 	key := historicalRateKey(date, strings.ToUpper(currency))
 	exists, err := s.store.Contains(ctx, key)
 	if err != nil {
-		return false, fmt.Errorf("CurrencyService: error looking up historic exchange rate for %s at %s: %w", currency, date.Format(YMDLayout), err)
+		return false, fmt.Errorf("CurrencyService: error looking up historic exchange rate for %s at %s: %w", currency, date.Format(time.DateOnly), err)
 	}
 
 	if !exists && date.After(s.clock.Now().Add(-oneDay)) {
@@ -107,7 +107,7 @@ func (s *currencyService) ToEurAtDate(ctx context.Context, value float64, fromCu
 
 	exchangeRate, err := s.getExchangeRateToEurAtDate(ctx, fromCurrency, date)
 	if err != nil {
-		return 0, fmt.Errorf("CurrencyService: error parsing historic exchange rate for %s at %s: %w", fromCurrency, date.Format(YMDLayout), err)
+		return 0, fmt.Errorf("CurrencyService: error parsing historic exchange rate for %s at %s: %w", fromCurrency, date.Format(time.DateOnly), err)
 	}
 
 	return value / exchangeRate, nil
@@ -156,12 +156,12 @@ func (s *currencyService) ToCurrencyAtDate(ctx context.Context, toCurrency strin
 
 	exchangeRate, err := s.getExchangeRateToEurAtDate(ctx, toCurrency, date)
 	if err != nil {
-		return 0, fmt.Errorf("CurrencyService: error parsing historic exchange rate for %s at %s: %w", toCurrency, date.Format(YMDLayout), err)
+		return 0, fmt.Errorf("CurrencyService: error parsing historic exchange rate for %s at %s: %w", toCurrency, date.Format(time.DateOnly), err)
 	}
 
 	eur, err := s.ToEurAtDate(ctx, value, fromCurrency, date)
 	if err != nil {
-		return 0, fmt.Errorf("CurrencyService: error converting historic %s to EUR at %s: %w", fromCurrency, date.Format(YMDLayout), err)
+		return 0, fmt.Errorf("CurrencyService: error converting historic %s to EUR at %s: %w", fromCurrency, date.Format(time.DateOnly), err)
 	}
 
 	return eur * exchangeRate, nil
@@ -198,7 +198,7 @@ func (s *currencyService) getExchangeRateToEurAtDate(ctx context.Context, curren
 
 	exists, err := s.store.Get(ctx, key, &exchangeRate)
 	if err != nil {
-		return 0, fmt.Errorf("CurrencyService: error getting historic exchange rate for %s at %s: %w", currency, date.Format(YMDLayout), err)
+		return 0, fmt.Errorf("CurrencyService: error getting historic exchange rate for %s at %s: %w", currency, date.Format(time.DateOnly), err)
 	}
 
 	if !exists {
@@ -206,7 +206,7 @@ func (s *currencyService) getExchangeRateToEurAtDate(ctx context.Context, curren
 			return s.getExchangeRateToEurAtDate(ctx, currency, date.AddDate(0, 0, -1))
 		}
 
-		return 0, fmt.Errorf("CurrencyService: historic currency %s at %s not found", currency, date.Format(YMDLayout))
+		return 0, fmt.Errorf("CurrencyService: historic currency %s at %s not found", currency, date.Format(time.DateOnly))
 	}
 
 	return exchangeRate, nil
