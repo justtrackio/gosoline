@@ -43,6 +43,10 @@ func (c PartitionConsumer) Consume(ctx context.Context) error {
 		case <-c.stop:
 			return nil
 		case records := <-c.assignedBatch:
+			if len(records) == 0 {
+				continue
+			}
+
 			c.messageHandler.Handle(records)
 
 			// we immediately commit so we can continue processing the next records and leave retry handling to some retry input like an SQS queue
@@ -58,5 +62,4 @@ func (c PartitionConsumer) Consume(ctx context.Context) error {
 
 func (c PartitionConsumer) Stop() {
 	close(c.stop)
-	close(c.assignedBatch)
 }

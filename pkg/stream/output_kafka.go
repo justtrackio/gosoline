@@ -42,7 +42,7 @@ func NewKafkaOutput(ctx context.Context, config cfg.Config, logger log.Logger, s
 		return nil, fmt.Errorf("can not create schema registry service: %w", err)
 	}
 
-	return NewKafkaOutputWithInterfaces(*conn, schemaRegistryService, writer, settings.MaxBatchBytes, settings.MaxBatchSize)
+	return NewKafkaOutputWithInterfaces(*conn, schemaRegistryService, writer, settings.MaxBatchBytes, settings.MaxBatchSize), nil
 }
 
 func NewKafkaOutputWithInterfaces(
@@ -51,14 +51,14 @@ func NewKafkaOutputWithInterfaces(
 	writer kafkaProducer.Writer,
 	maxBatchBytes int32,
 	maxBatchSize int,
-) (Output, error) {
+) Output {
 	return &kafkaOutput{
 		connection:            connection,
 		schemaRegistryService: schemaRegistryService,
 		writer:                writer,
 		maxBatchBytes:         maxBatchBytes,
 		maxBatchSize:          maxBatchSize,
-	}, nil
+	}
 }
 
 func (o *kafkaOutput) WriteOne(ctx context.Context, msg WritableMessage) error {

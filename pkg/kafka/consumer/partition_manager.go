@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
@@ -12,6 +11,7 @@ import (
 type PartitionManager struct {
 	logger         log.Logger
 	consumers      map[assignment]*PartitionConsumer
+	lck            *sync.Mutex
 	messageHandler KafkaMessageHandler
 }
 
@@ -24,20 +24,28 @@ func NewPartitionManager(logger log.Logger, messageHandler KafkaMessageHandler) 
 	return &PartitionManager{
 		logger:         logger,
 		consumers:      make(map[assignment]*PartitionConsumer),
+		lck:            &sync.Mutex{},
 		messageHandler: messageHandler,
 	}
 }
 
 func (p PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo.Client, assigned map[string][]int32) {
-	cfn := coffin.New()
-
 	for topic, partitions := range assigned {
 		for _, partition := range partitions {
 			partitionConsumer := NewPartitionConsumer(p.logger, topic, partition, p.messageHandler, client)
+
+			p.lck.Lock()
 			p.consumers[assignment{topic, partition}] = partitionConsumer
+			p.lck.Unlock()
 
 			p.logger.Debug(ctx, "starting to consume records for partition %d of topic %s", partition, topic)
-			cfn.GoWithContextf(ctx, partitionConsumer.Consume, "error while consuming records for partition %d of topic %s", partition, topic)
+
+			go func() {
+				err := partitionConsumer.Consume(ctx)
+				if err != nil {
+					p.logger.Error(ctx, "failed to consume records for partition %d of topic %s: %w", partition, topic, err)
+				}
+			}()
 		}
 	}
 }
@@ -49,9 +57,11 @@ func (p PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo.
 	for topic, partitions := range lost {
 		for _, partition := range partitions {
 			assignment := assignment{topic, partition}
-			partitionConsumer := p.consumers[assignment]
 
+			p.lck.Lock()
+			partitionConsumer := p.consumers[assignment]
 			delete(p.consumers, assignment)
+			p.lck.Unlock()
 
 			partitionConsumer.Stop()
 			p.logger.Debug(ctx, "waiting for work to finish for lost/revoked partition %d of topic %s", partition, topic)
@@ -70,9 +80,16 @@ func (p PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo.
 }
 
 func (p PartitionManager) Handle(topic string, partition int32, records []*kgo.Record) {
+	p.lck.Lock()
+	defer p.lck.Unlock()
+
 	p.consumers[assignment{topic, partition}].assignedBatch <- records
 }
 
 func (p PartitionManager) HandleWithoutCommit(records []*kgo.Record) {
 	p.messageHandler.Handle(records)
+}
+
+func (p PartitionManager) Stop() {
+	p.messageHandler.Stop()
 }
