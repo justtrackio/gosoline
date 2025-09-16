@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
@@ -17,8 +17,8 @@ type JwtTokenHandler interface {
 
 type Claims interface {
 	jwt.Claims
-	GetStandardClaims() jwt.StandardClaims
-	SetStandardClaims(standardClaims jwt.StandardClaims)
+	GetRegisteredClaims() jwt.RegisteredClaims
+	SetRegisteredClaims(registeredClaims jwt.RegisteredClaims)
 }
 
 type jwtTokenHandler struct {
@@ -35,15 +35,15 @@ type JwtClaims struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 	Image string `json:"image"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
-func (c *JwtClaims) GetStandardClaims() jwt.StandardClaims {
-	return c.StandardClaims
+func (c *JwtClaims) GetRegisteredClaims() jwt.RegisteredClaims {
+	return c.RegisteredClaims
 }
 
-func (c *JwtClaims) SetStandardClaims(standardClaims jwt.StandardClaims) {
-	c.StandardClaims = standardClaims
+func (c *JwtClaims) SetRegisteredClaims(registeredClaims jwt.RegisteredClaims) {
+	c.RegisteredClaims = registeredClaims
 }
 
 func NewJwtTokenHandler(config cfg.Config, name string) (JwtTokenHandler, error) {
@@ -71,11 +71,11 @@ func (h *jwtTokenHandler) Sign(user SignUserInput) (*string, error) {
 }
 
 func (h *jwtTokenHandler) SignClaims(claims Claims) (*string, error) {
-	stdClaims := claims.GetStandardClaims()
-	stdClaims.ExpiresAt = time.Now().Add(h.settings.ExpireDuration).Unix()
-	stdClaims.IssuedAt = time.Now().Unix()
-	stdClaims.Issuer = h.settings.Issuer
-	claims.SetStandardClaims(stdClaims)
+	registeredClaims := claims.GetRegisteredClaims()
+	registeredClaims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(h.settings.ExpireDuration))
+	registeredClaims.IssuedAt = jwt.NewNumericDate(time.Now())
+	registeredClaims.Issuer = h.settings.Issuer
+	claims.SetRegisteredClaims(registeredClaims)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	tokenString, err := token.SignedString([]byte(h.settings.SigningSecret))
@@ -93,18 +93,18 @@ func (h *jwtTokenHandler) Valid(jwtToken string) (bool, *jwt.Token, error) {
 		}
 
 		return []byte(h.settings.SigningSecret), nil
-	})
+	}, jwt.WithValidMethods([]string{"HS256"}))
 	if err != nil {
 		return false, nil, err
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		if !claims.VerifyIssuer(h.settings.Issuer, true) {
-			return false, nil, fmt.Errorf("invalid issuer")
+		issuer, err := claims.GetIssuer()
+		if err != nil {
+			return false, nil, fmt.Errorf("could not get issuer: %w", err)
 		}
-
-		if err := claims.Valid(); err != nil {
-			return false, nil, fmt.Errorf("could not validate claims")
+		if issuer != h.settings.Issuer {
+			return false, nil, fmt.Errorf("invalid issuer")
 		}
 
 		return true, token, nil

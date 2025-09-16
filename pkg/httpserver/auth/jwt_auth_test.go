@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/justtrackio/gosoline/pkg/httpserver/auth"
 	authMocks "github.com/justtrackio/gosoline/pkg/httpserver/auth/mocks"
 	"github.com/stretchr/testify/assert"

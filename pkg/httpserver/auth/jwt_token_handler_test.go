@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/justtrackio/gosoline/pkg/httpserver/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,9 +15,9 @@ func getJwtToken(t *testing.T, issuer string, secret string, expirationDuration 
 		Name:  "testName",
 		Email: "testMail",
 		Image: "testImage",
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Duration(expirationDuration) * time.Minute).Unix(),
-			IssuedAt:  time.Now().Unix(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expirationDuration) * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    issuer,
 		},
 	})
@@ -32,7 +32,7 @@ func TestJwtTokenHandler_Sign_Valid(t *testing.T) {
 	settings := auth.JwtTokenHandlerSettings{
 		SigningSecret:  "1",
 		Issuer:         "me",
-		ExpireDuration: 10000,
+		ExpireDuration: 15 * time.Minute,
 	}
 
 	h := auth.NewJwtTokenHandlerWithInterfaces(settings)
@@ -51,7 +51,7 @@ func TestJwtTokenHandler_IsValid_Valid(t *testing.T) {
 	settings := auth.JwtTokenHandlerSettings{
 		SigningSecret:  "1",
 		Issuer:         "me",
-		ExpireDuration: 10000,
+		ExpireDuration: 15 * time.Minute,
 	}
 
 	h := auth.NewJwtTokenHandlerWithInterfaces(settings)
@@ -68,7 +68,7 @@ func TestJwtTokenHandler_IsValid_InvalidSigningSecret(t *testing.T) {
 	settings := auth.JwtTokenHandlerSettings{
 		SigningSecret:  "123",
 		Issuer:         "me",
-		ExpireDuration: 10000,
+		ExpireDuration: 15 * time.Minute,
 	}
 
 	h := auth.NewJwtTokenHandlerWithInterfaces(settings)
@@ -77,7 +77,7 @@ func TestJwtTokenHandler_IsValid_InvalidSigningSecret(t *testing.T) {
 
 	isValid, _, err := h.Valid(jwtToken)
 
-	assert.EqualError(t, err, "signature is invalid")
+	assert.EqualError(t, err, "token signature is invalid: signature is invalid")
 	assert.False(t, isValid)
 }
 
@@ -85,7 +85,7 @@ func TestJwtTokenHandler_IsValid_InvalidExpiredToken(t *testing.T) {
 	settings := auth.JwtTokenHandlerSettings{
 		SigningSecret:  "1",
 		Issuer:         "me",
-		ExpireDuration: 10000,
+		ExpireDuration: 15 * time.Minute,
 	}
 
 	h := auth.NewJwtTokenHandlerWithInterfaces(settings)
@@ -94,7 +94,7 @@ func TestJwtTokenHandler_IsValid_InvalidExpiredToken(t *testing.T) {
 
 	isValid, _, err := h.Valid(jwtToken)
 
-	assert.EqualError(t, err, "Token is expired")
+	assert.EqualError(t, err, "token has invalid claims: token is expired")
 	assert.False(t, isValid)
 }
 
@@ -102,7 +102,7 @@ func TestJwtTokenHandler_IsValid_InvalidIssuer(t *testing.T) {
 	settings := auth.JwtTokenHandlerSettings{
 		SigningSecret:  "1",
 		Issuer:         "me",
-		ExpireDuration: 10000,
+		ExpireDuration: 15 * time.Minute,
 	}
 
 	h := auth.NewJwtTokenHandlerWithInterfaces(settings)
@@ -119,7 +119,7 @@ func TestJwtTokenHandler_Sign_IsValid_Valid(t *testing.T) {
 	settings := auth.JwtTokenHandlerSettings{
 		SigningSecret:  "1",
 		Issuer:         "me",
-		ExpireDuration: 10000,
+		ExpireDuration: 15 * time.Minute,
 	}
 
 	h := auth.NewJwtTokenHandlerWithInterfaces(settings)
