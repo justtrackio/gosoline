@@ -105,12 +105,16 @@ func NewKafkaMessageHandler(data chan *Message) kafkaConsumer.KafkaMessageHandle
 	}
 }
 
-func (s kafkaMessageHandler) Handle(kafkaRecords []*kgo.Record) {
+func (h kafkaMessageHandler) Handle(kafkaRecords []*kgo.Record) {
 	for _, record := range kafkaRecords {
 		if record == nil {
 			continue
 		}
 
-		s.data <- KafkaToGosoMessage(*record)
+		h.data <- KafkaToGosoMessage(*record)
 	}
+}
+
+func (h kafkaMessageHandler) Stop() {
+	close(h.data)
 }

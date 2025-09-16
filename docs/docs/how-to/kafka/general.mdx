@@ -26,7 +26,7 @@ By default, no compression will be used.
 When enabling the producer daemon for a Kafka producer all producer daemon settings related to aggregation and batching will be ignored.
 
 Aggregation is not supported with Kafka as an aggregated message would not match the schema in case you are using the schema registry.
-And by the way of how gosoline initializes the producer daemon it is also not possible to use aggregation without schema registry (as by the time the producer is aware of the schema registry usage the producer daemon will already be initialized).
+Because of the way gosoline initializes the producer daemon it is also not possible to use aggregation without schema registry (as by the time the producer is aware of the schema registry usage the producer daemon will have already been initialized).
 
 Batching will still be done by the producer daemon, but it will use the `max_batch_size` and `max_batch_bytes` settings specified on the `KafkaOutputConfiguration`.
 This is to have a single source of truth for the settings and because the Kafka library has an internal process to batch messages and would possibly break up our batches if we ignore these settings.
