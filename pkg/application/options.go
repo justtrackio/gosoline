@@ -14,6 +14,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/fixtures/provider"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	kernelPkg "github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -234,6 +235,17 @@ func WithFixtureSetFactory(group string, factory fixtures.FixtureSetsFactory) Op
 
 func WithFixtureSetFactories(factories map[string]fixtures.FixtureSetsFactory) Option {
 	return func(app *App) {
+		app.addConfigOption(func(config cfg.GosoConf) error {
+			return config.Option(
+				cfg.WithConfigSetting("httpserver.fixtures-provider.enabled", false),
+				cfg.WithConfigSetting("httpserver.fixtures-provider.port", 8050),
+			)
+		})
+
+		app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+			return kernelPkg.WithModuleFactory("httpserver-fixtures-provider", provider.NewFixturesProviderHttpServerModule, kernelPkg.ModuleStage(kernelPkg.StageService))
+		})
+
 		app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
 			for group, factory := range factories {
 				if err := fixtures.AddFixtureSetFactory(ctx, group, factory); err != nil {

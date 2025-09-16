@@ -32,10 +32,10 @@ type DataExporter interface {
 	Close() error
 }
 
-type exporterCtxKey int
+type exporterCtxKey string
 
 func ProvideDataExporter(ctx context.Context, config cfg.Config, logger log.Logger, clientName string) (DataExporter, error) {
-	return appctx.Provide(ctx, exporterCtxKey(1), func() (DataExporter, error) {
+	return appctx.Provide(ctx, exporterCtxKey(clientName), func() (DataExporter, error) {
 		return NewDataExporter(ctx, config, logger, clientName)
 	})
 }
@@ -46,12 +46,16 @@ func NewDataExporter(ctx context.Context, config cfg.Config, logger log.Logger, 
 		return nil, fmt.Errorf("failed to provide db client: %w", err)
 	}
 
+	logger = logger.WithFields(log.Fields{
+		"client": clientName,
+	})
+
 	return NewDataExporterWithInterfaces(logger, client), nil
 }
 
 func NewDataExporterWithInterfaces(logger log.Logger, client Client) DataExporter {
 	return &dataExporter{
-		logger: logger.WithChannel("db-model-dumper"),
+		logger: logger.WithChannel("db-data-exporter"),
 		client: client,
 		ignoredModels: []string{
 			"fixture",
@@ -70,8 +74,8 @@ func (d *dataExporter) ExportTable(ctx context.Context, dbName string, tableName
 		"dbName":    dbName,
 		"tableName": tableName,
 	})
-	d.logger.Info(ctx, "dumping model %s", tableName)
-	defer d.logger.Info(ctx, "done dumping model %s", tableName)
+	d.logger.Info(ctx, "exporting model %s", tableName)
+	defer d.logger.Info(ctx, "done exporting model %s", tableName)
 
 	var resExists, resData *sqlx.Rows
 
@@ -155,7 +159,7 @@ func (d *dataExporter) ExportAllTables(ctx context.Context, dbName string) (data
 	for _, model := range models {
 		modelData, err := d.ExportTable(ctx, dbName, model)
 		if err != nil {
-			return nil, fmt.Errorf("failed to dump model %s in database %s: %w", model, dbName, err)
+			return nil, fmt.Errorf("failed to export model %s in database %s: %w", model, dbName, err)
 		}
 
 		data[model] = modelData
