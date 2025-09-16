@@ -4,5 +4,5 @@ golangci-lint 2.1.6
 mockery 2.53.0
 nodejs 20.15.1
 protoc 24.2
-protoc-gen-go 1.26.0
+protoc-gen-go 1.36.9
 yarn 1.22.22

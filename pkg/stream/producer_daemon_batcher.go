@@ -25,6 +25,13 @@ type rawJsonMessage struct {
 	body       []byte
 }
 
+func NewRawJsonMessage(attributes map[string]string, body []byte) WritableMessage {
+	return rawJsonMessage{
+		attributes: attributes,
+		body:       body,
+	}
+}
+
 var _ json.Marshaler = rawJsonMessage{}
 
 func (r rawJsonMessage) MarshalToBytes() ([]byte, error) {
