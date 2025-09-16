@@ -4,21 +4,22 @@ import (
 	"context"
 
 	"github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-type Repository struct {
-	db_repo.Repository
+type Repository[K mdl.PossibleIdentifier, M db_repo.ModelBased[K]] struct {
+	db_repo.Repository[K, M]
 	validator Validator
 }
 
-func NewRepository(validator Validator, repo db_repo.Repository) db_repo.Repository {
-	return &Repository{
+func NewRepository[K mdl.PossibleIdentifier, M db_repo.ModelBased[K]](validator Validator, repo db_repo.Repository[K, M]) db_repo.Repository[K, M] {
+	return &Repository[K, M]{
 		Repository: repo,
 		validator:  validator,
 	}
 }
 
-func (r Repository) Create(ctx context.Context, value db_repo.ModelBased) error {
+func (r Repository[K, M]) Create(ctx context.Context, value M) error {
 	err := r.validator.IsValid(ctx, value)
 	if err != nil {
 		return err
@@ -29,7 +30,7 @@ func (r Repository) Create(ctx context.Context, value db_repo.ModelBased) error 
 	return err
 }
 
-func (r Repository) Update(ctx context.Context, value db_repo.ModelBased) error {
+func (r Repository[K, M]) Update(ctx context.Context, value M) error {
 	err := r.validator.IsValid(ctx, value)
 	if err != nil {
 		return err

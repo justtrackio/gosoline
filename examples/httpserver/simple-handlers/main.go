@@ -47,7 +47,7 @@ func apiDefiner(ctx context.Context, config cfg.Config, logger log.Logger) (*htt
 		repo: &MyEntityRepository{},
 	}
 
-	if err := crud.AddCrudHandlers(config, logger, definitions, 0, "/myEntity", entityHandler); err != nil {
+	if err := crud.AddCrudHandlers[MyEntityCreateInput, MyEntityUpdateInput, *MyEntity, uint, *MyEntity](config, logger, definitions, 0, "/myEntity", entityHandler); err != nil {
 		return nil, fmt.Errorf("can not add crud handlers: %w", err)
 	}
 

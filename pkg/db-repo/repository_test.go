@@ -2,12 +2,14 @@ package db_repo_test
 
 import (
 	"database/sql/driver"
+	"fmt"
+	"regexp"
 	"testing"
 	"time"
 
 	goSqlMock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/justtrackio/gosoline/pkg/clock"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -15,7 +17,7 @@ import (
 )
 
 type MyTestModel struct {
-	db_repo.Model
+	dbRepo.Model
 }
 
 const (
@@ -25,78 +27,78 @@ const (
 	hasMany     = "hasMany"
 )
 
-var MyTestModelMetadata = db_repo.Metadata{
+var MyTestModelMetadata = dbRepo.Metadata{
 	ModelId: mdl.ModelId{
 		Application: "application",
 		Name:        "myTestModel",
 	},
 	TableName:  "my_test_models",
 	PrimaryKey: "my_test_models.id",
-	Mappings: db_repo.FieldMappings{
-		"myTestModel.id":   db_repo.NewFieldMapping("my_test_models.id"),
-		"myTestModel.name": db_repo.NewFieldMapping("my_test_models.name"),
+	Mappings: dbRepo.FieldMappings{
+		"myTestModel.id":   dbRepo.NewFieldMapping("my_test_models.id"),
+		"myTestModel.name": dbRepo.NewFieldMapping("my_test_models.name"),
 	},
 }
 
 type ManyToMany struct {
-	db_repo.Model
+	dbRepo.Model
 	RelModel []MyTestModel `gorm:"many2many:many_of_manies;" orm:"assoc_update"`
 }
 
-var ManyToManyMetadata = db_repo.Metadata{
+var ManyToManyMetadata = dbRepo.Metadata{
 	ModelId: mdl.ModelId{
 		Application: "application",
 		Name:        "manyToMany",
 	},
 	TableName:  "many_to_manies",
 	PrimaryKey: "many_to_manies.id",
-	Mappings: db_repo.FieldMappings{
-		"manyToMany.id": db_repo.NewFieldMapping("many_to_manies.id"),
+	Mappings: dbRepo.FieldMappings{
+		"manyToMany.id": dbRepo.NewFieldMapping("many_to_manies.id"),
 	},
 }
 
 type OneOfMany struct {
-	db_repo.Model
+	dbRepo.Model
 	MyTestModel   *MyTestModel `gorm:"foreignkey:MyTestModelId"`
 	MyTestModelId *uint
 }
 
-var OneOfManyMetadata = db_repo.Metadata{
+var OneOfManyMetadata = dbRepo.Metadata{
 	ModelId: mdl.ModelId{
 		Application: "application",
 		Name:        "oneOfMany",
 	},
 	TableName:  "one_of_manies",
 	PrimaryKey: "one_of_manies.id",
-	Mappings: db_repo.FieldMappings{
-		"oneOfMany.id":   db_repo.NewFieldMapping("one_of_manies.id"),
-		"myTestModel.id": db_repo.NewFieldMapping("one_of_manies.my_test_model_id"),
+	Mappings: dbRepo.FieldMappings{
+		"oneOfMany.id":   dbRepo.NewFieldMapping("one_of_manies.id"),
+		"myTestModel.id": dbRepo.NewFieldMapping("one_of_manies.my_test_model_id"),
 	},
 }
 
 type HasMany struct {
-	db_repo.Model
+	dbRepo.Model
 	Manies []*Ones `gorm:"association_autoupdate:true;association_autocreate:true;association_save_reference:true;" orm:"assoc_update"`
 }
 
-var HasManyMetadata = db_repo.Metadata{
+var HasManyMetadata = dbRepo.Metadata{
 	ModelId: mdl.ModelId{
 		Application: "application",
 		Name:        "hasMany",
 	},
 	TableName:  "has_manies",
 	PrimaryKey: "has_manies.id",
-	Mappings: db_repo.FieldMappings{
-		"hasMany.id": db_repo.NewFieldMapping("has_manies.id"),
+	Mappings: dbRepo.FieldMappings{
+		"hasMany.id": dbRepo.NewFieldMapping("has_manies.id"),
 	},
 }
 
 type Ones struct {
-	db_repo.Model
+	dbRepo.Model
 	HasManyId *uint
 }
 
-var metadatas = map[string]db_repo.Metadata{
+var metadatas = map[string]dbRepo.Metadata{
 	"myTestModel": MyTestModelMetadata,
 	"manyToMany":  ManyToManyMetadata,
 	"oneOfMany":   OneOfManyMetadata,
@@ -117,21 +119,21 @@ var (
 
 func TestRepository_Create(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(t, now, myTestModel)
+	dbc, repo := getTimedMocks[*MyTestModel](t, now, myTestModel, false)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`id`,`updated_at`,`created_at`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(id1, &now, &now).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `my_test_models` (`id`,`updated_at`,`created_at`) VALUES (?,?,?)").WithArgs(id1, &now, &now).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	model := MyTestModel{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 	}
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` WHERE `my_test_models`\\.`id` = \\? AND \\(\\(`my_test_models`\\.`id` = 1\\)\\) ORDER BY `my_test_models`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `my_test_models` WHERE (`my_test_models`.`id` = ?) ORDER BY `my_test_models`.`id` ASC LIMIT 1").WithArgs(1).WillReturnRows(rows)
 
 	err := repo.Create(t.Context(), &model)
 
@@ -146,24 +148,24 @@ func TestRepository_Create(t *testing.T) {
 
 func TestRepository_CreateManyToManyNoRelation(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(t, now, manyToMany)
+	dbc, repo := getTimedMocks[*ManyToMany](t, now, manyToMany, false)
 
 	result := goSqlMock.NewResult(0, 1)
 	delRes := goSqlMock.NewResult(0, 0)
 
 	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `many_to_manies` \\(`id`,`updated_at`,`created_at`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(id1, &now, &now).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `many_to_manies` (`id`,`updated_at`,`created_at`) VALUES (?,?,?)").WithArgs(id1, &now, &now).WillReturnResult(result)
 	dbc.ExpectCommit()
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `many_of_manies` WHERE \\(`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnResult(delRes)
+	dbc.ExpectExec("DELETE FROM `many_of_manies` WHERE (`many_to_many_id` IN (?))").WithArgs(id1).WillReturnResult(delRes)
 	dbc.ExpectCommit()
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND \\(\\(`many_to_manies`\\.`id` = 1\\)\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`\\.`my_test_model_id` = `my_test_models`\\.`id` WHERE \\(`many_of_manies`\\.`many_to_many_id` IN \\(\\?\\)\\)").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `many_to_manies` WHERE (`many_to_manies`.`id` = ?) ORDER BY `many_to_manies`.`id` ASC LIMIT 1").WithArgs(1).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`.`my_test_model_id` = `my_test_models`.`id` WHERE (`many_of_manies`.`many_to_many_id` IN (?))").WillReturnRows(rows)
 
 	model := ManyToMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 	}
@@ -181,7 +183,7 @@ func TestRepository_CreateManyToManyNoRelation(t *testing.T) {
 
 func TestRepository_CreateManyToMany(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(t, now, manyToMany)
+	dbc, repo := getTimedMocks[*ManyToMany](t, now, manyToMany, true)
 
 	result := goSqlMock.NewResult(0, 1)
 	delRes := goSqlMock.NewResult(0, 0)
@@ -199,16 +201,16 @@ func TestRepository_CreateManyToMany(t *testing.T) {
 	dbc.ExpectCommit()
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND \\(\\(`many_to_manies`\\.`id` = 1\\)\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE \\(`many_to_manies`\\.`id` = \\?\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WithArgs(1).WillReturnRows(rows)
 	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`.`my_test_model_id` = `my_test_models`\\.`id` WHERE \\(`many_of_manies`.`many_to_many_id` IN \\(\\?\\)\\)").WillReturnRows(rows)
 
 	model := ManyToMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 		RelModel: []MyTestModel{
 			{
-				Model: db_repo.Model{
+				Model: dbRepo.Model{
 					Id: id42,
 				},
 			},
@@ -228,21 +230,21 @@ func TestRepository_CreateManyToMany(t *testing.T) {
 
 func TestRepository_CreateManyToOneNoRelation(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(t, now, oneOfMany)
+	dbc, repo := getTimedMocks[*OneOfMany](t, now, oneOfMany, false)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `one_of_manies` \\(`id`,`updated_at`,`created_at`,`my_test_model_id`\\) VALUES \\(\\?,\\?,\\?,\\?\\)").WithArgs(id1, &now, &now, (*uint)(nil)).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `one_of_manies` (`id`,`updated_at`,`created_at`,`my_test_model_id`) VALUES (?,?,?,?)").WithArgs(id1, &now, &now, (*uint)(nil)).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	model := OneOfMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 	}
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at", "my_test_model_id"}).AddRow(id1, &now, &now, (*uint)(nil))
-	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND \\(\\(`one_of_manies`\\.`id` = 1\\)\\) ORDER BY `one_of_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `one_of_manies` WHERE (`one_of_manies`.`id` = ?) ORDER BY `one_of_manies`.`id` ASC LIMIT 1").WithArgs(1).WillReturnRows(rows)
 
 	err := repo.Create(t.Context(), &model)
 
@@ -257,24 +259,24 @@ func TestRepository_CreateManyToOneNoRelation(t *testing.T) {
 
 func TestRepository_CreateManyToOne(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(t, now, oneOfMany)
+	dbc, repo := getTimedMocks[*OneOfMany](t, now, oneOfMany, false)
 
 	result := goSqlMock.NewResult(0, 1)
 
 	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `one_of_manies` \\(`id`,`updated_at`,`created_at`,`my_test_model_id`\\) VALUES \\(\\?,\\?,\\?,\\?\\)").WithArgs(id1, &now, &now, id42).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `one_of_manies` (`id`,`updated_at`,`created_at`,`my_test_model_id`) VALUES (?,?,?,?)").WithArgs(id1, &now, &now, id42).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at", "my_test_model_id"}).AddRow(id1, &now, &now, id42)
-	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND \\(\\(`one_of_manies`\\.`id` = 1\\)\\) ORDER BY `one_of_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` WHERE \\(`id` IN \\(\\?\\)\\) ORDER BY `my_test_models`\\.`id` ASC").WithArgs(id42).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `one_of_manies` WHERE (`one_of_manies`.`id` = ?) ORDER BY `one_of_manies`.`id` ASC LIMIT 1").WithArgs(1).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `my_test_models` WHERE (`id` IN (?)) ORDER BY `my_test_models`.`id` ASC").WithArgs(id42).WillReturnRows(rows)
 
 	model := OneOfMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 		MyTestModel: &MyTestModel{
-			Model: db_repo.Model{
+			Model: dbRepo.Model{
 				Id: id42,
 			},
 		},
@@ -294,21 +296,21 @@ func TestRepository_CreateManyToOne(t *testing.T) {
 
 func TestRepository_CreateHasManyNoRelation(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(t, now, hasMany)
+	dbc, repo := getTimedMocks[*HasMany](t, now, hasMany, false)
 
 	result := goSqlMock.NewResult(0, 1)
 	delResult := goSqlMock.NewResult(0, 0)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `has_manies` \\(`id`,`updated_at`,`created_at`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(id1, &now, &now).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `has_manies` (`id`,`updated_at`,`created_at`) VALUES (?,?,?)").WithArgs(id1, &now, &now).WillReturnResult(result)
 	dbc.ExpectCommit()
 	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1").WillReturnResult(delResult)
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 1\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `ones` WHERE \\(`has_many_id` IN \\(\\?\\)\\) ORDER BY `ones`\\.`id` ASC").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `has_manies` WHERE (`has_manies`.`id` = ?) ORDER BY `has_manies`.`id` ASC LIMIT 1").WithArgs(1).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `ones` WHERE (`has_many_id` IN (?)) ORDER BY `ones`.`id` ASC").WillReturnRows(rows)
 
 	model := HasMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 		Manies: []*Ones{},
@@ -327,24 +329,24 @@ func TestRepository_CreateHasManyNoRelation(t *testing.T) {
 
 func TestRepository_CreateHasMany(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(t, now, hasMany)
+	dbc, repo := getTimedMocks[*HasMany](t, now, hasMany, false)
 
 	result := goSqlMock.NewResult(0, 1)
 	delResult := goSqlMock.NewResult(0, 0)
 
 	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `has_manies` \\(`updated_at`,`created_at`\\) VALUES \\(\\?,\\?\\)").WithArgs(&now, &now).WillReturnResult(result)
-	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), 0).WillReturnResult(result)
-	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), 0).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `has_manies` (`updated_at`,`created_at`) VALUES (?,?)").WithArgs(&now, &now).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `ones` (`updated_at`,`created_at`,`has_many_id`) VALUES (?,?,?)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), 0).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `ones` (`updated_at`,`created_at`,`has_many_id`) VALUES (?,?,?)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), 0).WillReturnResult(result)
 	dbc.ExpectCommit()
-	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 0 AND id NOT IN \\(0,0\\)").WillReturnResult(delResult)
+	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 0 AND id NOT IN (0,0)").WillReturnResult(delResult)
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 0\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `ones` WHERE \\(`has_many_id` IN \\(\\?\\)\\) ORDER BY `ones`\\.`id` ASC").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `has_manies` WHERE (`has_manies`.`id` = ?) ORDER BY `has_manies`.`id` ASC LIMIT 1").WithArgs(0).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `ones` WHERE (`has_many_id` IN (?)) ORDER BY `ones`.`id` ASC").WillReturnRows(rows)
 
 	model := HasMany{
-		Model: db_repo.Model{},
+		Model: dbRepo.Model{},
 		Manies: []*Ones{
 			{},
 			{},
@@ -363,20 +365,20 @@ func TestRepository_CreateHasMany(t *testing.T) {
 }
 
 func TestRepository_Update(t *testing.T) {
-	dbc, repo := getMocks(t, myTestModel)
+	dbc, repo := getMocks[*MyTestModel](t, myTestModel, false)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
 
 	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `my_test_models` SET `updated_at` = \\? WHERE `my_test_models`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), id1).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `my_test_models` SET `updated_at` = ? WHERE `my_test_models`.`id` = ?").WithArgs(goSqlMock.AnyArg(), id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` WHERE `my_test_models`\\.`id` = \\? AND \\(\\(`my_test_models`\\.`id` = 1\\)\\) ORDER BY `my_test_models`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `my_test_models` WHERE (`my_test_models`.`id` = ?) ORDER BY `my_test_models`.`id` ASC LIMIT 1").WithArgs(1).WillReturnRows(rows)
 
 	model := MyTestModel{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 	}
@@ -391,23 +393,23 @@ func TestRepository_Update(t *testing.T) {
 }
 
 func TestRepository_UpdateManyToManyNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t, manyToMany)
+	dbc, repo := getMocks[*ManyToMany](t, manyToMany, false)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `many_to_manies` SET `updated_at` = \\? WHERE `many_to_manies`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), id1).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `many_to_manies` SET `updated_at` = ? WHERE `many_to_manies`.`id` = ?").WithArgs(goSqlMock.AnyArg(), id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE \\(`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnResult(result)
+	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE (`many_to_many_id` IN (?))").WithArgs(id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND \\(\\(`many_to_manies`\\.`id` = 1\\)\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`.`my_test_model_id` = `my_test_models`\\.`id` WHERE \\(`many_of_manies`.`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `many_to_manies` WHERE (`many_to_manies`.`id` = ?) ORDER BY `many_to_manies`.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`.`my_test_model_id` = `my_test_models`.`id` WHERE (`many_of_manies`.`many_to_many_id` IN (?))").WithArgs(id1).WillReturnRows(rows)
 
 	model := ManyToMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 	}
@@ -422,7 +424,7 @@ func TestRepository_UpdateManyToManyNoRelation(t *testing.T) {
 }
 
 func TestRepository_UpdateManyToMany(t *testing.T) {
-	dbc, repo := getMocks(t, manyToMany)
+	dbc, repo := getMocks[*ManyToMany](t, manyToMany, true)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -439,16 +441,16 @@ func TestRepository_UpdateManyToMany(t *testing.T) {
 	dbc.ExpectCommit()
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND \\(\\(`many_to_manies`\\.`id` = 1\\)\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE \\(`many_to_manies`\\.`id` = \\?\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WithArgs(1).WillReturnRows(rows)
 	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`.`my_test_model_id` = `my_test_models`\\.`id` WHERE \\(`many_of_manies`.`many_to_many_id` IN \\(\\?\\)\\)").WillReturnRows(rows)
 
 	model := ManyToMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 		RelModel: []MyTestModel{
 			{
-				Model: db_repo.Model{
+				Model: dbRepo.Model{
 					Id: id42,
 				},
 			},
@@ -465,19 +467,19 @@ func TestRepository_UpdateManyToMany(t *testing.T) {
 }
 
 func TestRepository_UpdateManyToOneNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t, oneOfMany)
+	dbc, repo := getMocks[*OneOfMany](t, oneOfMany, false)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at` = \\?, `my_test_model_id` = \\?  WHERE `one_of_manies`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), (*uint)(nil), id1).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at` = ?, `my_test_model_id` = ?  WHERE `one_of_manies`.`id` = ?").WithArgs(goSqlMock.AnyArg(), (*uint)(nil), id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND \\(\\(`one_of_manies`\\.`id` = 1\\)\\) ORDER BY `one_of_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `one_of_manies` WHERE (`one_of_manies`.`id` = ?) ORDER BY `one_of_manies`.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
 
 	model := OneOfMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 		MyTestModel:   nil,
@@ -494,24 +496,25 @@ func TestRepository_UpdateManyToOneNoRelation(t *testing.T) {
 }
 
 func TestRepository_UpdateManyToOne(t *testing.T) {
-	dbc, repo := getMocks(t, oneOfMany)
+	dbc, repo := getMocks[*OneOfMany](t, oneOfMany, false)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at` = \\?, `my_test_model_id` = \\?  WHERE `one_of_manies`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), id1).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at` = ?, `my_test_model_id` = ?  WHERE `one_of_manies`.`id` = ?").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND \\(\\(`one_of_manies`\\.`id` = 1\\)\\) ORDER BY `one_of_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` WHERE \\(`id` IN \\(\\?\\)\\) ORDER BY `my_test_models`\\.`id` ASC").WithArgs(id42).WillReturnRows(rows)
+	oneOfManyRows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at", "my_test_model_id"}).AddRow(id1, &now, &now, id42)
+	myTestModelRows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id42, &now, &now)
+	dbc.ExpectQuery("SELECT * FROM `one_of_manies` WHERE (`one_of_manies`.`id` = ?) ORDER BY `one_of_manies`.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(oneOfManyRows)
+	dbc.ExpectQuery("SELECT * FROM `my_test_models` WHERE (`id` IN (?)) ORDER BY `my_test_models`.`id` ASC").WithArgs(id42).WillReturnRows(myTestModelRows)
 
 	model := OneOfMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 		MyTestModel: &MyTestModel{
-			Model: db_repo.Model{
+			Model: dbRepo.Model{
 				Id: id42,
 			},
 		},
@@ -528,25 +531,25 @@ func TestRepository_UpdateManyToOne(t *testing.T) {
 }
 
 func TestRepository_UpdateHasMany(t *testing.T) {
-	dbc, repo := getMocks(t, hasMany)
+	dbc, repo := getMocks[*HasMany](t, hasMany, false)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
 	delResult := goSqlMock.NewResult(0, 0)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `has_manies` SET `updated_at` = \\? WHERE `has_manies`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), id1).WillReturnResult(result)
-	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), *id1).WillReturnResult(result)
-	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), *id1).WillReturnResult(result)
-	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), *id1).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `has_manies` SET `updated_at` = ? WHERE `has_manies`.`id` = ?").WithArgs(goSqlMock.AnyArg(), id1).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `ones` (`updated_at`,`created_at`,`has_many_id`) VALUES (?,?,?)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), *id1).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `ones` (`updated_at`,`created_at`,`has_many_id`) VALUES (?,?,?)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), *id1).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `ones` (`updated_at`,`created_at`,`has_many_id`) VALUES (?,?,?)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), *id1).WillReturnResult(result)
 	dbc.ExpectCommit()
-	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1 AND id NOT IN \\(0,0,0\\)").WillReturnResult(delResult)
+	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1 AND id NOT IN (0,0,0)").WillReturnResult(delResult)
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 1\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `ones` WHERE \\(`has_many_id` IN \\(\\?\\)\\) ORDER BY `ones`\\.`id` ASC").WithArgs(id1).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `has_manies` WHERE (`has_manies`.`id` = ?) ORDER BY `has_manies`.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `ones` WHERE (`has_many_id` IN (?)) ORDER BY `ones`.`id` ASC").WithArgs(id1).WillReturnRows(rows)
 
 	model := HasMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 		Manies: []*Ones{
@@ -564,23 +567,23 @@ func TestRepository_UpdateHasMany(t *testing.T) {
 }
 
 func TestRepository_UpdateHasManyNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t, hasMany)
+	dbc, repo := getMocks[*HasMany](t, hasMany, false)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
 	delResult := goSqlMock.NewResult(0, 0)
 
 	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `has_manies` SET `updated_at` = \\? WHERE `has_manies`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), id1).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `has_manies` SET `updated_at` = ? WHERE `has_manies`.`id` = ?").WithArgs(goSqlMock.AnyArg(), id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1").WillReturnResult(delResult)
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 1\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `ones` WHERE \\(`has_many_id` IN \\(\\?\\)\\) ORDER BY `ones`\\.`id` ASC").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `has_manies` WHERE (`has_manies`.`id` = ?) ORDER BY `has_manies`.`id` ASC LIMIT 1").WithArgs(1).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT * FROM `ones` WHERE (`has_many_id` IN (?)) ORDER BY `ones`.`id` ASC").WillReturnRows(rows)
 
 	model := HasMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 		Manies: []*Ones{},
@@ -596,15 +599,15 @@ func TestRepository_UpdateHasManyNoRelation(t *testing.T) {
 }
 
 func TestRepository_Delete(t *testing.T) {
-	dbc, repo := getMocks(t, myTestModel)
+	dbc, repo := getMocks[*MyTestModel](t, myTestModel, false)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `my_test_models`  WHERE `my_test_models`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
+	dbc.ExpectExec("DELETE FROM `my_test_models`  WHERE `my_test_models`.`id` = ?").WithArgs(id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	model := MyTestModel{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 	}
@@ -619,18 +622,18 @@ func TestRepository_Delete(t *testing.T) {
 }
 
 func TestRepository_DeleteManyToManyNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t, manyToMany)
+	dbc, repo := getMocks[*ManyToMany](t, manyToMany, false)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE \\(`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnResult(result)
+	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE (`many_to_many_id` IN (?))").WithArgs(id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `many_to_manies`  WHERE `many_to_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
+	dbc.ExpectExec("DELETE FROM `many_to_manies`  WHERE `many_to_manies`.`id` = ?").WithArgs(id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	model := ManyToMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 	}
@@ -645,23 +648,23 @@ func TestRepository_DeleteManyToManyNoRelation(t *testing.T) {
 }
 
 func TestRepository_DeleteManyToMany(t *testing.T) {
-	dbc, repo := getMocks(t, manyToMany)
+	dbc, repo := getMocks[*ManyToMany](t, manyToMany, false)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE \\(`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnResult(result)
+	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE (`many_to_many_id` IN (?))").WithArgs(id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `many_to_manies`  WHERE `many_to_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
+	dbc.ExpectExec("DELETE FROM `many_to_manies`  WHERE `many_to_manies`.`id` = ?").WithArgs(id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	model := ManyToMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 		RelModel: []MyTestModel{
 			{
-				Model: db_repo.Model{
+				Model: dbRepo.Model{
 					Id: id42,
 				},
 			},
@@ -678,15 +681,15 @@ func TestRepository_DeleteManyToMany(t *testing.T) {
 }
 
 func TestRepository_DeleteManyToOneNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t, oneOfMany)
+	dbc, repo := getMocks[*OneOfMany](t, oneOfMany, false)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `one_of_manies`  WHERE `one_of_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
+	dbc.ExpectExec("DELETE FROM `one_of_manies`  WHERE `one_of_manies`.`id` = ?").WithArgs(id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	model := OneOfMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 	}
@@ -701,19 +704,19 @@ func TestRepository_DeleteManyToOneNoRelation(t *testing.T) {
 }
 
 func TestRepository_DeleteManyToOne(t *testing.T) {
-	dbc, repo := getMocks(t, oneOfMany)
+	dbc, repo := getMocks[*OneOfMany](t, oneOfMany, false)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `one_of_manies`  WHERE `one_of_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
+	dbc.ExpectExec("DELETE FROM `one_of_manies`  WHERE `one_of_manies`.`id` = ?").WithArgs(id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	model := OneOfMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 		MyTestModel: &MyTestModel{
-			Model: db_repo.Model{
+			Model: dbRepo.Model{
 				Id: id42,
 			},
 		},
@@ -730,28 +733,28 @@ func TestRepository_DeleteManyToOne(t *testing.T) {
 }
 
 func TestRepository_DeleteHasMany(t *testing.T) {
-	dbc, repo := getMocks(t, hasMany)
+	dbc, repo := getMocks[*HasMany](t, hasMany, false)
 
 	childResult := goSqlMock.NewResult(0, 0)
 	parentResult := goSqlMock.NewResult(0, 1)
 
 	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1").WillReturnResult(childResult)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `has_manies`  WHERE `has_manies`\\.`id` = ?").WithArgs(id1).WillReturnResult(parentResult)
+	dbc.ExpectExec("DELETE FROM `has_manies`  WHERE `has_manies`.`id` = ?").WithArgs(id1).WillReturnResult(parentResult)
 	dbc.ExpectCommit()
 
 	model := HasMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 		Manies: []*Ones{
 			{
-				Model: db_repo.Model{
+				Model: dbRepo.Model{
 					Id: id42,
 				},
 			},
 			{
-				Model: db_repo.Model{
+				Model: dbRepo.Model{
 					Id: id24,
 				},
 			},
@@ -768,18 +771,18 @@ func TestRepository_DeleteHasMany(t *testing.T) {
 }
 
 func TestRepository_DeleteHasManyNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t, hasMany)
+	dbc, repo := getMocks[*HasMany](t, hasMany, false)
 
 	childResult := goSqlMock.NewResult(0, 0)
 	parentResult := goSqlMock.NewResult(0, 1)
 
 	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1").WillReturnResult(childResult)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `has_manies`  WHERE `has_manies`\\.`id` = ?").WithArgs(id1).WillReturnResult(parentResult)
+	dbc.ExpectExec("DELETE FROM `has_manies`  WHERE `has_manies`.`id` = ?").WithArgs(id1).WillReturnResult(parentResult)
 	dbc.ExpectCommit()
 
 	model := HasMany{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: id1,
 		},
 		Manies: []*Ones{},
@@ -794,58 +797,68 @@ func TestRepository_DeleteHasManyNoRelation(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func getMocks(t *testing.T, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Repository) {
+func queryMatcher(t *testing.T, useRegexMatcher bool) goSqlMock.QueryMatcher {
+	whiteSpace := regexp.MustCompile(`\s{2,}`)
+
+	return goSqlMock.QueryMatcherFunc(func(expectedSQL string, actualSQL string) error {
+		if useRegexMatcher {
+			return goSqlMock.QueryMatcherRegexp.Match(expectedSQL, actualSQL)
+		}
+
+		expectedSQL = whiteSpace.ReplaceAllString(expectedSQL, " ")
+		actualSQL = whiteSpace.ReplaceAllString(actualSQL, " ")
+
+		if expectedSQL != actualSQL {
+			_, err := fmt.Printf("Failed to match\n\t%s\nwith\n\t%s\n", expectedSQL, actualSQL)
+			assert.NoError(t, err)
+
+			return fmt.Errorf(`could not match actual sql: "%s" with expected sql "%s"`, actualSQL, expectedSQL)
+		}
+
+		return nil
+	})
+}
+
+func getMocks[M dbRepo.ModelBased[uint]](t *testing.T, whichMetadata string, useRegexMatcher bool) (goSqlMock.Sqlmock, dbRepo.Repository[uint, M]) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	tracer := tracing.NewLocalTracer()
 
-	db, clientMock, err := goSqlMock.New()
-	if err != nil {
-		assert.FailNow(t, err.Error())
-	}
+	db, clientMock, err := goSqlMock.New(goSqlMock.QueryMatcherOption(queryMatcher(t, useRegexMatcher)))
+	assert.NoError(t, err)
 
-	orm, err := db_repo.NewOrmWithInterfaces(db, db_repo.OrmSettings{
+	orm, err := dbRepo.NewOrmWithInterfaces(db, dbRepo.OrmSettings{
 		Driver: "mysql",
 	})
-	if err != nil {
-		assert.FailNow(t, err.Error())
-	}
+	assert.NoError(t, err)
 
 	testClock := clock.NewFakeClock()
 
 	metadata, ok := metadatas[whichMetadata]
-	if !ok {
-		t.Errorf("couldn't find metadata named: %s", whichMetadata)
-	}
+	assert.Truef(t, ok, "couldn't find metadata named: %s", whichMetadata)
 
-	repo := db_repo.NewWithInterfaces(logger, tracer, orm, testClock, metadata)
+	repo := dbRepo.NewWithInterfaces[uint, M](logger, tracer, orm, testClock, metadata, dbRepo.CreateModel[M])
 
 	return clientMock, repo
 }
 
-func getTimedMocks(t *testing.T, time time.Time, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Repository) {
+func getTimedMocks[M dbRepo.ModelBased[uint]](t *testing.T, time time.Time, whichMetadata string, useRegexMatcher bool) (goSqlMock.Sqlmock, dbRepo.Repository[uint, M]) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	tracer := tracing.NewLocalTracer()
 
-	db, clientMock, err := goSqlMock.New()
-	if err != nil {
-		assert.FailNow(t, err.Error())
-	}
+	db, clientMock, err := goSqlMock.New(goSqlMock.QueryMatcherOption(queryMatcher(t, useRegexMatcher)))
+	assert.NoError(t, err)
 
-	orm, err := db_repo.NewOrmWithInterfaces(db, db_repo.OrmSettings{
+	orm, err := dbRepo.NewOrmWithInterfaces(db, dbRepo.OrmSettings{
 		Driver: "mysql",
 	})
-	if err != nil {
-		assert.FailNow(t, err.Error())
-	}
+	assert.NoError(t, err)
 
 	testClock := clock.NewFakeClockAt(time)
 
 	metadata, ok := metadatas[whichMetadata]
-	if !ok {
-		t.Errorf("couldn't find metadata named: %s", whichMetadata)
-	}
+	assert.Truef(t, ok, "couldn't find metadata named: %s", whichMetadata)
 
-	repo := db_repo.NewWithInterfaces(logger, tracer, orm, testClock, metadata)
+	repo := dbRepo.NewWithInterfaces[uint, M](logger, tracer, orm, testClock, metadata, dbRepo.CreateModel[M])
 
 	return clientMock, repo
 }

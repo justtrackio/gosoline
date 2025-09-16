@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	configMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
@@ -39,12 +39,12 @@ func (s *createTestSuite) SetupTest() {
 	config.EXPECT().UnmarshalKey("crud", mock.AnythingOfType("*crud.Settings")).Run(func(key string, val any, additionalDefaults ...cfg.UnmarshalDefaults) {
 		settings := val.(*crud.Settings)
 		settings.WriteTimeout = time.Minute
-	}).Return(nil)
+	}).Return(nil).Once()
 
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 
 	s.handler = newHandler(s.T())
-	s.createHandler, err = crud.NewCreateHandler(config, logger, s.handler)
+	s.createHandler, err = crud.NewCreateHandler[CreateInput, Output, uint, *Model](config, logger, s.handler)
 	s.NoError(err)
 }
 
@@ -53,17 +53,19 @@ func (s *createTestSuite) TestCreate() {
 		Name: mdl.Box("foobar"),
 	}
 
-	s.handler.Repo.EXPECT().Create(matcher.Context, model).Run(func(_ context.Context, value db_repo.ModelBased) {
-		model := value.(*Model)
-		model.Id = mdl.Box(uint(1))
-	}).Return(nil)
-	s.handler.Repo.EXPECT().Read(matcher.Context, mdl.Box(uint(1)), &Model{}).Run(func(_ context.Context, id *uint, out db_repo.ModelBased) {
-		model := out.(*Model)
-		model.Id = mdl.Box(uint(1))
-		model.Name = mdl.Box("foobar")
-		model.UpdatedAt = &time.Time{}
-		model.CreatedAt = &time.Time{}
-	}).Return(nil)
+	s.handler.Repo.EXPECT().Create(matcher.Context, model).Run(func(ctx context.Context, value *Model) {
+		value.Id = mdl.Box(uint(1))
+	}).Return(nil).Once()
+	s.handler.Repo.EXPECT().Read(matcher.Context, uint(1)).Return(&Model{
+		Model: dbRepo.Model{
+			Id: mdl.Box(uint(1)),
+			Timestamps: dbRepo.Timestamps{
+				UpdatedAt: &time.Time{},
+				CreatedAt: &time.Time{},
+			},
+		},
+		Name: mdl.Box("foobar"),
+	}, nil).Once()
 
 	body := `{"name": "foobar"}`
 	response := httpserver.HttpTest("POST", "/create", "/create", body, s.createHandler)

@@ -7,7 +7,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
-	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
@@ -41,7 +40,7 @@ type UpdateInput struct {
 type TodoCrudHandlerV0 struct {
 	// highlight-next-line
 	logger log.Logger
-	repo   db_repo.Repository
+	repo   db_repo.Repository[uint, *Todo]
 }
 
 // snippet-end: crud handler v0
@@ -49,9 +48,9 @@ type TodoCrudHandlerV0 struct {
 // snippet-start: new todo crud handler
 func NewTodoCrudHandler(ctx context.Context, config cfg.Config, logger log.Logger) (*TodoCrudHandlerV0, error) {
 	var err error
-	var repo db_repo.Repository
+	var repo db_repo.Repository[uint, *Todo]
 
-	if repo, err = db_repo.New(ctx, config, logger, settings); err != nil {
+	if repo, err = db_repo.New[uint, *Todo](ctx, config, logger, settings); err != nil {
 		return nil, fmt.Errorf("can not create db_repo.Repositorys: %w", err)
 	}
 
@@ -66,16 +65,8 @@ func NewTodoCrudHandler(ctx context.Context, config cfg.Config, logger log.Logge
 
 // snippet-end: new todo crud handler
 
-func (h TodoCrudHandlerV0) GetRepository() crud.Repository {
+func (h TodoCrudHandlerV0) GetRepository() db_repo.Repository[uint, *Todo] {
 	return h.repo
-}
-
-func (h TodoCrudHandlerV0) GetModel() db_repo.ModelBased {
-	return &Todo{}
-}
-
-func (h TodoCrudHandlerV0) GetCreateInput() any {
-	return &CreateInput{}
 }
 
 // snippet-start: truncate
@@ -97,57 +88,46 @@ func truncate(ctx context.Context, text string) string {
 // snippet-end: truncate
 
 // snippet-start: transform create
-func (h TodoCrudHandlerV0) TransformCreate(ctx context.Context, input any, model db_repo.ModelBased) error {
-	in := input.(*CreateInput)
-	m := model.(*Todo)
-
+func (h TodoCrudHandlerV0) TransformCreate(ctx context.Context, in *CreateInput) (*Todo, error) {
 	// highlight-start
-	localctx := log.InitContext(ctx)
-	m.Text = truncate(localctx, in.Text)
-	// highlight-end
-	m.DueDate = in.DueDate
+	localCtx := log.InitContext(ctx)
+	m := &Todo{
+		Text: truncate(localCtx, in.Text),
+		// highlight-end
+		DueDate: in.DueDate,
+	}
 
-	return nil
+	return m, nil
 }
 
 // snippet-end: transform create
 
-func (h TodoCrudHandlerV0) GetUpdateInput() any {
-	return &UpdateInput{}
-}
-
 // snippet-start: transform update
-func (h TodoCrudHandlerV0) TransformUpdate(ctx context.Context, input any, model db_repo.ModelBased) error {
-	in := input.(*UpdateInput)
-	m := model.(*Todo)
-
+func (h TodoCrudHandlerV0) TransformUpdate(ctx context.Context, in *UpdateInput, m *Todo) (*Todo, error) {
 	// highlight-start
-	localctx := log.InitContext(ctx)
-	m.Text = truncate(localctx, in.Text)
+	localCtx := log.InitContext(ctx)
+	m.Text = truncate(localCtx, in.Text)
 	// highlight-end
 
-	return nil
+	return m, nil
 }
 
 // snippet-end: transform update
 
-func (h TodoCrudHandlerV0) TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (any, error) {
+func (h TodoCrudHandlerV0) TransformOutput(ctx context.Context, model *Todo, apiView string) (*Todo, error) {
 	return model, nil
 }
-
-func (h TodoCrudHandlerV0) List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (any, error) {
+func (h TodoCrudHandlerV0) List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) ([]*Todo, error) {
 	var err error
-
-	// Instatiate a list of Todo objects, called result.
-	result := make([]*Todo, 0)
+	var result []*Todo
 
 	// Query the database using a Context and a QueryBuilder. If it finds the results, it sets them on result. Otherwise, it returns an error.
-	if err = h.repo.Query(ctx, qb, &result); err != nil {
+	if result, err = h.repo.Query(ctx, qb); err != nil {
 		return nil, fmt.Errorf("can not query todo items: %w", err)
 	}
 
 	// Transform each result with TransformOutput().
-	out := make([]any, len(result))
+	out := make([]*Todo, len(result))
 	for i, res := range result {
 		if out[i], err = h.TransformOutput(ctx, res, apiView); err != nil {
 			return nil, err

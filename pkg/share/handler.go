@@ -9,11 +9,12 @@ import (
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/selm0/ladon"
 )
 
-type Shareable interface {
-	db_repo.ModelBased
+type Shareable[K mdl.PossibleIdentifier] interface {
+	db_repo.ModelBased[K]
 	GetResources() []string
 	GetEntityType() string
 }
@@ -23,36 +24,33 @@ type Metadata interface {
 	GetActions() []string
 }
 
-type ModelBased interface {
-	db_repo.ModelBased
+type ModelBased[K mdl.PossibleIdentifier] interface {
+	db_repo.ModelBased[K]
 	GetPolicyId() string
 }
 
-type BaseShareHandler interface {
-	GetEntityModel() Shareable
-	GetEntityRepository() db_repo.Repository
+type BaseShareHandler[K mdl.PossibleIdentifier, M Shareable[K]] interface {
+	GetEntityRepository() db_repo.Repository[K, M]
 	GetGuard() guard.Guard
-	GetModel() ModelBased
-	GetRepository() db_repo.Repository
-	TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (output any, err error)
+	GetRepository() db_repo.Repository[K, M]
+	TransformOutput(ctx context.Context, model M, apiView string) (output any, err error)
 }
 
-type EntityUpdateHandler interface {
-	BaseShareHandler
-	crud.BaseUpdateHandler
+type EntityUpdateHandler[I any, O any, K mdl.PossibleIdentifier, M Shareable[K]] interface {
+	BaseShareHandler[K, M]
+	crud.BaseUpdateHandler[I, K, M]
 }
 
-type EntityDeleteHandler interface {
-	BaseShareHandler
+type EntityDeleteHandler[K mdl.PossibleIdentifier, M Shareable[K]] interface {
+	BaseShareHandler[K, M]
 }
 
-type ShareCreateHandler interface {
-	BaseShareHandler
-	GetCreateInput() Metadata
-	TransformCreate(ctx context.Context, input any, entity Shareable, policy ladon.Policy, model db_repo.ModelBased) (err error)
+type ShareCreateHandler[I Metadata, K mdl.PossibleIdentifier, M Shareable[K]] interface {
+	BaseShareHandler[K, M]
+	TransformCreate(ctx context.Context, input I, entity Shareable[K], policy ladon.Policy) (model M, err error)
 }
 
-func AddShareCreateHandler(logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler ShareCreateHandler) {
+func AddShareCreateHandler[I Metadata, K mdl.PossibleIdentifier, M Shareable[K]](logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler ShareCreateHandler[I, K, M]) {
 	path := fmt.Sprintf("/v%d/%s/:id/share", version, basePath)
-	d.POST(path, NewShareCreateHandler(logger, handler))
+	d.POST(path, NewShareCreateHandler[I, K, M](logger, handler))
 }

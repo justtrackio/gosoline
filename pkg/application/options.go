@@ -11,7 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	taskRunner "github.com/justtrackio/gosoline/pkg/conc/task_runner"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
@@ -214,7 +214,7 @@ func WithExecBackoffSettings(settings *exec.BackoffSettings) Option {
 
 func WithDbRepoChangeHistory(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
-		return kernelPkg.WithMiddlewareFactory(db_repo.KernelMiddlewareChangeHistory, kernelPkg.PositionEnd)
+		return kernelPkg.WithMiddlewareFactory(dbRepo.KernelMiddlewareChangeHistory, kernelPkg.PositionEnd)
 	})
 }
 

@@ -26,6 +26,14 @@ func (i *item) GetId() *uint {
 	return &i.Id
 }
 
+func (i *item) GetUpdatedAt() *time.Time {
+	return &i.UpdatedAt
+}
+
+func (i *item) GetCreatedAt() *time.Time {
+	return &i.UpdatedAt
+}
+
 func (i *item) SetUpdatedAt(updatedAt *time.Time) {
 	i.UpdatedAt = mdl.EmptyIfNil(updatedAt)
 }
@@ -45,7 +53,8 @@ var ddbSettings = &ddb.Settings{
 var repoSettings = db_repo.Settings{
 	AppId: cfg.AppId{},
 	Metadata: db_repo.Metadata{
-		TableName: "items",
+		TableName:  "items",
+		PrimaryKey: "items.id",
 	},
 }
 
@@ -53,7 +62,7 @@ type app struct {
 	kernel.EssentialModule
 	kernel.ServiceStage
 	ddbRepository ddb.Repository
-	dbRepository  db_repo.Repository
+	dbRepository  db_repo.Repository[uint, *item]
 }
 
 func newAppModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -62,7 +71,7 @@ func newAppModule(ctx context.Context, config cfg.Config, logger log.Logger) (ke
 		return nil, fmt.Errorf("unable to create dynamodb repository: %w", err)
 	}
 
-	dbRepository, err := db_repo.New(ctx, config, logger, repoSettings)
+	dbRepository, err := db_repo.New[uint, *item](ctx, config, logger, repoSettings)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create mysql client: %w", err)
 	}

@@ -60,7 +60,11 @@ func (c *DdbComponent) Client() *dynamodb.Client {
 func (c *DdbComponent) Repository(settings *ddb.Settings) (ddb.Repository, error) {
 	tracer := tracing.NewLocalTracer()
 	client := c.Client()
-	settings.ModelId.PadFromConfig(c.config)
+
+	if err := settings.ModelId.PadFromConfig(c.config); err != nil {
+		return nil, fmt.Errorf("can not pad settings from config: %w", err)
+	}
+
 	tableName := ddb.GetTableNameWithSettings(settings, c.namingSettings)
 	metadataFactory := ddb.NewMetadataFactoryWithInterfaces(settings, tableName)
 

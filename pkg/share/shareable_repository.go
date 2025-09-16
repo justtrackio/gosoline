@@ -8,17 +8,18 @@ import (
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/guard"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/selm0/ladon"
 )
 
-type shareRepository struct {
-	db_repo.Repository
+type shareRepository[K mdl.PossibleIdentifier, M Shareable[K]] struct {
+	db_repo.Repository[K, M]
 	guard           guard.Guard
 	logger          log.Logger
-	shareRepository db_repo.Repository
+	shareRepository db_repo.Repository[uint, *Share]
 }
 
-func NewShareableRepository(ctx context.Context, config cfg.Config, logger log.Logger, repo db_repo.Repository) (*shareRepository, error) {
+func NewShareableRepository[K mdl.PossibleIdentifier, M Shareable[K]](ctx context.Context, config cfg.Config, logger log.Logger, repo db_repo.Repository[K, M]) (*shareRepository[K, M], error) {
 	guard, err := guard.NewGuard(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create guard: %w", err)
@@ -29,7 +30,7 @@ func NewShareableRepository(ctx context.Context, config cfg.Config, logger log.L
 		return nil, fmt.Errorf("can not create share repository: %w", err)
 	}
 
-	return &shareRepository{
+	return &shareRepository[K, M]{
 		Repository:      repo,
 		logger:          logger,
 		guard:           guard,
@@ -37,13 +38,8 @@ func NewShareableRepository(ctx context.Context, config cfg.Config, logger log.L
 	}, nil
 }
 
-func (r shareRepository) Update(ctx context.Context, value db_repo.ModelBased) error {
-	entity, ok := value.(Shareable)
-	if !ok {
-		return fmt.Errorf("can not get entity name from given value")
-	}
-
-	err := r.Repository.Update(ctx, value)
+func (r shareRepository[K, M]) Update(ctx context.Context, entity M) error {
+	err := r.Repository.Update(ctx, entity)
 	if err != nil {
 		return err
 	}
@@ -59,7 +55,7 @@ func (r shareRepository) Update(ctx context.Context, value db_repo.ModelBased) e
 			return fmt.Errorf("can not get policy by id: %w", err)
 		}
 
-		updatedPolicy := BuildSharePolicy(share.PolicyId, entity, share.OwnerId, oldPolicy.GetActions())
+		updatedPolicy := BuildSharePolicy[K](share.PolicyId, entity, share.OwnerId, oldPolicy.GetActions())
 		err = r.guard.UpdatePolicy(ctx, updatedPolicy)
 		if err != nil {
 			return fmt.Errorf("can not update policy: %w", err)
@@ -69,12 +65,7 @@ func (r shareRepository) Update(ctx context.Context, value db_repo.ModelBased) e
 	return nil
 }
 
-func (r shareRepository) Delete(ctx context.Context, value db_repo.ModelBased) error {
-	entity, ok := value.(Shareable)
-	if !ok {
-		return fmt.Errorf("can not get entity name from given value")
-	}
-
+func (r shareRepository[K, M]) Delete(ctx context.Context, entity M) error {
 	shares, err := r.getEntityShares(ctx, entity)
 	if err != nil {
 		return err
@@ -92,15 +83,14 @@ func (r shareRepository) Delete(ctx context.Context, value db_repo.ModelBased) e
 		}
 	}
 
-	return r.Repository.Delete(ctx, value)
+	return r.Repository.Delete(ctx, entity)
 }
 
-func (r shareRepository) getEntityShares(ctx context.Context, entity Shareable) ([]*Share, error) {
+func (r shareRepository[K, M]) getEntityShares(ctx context.Context, entity M) ([]*Share, error) {
 	qb := db_repo.NewQueryBuilder()
 	qb.Where("entity_id = ? and entity_type = ?", *entity.GetId(), entity.GetEntityType())
 
-	var result []*Share
-	err := r.shareRepository.Query(ctx, qb, &result)
+	result, err := r.shareRepository.Query(ctx, qb)
 	if err != nil {
 		return nil, fmt.Errorf("can not query shares of entity type %s: %w", entity.GetEntityType(), err)
 	}

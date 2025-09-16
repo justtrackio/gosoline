@@ -75,19 +75,19 @@ func ModelIdFromString(str string) (ModelId, error) {
 	return modelId, nil
 }
 
-type Identifiable interface {
-	GetId() *uint
+type PossibleIdentifier interface {
+	uint | string
 }
 
-type Keyed interface {
-	GetKey() string
+type Identifiable[K PossibleIdentifier] interface {
+	GetId() *K
 }
 
-type Identifier struct {
-	Id *uint `json:"id" binding:"required"`
+type Identifier[K PossibleIdentifier] struct {
+	Id *K `json:"id" binding:"required"`
 }
 
-func (i *Identifier) GetId() *uint {
+func (i *Identifier[K]) GetId() *K {
 	if i == nil {
 		return nil
 	}
@@ -95,8 +95,8 @@ func (i *Identifier) GetId() *uint {
 	return i.Id
 }
 
-func WithIdentifier(id *uint) *Identifier {
-	return &Identifier{
+func WithIdentifier[K PossibleIdentifier](id *K) *Identifier[K] {
+	return &Identifier[K]{
 		Id: id,
 	}
 }

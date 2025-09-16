@@ -9,8 +9,8 @@ import (
 const ColumnUpdatedAt = "updated_at"
 
 //go:generate go run github.com/vektra/mockery/v2 --name ModelBased
-type ModelBased interface {
-	mdl.Identifiable
+type ModelBased[K mdl.PossibleIdentifier] interface {
+	mdl.Identifiable[K]
 	TimeStampable
 }
 
@@ -23,8 +23,18 @@ func (m *Model) GetId() *uint {
 	return m.Id
 }
 
+type DistributedModel struct {
+	Id *string `gorm:"primary_key"`
+	Timestamps
+}
+
+func (m *DistributedModel) GetId() *string {
+	return m.Id
+}
+
 //go:generate go run github.com/vektra/mockery/v2 --name TimeStampable
 type TimeStampable interface {
+	TimestampAware
 	SetUpdatedAt(updatedAt *time.Time)
 	SetCreatedAt(createdAt *time.Time)
 }

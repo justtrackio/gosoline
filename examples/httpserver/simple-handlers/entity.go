@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/db-repo"
@@ -19,6 +20,14 @@ func (e *MyEntity) GetId() *uint {
 	return &e.Id
 }
 
+func (e *MyEntity) GetUpdatedAt() *time.Time {
+	return e.UpdatedAt
+}
+
+func (e *MyEntity) GetCreatedAt() *time.Time {
+	return e.CreatedAt
+}
+
 func (e *MyEntity) SetUpdatedAt(updatedAt *time.Time) {
 	e.UpdatedAt = updatedAt
 }
@@ -29,39 +38,59 @@ func (e *MyEntity) SetCreatedAt(createdAt *time.Time) {
 
 type MyEntityRepository struct{}
 
-func (*MyEntityRepository) Create(ctx context.Context, value db_repo.ModelBased) error {
+func (*MyEntityRepository) Create(ctx context.Context, value *MyEntity) error {
 	return nil
 }
 
-func (*MyEntityRepository) Read(ctx context.Context, id *uint, out db_repo.ModelBased) error {
+func (*MyEntityRepository) Read(ctx context.Context, id uint) (*MyEntity, error) {
+	if id == 1 {
+		return &MyEntity{
+			Id:    1,
+			Prop1: "text",
+		}, nil
+	}
+
+	if id == 2 {
+		return &MyEntity{
+			Id:    2,
+			Prop2: "text",
+		}, nil
+	}
+
+	return nil, db_repo.NewRecordNotFoundError(fmt.Sprintf("%d", id), "myEntity", fmt.Errorf("not found"))
+}
+
+func (*MyEntityRepository) Update(ctx context.Context, value *MyEntity) error {
 	return nil
 }
 
-func (*MyEntityRepository) Update(ctx context.Context, value db_repo.ModelBased) error {
+func (*MyEntityRepository) Delete(ctx context.Context, value *MyEntity) error {
 	return nil
 }
 
-func (*MyEntityRepository) Delete(ctx context.Context, value db_repo.ModelBased) error {
-	return nil
+func (*MyEntityRepository) Query(ctx context.Context, qb *db_repo.QueryBuilder) ([]*MyEntity, error) {
+	return []*MyEntity{
+		{
+			Id:    1,
+			Prop1: "text",
+		},
+		{
+			Id:    2,
+			Prop2: "text",
+		},
+	}, nil
 }
 
-func (*MyEntityRepository) Query(ctx context.Context, qb *db_repo.QueryBuilder, result any) error {
-	r := result.(*[]*MyEntity)
-
-	*r = append(*r, &MyEntity{
-		Id:    1,
-		Prop1: "text",
-	})
-	*r = append(*r, &MyEntity{
-		Id:    2,
-		Prop1: "text",
-	})
-
-	return nil
-}
-
-func (*MyEntityRepository) Count(ctx context.Context, qb *db_repo.QueryBuilder, model db_repo.ModelBased) (int, error) {
+func (*MyEntityRepository) Count(ctx context.Context, qb *db_repo.QueryBuilder) (int, error) {
 	return 2, nil
+}
+
+func (r *MyEntityRepository) GetModelId() string {
+	return "project.family.name.MyEntity"
+}
+
+func (r *MyEntityRepository) GetModelName() string {
+	return "MyEntity"
 }
 
 func (*MyEntityRepository) GetMetadata() db_repo.Metadata {

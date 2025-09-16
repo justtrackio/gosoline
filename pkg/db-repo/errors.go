@@ -6,12 +6,12 @@ import (
 )
 
 type RecordNotFoundError struct {
-	id      uint
+	id      string
 	modelId string
 	err     error
 }
 
-func NewRecordNotFoundError(id uint, modelId string, err error) RecordNotFoundError {
+func NewRecordNotFoundError(id string, modelId string, err error) RecordNotFoundError {
 	return RecordNotFoundError{
 		id:      id,
 		modelId: modelId,
@@ -20,7 +20,7 @@ func NewRecordNotFoundError(id uint, modelId string, err error) RecordNotFoundEr
 }
 
 func (e RecordNotFoundError) Error() string {
-	return fmt.Sprintf("could not find model of type %s with id %d: %s", e.modelId, e.id, e.err)
+	return fmt.Sprintf("could not find model of type %s with id %s: %s", e.modelId, e.id, e.err)
 }
 
 func (e RecordNotFoundError) Unwrap() error {

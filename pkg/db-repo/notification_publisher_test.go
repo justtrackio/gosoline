@@ -25,7 +25,7 @@ func Test_Publish_Notifier(t *testing.T) {
 	}
 
 	transformer := func(view string, version int, in any) (out any) {
-		assert.Equal(t, mdl.Box(uint(3)), in.(db_repo.ModelBased).GetId())
+		assert.Equal(t, mdl.Box(uint(3)), in.(db_repo.ModelBased[uint]).GetId())
 		assert.Equal(t, "api", view)
 		assert.Equal(t, 1, version)
 
@@ -44,8 +44,7 @@ func Test_Publish_Notifier(t *testing.T) {
 		Environment: "test",
 	}
 
-	notifier, err := db_repo.NewPublisherNotifier(
-		t.Context(),
+	notifier, err := db_repo.NewPublisherNotifier[uint](
 		cfg.New(),
 		&publisher,
 		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
