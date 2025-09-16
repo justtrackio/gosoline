@@ -67,6 +67,7 @@ func NewWithSettings(ctx context.Context, name string, definer Definer, settings
 			err                            error
 			tracingInstrumentor            tracing.Instrumentor
 			definitions                    *Definitions
+			definitionList                 []Definition
 			compressionMiddlewares         []gin.HandlerFunc
 			healthChecker                  kernel.HealthChecker
 			connectionLifeCycleInterceptor gin.HandlerFunc
@@ -104,7 +105,10 @@ func NewWithSettings(ctx context.Context, name string, definer Definer, settings
 			return nil, fmt.Errorf("could not define routes: %w", err)
 		}
 
-		definitionList := buildRouter(definitions, router)
+		if definitionList, err = buildRouter(definitions, router); err != nil {
+			return nil, fmt.Errorf("could not build router: %w", err)
+		}
+
 		setupMetricMiddleware(definitionList)
 
 		if err = appendMetadata(ctx, name, router); err != nil {

@@ -63,6 +63,8 @@ func FixtureSetFactory(transformerFactoryMap TransformerMapTypeVersionFactories)
 	}
 }
 
+var _ fixtures.FixtureSet = FixtureSet{}
+
 type FixtureSet struct {
 	logger     log.Logger
 	source     SubscriberModel

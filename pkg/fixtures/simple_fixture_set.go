@@ -7,6 +7,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
+var _ FixtureSet = &simpleFixtureSet[struct{}]{}
+
 type simpleFixtureSet[T any] struct {
 	Enabled  bool
 	Writer   FixtureWriter

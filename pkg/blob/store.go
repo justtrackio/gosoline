@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -22,6 +23,8 @@ const (
 	PrivateACL    = types.ObjectCannedACLPrivate
 	PublicReadACL = types.ObjectCannedACLPublicRead
 )
+
+type storeCtxKey string
 
 type Object struct {
 	ACL  types.ObjectCannedACL
@@ -118,6 +121,12 @@ func WithNamingStrategy(strategy NamingFactory) {
 
 func CreateKey() string {
 	return namingStrategy()
+}
+
+func ProvideStore(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Store, error) {
+	return appctx.Provide(ctx, storeCtxKey(name), func() (Store, error) {
+		return NewStore(ctx, config, logger, name)
+	})
 }
 
 // NewStore creates a new S3 store with the given configuration and logger.

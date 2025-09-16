@@ -101,7 +101,11 @@ func (d *Definitions) OPTIONS(relativePath string, handlers ...gin.HandlerFunc) 
 	d.Handle(http.OptionsRequest, relativePath, handlers...)
 }
 
-func buildRouter(definitions *Definitions, router gin.IRouter) []Definition {
+func buildRouter(definitions *Definitions, router gin.IRouter) ([]Definition, error) {
+	if definitions == nil {
+		return nil, fmt.Errorf("route definitions should not be nil")
+	}
+
 	var definitionList []Definition
 	grp := router
 
@@ -122,11 +126,17 @@ func buildRouter(definitions *Definitions, router gin.IRouter) []Definition {
 
 	definitionList = append(definitionList, definitions.routes...)
 
+	var err error
+	var childDefinitions []Definition
 	for _, c := range definitions.children {
-		definitionList = append(definitionList, buildRouter(c, grp)...)
+		if childDefinitions, err = buildRouter(c, grp); err != nil {
+			return nil, fmt.Errorf("error building children: %w", err)
+		}
+
+		definitionList = append(definitionList, childDefinitions...)
 	}
 
-	return definitionList
+	return definitionList, nil
 }
 
 func removeDuplicates(s string) string {
