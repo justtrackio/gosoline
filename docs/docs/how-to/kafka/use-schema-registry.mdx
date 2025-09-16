@@ -6,9 +6,9 @@ title: How to use the Kafka Schema Registry
 Gosoline provides the option to use the Kafka schema registry when reading from or writing to a Kafka topic.
 This will ensure that changes to your schema do not break compatability with the previous schemas according to the specified compatability mode.
 
-Using the shema registry is optional however and gosoline will let you read and write anything if you choose to.
+Using the shema registry is optional and gosoline will let you read and write anything if you choose to.
 
-Moreover, keep in mind that the open source Apache Kafka broker does not have any server side schema validation and will still let you write anything to a topic if you do not configure gosoline to use the schema registry,
+Moreover, keep in mind that the Apache Kafka broker does not have any server side schema validation and will still let you write anything to a topic if you do not configure gosoline to use the schema registry,
 even if there are already existing consumers and producers of that topic which do use the schema registry.
 
 ## Registering a schema
@@ -30,7 +30,7 @@ stream:
       encoding: application/avro
 ```
 
-Now you need to provide the schema settings via the `strean.WithSchemaSettings` option when creating your Producer/Publisher.
+Now you need to provide the schema settings via the `stream.WithSchemaSettings` option when creating your Producer/Publisher.
 
 ```go
 //go:embed ExampleEvent.avsc

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	kafkaConsumer "github.com/justtrackio/gosoline/pkg/kafka/consumer"
 	schemaRegistry "github.com/justtrackio/gosoline/pkg/kafka/schema-registry"
@@ -20,7 +21,7 @@ type kafkaInput struct {
 	logger                log.Logger
 	connection            connection.Settings
 	healthCheckTimer      clock.HealthCheckTimer
-	polling               atomic.Bool
+	pollingOrRebalancing  atomic.Bool
 	partitionManager      kafkaConsumer.PartitionManager
 	reader                kafkaConsumer.Reader
 	schemaRegistryService schemaRegistry.Service
@@ -65,7 +66,7 @@ func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, se
 		return nil, fmt.Errorf("failed to create healthcheck timer: %w", err)
 	}
 
-	return NewKafkaInputWithInterfaces(logger, *conn, healthCheckTimer, *partitionManager, reader, schemaRegistryService, settings.MaxPollRecords, data)
+	return NewKafkaInputWithInterfaces(logger, *conn, healthCheckTimer, *partitionManager, reader, schemaRegistryService, settings.MaxPollRecords, data), nil
 }
 
 func NewKafkaInputWithInterfaces(
@@ -77,7 +78,7 @@ func NewKafkaInputWithInterfaces(
 	schemaRegistryService schemaRegistry.Service,
 	maxPollRecords int,
 	data chan *Message,
-) (Input, error) {
+) Input {
 	return &kafkaInput{
 		logger:                logger,
 		connection:            connection,
@@ -87,25 +88,27 @@ func NewKafkaInputWithInterfaces(
 		schemaRegistryService: schemaRegistryService,
 		maxPollRecords:        maxPollRecords,
 		data:                  data,
-	}, nil
+	}
 }
 
 func (i *kafkaInput) Run(ctx context.Context) error {
+	defer i.partitionManager.Stop()
+
 	for {
 		// while we are polling messages, we can't get unhealthy
 		// (as this code is outside our control to add code to mark us as healthy)
-		i.polling.Store(true)
+		i.pollingOrRebalancing.Store(true)
 		fetches := i.reader.PollRecords(ctx, i.maxPollRecords)
 		// mark us as healthy as soon as we got records to ensure we stay healthy while we process the records
 		// (unless we take too long to send the messages to the i.data channel)
 		i.healthCheckTimer.MarkHealthy()
-		i.polling.Store(false)
+		i.pollingOrRebalancing.Store(false)
 
 		if fetches.IsClientClosed() {
 			return nil
 		}
-		if errors.Is(fetches.Err0(), context.Canceled) {
-			return ctx.Err()
+		if exec.IsRequestCanceled(fetches.Err0()) {
+			return fetches.Err0()
 		}
 
 		var err error
@@ -138,12 +141,16 @@ func (i *kafkaInput) Run(ctx context.Context) error {
 			i.partitionManager.Handle(p.Topic, p.Partition, p.Records)
 		})
 
+		// we can't get unhealthy here as the rebalance may take some time and is out of our control
+		i.pollingOrRebalancing.Store(true)
 		i.reader.AllowRebalance()
+		// mark us as healthy now, in case the rebalance took too long
+		i.healthCheckTimer.MarkHealthy()
+		i.pollingOrRebalancing.Store(false)
 	}
 }
 
 func (i *kafkaInput) Stop(_ context.Context) {
-	defer close(i.data)
 	i.reader.CloseAllowingRebalance()
 }
 
@@ -152,7 +159,7 @@ func (i *kafkaInput) Data() <-chan *Message {
 }
 
 func (i *kafkaInput) IsHealthy() bool {
-	return i.healthCheckTimer.IsHealthy() || i.polling.Load()
+	return i.healthCheckTimer.IsHealthy() || i.pollingOrRebalancing.Load()
 }
 
 func (i *kafkaInput) InitSchemaRegistry(ctx context.Context, settings SchemaSettingsWithEncoding) (MessageBodyEncoder, error) {
