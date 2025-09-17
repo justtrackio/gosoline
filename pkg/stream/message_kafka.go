@@ -105,7 +105,7 @@ func NewKafkaMessageHandler(data chan *Message) kafkaConsumer.KafkaMessageHandle
 	}
 }
 
-func (h kafkaMessageHandler) Handle(kafkaRecords []*kgo.Record) {
+func (h *kafkaMessageHandler) Handle(kafkaRecords []*kgo.Record) {
 	for _, record := range kafkaRecords {
 		if record == nil {
 			continue
@@ -115,6 +115,6 @@ func (h kafkaMessageHandler) Handle(kafkaRecords []*kgo.Record) {
 	}
 }
 
-func (h kafkaMessageHandler) Stop() {
+func (h *kafkaMessageHandler) Stop() {
 	close(h.data)
 }
