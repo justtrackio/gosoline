@@ -16,11 +16,11 @@ import (
 const (
 	InputTypeFile     = "file"
 	InputTypeInMemory = "inMemory"
+	InputTypeKafka    = "kafka"
 	InputTypeKinesis  = "kinesis"
 	InputTypeRedis    = "redis"
 	InputTypeSns      = "sns"
 	InputTypeSqs      = "sqs"
-	InputTypeKafka    = "kafka"
 )
 
 type InputFactory func(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error)
@@ -28,11 +28,11 @@ type InputFactory func(ctx context.Context, config cfg.Config, logger log.Logger
 var inputFactories = map[string]InputFactory{
 	InputTypeFile:     newFileInputFromConfig,
 	InputTypeInMemory: newInMemoryInputFromConfig,
+	InputTypeKafka:    newKafkaInputFromConfig,
 	InputTypeKinesis:  newKinesisInputFromConfig,
 	InputTypeRedis:    newRedisInputFromConfig,
 	InputTypeSns:      newSnsInputFromConfig,
 	InputTypeSqs:      newSqsInputFromConfig,
-	InputTypeKafka:    newKafkaInputFromConfig,
 }
 
 func SetInputFactory(typ string, factory InputFactory) {

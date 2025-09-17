@@ -53,7 +53,7 @@ func (s *KafkaNamingTestSuite) TestDefaultTopicId() {
 func (s *KafkaNamingTestSuite) TestDefaultGroupId() {
 	group, err := kafka.BuildFullConsumerGroupId(s.config, s.groupId)
 	s.NoError(err, "there should be no error")
-	s.Equal("project-env-family-group-c-group-1", group)
+	s.Equal("project-env-family-group-appname-c-group-1", group)
 }
 
 func (s *KafkaNamingTestSuite) TestTopicIdWithPattern() {

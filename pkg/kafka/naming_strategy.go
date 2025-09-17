@@ -9,7 +9,7 @@ import (
 
 type KafkaNamingSettings struct {
 	TopicPattern string `cfg:"topic_pattern,nodecode" default:"{project}-{env}-{family}-{group}-{topicId}"`
-	GroupPattern string `cfg:"group_pattern,nodecode" default:"{project}-{env}-{family}-{group}-{groupId}"`
+	GroupPattern string `cfg:"group_pattern,nodecode" default:"{project}-{env}-{family}-{group}-{app}-{groupId}"`
 }
 
 func NormalizeKafkaName(name string) string {
