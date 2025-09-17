@@ -92,7 +92,7 @@ func NewKafkaInputWithInterfaces(
 }
 
 func (i *kafkaInput) Run(ctx context.Context) error {
-	defer i.partitionManager.Stop()
+	defer i.partitionManager.Stop(ctx)
 
 	for {
 		// while we are polling messages, we can't get unhealthy
@@ -104,11 +104,8 @@ func (i *kafkaInput) Run(ctx context.Context) error {
 		i.healthCheckTimer.MarkHealthy()
 		i.pollingOrRebalancing.Store(false)
 
-		if fetches.IsClientClosed() {
+		if fetches.IsClientClosed() || exec.IsRequestCanceled(fetches.Err0()) {
 			return nil
-		}
-		if exec.IsRequestCanceled(fetches.Err0()) {
-			return fetches.Err0()
 		}
 
 		var err error
@@ -134,11 +131,13 @@ func (i *kafkaInput) Run(ctx context.Context) error {
 		fetches.EachPartition(func(p kgo.FetchTopicPartition) {
 			if i.connection.IsReadOnly {
 				i.partitionManager.HandleWithoutCommit(p.Records)
-
-				return
+			} else {
+				i.partitionManager.Handle(p.Topic, p.Partition, p.Records)
 			}
 
-			i.partitionManager.Handle(p.Topic, p.Partition, p.Records)
+			// mark us as healthy in case there is backpressure from the consumer, and we take a long time
+			// to feed the partitions to the partition manager
+			i.healthCheckTimer.MarkHealthy()
 		})
 
 		// we can't get unhealthy here as the rebalance may take some time and is out of our control

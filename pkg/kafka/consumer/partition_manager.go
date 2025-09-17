@@ -2,17 +2,21 @@ package consumer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 type PartitionManager struct {
 	logger         log.Logger
+	cfn            coffin.Coffin
 	consumers      map[assignment]*PartitionConsumer
 	lck            *sync.Mutex
 	messageHandler KafkaMessageHandler
+	done           chan struct{}
 }
 
 type assignment struct {
@@ -21,11 +25,22 @@ type assignment struct {
 }
 
 func NewPartitionManager(logger log.Logger, messageHandler KafkaMessageHandler) *PartitionManager {
+	cfn := coffin.New()
+	done := make(chan struct{})
+
+	cfn.Go(func() error {
+		<-done
+
+		return nil
+	})
+
 	return &PartitionManager{
 		logger:         logger,
+		cfn:            cfn,
 		consumers:      make(map[assignment]*PartitionConsumer),
 		lck:            &sync.Mutex{},
 		messageHandler: messageHandler,
+		done:           done,
 	}
 }
 
@@ -40,12 +55,14 @@ func (p PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo.
 
 			p.logger.Debug(ctx, "starting to consume records for partition %d of topic %s", partition, topic)
 
-			go func() {
+			p.cfn.Go(func() error {
 				err := partitionConsumer.Consume(ctx)
 				if err != nil {
-					p.logger.Error(ctx, "failed to consume records for partition %d of topic %s: %w", partition, topic, err)
+					return fmt.Errorf("failed to consume records for partition %d of topic %s: %w", partition, topic, err)
 				}
-			}()
+
+				return nil
+			})
 		}
 	}
 }
@@ -59,9 +76,13 @@ func (p PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo.
 			assignment := assignment{topic, partition}
 
 			p.lck.Lock()
-			partitionConsumer := p.consumers[assignment]
+			partitionConsumer, ok := p.consumers[assignment]
 			delete(p.consumers, assignment)
 			p.lck.Unlock()
+
+			if !ok {
+				continue
+			}
 
 			partitionConsumer.Stop()
 			p.logger.Debug(ctx, "waiting for work to finish for lost/revoked partition %d of topic %s", partition, topic)
@@ -90,6 +111,19 @@ func (p PartitionManager) HandleWithoutCommit(records []*kgo.Record) {
 	p.messageHandler.Handle(records)
 }
 
-func (p PartitionManager) Stop() {
+func (p PartitionManager) Stop(ctx context.Context) {
+	p.lck.Lock()
+	for _, consumer := range p.consumers {
+		consumer.Stop()
+	}
+	p.consumers = map[assignment]*PartitionConsumer{}
+	p.lck.Unlock()
+
+	close(p.done)
+
+	if err := p.cfn.Wait(); err != nil {
+		p.logger.Error(ctx, "failed to stop partition consumers: %w", err)
+	}
+
 	p.messageHandler.Stop()
 }
