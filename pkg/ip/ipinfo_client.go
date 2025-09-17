@@ -1,4 +1,4 @@
-package ipinfo
+package ip
 
 import (
 	"context"
@@ -14,12 +14,12 @@ import (
 
 const ipInfoUrl = "https://ipinfo.io"
 
-type Client struct {
+type IpInfoClient struct {
 	logger log.Logger
 	http   http.Client
 }
 
-type IpInfo struct {
+type IpInfoData struct {
 	Ip       string `json:"ip"`
 	Hostname string `json:"hostname"`
 	City     string `json:"city"`
@@ -32,58 +32,51 @@ type IpInfo struct {
 	Readme   string `json:"readme"`
 }
 
+func (ii *IpInfoData) toIpData() *Data {
+	d := Data(*ii)
+
+	return &d
+}
+
 type ipInfoClientCtxKey string
 
-type ipInfoCtxKey string
-
-func ProvideIpInfo(ctx context.Context, config cfg.Config, logger log.Logger) (*IpInfo, error) {
-	return appctx.Provide(ctx, ipInfoCtxKey("ip"), func() (*IpInfo, error) {
-		c, err := ProvideClient(ctx, config, logger)
-		if err != nil {
-			return nil, err
-		}
-
-		return c.GetIpInfo(ctx)
+func ProvideIpInfoClient(ctx context.Context, config cfg.Config, logger log.Logger) (Client, error) {
+	return appctx.Provide(ctx, ipInfoClientCtxKey("default"), func() (Client, error) {
+		return NewIpInfoClient(ctx, config, logger)
 	})
 }
 
-func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger) (*Client, error) {
-	return appctx.Provide(ctx, ipInfoClientCtxKey("default"), func() (*Client, error) {
-		return NewClient(ctx, config, logger)
-	})
-}
-
-func NewClient(ctx context.Context, config cfg.Config, logger log.Logger) (*Client, error) {
+func NewIpInfoClient(ctx context.Context, config cfg.Config, logger log.Logger) (Client, error) {
 	httpClient, err := http.ProvideHttpClient(ctx, config, logger, "ipInfo")
 	if err != nil {
 		return nil, fmt.Errorf("can not create http client: %w", err)
 	}
 
-	return &Client{logger: logger, http: httpClient}, nil
+	return &IpInfoClient{logger: logger, http: httpClient}, nil
 }
 
-func (c *Client) GetIpInfo(ctx context.Context) (*IpInfo, error) {
+func (c *IpInfoClient) GetIpData(ctx context.Context) (*Data, error) {
 	req := c.http.NewRequest().
 		WithHeader("Accept", http.MimeTypeApplicationJson).
 		WithUrl(ipInfoUrl)
 
 	resp, err := c.http.Get(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("could not request api: %w", err)
+		return nil, fmt.Errorf("could not request ipinfo api: %w", err)
 	}
 
 	if resp.StatusCode != goHttp.StatusOK {
-		return nil, fmt.Errorf("received non-ok status")
+		return nil, fmt.Errorf("received non-ok status from ipinfo api")
 	}
 
 	if len(resp.Body) == 0 {
-		return nil, fmt.Errorf("body is empty")
+		return nil, fmt.Errorf("ipinfo response body is empty")
 	}
 
-	var info IpInfo
+	var info IpInfoData
 	if err := json.Unmarshal(resp.Body, &info); err != nil {
 		return nil, fmt.Errorf("error unmarshalling ip info: %w", err)
 	}
 
-	return &info, nil
+	return info.toIpData(), nil
 }
