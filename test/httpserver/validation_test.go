@@ -254,12 +254,11 @@ func (s *ValidationTestSuite) TestValidateNestedInput_Failure() *suite.Httpserve
 				B: 7,
 			},
 		},
-		// We can't yet validate nested structs, so this returns success for now. This test ensures we notice if this
-		// state changes.
-		ExpectedStatusCode: netHttp.StatusOK,
+
+		ExpectedStatusCode: netHttp.StatusBadRequest,
 		Assert: func(response *resty.Response) error {
 			// language=JSON
-			expectedResult := `{"nested":{"a":12,"b":7}}`
+			expectedResult := `{"err":"Key: 'ValidateNestedInput.Nested' Error:Field validation for 'Nested' failed on the 'hasEvenSum' tag"}`
 
 			s.Equal(expectedResult, string(response.Body()))
 

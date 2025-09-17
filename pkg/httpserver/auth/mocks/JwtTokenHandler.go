@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	jwt "github.com/golang-jwt/jwt"
+	jwt "github.com/golang-jwt/jwt/v5"
 	auth "github.com/justtrackio/gosoline/pkg/httpserver/auth"
 
 	mock "github.com/stretchr/testify/mock"
