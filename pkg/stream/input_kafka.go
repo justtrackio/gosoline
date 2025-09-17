@@ -41,17 +41,7 @@ func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, se
 		return nil, fmt.Errorf("failed to parse kafka connection settings for connection name %q: %w", settings.Connection, err)
 	}
 
-	var opts []kgo.Opt
-
-	if !conn.IsReadOnly {
-		opts = append(opts, []kgo.Opt{
-			kgo.OnPartitionsAssigned(partitionManager.OnPartitionsAssigned),
-			kgo.OnPartitionsRevoked(partitionManager.OnPartitionsLostOrRevoked),
-			kgo.OnPartitionsLost(partitionManager.OnPartitionsLostOrRevoked),
-		}...)
-	}
-
-	reader, err := kafkaConsumer.NewReader(ctx, config, logger, settings, conn.IsReadOnly, opts...)
+	reader, err := kafkaConsumer.NewReader(ctx, config, logger, settings, partitionManager, conn.IsReadOnly)
 	if err != nil {
 		return nil, fmt.Errorf("can not create kafka reader: %w", err)
 	}
@@ -66,7 +56,7 @@ func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, se
 		return nil, fmt.Errorf("failed to create healthcheck timer: %w", err)
 	}
 
-	return NewKafkaInputWithInterfaces(logger, *conn, healthCheckTimer, *partitionManager, reader, schemaRegistryService, settings.MaxPollRecords, data), nil
+	return NewKafkaInputWithInterfaces(logger, *conn, healthCheckTimer, partitionManager, reader, schemaRegistryService, settings.MaxPollRecords, data), nil
 }
 
 func NewKafkaInputWithInterfaces(

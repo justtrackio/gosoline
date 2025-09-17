@@ -24,7 +24,7 @@ type assignment struct {
 	partition int32
 }
 
-func NewPartitionManager(logger log.Logger, messageHandler KafkaMessageHandler) *PartitionManager {
+func NewPartitionManager(logger log.Logger, messageHandler KafkaMessageHandler) PartitionManager {
 	cfn := coffin.New()
 	done := make(chan struct{})
 
@@ -34,7 +34,7 @@ func NewPartitionManager(logger log.Logger, messageHandler KafkaMessageHandler) 
 		return nil
 	})
 
-	return &PartitionManager{
+	return PartitionManager{
 		logger:         logger,
 		cfn:            cfn,
 		consumers:      make(map[assignment]*PartitionConsumer),
@@ -44,7 +44,7 @@ func NewPartitionManager(logger log.Logger, messageHandler KafkaMessageHandler) 
 	}
 }
 
-func (p PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo.Client, assigned map[string][]int32) {
+func (p *PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo.Client, assigned map[string][]int32) {
 	for topic, partitions := range assigned {
 		for _, partition := range partitions {
 			partitionConsumer := NewPartitionConsumer(p.logger, topic, partition, p.messageHandler, client)
@@ -67,7 +67,7 @@ func (p PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo.
 	}
 }
 
-func (p PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo.Client, lost map[string][]int32) {
+func (p *PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo.Client, lost map[string][]int32) {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
@@ -100,18 +100,18 @@ func (p PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo.
 	}
 }
 
-func (p PartitionManager) Handle(topic string, partition int32, records []*kgo.Record) {
+func (p *PartitionManager) Handle(topic string, partition int32, records []*kgo.Record) {
 	p.lck.Lock()
 	defer p.lck.Unlock()
 
 	p.consumers[assignment{topic, partition}].assignedBatch <- records
 }
 
-func (p PartitionManager) HandleWithoutCommit(records []*kgo.Record) {
+func (p *PartitionManager) HandleWithoutCommit(records []*kgo.Record) {
 	p.messageHandler.Handle(records)
 }
 
-func (p PartitionManager) Stop(ctx context.Context) {
+func (p *PartitionManager) Stop(ctx context.Context) {
 	p.lck.Lock()
 	for _, consumer := range p.consumers {
 		consumer.Stop()

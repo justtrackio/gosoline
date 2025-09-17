@@ -20,7 +20,7 @@ type Reader interface {
 	PollRecords(ctx context.Context, maxPollRecords int) kgo.Fetches
 }
 
-func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settings Settings, isReadOnly bool, additionalOptions ...kgo.Opt) (Reader, error) {
+func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settings Settings, partitionManager PartitionManager, isReadOnly bool) (Reader, error) {
 	if err := settings.PadFromConfig(config); err != nil {
 		return nil, fmt.Errorf("failed to pad app id from config: %w", err)
 	}
@@ -52,6 +52,9 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 			kgo.BlockRebalanceOnPoll(),
 			kgo.ConsumerGroup(consumerGroupId),
 			kgo.DisableAutoCommit(),
+			kgo.OnPartitionsAssigned(partitionManager.OnPartitionsAssigned),
+			kgo.OnPartitionsRevoked(partitionManager.OnPartitionsLostOrRevoked),
+			kgo.OnPartitionsLost(partitionManager.OnPartitionsLostOrRevoked),
 		}...)
 	}
 
@@ -60,8 +63,6 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 		return nil, fmt.Errorf("failed to build connection options: %w", err)
 	}
 	opts = append(opts, connOpts...)
-
-	opts = append(opts, additionalOptions...)
 
 	client, err := kgo.NewClient(opts...)
 	if err != nil {

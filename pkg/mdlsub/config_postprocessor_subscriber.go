@@ -115,8 +115,6 @@ func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, s
 		topicId = sharedName
 	}
 
-	app := subscriberSettings.SourceModel.Application
-
 	inputSettings := &stream.KafkaInputConfiguration{}
 	if err := config.UnmarshalDefaults(inputSettings); err != nil {
 		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
@@ -125,8 +123,8 @@ func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, s
 	inputSettings.Project = subscriberSettings.SourceModel.Project
 	inputSettings.Family = subscriberSettings.SourceModel.Family
 	inputSettings.Group = subscriberSettings.SourceModel.Group
-	inputSettings.Application = app
-	inputSettings.GroupId = fmt.Sprintf("%s-%s", app, topicId)
+	inputSettings.Application = subscriberSettings.SourceModel.Application
+	inputSettings.GroupId = topicId
 	inputSettings.TopicId = topicId
 
 	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting)

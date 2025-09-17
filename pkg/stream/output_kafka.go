@@ -13,6 +13,7 @@ import (
 )
 
 type kafkaOutput struct {
+	logger                log.Logger
 	connection            connection.Settings
 	schemaRegistryService schemaRegistry.Service
 	writer                kafkaProducer.Writer
@@ -42,10 +43,11 @@ func NewKafkaOutput(ctx context.Context, config cfg.Config, logger log.Logger, s
 		return nil, fmt.Errorf("can not create schema registry service: %w", err)
 	}
 
-	return NewKafkaOutputWithInterfaces(*conn, schemaRegistryService, writer, settings.MaxBatchBytes, settings.MaxBatchSize), nil
+	return NewKafkaOutputWithInterfaces(logger, *conn, schemaRegistryService, writer, settings.MaxBatchBytes, settings.MaxBatchSize), nil
 }
 
 func NewKafkaOutputWithInterfaces(
+	logger log.Logger,
 	connection connection.Settings,
 	schemaRegistryService schemaRegistry.Service,
 	writer kafkaProducer.Writer,
@@ -53,6 +55,7 @@ func NewKafkaOutputWithInterfaces(
 	maxBatchSize int,
 ) Output {
 	return &kafkaOutput{
+		logger:                logger,
 		connection:            connection,
 		schemaRegistryService: schemaRegistryService,
 		writer:                writer,
@@ -68,6 +71,8 @@ func (o *kafkaOutput) WriteOne(ctx context.Context, msg WritableMessage) error {
 	}
 
 	if o.connection.IsReadOnly {
+		o.logger.Warn(ctx, "dropping message that was written to a read-only output")
+
 		return nil
 	}
 
@@ -81,6 +86,8 @@ func (o *kafkaOutput) Write(ctx context.Context, batch []WritableMessage) error 
 	}
 
 	if o.connection.IsReadOnly {
+		o.logger.Warn(ctx, "dropping messages that were written to a read-only output")
+
 		return nil
 	}
 
