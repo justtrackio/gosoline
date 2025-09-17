@@ -421,8 +421,8 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Struct() {
 	type configMap struct {
 		Foo          string   `cfg:"foo"`
 		Bla          string   `cfg:"bla"`
-		Def          int      `cfg:"def" default:"1"`
-		AugDef       string   `cfg:"aug_def" default:"{keyAD}"`
+		Def          int      `cfg:"def"           default:"1"`
+		AugDef       string   `cfg:"aug_def"       default:"{keyAD}"`
 		Slice        []int    `cfg:"slice"`
 		SliceAugment []string `cfg:"slice_augment"`
 		Nested       struct {
@@ -645,10 +645,10 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKeyEmbedded() {
 
 func (s *ConfigTestSuite) TestConfig_UnmarshalKeyValidation() {
 	type configMap struct {
-		Foo    string `cfg:"foo" validate:"oneof=baz"`
+		Foo    string `cfg:"foo"    validate:"oneof=baz"`
 		Nested struct {
 			A int `cfg:"a" validate:"gt=3"`
-		} `cfg:"nested" validate:"dive"`
+		} `cfg:"nested"`
 	}
 
 	s.setupConfigValues(map[string]any{
@@ -663,7 +663,10 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKeyValidation() {
 	cm := configMap{}
 	err := s.config.UnmarshalKey("mykey", &cm)
 	s.Require().Error(err)
-	s.EqualError(err, "can not unmarshal config struct with key mykey: validation failed for key: mykey: 2 errors occurred:\n\t* the setting Foo with value bar does not match its requirement\n\t* the setting A with value 0 does not match its requirement\n\n")
+	s.EqualError(
+		err,
+		"can not unmarshal config struct with key mykey: validation failed for key: mykey: 2 errors occurred:\n\t* the setting Foo with value bar does not match its requirement\n\t* the setting A with value 0 does not match its requirement\n\n",
+	)
 }
 
 func (s *ConfigTestSuite) TestConfig_UnmarshalKeyWithDefaultsFromKey() {
@@ -739,17 +742,17 @@ func (s *ConfigTestSuite) TestConfig_FromYml() {
 
 func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Defaults() {
 	type configMap struct {
-		Foo          string    `cfg:"foo" default:"fooVal"`
-		Bar          int       `cfg:"bar" default:"123"`
-		Baz          bool      `cfg:"baz" default:"true"`
-		Baz2         bool      `cfg:"baz2" default:"false"`
-		StringSlice  []string  `cfg:"string_slice" default:"a,b,c"`
-		String       string    `cfg:"string_slice" default:"a,b,c"`
-		IntSlice     []int     `cfg:"int_slice" default:"-1,0,1"`
-		Int64Slice   []int64   `cfg:"int64_slice" default:"-9223372036854775808,0,9223372036854775807"`
+		Foo          string    `cfg:"foo"           default:"fooVal"`
+		Bar          int       `cfg:"bar"           default:"123"`
+		Baz          bool      `cfg:"baz"           default:"true"`
+		Baz2         bool      `cfg:"baz2"          default:"false"`
+		StringSlice  []string  `cfg:"string_slice"  default:"a,b,c"`
+		String       string    `cfg:"string_slice"  default:"a,b,c"`
+		IntSlice     []int     `cfg:"int_slice"     default:"-1,0,1"`
+		Int64Slice   []int64   `cfg:"int64_slice"   default:"-9223372036854775808,0,9223372036854775807"`
 		Float32Slice []float32 `cfg:"float32_slice" default:"1.234,2.345,3.456"`
 		Float64Slice []float64 `cfg:"float64_slice" default:"1.234,2.345,3.456"`
-		BoolSlice    []bool    `cfg:"bool_slice" default:"true,false,true"`
+		BoolSlice    []bool    `cfg:"bool_slice"    default:"true,false,true"`
 	}
 
 	cm := configMap{}
