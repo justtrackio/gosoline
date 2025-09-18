@@ -44,19 +44,15 @@ func NewKafkaMessage(message WritableMessage) (*kgo.Record, error) {
 	var body []byte
 	var attributes map[string]string
 
-	// if the message comes from the producer daemon it's a rawJsonMessage
+	// if the message comes from the producer daemon it's a rawJsonMessage that only holds the encoded model in the body
 	// otherwise, it's a *Message
 	switch m := message.(type) {
 	case *Message:
 		body = []byte(m.Body)
 		attributes = m.Attributes
 	case rawJsonMessage:
-		msg := Message{}
-		if err := msg.UnmarshalFromBytes(m.body); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal message body: %w", err)
-		}
-		body = []byte(msg.Body)
-		attributes = msg.Attributes
+		body = m.body
+		attributes = m.attributes
 	default:
 		return nil, fmt.Errorf("unexpected message type: %T", m)
 	}

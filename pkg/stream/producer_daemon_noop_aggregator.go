@@ -2,43 +2,24 @@ package stream
 
 import (
 	"context"
-	"fmt"
-
-	"github.com/justtrackio/gosoline/pkg/encoding/json"
 )
 
 // producerDaemonNoopAggregator creates a single message aggregate
-type producerDaemonNoopAggregator struct {
-	attributes map[string]string
-}
+type producerDaemonNoopAggregator struct{}
 
-func NewProducerDaemonNoopAggregator(attributeSets ...map[string]string) ProducerDaemonAggregator {
-	aggregator := &producerDaemonNoopAggregator{
-		attributes: map[string]string{
-			AttributeEncoding: EncodingJson.String(),
-		},
-	}
-
-	for _, attributes := range attributeSets {
-		for k, v := range attributes {
-			aggregator.attributes[k] = v
-		}
-	}
-
-	return aggregator
+func NewProducerDaemonNoopAggregator() ProducerDaemonAggregator {
+	return &producerDaemonNoopAggregator{}
 }
 
 func (a *producerDaemonNoopAggregator) Write(_ context.Context, msg *Message) ([]AggregateFlush, error) {
-	encodedMessage, err := json.Marshal(msg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode message for aggregate: %w", err)
-	}
-
+	// we do not json marshal the whole message here like we do in the non-noop aggregator.
+	// instead we just forward the raw body and attributes of the message
+	// because the body might have already been encoded by some external encoder and json marshaling it would then possibly break it
 	return []AggregateFlush{
 		{
-			Attributes:   a.attributes,
+			Attributes:   msg.Attributes,
 			MessageCount: 1,
-			Body:         string(encodedMessage),
+			Body:         msg.Body,
 		},
 	}, nil
 }

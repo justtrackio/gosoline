@@ -158,7 +158,6 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 			settings.Daemon.BatchMaxSize = *maxMessageSize
 		}
 	}
-
 	aggregator := NewProducerDaemonNoopAggregator()
 
 	if po, ok := output.(PartitionedOutput); ok &&
@@ -174,13 +173,19 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 		}
 	}
 
-	return NewProducerDaemonWithInterfaces(logger, metricWriter, aggregator, output, clock.Provider, name, settings.Daemon), nil
+	batcher := NewProducerDaemonBatcher(settings.Daemon)
+	if _, ok := output.(SchemaRegistryAwareOutput); ok {
+		batcher = NewProducerDaemonBatcherWithoutJsonEncoding(settings.Daemon)
+	}
+
+	return NewProducerDaemonWithInterfaces(logger, metricWriter, aggregator, batcher, output, clock.Provider, name, settings.Daemon), nil
 }
 
 func NewProducerDaemonWithInterfaces(
 	logger log.Logger,
 	metric metric.Writer,
 	aggregator ProducerDaemonAggregator,
+	batcher ProducerDaemonBatcher,
 	output Output,
 	clock clock.Clock,
 	name string,
@@ -191,7 +196,7 @@ func NewProducerDaemonWithInterfaces(
 		logger:     logger,
 		metric:     metric,
 		aggregator: aggregator,
-		batcher:    NewProducerDaemonBatcher(settings),
+		batcher:    batcher,
 		outCh:      NewOutputChannel(logger, settings.BufferSize),
 		output:     output,
 		clock:      clock,
