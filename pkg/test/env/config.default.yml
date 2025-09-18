@@ -4,6 +4,9 @@ test:
       ddb:
         repository: "amazon/dynamodb-local"
         tag: "2.5.4"
+      kafka:
+        repository: "docker.redpanda.com/redpandadata/redpanda"
+        tag: "v24.2.20"
       localstack:
         repository: "localstack/localstack"
         tag: "4.1.0"

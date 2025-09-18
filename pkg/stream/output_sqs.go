@@ -46,6 +46,8 @@ type sqsOutput struct {
 	settings *SqsOutputSettings
 }
 
+var _ SizeRestrictedOutput = &sqsOutput{}
+
 func NewSqsOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsOutputSettings) (Output, error) {
 	var err error
 	if err = settings.PadFromConfig(config); err != nil {
@@ -124,12 +126,24 @@ func (o *sqsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	return nil
 }
 
+func (o *sqsOutput) ProvidesCompression() bool {
+	return false
+}
+
+func (o *sqsOutput) SupportsAggregation() bool {
+	return true
+}
+
 func (o *sqsOutput) GetMaxMessageSize() *int {
 	return mdl.Box(256 * 1024)
 }
 
 func (o *sqsOutput) GetMaxBatchSize() *int {
 	return mdl.Box(10)
+}
+
+func (o *sqsOutput) IgnoreProducerDaemonBatchSettings() bool {
+	return false
 }
 
 func (o *sqsOutput) buildSqsMessages(ctx context.Context, messages []WritableMessage) ([]*sqs.Message, error) {

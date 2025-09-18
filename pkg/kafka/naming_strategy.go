@@ -8,19 +8,18 @@ import (
 )
 
 type KafkaNamingSettings struct {
-	TopicPattern string `cfg:"topic_pattern,nodecode" default:"{env}-{topicId}"`
-	GroupPattern string `cfg:"group_pattern,nodecode" default:"{env}-{app}-{groupId}"`
+	TopicPattern string `cfg:"topic_pattern,nodecode" default:"{project}-{env}-{family}-{group}-{topicId}"`
+	GroupPattern string `cfg:"group_pattern,nodecode" default:"{project}-{env}-{family}-{group}-{app}-{groupId}"`
 }
 
 func NormalizeKafkaName(name string) string {
 	return strings.ReplaceAll(name, "_", "-")
 }
 
-// FQTopicName returns fully-qualified topic name.
-func FQTopicName(config cfg.Config, appId cfg.AppId, topic string) (string, error) {
+func BuildFullTopicName(config cfg.Config, appId cfg.AppId, topicId string) (string, error) {
 	namingSettings := &KafkaNamingSettings{}
 	if err := config.UnmarshalKey("kafka.naming", namingSettings); err != nil {
-		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' in FQTopicName: %w", err)
+		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' to build kafka topic name: %w", err)
 	}
 
 	name := namingSettings.TopicPattern
@@ -30,7 +29,7 @@ func FQTopicName(config cfg.Config, appId cfg.AppId, topic string) (string, erro
 		"family":  appId.Family,
 		"group":   appId.Group,
 		"app":     appId.Application,
-		"topicId": topic,
+		"topicId": topicId,
 	}
 
 	for key, val := range values {
@@ -40,15 +39,15 @@ func FQTopicName(config cfg.Config, appId cfg.AppId, topic string) (string, erro
 	return NormalizeKafkaName(name), nil
 }
 
-func FQGroupId(config cfg.Config, appId cfg.AppId, groupId string) (string, error) {
-	namingSettings := &KafkaNamingSettings{}
-	if err := config.UnmarshalKey("kafka.naming", namingSettings); err != nil {
-		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' in FQGroupId: %w", err)
+func BuildFullConsumerGroupId(config cfg.Config, groupId string) (string, error) {
+	appId, err := cfg.GetAppIdFromConfig(config)
+	if err != nil {
+		return "", fmt.Errorf("failed to get app id from config: %w", err)
 	}
 
-	// legacy naming support
-	if groupId == "" {
-		return appId.Application, nil
+	namingSettings := &KafkaNamingSettings{}
+	if err := config.UnmarshalKey("kafka.naming", namingSettings); err != nil {
+		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' to build kakfa consumer group id: %w", err)
 	}
 
 	name := namingSettings.GroupPattern

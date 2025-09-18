@@ -21,7 +21,13 @@ type KafkaNamingTestSuite struct {
 }
 
 func (s *KafkaNamingTestSuite) SetupTest() {
-	s.config = cfg.New()
+	s.config = cfg.New(map[string]any{
+		"app_project": "project",
+		"env":         "env",
+		"app_family":  "family",
+		"app_group":   "group",
+		"app_name":    "appname",
+	})
 	s.appID = cfg.AppId{
 		Project:     "justtrack",
 		Environment: "test",
@@ -39,21 +45,15 @@ func (s *KafkaNamingTestSuite) setupConfig(settings map[string]any) {
 }
 
 func (s *KafkaNamingTestSuite) TestDefaultTopicId() {
-	topic, err := kafka.FQTopicName(s.config, s.appID, s.topicId)
+	topic, err := kafka.BuildFullTopicName(s.config, s.appID, s.topicId)
 	s.NoError(err, "there should be no error")
-	s.Equal(topic, "test-topic-a")
+	s.Equal("justtrack-test-gosoline-group-topic-a", topic)
 }
 
 func (s *KafkaNamingTestSuite) TestDefaultGroupId() {
-	group, err := kafka.FQGroupId(s.config, s.appID, s.groupId)
+	group, err := kafka.BuildFullConsumerGroupId(s.config, s.groupId)
 	s.NoError(err, "there should be no error")
-	s.Equal(group, "test-producer-c-group-1")
-}
-
-func (s *KafkaNamingTestSuite) TestLegacyGroupId() {
-	group, err := kafka.FQGroupId(s.config, s.appID, "")
-	s.NoError(err, "there should be no error")
-	s.Equal(group, "producer")
+	s.Equal("project-env-family-group-appname-c-group-1", group)
 }
 
 func (s *KafkaNamingTestSuite) TestTopicIdWithPattern() {
@@ -61,9 +61,9 @@ func (s *KafkaNamingTestSuite) TestTopicIdWithPattern() {
 		"kafka.naming.topic_pattern": "{app}-{topicId}",
 	})
 
-	topic, err := kafka.FQTopicName(s.config, s.appID, s.topicId)
+	topic, err := kafka.BuildFullTopicName(s.config, s.appID, s.topicId)
 	s.NoError(err, "there should be no error")
-	s.Equal(topic, "producer-topic-a")
+	s.Equal("producer-topic-a", topic)
 }
 
 func (s *KafkaNamingTestSuite) TestGroupIdWithPattern() {
@@ -71,7 +71,7 @@ func (s *KafkaNamingTestSuite) TestGroupIdWithPattern() {
 		"kafka.naming.group_pattern": "{app}-{groupId}",
 	})
 
-	group, err := kafka.FQGroupId(s.config, s.appID, s.groupId)
+	group, err := kafka.BuildFullConsumerGroupId(s.config, s.groupId)
 	s.NoError(err, "there should be no error")
-	s.Equal(group, "producer-c-group-1")
+	s.Equal("appname-c-group-1", group)
 }
