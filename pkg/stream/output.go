@@ -16,8 +16,6 @@ type WritableMessage interface {
 type Output interface {
 	WriteOne(ctx context.Context, msg WritableMessage) error
 	Write(ctx context.Context, batch []WritableMessage) error
-	ProvidesCompression() bool
-	SupportsAggregation() bool
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name PartitionedOutput
@@ -26,6 +24,20 @@ type PartitionedOutput interface {
 	// IsPartitionedOutput returns true if the output is writing to more than one shard/partition/bucket, and we need to
 	// take care about writing messages to the correct partition.
 	IsPartitionedOutput() bool
+}
+
+//go:generate go run github.com/vektra/mockery/v2 --name CompressionProvidingOutput
+type CompressionProvidingOutput interface {
+	Output
+	// ProvidesCompression returns true if the Output natively handles compression
+	ProvidesCompression() bool
+}
+
+//go:generate go run github.com/vektra/mockery/v2 --name UnaggregatedOutput
+type UnaggregatedOutput interface {
+	Output
+	// SupportsAggregation returns false if the Output does not support aggregated messages, e.g. when using a schema registry
+	SupportsAggregation() bool
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name SizeRestrictedOutput

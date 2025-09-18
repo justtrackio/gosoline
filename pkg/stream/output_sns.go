@@ -96,14 +96,6 @@ func (o *snsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	return nil
 }
 
-func (o *snsOutput) ProvidesCompression() bool {
-	return false
-}
-
-func (o *snsOutput) SupportsAggregation() bool {
-	return true
-}
-
 func (o *snsOutput) computeMessagesAttributes(batch []WritableMessage) (messages []string, attributes []map[string]string, err error) {
 	messages = make([]string, 0, len(batch))
 	attributes = make([]map[string]string, 0, len(batch))

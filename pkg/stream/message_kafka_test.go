@@ -36,19 +36,19 @@ func Test_GosoMessageSerialization(t *testing.T) {
 }
 
 func Test_NewKafkaMessage(t *testing.T) {
+	attributes := map[string]string{
+		"Attr1":    "1",
+		"Attr2":    "2",
+		"KafkaKey": "MyKey",
+	}
+	body := `{"MessageContent": "Content"}`
+
 	gMessage := &stream.Message{
-		Body: `{"MessageContent": "Content"}`,
-		Attributes: map[string]string{
-			"Attr1":    "1",
-			"Attr2":    "2",
-			"KafkaKey": "MyKey",
-		},
+		Body:       body,
+		Attributes: attributes,
 	}
 
-	gMessageMarshalled, err := json.Marshal(gMessage)
-	assert.NoError(t, err)
-
-	gRawJsonMessage := stream.NewRawJsonMessage(nil, gMessageMarshalled)
+	gRawJsonMessage := stream.NewRawJsonMessage(attributes, []byte(body))
 
 	expected := kgo.Record{
 		Key:   []byte("MyKey"),

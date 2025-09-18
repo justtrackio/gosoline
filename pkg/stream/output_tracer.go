@@ -16,9 +16,11 @@ type outputTracer struct {
 }
 
 var (
-	_ PartitionedOutput         = &outputTracer{}
-	_ SchemaRegistryAwareOutput = &outputTracer{}
-	_ SizeRestrictedOutput      = &outputTracer{}
+	_ CompressionProvidingOutput = &outputTracer{}
+	_ PartitionedOutput          = &outputTracer{}
+	_ SchemaRegistryAwareOutput  = &outputTracer{}
+	_ SizeRestrictedOutput       = &outputTracer{}
+	_ UnaggregatedOutput         = &outputTracer{}
 )
 
 func NewOutputTracer(ctx context.Context, config cfg.Config, logger log.Logger, base Output, name string) (*outputTracer, error) {
@@ -68,11 +70,17 @@ func (o outputTracer) Write(ctx context.Context, batch []WritableMessage) error 
 }
 
 func (o outputTracer) ProvidesCompression() bool {
-	return o.base.ProvidesCompression()
+	cpo, ok := o.base.(CompressionProvidingOutput)
+
+	return ok && cpo.ProvidesCompression()
 }
 
 func (o outputTracer) SupportsAggregation() bool {
-	return o.base.SupportsAggregation()
+	if unaggregated, ok := o.base.(UnaggregatedOutput); ok && !unaggregated.SupportsAggregation() {
+		return false
+	}
+
+	return true
 }
 
 func (o outputTracer) InitSchemaRegistry(ctx context.Context, settings SchemaSettingsWithEncoding) (MessageBodyEncoder, error) {

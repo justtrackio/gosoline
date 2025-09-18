@@ -22,9 +22,11 @@ type kafkaOutput struct {
 }
 
 var (
-	_ PartitionedOutput         = &kafkaOutput{}
-	_ SizeRestrictedOutput      = &kafkaOutput{}
-	_ SchemaRegistryAwareOutput = &kafkaOutput{}
+	_ CompressionProvidingOutput = &kafkaOutput{}
+	_ PartitionedOutput          = &kafkaOutput{}
+	_ SchemaRegistryAwareOutput  = &kafkaOutput{}
+	_ SizeRestrictedOutput       = &kafkaOutput{}
+	_ UnaggregatedOutput         = &kafkaOutput{}
 )
 
 func NewKafkaOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *kafkaProducer.Settings) (Output, error) {

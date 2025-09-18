@@ -71,7 +71,7 @@ func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel int, batchSize int, ag
 	s.aggregator, err = stream.NewProducerDaemonAggregator(settings, stream.CompressionNone)
 	s.NoError(err)
 
-	s.daemon = stream.NewProducerDaemonWithInterfaces(logger, metric, s.aggregator, s.output, s.clock, "testDaemon", settings)
+	s.daemon = stream.NewProducerDaemonWithInterfaces(logger, metric, s.aggregator, stream.NewProducerDaemonBatcher(settings), s.output, s.clock, "testDaemon", settings)
 
 	running := make(chan struct{})
 
@@ -244,8 +244,6 @@ func (s *ProducerDaemonTestSuite) TestWriteAggregate() {
 
 	expected := []stream.WritableMessage{aggregateMessage}
 	s.expectMessage(expected)
-
-	s.output.EXPECT().SupportsAggregation().Return(true).Once()
 
 	err = s.daemon.Write(s.T().Context(), messages)
 	s.NoError(err, "there should be no error on write")

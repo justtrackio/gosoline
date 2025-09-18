@@ -14,8 +14,10 @@ type multiOutput struct {
 }
 
 var (
-	_ PartitionedOutput    = &multiOutput{}
-	_ SizeRestrictedOutput = &multiOutput{}
+	_ CompressionProvidingOutput = &multiOutput{}
+	_ PartitionedOutput          = &multiOutput{}
+	_ SizeRestrictedOutput       = &multiOutput{}
+	_ UnaggregatedOutput         = &multiOutput{}
 )
 
 func (m *multiOutput) WriteOne(ctx context.Context, msg WritableMessage) error {
@@ -40,7 +42,7 @@ func (m *multiOutput) Write(ctx context.Context, batch []WritableMessage) error 
 
 func (m *multiOutput) ProvidesCompression() bool {
 	for _, o := range m.outputs {
-		if !o.ProvidesCompression() {
+		if cpo, ok := o.(CompressionProvidingOutput); ok && !cpo.ProvidesCompression() {
 			return false
 		}
 	}
@@ -50,7 +52,7 @@ func (m *multiOutput) ProvidesCompression() bool {
 
 func (m *multiOutput) SupportsAggregation() bool {
 	for _, o := range m.outputs {
-		if !o.SupportsAggregation() {
+		if unaggregated, ok := o.(UnaggregatedOutput); ok && !unaggregated.SupportsAggregation() {
 			return false
 		}
 	}

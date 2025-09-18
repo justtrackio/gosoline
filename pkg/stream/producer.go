@@ -58,7 +58,7 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name
 		}
 	}
 
-	if output.ProvidesCompression() {
+	if cpo, ok := output.(CompressionProvidingOutput); ok && cpo.ProvidesCompression() {
 		settings.Compression = CompressionNone
 	}
 
