@@ -143,7 +143,9 @@ func (r *batchRunner) executeRead(ctx context.Context) {
 			r.writeMetric(ctx, operationRead)
 
 			object.Body = StreamReader(body)
-			object.ContentType = out.ContentType
+			if out != nil {
+				object.ContentType = out.ContentType
+			}
 			object.Exists = exists
 			object.Error = err
 			object.wg.Done()
