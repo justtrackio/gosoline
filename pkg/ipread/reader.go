@@ -35,12 +35,12 @@ type reader struct {
 type readerCtxKey string
 
 func ProvideReader(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*reader, error) {
-	return appctx.Provide(ctx, readerCtxKey(name), func() (*reader, error) {
-		return NewReader(ctx, config, logger, name)
+	return appctx.Provide(ctx, readerCtxKey(name), func() (Reader, error) {
+		return newReader(ctx, config, logger, name)
 	})
 }
 
-func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*reader, error) {
+func newReader(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*reader, error) {
 	logger = logger.WithChannel("ipread")
 
 	var ok bool
