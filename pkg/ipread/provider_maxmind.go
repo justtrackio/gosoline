@@ -71,12 +71,12 @@ func NewMaxmindProvider(ctx context.Context, config cfg.Config, logger log.Logge
 }
 
 func (p *maxmindProvider) City(ipAddress net.IP) (*geoip2.City, error) {
+	p.lck.RLock()
+	defer p.lck.RUnlock()
+
 	if p.reader == nil {
 		return nil, fmt.Errorf("maxmind geo ip reader is not initialized yet. Do you have the refresh mode enabled?")
 	}
-
-	p.lck.RLock()
-	defer p.lck.RUnlock()
 
 	return p.reader.City(ipAddress)
 }
@@ -84,7 +84,7 @@ func (p *maxmindProvider) City(ipAddress net.IP) (*geoip2.City, error) {
 func (p *maxmindProvider) Refresh(ctx context.Context) (err error) {
 	var read io.Reader
 	var source io.ReadCloser
-	var ipreader *geoip2.Reader
+	var ipReader *geoip2.Reader
 	var size int64
 
 	p.logger.Info(ctx, "refreshing maxmind provider %s with database file %s", p.name, p.settings.Database)
@@ -118,14 +118,14 @@ func (p *maxmindProvider) Refresh(ctx context.Context) (err error) {
 	duration := clk.Since(start)
 	p.logger.Info(ctx, "reading of %s with size %d bytes took %s", p.settings.Database, buf.Len(), duration)
 
-	if ipreader, err = geoip2.FromBytes(buf.Bytes()); err != nil {
+	if ipReader, err = geoip2.FromBytes(buf.Bytes()); err != nil {
 		return fmt.Errorf("can not open database from memory: %w", err)
 	}
 
 	p.lck.Lock()
 	defer p.lck.Unlock()
 	readerToClose := p.reader
-	p.reader = ipreader
+	p.reader = ipReader
 	if readerToClose != nil {
 		if err := readerToClose.Close(); err != nil {
 			return fmt.Errorf("can not close existing reader: %w", err)
