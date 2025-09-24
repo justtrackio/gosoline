@@ -46,20 +46,9 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name
 		option(opts)
 	}
 
-	var output Output
-
-	if !settings.Daemon.Enabled {
-		if output, err = NewConfigurableOutput(ctx, config, logger, settings.Output); err != nil {
-			return nil, fmt.Errorf("can not create output %s: %w", settings.Output, err)
-		}
-	} else {
-		if output, err = ProvideProducerDaemon(ctx, config, logger, name); err != nil {
-			return nil, fmt.Errorf("can not create producer daemon %s: %w", name, err)
-		}
-	}
-
-	if cpo, ok := output.(CompressionProvidingOutput); ok && cpo.ProvidesCompression() {
-		settings.Compression = CompressionNone
+	output, err := getOutput(ctx, config, logger, name, settings)
+	if err != nil {
+		return nil, err
 	}
 
 	encodeHandlers := make([]EncodeHandler, 0, len(defaultEncodeHandlers)+len(opts.encodeHandlers))
@@ -100,6 +89,31 @@ func NewProducerWithInterfaces(encoder MessageEncoder, output Output) *producer 
 		encoder: encoder,
 		output:  output,
 	}
+}
+
+func getOutput(ctx context.Context, config cfg.Config, logger log.Logger, name string, settings *ProducerSettings) (output Output, err error) {
+	if settings.Daemon.Enabled {
+		output, err = ProvideProducerDaemon(ctx, config, logger, name)
+		if err != nil {
+			return nil, fmt.Errorf("can not create producer daemon %s: %w", name, err)
+		}
+
+		// the producer daemon will take care of compression for the whole batch, so we don't need to compress individual messages in the producer
+		settings.Compression = CompressionNone
+
+		return output, nil
+	}
+
+	output, outputSettings, err := NewConfigurableOutput(ctx, config, logger, settings.Output)
+	if err != nil {
+		return nil, fmt.Errorf("can not create output %s: %w", settings.Output, err)
+	}
+
+	if outputSettings.ProvidesCompression {
+		settings.Compression = CompressionNone
+	}
+
+	return output, nil
 }
 
 func (p *producer) WriteOne(ctx context.Context, model any, attributeSets ...map[string]string) error {

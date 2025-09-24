@@ -18,40 +18,6 @@ type Output interface {
 	Write(ctx context.Context, batch []WritableMessage) error
 }
 
-//go:generate go run github.com/vektra/mockery/v2 --name PartitionedOutput
-type PartitionedOutput interface {
-	Output
-	// IsPartitionedOutput returns true if the output is writing to more than one shard/partition/bucket, and we need to
-	// take care about writing messages to the correct partition.
-	IsPartitionedOutput() bool
-}
-
-//go:generate go run github.com/vektra/mockery/v2 --name CompressionProvidingOutput
-type CompressionProvidingOutput interface {
-	Output
-	// ProvidesCompression returns true if the Output natively handles compression
-	ProvidesCompression() bool
-}
-
-//go:generate go run github.com/vektra/mockery/v2 --name UnaggregatedOutput
-type UnaggregatedOutput interface {
-	Output
-	// SupportsAggregation returns false if the Output does not support aggregated messages, e.g. when using a schema registry
-	SupportsAggregation() bool
-}
-
-//go:generate go run github.com/vektra/mockery/v2 --name SizeRestrictedOutput
-type SizeRestrictedOutput interface {
-	Output
-	// GetMaxMessageSize returns the maximum size of a message for this output (or nil if there is no limit on message size).
-	GetMaxMessageSize() *int
-	// GetMaxBatchSize returns the maximum number of messages we can write at once to the output (or nil if there is no limit).
-	GetMaxBatchSize() *int
-	// IgnoreProducerDaemonBatchSettings returns true if only the size restrictions specified by this interface should be used.
-	// Otherwise, they are only used if lower than the restrictions specified on the producer daemon batch settings.
-	IgnoreProducerDaemonBatchSettings() bool
-}
-
 //go:generate go run github.com/vektra/mockery/v2 --name SchemaRegistryAwareOutput
 type SchemaRegistryAwareOutput interface {
 	Output
@@ -59,7 +25,25 @@ type SchemaRegistryAwareOutput interface {
 	InitSchemaRegistry(ctx context.Context, settings SchemaSettingsWithEncoding) (MessageBodyEncoder, error)
 }
 
-type OutputFactory func(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error)
+type OutputFactory func(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputSettings, error)
+
+type OutputSettings struct {
+	IsPartitionedOutput               bool
+	ProvidesCompression               bool
+	SupportsAggregation               bool
+	MaxBatchSize                      *int
+	MaxMessageSize                    *int
+	IgnoreProducerDaemonBatchSettings bool
+}
+
+var DefaultOutputSettings = &OutputSettings{
+	IsPartitionedOutput:               false,
+	ProvidesCompression:               false,
+	SupportsAggregation:               true,
+	MaxBatchSize:                      nil,
+	MaxMessageSize:                    nil,
+	IgnoreProducerDaemonBatchSettings: false,
+}
 
 func MessagesToWritableMessages(batch []*Message) []WritableMessage {
 	writableBatch := make([]WritableMessage, len(batch))

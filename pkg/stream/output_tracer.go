@@ -15,13 +15,7 @@ type outputTracer struct {
 	name   string
 }
 
-var (
-	_ CompressionProvidingOutput = &outputTracer{}
-	_ PartitionedOutput          = &outputTracer{}
-	_ SchemaRegistryAwareOutput  = &outputTracer{}
-	_ SizeRestrictedOutput       = &outputTracer{}
-	_ UnaggregatedOutput         = &outputTracer{}
-)
+var _ SchemaRegistryAwareOutput = &outputTracer{}
 
 func NewOutputTracer(ctx context.Context, config cfg.Config, logger log.Logger, base Output, name string) (*outputTracer, error) {
 	key := ConfigurableOutputKey(name)
@@ -69,54 +63,10 @@ func (o outputTracer) Write(ctx context.Context, batch []WritableMessage) error 
 	return o.base.Write(ctx, batch)
 }
 
-func (o outputTracer) ProvidesCompression() bool {
-	cpo, ok := o.base.(CompressionProvidingOutput)
-
-	return ok && cpo.ProvidesCompression()
-}
-
-func (o outputTracer) SupportsAggregation() bool {
-	if unaggregated, ok := o.base.(UnaggregatedOutput); ok && !unaggregated.SupportsAggregation() {
-		return false
-	}
-
-	return true
-}
-
 func (o outputTracer) InitSchemaRegistry(ctx context.Context, settings SchemaSettingsWithEncoding) (MessageBodyEncoder, error) {
 	if schemaRegistryAwareOutput, ok := o.base.(SchemaRegistryAwareOutput); ok {
 		return schemaRegistryAwareOutput.InitSchemaRegistry(ctx, settings)
 	}
 
 	return nil, fmt.Errorf("output does not support a schema registry")
-}
-
-func (o outputTracer) IsPartitionedOutput() bool {
-	po, ok := o.base.(PartitionedOutput)
-
-	return ok && po.IsPartitionedOutput()
-}
-
-func (o outputTracer) GetMaxMessageSize() *int {
-	if sro, ok := o.base.(SizeRestrictedOutput); ok {
-		return sro.GetMaxMessageSize()
-	}
-
-	return nil
-}
-
-func (o outputTracer) GetMaxBatchSize() *int {
-	if sro, ok := o.base.(SizeRestrictedOutput); ok {
-		return sro.GetMaxBatchSize()
-	}
-
-	return nil
-}
-
-func (o outputTracer) IgnoreProducerDaemonBatchSettings() bool {
-	if sro, ok := o.base.(SizeRestrictedOutput); ok {
-		return sro.IgnoreProducerDaemonBatchSettings()
-	}
-
-	return false
 }

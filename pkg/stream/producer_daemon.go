@@ -86,29 +86,25 @@ type (
 	producerDaemon struct {
 		kernel.EssentialBackgroundModule
 
-		name       string
-		lck        sync.Mutex
-		logger     log.Logger
-		metric     metric.Writer
-		aggregator ProducerDaemonAggregator
-		batcher    ProducerDaemonBatcher
-		outCh      OutputChannel
-		output     Output
-		clock      clock.Clock
-		ticker     clock.Ticker
-		settings   ProducerDaemonSettings
-		stopped    int32
+		name                string
+		lck                 sync.Mutex
+		logger              log.Logger
+		metric              metric.Writer
+		aggregator          ProducerDaemonAggregator
+		batcher             ProducerDaemonBatcher
+		outCh               OutputChannel
+		output              Output
+		clock               clock.Clock
+		ticker              clock.Ticker
+		settings            ProducerDaemonSettings
+		stopped             int32
+		supportsAggregation bool
 	}
 
 	producerDaemonKey string
 )
 
-var (
-	_ CompressionProvidingOutput = &producerDaemon{}
-	_ PartitionedOutput          = &producerDaemon{}
-	_ SizeRestrictedOutput       = &producerDaemon{}
-	_ SchemaRegistryAwareOutput  = &producerDaemon{}
-)
+var _ SchemaRegistryAwareOutput = &producerDaemon{}
 
 func producerDaemonName(name string) string {
 	return fmt.Sprintf("producer-daemon-%s", name)
@@ -140,24 +136,21 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 	defaultMetrics := getProducerDaemonDefaultMetrics(name)
 	metricWriter := metric.NewWriter(defaultMetrics...)
 
-	var output Output
-
-	if output, err = NewConfigurableOutput(ctx, config, logger, settings.Output); err != nil {
+	output, outputSettings, err := NewConfigurableOutput(ctx, config, logger, settings.Output)
+	if err != nil {
 		return nil, fmt.Errorf("can not create output for producer daemon %s: %w", name, err)
 	}
 
-	if cpo, ok := output.(CompressionProvidingOutput); ok && cpo.ProvidesCompression() {
+	if outputSettings.ProvidesCompression {
 		settings.Compression = CompressionNone
 	}
 
-	if sro, ok := output.(SizeRestrictedOutput); ok {
-		if maxBatchSize := sro.GetMaxBatchSize(); maxBatchSize != nil && (sro.IgnoreProducerDaemonBatchSettings() || *maxBatchSize < settings.Daemon.BatchSize) {
-			settings.Daemon.BatchSize = *maxBatchSize
-		}
+	if outputSettings.MaxBatchSize != nil && (outputSettings.IgnoreProducerDaemonBatchSettings || *outputSettings.MaxBatchSize < settings.Daemon.BatchSize) {
+		settings.Daemon.BatchSize = *outputSettings.MaxBatchSize
+	}
 
-		if maxMessageSize := sro.GetMaxMessageSize(); maxMessageSize != nil && (sro.IgnoreProducerDaemonBatchSettings() || *maxMessageSize < settings.Daemon.BatchMaxSize) {
-			settings.Daemon.BatchMaxSize = *maxMessageSize
-		}
+	if outputSettings.MaxMessageSize != nil && (outputSettings.IgnoreProducerDaemonBatchSettings || *outputSettings.MaxMessageSize < settings.Daemon.BatchMaxSize) {
+		settings.Daemon.BatchMaxSize = *outputSettings.MaxMessageSize
 	}
 
 	aggregator, err := NewProducerDaemonAggregator(settings.Daemon, settings.Compression)
@@ -165,7 +158,7 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("can not create aggregator for producer daemon %s: %w", name, err)
 	}
 
-	if po, ok := output.(PartitionedOutput); ok && po.IsPartitionedOutput() && settings.Daemon.PartitionBucketCount > 1 {
+	if outputSettings.IsPartitionedOutput && settings.Daemon.PartitionBucketCount > 1 {
 		if aggregator, err = NewProducerDaemonPartitionedAggregator(logger, settings.Daemon, settings.Compression); err != nil {
 			return nil, fmt.Errorf("can not create partitioned aggregator for producer daemon %s: %w", name, err)
 		}
@@ -173,12 +166,22 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 
 	batcher := NewProducerDaemonBatcher(settings.Daemon)
 
-	if unaggregatedOutput, ok := output.(UnaggregatedOutput); ok && !unaggregatedOutput.SupportsAggregation() {
+	if !outputSettings.SupportsAggregation {
 		aggregator = NewProducerDaemonNoopAggregator()
 		batcher = NewProducerDaemonBatcherWithoutJsonEncoding(settings.Daemon)
 	}
 
-	return NewProducerDaemonWithInterfaces(logger, metricWriter, aggregator, batcher, output, clock.Provider, name, settings.Daemon), nil
+	return NewProducerDaemonWithInterfaces(
+		logger,
+		metricWriter,
+		aggregator,
+		batcher,
+		output,
+		clock.Provider,
+		name,
+		settings.Daemon,
+		outputSettings.SupportsAggregation,
+	), nil
 }
 
 func NewProducerDaemonWithInterfaces(
@@ -190,17 +193,19 @@ func NewProducerDaemonWithInterfaces(
 	clock clock.Clock,
 	name string,
 	settings ProducerDaemonSettings,
+	supportsAggregation bool,
 ) *producerDaemon {
 	return &producerDaemon{
-		name:       name,
-		logger:     logger,
-		metric:     metric,
-		aggregator: aggregator,
-		batcher:    batcher,
-		outCh:      NewOutputChannel(logger, settings.BufferSize),
-		output:     output,
-		clock:      clock,
-		settings:   settings,
+		name:                name,
+		logger:              logger,
+		metric:              metric,
+		aggregator:          aggregator,
+		batcher:             batcher,
+		outCh:               NewOutputChannel(logger, settings.BufferSize),
+		output:              output,
+		clock:               clock,
+		settings:            settings,
+		supportsAggregation: supportsAggregation,
 	}
 }
 
@@ -303,41 +308,6 @@ func (d *producerDaemon) Write(ctx context.Context, batch []WritableMessage) err
 	return nil
 }
 
-func (d *producerDaemon) ProvidesCompression() bool {
-	// the producer daemon will take care of compression for the whole batch, so we don't need to compress individual messages in the producer
-	return true
-}
-
-func (d *producerDaemon) IsPartitionedOutput() bool {
-	po, ok := d.output.(PartitionedOutput)
-
-	return ok && po.IsPartitionedOutput()
-}
-
-func (d *producerDaemon) GetMaxMessageSize() *int {
-	if sro, ok := d.output.(SizeRestrictedOutput); ok {
-		return sro.GetMaxMessageSize()
-	}
-
-	return nil
-}
-
-func (d *producerDaemon) GetMaxBatchSize() *int {
-	if sro, ok := d.output.(SizeRestrictedOutput); ok {
-		return sro.GetMaxBatchSize()
-	}
-
-	return nil
-}
-
-func (d *producerDaemon) IgnoreProducerDaemonBatchSettings() bool {
-	if sro, ok := d.output.(SizeRestrictedOutput); ok {
-		return sro.IgnoreProducerDaemonBatchSettings()
-	}
-
-	return false
-}
-
 func (d *producerDaemon) tickerLoop(ctx context.Context) error {
 	var err error
 
@@ -395,7 +365,7 @@ func (d *producerDaemon) applyAggregation(ctx context.Context, batch []WritableM
 			d.writeMetricAggregateSize(ctx, readyMessage.MessageCount)
 
 			message := BuildAggregateMessage(readyMessage.Body, d.settings.MessageAttributes, readyMessage.Attributes)
-			if unaggregatedOutput, ok := d.output.(UnaggregatedOutput); ok && !unaggregatedOutput.SupportsAggregation() {
+			if !d.supportsAggregation {
 				message = NewMessage(readyMessage.Body, d.settings.MessageAttributes, readyMessage.Attributes)
 			}
 
@@ -421,7 +391,7 @@ func (d *producerDaemon) flushAggregate(ctx context.Context) ([]*Message, error)
 		d.writeMetricAggregateSize(ctx, aggregate.MessageCount)
 
 		message := BuildAggregateMessage(aggregate.Body, d.settings.MessageAttributes, aggregate.Attributes)
-		if unaggregatedOutput, ok := d.output.(UnaggregatedOutput); ok && !unaggregatedOutput.SupportsAggregation() {
+		if !d.supportsAggregation {
 			message = NewMessage(aggregate.Body, d.settings.MessageAttributes, aggregate.Attributes)
 		}
 

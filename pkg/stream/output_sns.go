@@ -7,7 +7,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sns"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type SnsOutputSettings struct {
@@ -32,8 +31,6 @@ type snsOutput struct {
 	logger log.Logger
 	topic  sns.Topic
 }
-
-var _ SizeRestrictedOutput = &snsOutput{}
 
 func NewSnsOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SnsOutputSettings) (Output, error) {
 	if err := settings.PadFromConfig(config); err != nil {
@@ -111,16 +108,4 @@ func (o *snsOutput) computeMessagesAttributes(batch []WritableMessage) (messages
 	}
 
 	return messages, attributes, nil
-}
-
-func (o *snsOutput) GetMaxMessageSize() *int {
-	return mdl.Box(256 * 1024)
-}
-
-func (o *snsOutput) GetMaxBatchSize() *int {
-	return mdl.Box(10)
-}
-
-func (o *snsOutput) IgnoreProducerDaemonBatchSettings() bool {
-	return false
 }
