@@ -10,6 +10,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/conc"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -70,29 +71,25 @@ func (s *stage) run(k *kernel) error {
 		return fmt.Errorf("stage was already run: %w", err)
 	}
 
-	for name, ms := range s.modules.modules {
-		s.cfn.Gof(func(name string, ms *moduleState) func() error {
-			return func() error {
-				// wait until every routine of the stage was spawned
-				// if a module exists too fast, we have a race condition
-				// regarding the precondition of tomb.Go (namely that no
-				// new routine may be added after the last one exited)
-				<-s.running.Channel()
+	s.cfn.Go(func() error {
+		for name, ms := range s.modules.modules {
+			s.cfn.Gof(func(name string, ms *moduleState) func() error {
+				return func() error {
+					resultErr := k.runModule(s.ctx, name, ms)
 
-				resultErr := k.runModule(s.ctx, name, ms)
+					if resultErr != nil {
+						k.Stop(fmt.Sprintf("module %s returned with an error", name))
+					}
 
-				if resultErr != nil {
-					// pass the error (and stage) to the internal stop function, so we raise the correct error in the end
-					// (see also the note in stage.stopWait(error))
-					k.stop(fmt.Sprintf("module %s returned with an error", name), ms.config.stage, resultErr)
+					return resultErr
 				}
+			}(name, ms), "panic during running of module %s", name)
+		}
 
-				return resultErr
-			}
-		}(name, ms), "panic during running of module %s", name)
-	}
+		s.running.Signal()
 
-	s.running.Signal()
+		return nil
+	})
 
 	return s.waitUntilHealthy()
 }
@@ -184,16 +181,28 @@ func (s *stage) waitUntilHealthy() error {
 	}
 }
 
-func (s *stage) stopWait(killErr error) {
+func (s *stage) stopWait() {
+	// we have to wait for the stage to have spawned its modules. Otherwise, we might wait for only a portion of the
+	// modules, having modules spawned after we already killed the stage and waited for any errors, swallowing them.
+	<-s.running.Channel()
+
+	s.cfn.Kill(ErrKernelStopping)
+	s.err = s.cfn.Wait()
+
 	// if the stage already failed, we had a race condition in the past. On the one hand, the error wasn't propagated to
 	// the coffin/tomb yet, on the other hand, we had spawned a go routine to stop the kernel (which would eventually call
-	// this method here). Thus, we now pass the error for the stage which caused us to terminate the stage/kernel and
-	// kill the coffin with this error (so we still have the race, but both results are the same)
-	if killErr == nil {
-		killErr = ErrKernelStopping
+	// this method here). We then tried to pass the error for the module as the kill error, but that also failed to always
+	// propagate the error. Thus, we completely ignore the error now if it is not significant and look at the errors of all
+	// the modules to see if any of them failed.
+	if s.err == nil || errors.Is(s.err, ErrKernelStopping) {
+		for _, m := range s.modules.modules {
+			if m.err != nil && !errors.Is(m.err, ErrKernelStopping) && !exec.IsRequestCanceled(m.err) {
+				s.err = m.err
+
+				break
+			}
+		}
 	}
-	s.cfn.Kill(killErr)
-	s.err = s.cfn.Wait()
 
 	if s.err != nil && !errors.Is(s.err, ErrKernelStopping) {
 		s.logger.Error(s.ctx, "error during the execution of stage %d: %w", s.index, s.err)
