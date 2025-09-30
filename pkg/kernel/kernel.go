@@ -59,10 +59,12 @@ type kernel struct {
 	stages            stages
 	running           chan struct{}
 	stopping          chan struct{}
+	stopped           conc.SignalOnce
 	stopOnce          sync.Once
 	foregroundModules int32
 
 	killTimeout time.Duration
+	killOnce    sync.Once
 	exitCode    int
 	exitOnce    sync.Once
 	exitHandler ExitHandler
@@ -81,6 +83,7 @@ func newKernel(ctx context.Context, config cfg.Config, logger log.Logger) (*kern
 		ctx:      ctx,
 		running:  make(chan struct{}),
 		stopping: make(chan struct{}),
+		stopped:  conc.NewSignalOnce(),
 
 		killTimeout: settings.KillTimeout,
 		exitCode:    ExitCodeErr,
@@ -115,6 +118,7 @@ func (k *kernel) Run() {
 	startedAt := k.clock.Now()
 	k.logger.Info(k.ctx, "starting kernel")
 	k.foregroundModules = k.stages.countForegroundModules()
+	k.signalOnceAllStagesDone()
 
 	sig := make(chan os.Signal, 2)
 	signal.Notify(sig, unix.SIGTERM, unix.SIGINT)
@@ -144,8 +148,7 @@ func (k *kernel) Run() {
 
 		<-k.waitAllStagesDone().Channel()
 		k.Stop("context done")
-
-		k.waitStopped()
+		<-k.stopped.Channel()
 
 		hasErr := false
 		for _, stage := range k.stages {
@@ -167,10 +170,6 @@ func (k *kernel) Run() {
 }
 
 func (k *kernel) Stop(reason string) {
-	k.stop(reason, 0, nil)
-}
-
-func (k *kernel) stop(reason string, moduleStage int, moduleErr error) {
 	k.stopOnce.Do(func() {
 		close(k.stopping)
 
@@ -182,11 +181,7 @@ func (k *kernel) stop(reason string, moduleStage int, moduleErr error) {
 				stageIndex := indices[i]
 				k.logger.Info(k.ctx, "stopping stage %d", stageIndex)
 
-				waitErr := moduleErr
-				if stageIndex != moduleStage {
-					waitErr = nil
-				}
-				k.stages[stageIndex].stopWait(waitErr)
+				k.stages[stageIndex].stopWait()
 
 				k.logger.Info(k.ctx, "stopped stage %d", stageIndex)
 			}
@@ -194,6 +189,8 @@ func (k *kernel) stop(reason string, moduleStage int, moduleErr error) {
 			k.middlewareCancel()
 		}()
 	})
+
+	k.killIfNotStopped()
 }
 
 func (k *kernel) Running() <-chan struct{} {
@@ -318,45 +315,19 @@ func (k *kernel) foregroundModuleExited() {
 	}
 }
 
-func (k *kernel) waitStopped() {
-	done := conc.NewSignalOnce()
-	defer done.Signal()
-
+func (k *kernel) signalOnceAllStagesDone() {
 	go func() {
-		timer := time.NewTimer(k.killTimeout)
-		defer timer.Stop()
-
-		select {
-		case <-timer.C:
-			err := fmt.Errorf("kernel was not able to shutdown in %v", k.killTimeout)
-			k.logger.Error(k.ctx, "kernel shutdown seems to be blocking.. exiting...: %w", err)
-
-			// we don't need to iterate in order, but doing so is much nicer, so let's do it
-			for _, stageIndex := range k.stages.getIndices() {
-				s := k.stages[stageIndex]
-				for name, ms := range s.modules.modules {
-					if atomic.LoadInt32(&ms.isRunning) != 0 {
-						k.logger.Info(k.ctx, "module in stage %d blocking the shutdown: %s", stageIndex, name)
-					}
-				}
-			}
-
-			k.exitCode = ExitCodeForced
-			k.exit()
-		case <-done.Channel():
-			return
+		// we don't need to iterate in order, we just need to block until everything is done
+		for _, s := range k.stages {
+			<-s.terminated.Channel()
 		}
-	}()
 
-	// we don't need to iterate in order, we just need to block until everything is done
-	for _, stage := range k.stages {
-		<-stage.terminated.Channel()
-	}
+		k.stopped.Signal()
+	}()
 }
 
 func (k *kernel) waitAllStagesDone() conc.SignalOnce {
 	done := conc.NewSignalOnce()
-
 	go func() {
 		for _, s := range k.stages {
 			<-s.ctx.Done()
@@ -366,6 +337,36 @@ func (k *kernel) waitAllStagesDone() conc.SignalOnce {
 	}()
 
 	return done
+}
+
+func (k *kernel) killIfNotStopped() {
+	k.killOnce.Do(func() {
+		go func() {
+			timer := time.NewTimer(k.killTimeout)
+			defer timer.Stop()
+
+			select {
+			case <-timer.C:
+				err := fmt.Errorf("kernel was not able to shutdown in %v", k.killTimeout)
+				k.logger.Error(k.ctx, "kernel shutdown seems to be blocking.. exiting...: %w", err)
+
+				// we don't need to iterate in order, but doing so is much nicer, so let's do it
+				for _, stageIndex := range k.stages.getIndices() {
+					s := k.stages[stageIndex]
+					for name, ms := range s.modules.modules {
+						if atomic.LoadInt32(&ms.isRunning) != 0 {
+							k.logger.Info(k.ctx, "module in stage %d blocking the shutdown: %s", stageIndex, name)
+						}
+					}
+				}
+
+				k.exitCode = ExitCodeForced
+				k.exit()
+			case <-k.stopped.Channel():
+				return
+			}
+		}()
+	})
 }
 
 func readSettings(config cfg.Config) (Settings, error) {

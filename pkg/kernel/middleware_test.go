@@ -26,7 +26,7 @@ type MiddleWareTestSuite struct {
 
 	ctx    context.Context
 	config *cfgMocks.Config
-	logger *logMocks.Logger
+	logger logMocks.LoggerMock
 	module *kernelMocks.FullModule
 }
 
@@ -43,7 +43,7 @@ func (s *MiddleWareTestSuite) SetupTest() {
 		}).
 		Return(nil)
 
-	s.logger = logMocks.NewLogger(s.T())
+	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.logger.EXPECT().WithChannel(mock.AnythingOfType("string")).Return(s.logger)
 	s.logger.EXPECT().Info(matcher.Context, mock.Anything)
 	s.logger.EXPECT().Info(matcher.Context, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
