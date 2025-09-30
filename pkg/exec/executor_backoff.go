@@ -54,7 +54,9 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ..
 			n(err, dur)
 		}
 
-		logger.Warn(ctx, "retrying resource %s after error: %s", e.resource, err.Error())
+		logger.WithFields(log.Fields{
+			"attempts": attempts,
+		}).Warn(ctx, "retrying resource %s after error: %s", e.resource, err.Error())
 		attempts++
 	}
 
@@ -87,6 +89,10 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ..
 	}, backoffCtx, notify)
 
 	duration := time.Since(start)
+	logger = logger.WithFields(log.Fields{
+		"attempts":        attempts,
+		"duration_millis": duration.Milliseconds(),
+	})
 
 	// we're having an error after reaching the MaxAttempts and the error isn't good-natured
 	if err != nil && errType != ErrorTypeOk && e.settings.MaxAttempts > 0 && attempts > e.settings.MaxAttempts {
