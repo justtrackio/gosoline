@@ -81,6 +81,12 @@ func WithConsumer[M any](callback stream.ConsumerCallbackFactory[M]) Option {
 	return WithModule("consumer-default", stream.NewConsumer("default", callback))
 }
 
+func WithConsumers[M any](consumers stream.ConsumerCallbackMap[M]) Option {
+	factory := stream.NewConsumerFactory(consumers)
+
+	return WithModuleFactory(factory)
+}
+
 func WithEnvSetup(setups ...func() error) Option {
 	return func(s *SuiteConfiguration) {
 		s.envSetup = append(s.envSetup, setups...)
