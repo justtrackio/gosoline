@@ -18,6 +18,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
+	"github.com/justtrackio/gosoline/pkg/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -58,6 +59,18 @@ func (s *loggingMiddlewareTestSuite) TestRequestCanceledError() {
 	s.Require().Error(err)
 
 	s.logger.EXPECT().Info(matcher.Context, "%s %s %s - request canceled: %s", "GET", "path", "HTTP/1.1", context.Canceled.Error())
+
+	s.handler(ginCtx)
+}
+
+func (s *loggingMiddlewareTestSuite) TestRequestValidationError() {
+	ginCtx := buildRequest()
+
+	err := ginCtx.Error(validation.NewError(fmt.Errorf("test error")))
+
+	s.Require().Error(err)
+
+	s.logger.EXPECT().Warn(matcher.Context, "%s %s %s - validation error: %s", "GET", "path", "HTTP/1.1", "validation: test error")
 
 	s.handler(ginCtx)
 }

@@ -1,5 +1,12 @@
 package funk
 
+import (
+	"cmp"
+	"iter"
+	"maps"
+	"slices"
+)
+
 // MergeMaps merges zero or more maps into one combined map. Elements from later arguments overwrite elements
 // from earlier arguments in the case of collisions. If given a single argument, MergeMaps produces a swallow
 // copy of the input.
@@ -195,4 +202,17 @@ func PopulateMapWith[T any, K comparable](generator func(K) T, keys ...K) map[K]
 	}
 
 	return result
+}
+
+// RangeSorted returns an iterator that yields all key/value pairs from the given map in order sorted by key.
+func RangeSorted[K cmp.Ordered, V any](m map[K]V) iter.Seq2[K, V] {
+	keys := slices.Sorted[K](maps.Keys(m))
+
+	return func(yield func(K, V) bool) {
+		for _, k := range keys {
+			if !yield(k, m[k]) {
+				return
+			}
+		}
+	}
 }
