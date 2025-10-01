@@ -181,15 +181,15 @@ func (l *loggerMock) mockLoggerMethod(method string, level string, allowed bool)
 
 	for i := 0; i < 10; i++ {
 		anythings = append(anythings, mock.Anything)
-		anytingsWithCtx := append([]any{matcher.Context}, anythings...)
-		l.On(method, anytingsWithCtx...).Run(f).Return(l).Maybe()
+		anythingsWithCtx := append([]any{matcher.Context}, anythings...)
+		l.On(method, anythingsWithCtx...).Run(f).Return(l).Maybe()
 	}
 }
 
 func (l *loggerMock) inspectLogFunction(level string, allowed bool) func(args mock.Arguments) {
 	return func(args mock.Arguments) {
 		msg := args.Get(1).(string)
-		msg = fmt.Sprintf(msg, args[1:]...)
+		msg = fmt.Sprintf(msg, args[2:]...)
 
 		if l.t != nil {
 			testName := l.t.Name()

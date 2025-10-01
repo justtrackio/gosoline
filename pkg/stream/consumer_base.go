@@ -208,20 +208,18 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 	cfn.Go(func() error {
 		cfn.GoWithContextf(manualCtx, c.logConsumeCounter, "panic during counter log")
 		cfn.GoWithContextf(manualCtx, c.runConsumerCallback, "panic during run of the consumerCallback")
-		// run the input after the counters are running to make sure our coffin does not immediately
-		// die just because Run() immediately returns
 		cfn.GoWithContextf(dyingCtx, c.input.Run, "panic during run of the consumer input")
 		cfn.GoWithContextf(dyingCtx, c.retryInput.Run, "panic during run of the retry handler")
 		cfn.GoWithContextf(dyingCtx, c.ingestData, "panic during shoveling the data")
 
 		c.wg.Add(c.settings.RunnerCount)
 		for i := 0; i < c.settings.RunnerCount; i++ {
-			cfn.GoWithContextf(manualCtx, inputRunner, "panic during consuming")
+			cfn.GoWithContextf(kernelCtx, inputRunner, "panic during consuming")
 		}
 
 		cfn.GoWithContextf(manualCtx, c.stopConsuming, "panic during stopping the consuming")
 
-		cfn.GoWithContext(manualCtx, func(manualCtx context.Context) error {
+		cfn.Go(func() error {
 			// wait for kernel or coffin cancel...
 			select {
 			case <-manualCtx.Done():
@@ -247,22 +245,40 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 func (c *baseConsumer) logConsumeCounter(ctx context.Context) error {
 	defer c.logger.Debug(ctx, "logConsumeCounter is ending")
 
-	ticker := time.NewTicker(c.settings.IdleTimeout)
+	lastLog := c.clock.Now()
+	ticker := c.clock.NewTicker(c.settings.IdleTimeout)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
-		case <-ticker.C:
-			processed := atomic.SwapInt32(&c.processed, 0)
+			c.logProcessedMessages(ctx, &lastLog)
 
-			c.logger.WithFields(log.Fields{
-				"count": processed,
-				"name":  c.name,
-			}).Info(ctx, "processed %v messages", processed)
+			return nil
+		case <-ticker.Chan():
+			c.logProcessedMessages(ctx, &lastLog)
 		}
 	}
+}
+
+func (c *baseConsumer) logProcessedMessages(ctx context.Context, lastLog *time.Time) {
+	processed := atomic.SwapInt32(&c.processed, 0)
+	now := c.clock.Now()
+	took := now.Sub(*lastLog)
+	*lastLog = now
+
+	c.logger.WithFields(log.Fields{
+		"count": processed,
+		"took":  took,
+		"name":  c.name,
+	}).Info(
+		ctx,
+		"consumer %s processed %d messages in %vs (%.1f messages/s)",
+		c.name,
+		processed,
+		took.Seconds(),
+		float64(processed)/took.Seconds(),
+	)
 }
 
 func (c *baseConsumer) initConsumerCallback(ctx context.Context) error {
