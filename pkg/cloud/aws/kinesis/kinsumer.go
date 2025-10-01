@@ -63,8 +63,12 @@ type Settings struct {
 	WaitTime time.Duration `cfg:"wait_time" default:"1s" validate:"min=1000000"`
 	// Time between writing checkpoints to ddb. This defines how much work you might lose. Min = 100ms
 	PersistFrequency time.Duration `cfg:"persist_frequency" default:"5s" validate:"min=100000000"`
+	// How many PersistFrequency cycles do we wait until we no longer assume a client is owning a checkpoint?
+	CheckpointTimeoutPeriods int `cfg:"checkpoint_timeout_periods" default:"5" validate:"min=2"`
 	// Time between checks for new shards. This defines how fast it reacts to shard changes. Min = 1s
-	DiscoverFrequency time.Duration `cfg:"discover_frequency" default:"1m" validate:"min=1000000000"`
+	DiscoverFrequency time.Duration `cfg:"discover_frequency" default:"15s" validate:"min=1000000000"`
+	// How many DiscoverFrequency cycles do we wait until a client is considered to be gone and expired?
+	ClientExpirationPeriods int `cfg:"client_expiration_periods" default:"3" validate:"min=2"`
 	// How long we extend the deadline of a context when releasing a shard or when deregistering a client. Min = 1s
 	ReleaseDelay time.Duration `cfg:"release_delay" default:"5s" validate:"min=1000000000"`
 	// Should we ensure messages from child shards are only consumed after their parent shards have been fully consumed?

@@ -50,8 +50,10 @@ func (s *metadataRepositoryTestSuite) SetupTest() {
 	s.checkpointNamespace = string("checkpoint:gosoline-test-metadata-repository-test-suite:" + s.stream)
 	s.repo = ddbMocks.NewRepository(s.T())
 	s.settings = kinesis.Settings{
-		DiscoverFrequency: time.Minute * 10,
-		PersistFrequency:  time.Second * 10,
+		DiscoverFrequency:        time.Minute * 10,
+		CheckpointTimeoutPeriods: 5,
+		PersistFrequency:         time.Second * 10,
+		ClientExpirationPeriods:  5,
 	}
 	s.appId = cfg.AppId{
 		Project:     "gosoline",
