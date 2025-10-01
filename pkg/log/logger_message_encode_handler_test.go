@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/log/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -17,12 +17,12 @@ func TestLoggerMessageEncodeHandlerTestSuite(t *testing.T) {
 type LoggerMessageEncodeHandlerTestSuite struct {
 	suite.Suite
 
-	logger  *mocks.Logger
+	logger  logMocks.LoggerMock
 	encoder *log.MessageWithLoggingFieldsEncoder
 }
 
 func (s *LoggerMessageEncodeHandlerTestSuite) SetupTest() {
-	s.logger = mocks.NewLogger(s.T())
+	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.encoder = log.NewMessageWithLoggingFieldsEncoderWithInterfaces(s.logger)
 }
 

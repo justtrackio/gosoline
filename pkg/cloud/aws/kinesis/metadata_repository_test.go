@@ -23,7 +23,7 @@ type metadataRepositoryTestSuite struct {
 	suite.Suite
 
 	ctx                 context.Context
-	logger              *logMocks.Logger
+	logger              logMocks.LoggerMock
 	stream              kinesis.Stream
 	clientId            kinesis.ClientId
 	clientNamespace     string
@@ -42,7 +42,7 @@ func TestMetadataRepository(t *testing.T) {
 
 func (s *metadataRepositoryTestSuite) SetupTest() {
 	s.ctx = s.T().Context()
-	s.logger = logMocks.NewLogger(s.T())
+	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.stream = "testStream"
 	s.clientId = kinesis.ClientId(uuid.New().NewV4())
 	s.clientNamespace = string("client:gosoline-test-metadata-repository-test-suite:" + s.stream)

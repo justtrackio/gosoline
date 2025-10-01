@@ -11,18 +11,15 @@ import (
 
 func TestKafkaLogger(t *testing.T) {
 	var (
-		logger            = logMocks.NewLogger(t)
-		loggerWithChannel = logMocks.NewLogger(t)
-		nonCriticalError  = errors.New("Not Leader For Partition")
+		logger           = logMocks.NewLoggerMock(logMocks.WithTestingT(t))
+		nonCriticalError = errors.New("Not Leader For Partition")
 	)
 
-	logger.EXPECT().WithChannel("stream.kafka").Return(loggerWithChannel).Once()
-
-	loggerWithChannel.EXPECT().Debug(matcher.Context, "debug message").Once()
-	loggerWithChannel.EXPECT().Error(matcher.Context, "error message").Once()
-	loggerWithChannel.EXPECT().Info(matcher.Context, "not the leader").Once()
-	loggerWithChannel.EXPECT().Info(matcher.Context, "error: %s", nonCriticalError).Once()
-	loggerWithChannel.EXPECT().Info(matcher.Context, "unexpected EOF").Once()
+	logger.EXPECT().Debug(matcher.Context, "debug message").Once()
+	logger.EXPECT().Error(matcher.Context, "error message").Once()
+	logger.EXPECT().Info(matcher.Context, "not the leader").Once()
+	logger.EXPECT().Info(matcher.Context, "error: %s", nonCriticalError).Once()
+	logger.EXPECT().Info(matcher.Context, "unexpected EOF").Once()
 
 	kLogger := logging.NewKafkaLogger(logger)
 	kLogger.DebugLogger().Printf("debug message")

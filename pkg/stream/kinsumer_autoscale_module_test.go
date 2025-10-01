@@ -130,7 +130,7 @@ type KinsumerAutoscaleModuleTestSuite struct {
 
 	ctx               context.Context
 	cancel            context.CancelFunc
-	logger            *logMocks.Logger
+	logger            logMocks.LoggerMock
 	leaderElection    *concDdbMocks.LeaderElection
 	kinesisClient     *kinesisMocks.Client
 	orchestrator      *mocks.KinsumerAutoscaleOrchestrator
@@ -148,7 +148,7 @@ type KinsumerAutoscaleModuleTestSuite struct {
 func (s *KinsumerAutoscaleModuleTestSuite) SetupTestCase() {
 	s.ctx, s.cancel = context.WithCancel(s.T().Context())
 
-	s.logger = logMocks.NewLogger(s.T())
+	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.leaderElection = concDdbMocks.NewLeaderElection(s.T())
 	s.kinesisClient = kinesisMocks.NewClient(s.T())
 	s.orchestrator = mocks.NewKinsumerAutoscaleOrchestrator(s.T())

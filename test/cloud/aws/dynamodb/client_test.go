@@ -104,7 +104,7 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 		Name: "PutItem",
 	}
 
-	loggerMock := logMocks.NewLogger(s.T())
+	loggerMock := logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	loggerMock.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(loggerMock)
 	loggerMock.EXPECT().Warn(matcher.Context, "attempt number %d to request resource %s failed after %s cause of error: %s", mock.AnythingOfType("int"), resource, mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*http.ResponseError")).Twice()
 	loggerMock.EXPECT().Warn(matcher.Context, "sent request to resource %s successful after %d attempts in %s", resource, 3, mock.AnythingOfType("time.Duration")).Once()
@@ -151,7 +151,7 @@ func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
 	}()
 
 	ctx := s.T().Context()
-	loggerMock := logMocks.NewLogger(s.T())
+	loggerMock := logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	loggerMock.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(loggerMock)
 	loggerMock.EXPECT().Info(matcher.Context, "created new %s client %s", "dynamodb", "max_elapsed_time_exceeded").Once()
 
@@ -177,7 +177,7 @@ func (s *ClientTestSuite) TestRetryOnTransactionConflict() {
 		Name: "PutItem",
 	}
 
-	logger := logMocks.NewLogger(s.T())
+	logger := logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(logger)
 	logger.EXPECT().
 		Warn(

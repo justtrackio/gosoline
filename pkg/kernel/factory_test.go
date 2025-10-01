@@ -27,7 +27,7 @@ type FactoryTestSuite struct {
 
 	ctx    context.Context
 	config *cfgMocks.Config
-	logger *logMocks.Logger
+	logger logMocks.LoggerMock
 }
 
 func (s *FactoryTestSuite) SetupTest() {
@@ -43,7 +43,7 @@ func (s *FactoryTestSuite) SetupTest() {
 		}).
 		Return(nil)
 
-	s.logger = logMocks.NewLogger(s.T())
+	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.logger.EXPECT().WithChannel(mock.AnythingOfType("string")).Return(s.logger)
 }
 
