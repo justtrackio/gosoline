@@ -10,7 +10,7 @@ import (
 )
 
 func TestSamplingLogger_Info(t *testing.T) {
-	mock := mocks.NewLogger(t)
+	mock := mocks.NewLoggerMock(mocks.WithTestingT(t))
 	mock.EXPECT().Info(t.Context(), "this should be logged").Once()
 	mock.EXPECT().Info(t.Context(), "log msg", "a", 4).Twice()
 

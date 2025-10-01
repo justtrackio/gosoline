@@ -16,14 +16,14 @@ import (
 type DdbLeaderElectionTestCase struct {
 	suite.Suite
 
-	logger     *logMocks.Logger
+	logger     logMocks.LoggerMock
 	clock      clock.Clock
 	repository *ddbMocks.Repository
 	election   *concDdb.DdbLeaderElection
 }
 
 func (s *DdbLeaderElectionTestCase) SetupTest() {
-	s.logger = logMocks.NewLogger(s.T())
+	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.clock = clock.NewFakeClock()
 	s.repository = ddbMocks.NewRepository(s.T())
 

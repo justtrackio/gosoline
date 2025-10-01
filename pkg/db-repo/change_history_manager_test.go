@@ -13,7 +13,7 @@ import (
 type changeHistoryManagerTestSuite struct {
 	suite.Suite
 
-	logger   *logMocks.Logger
+	logger   logMocks.LoggerMock
 	dbClient goSqlMock.Sqlmock
 	manager  *db_repo.ChangeHistoryManager
 }
@@ -28,7 +28,7 @@ func TestRunChangeHistoryManagerTestSuite(t *testing.T) {
 }
 
 func (s *changeHistoryManagerTestSuite) SetupTest() {
-	s.logger = logMocks.NewLogger(s.T())
+	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.logger.EXPECT().WithChannel("change_history_manager").Return(s.logger)
 
 	db, clientMock, err := goSqlMock.New()

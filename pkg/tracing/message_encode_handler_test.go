@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/log/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/assert"
@@ -69,7 +69,7 @@ func TestMessageWithTraceEncoder_Decode_Warning(t *testing.T) {
 		"traceId": "1-5e3d557d-d06c248cc50169bd71b44fec",
 	}
 
-	logger := mocks.NewLogger(t)
+	logger := logMocks.NewLoggerMock(logMocks.WithTestingT(t))
 	logger.EXPECT().WithFields(log.Fields{
 		"stacktrace": "mocked trace",
 	}).Return(logger).Once()

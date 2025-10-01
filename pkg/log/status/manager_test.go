@@ -17,7 +17,7 @@ func TestManager(t *testing.T) {
 	assert.IsType(t, m, status.ProvideManager())
 	assert.NotSame(t, m, status.ProvideManager())
 
-	logger := logMocks.NewLogger(t)
+	logger := logMocks.NewLoggerMock(logMocks.WithTestingT(t))
 
 	h := m.StartWork("test", 3)
 	logger.EXPECT().Info(matcher.Context, "Work item %s: step %d / %d (%.2f %%)", "test", 0, 3, 0.0).Once()

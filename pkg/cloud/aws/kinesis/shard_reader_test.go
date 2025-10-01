@@ -28,7 +28,7 @@ type shardReaderTestSuite struct {
 	ctx                context.Context
 	stream             gosoKinesis.Stream
 	shardId            gosoKinesis.ShardId
-	logger             *logMocks.Logger
+	logger             logMocks.LoggerMock
 	metricWriter       *metricMocks.Writer
 	metadataRepository *mocks.MetadataRepository
 	kinesisClient      *mocks.Client
@@ -50,7 +50,7 @@ func (s *shardReaderTestSuite) SetupTest() {
 	s.shardId = "shard-007"
 	s.metadataRepository = mocks.NewMetadataRepository(s.T())
 	s.kinesisClient = mocks.NewClient(s.T())
-	s.logger = logMocks.NewLogger(s.T())
+	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.metricWriter = metricMocks.NewWriter(s.T())
 	s.settings = gosoKinesis.Settings{
 		InitialPosition: gosoKinesis.SettingsInitialPosition{

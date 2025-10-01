@@ -18,7 +18,7 @@ import (
 
 func TestModule(t *testing.T) {
 	mgr := status.NewManager()
-	logger := logMocks.NewLogger(t)
+	logger := logMocks.NewLoggerMock(logMocks.WithTestingT(t))
 	logger.EXPECT().WithChannel("status").Return(logger).Once()
 	m, err := status.NewModule(mgr)(t.Context(), nil, logger)
 	assert.NoError(t, err)

@@ -26,7 +26,7 @@ import (
 type loggingMiddlewareTestSuite struct {
 	suite.Suite
 
-	logger *logMocks.Logger
+	logger logMocks.LoggerMock
 
 	handler gin.HandlerFunc
 }
@@ -36,7 +36,7 @@ func TestLoggingMiddlewareTestSuite(t *testing.T) {
 }
 
 func (s *loggingMiddlewareTestSuite) SetupTest() {
-	s.logger = logMocks.NewLogger(s.T())
+	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
 
 	s.handler = httpserver.NewLoggingMiddlewareWithInterfaces(s.logger, httpserver.LoggingSettings{}, clock.Provider)
@@ -135,7 +135,7 @@ func TestLogFields(t *testing.T) {
 	clock.EXPECT().Now().Return(now).Once()
 	clock.EXPECT().Since(now).Return(250 * time.Millisecond).Once()
 
-	logger := logMocks.NewLogger(t)
+	logger := logMocks.NewLoggerMock(logMocks.WithTestingT(t))
 
 	expected := log.Fields{
 		"bytes":            2,
@@ -171,7 +171,7 @@ func TestLogEncodedRequestBody(t *testing.T) {
 	ginCtx := buildRequest()
 	ginCtx.Request.Body = io.NopCloser(strings.NewReader("{}"))
 
-	logger := logMocks.NewLogger(t)
+	logger := logMocks.NewLoggerMock(logMocks.WithTestingT(t))
 
 	logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Run(func(fields log.Fields) {
 		requestBody, ok := fields["request_body"]
