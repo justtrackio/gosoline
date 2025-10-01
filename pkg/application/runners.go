@@ -106,6 +106,49 @@ func RunUntypedConsumers(consumers stream.UntypedConsumerCallbackMap, options ..
 	Run(options...)
 }
 
+// RunBatchConsumer runs the provided batch consumer as an application. You can pass additional options to customize the way it is executed.
+func RunBatchConsumer[M any](callback stream.BatchConsumerCallbackFactory[M], options ...Option) {
+	RunBatchConsumers[M](stream.BatchConsumerCallbackMap[M]{
+		"default": callback,
+	}, options...)
+}
+
+// RunUntypedBatchConsumer runs the provided untyped batch consumer as an application. You can pass additional options to customize the way it is executed.
+//
+// Prefer using RunBatchConsumer if possible as it provided additional type safety (especially, if you are only expecting a single type as input anyway).
+func RunUntypedBatchConsumer(callback stream.UntypedBatchConsumerCallbackFactory, options ...Option) {
+	RunUntypedBatchConsumers(stream.UntypedBatchConsumerCallbackMap{
+		"default": callback,
+	}, options...)
+}
+
+// RunBatchConsumers runs the provided batch consumers as an application. You can pass additional options to customize the way it is executed.
+//
+// RunBatchConsumers requires all batch consumers to accept the same input model. Thus, it is intended to be used if you have multiple source
+// queues you are reading from.
+func RunBatchConsumers[M any](consumers stream.BatchConsumerCallbackMap[M], options ...Option) {
+	factory := stream.NewBatchConsumerFactory(consumers)
+
+	options = append(options, WithModuleMultiFactory(factory))
+	options = append(options, WithExecBackoffInfinite)
+
+	Run(options...)
+}
+
+// RunUntypedBatchConsumers runs the provided untyped batch consumers as an application. You can pass additional options to customize the way it is executed.
+//
+// Prefer using RunBatchConsumers if all batch consumers share the same input type or use stream.EraseBatchConsumerCallbackFactoryTypes to convert
+// typed batch consumers to untyped batch consumers. If you are running distinct batch consumers in the same application, it might be a good idea to
+// split the application into multiple applications if possible.
+func RunUntypedBatchConsumers(consumers stream.UntypedBatchConsumerCallbackMap, options ...Option) {
+	factory := stream.NewUntypedBatchConsumerFactory(consumers)
+
+	options = append(options, WithModuleMultiFactory(factory))
+	options = append(options, WithExecBackoffInfinite)
+
+	Run(options...)
+}
+
 func RunMdlSubscriber(transformers mdlsub.TransformerMapTypeVersionFactories, options ...Option) {
 	subs := mdlsub.NewSubscriberFactory(transformers)
 

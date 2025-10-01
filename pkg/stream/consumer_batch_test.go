@@ -104,7 +104,6 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 			s.inputData <- stream.NewJsonMessage(`"foo"`)
 			s.inputData <- stream.NewJsonMessage(`"bar"`)
 			s.inputData <- stream.NewJsonMessage(`"foobar"`)
-			s.kernelCancel()
 		}).Return(nil)
 
 	processed := 0
@@ -114,6 +113,7 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 		AckBatch(matcher.Context, mock.AnythingOfType("[]*stream.Message"), acks).
 		Run(func(ctx context.Context, msgs []*stream.Message, acks []bool) {
 			processed = len(msgs)
+			s.kernelCancel()
 		}).
 		Return(nil).
 		Once()
@@ -255,7 +255,6 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 		Run(matcher.Context).
 		Run(func(ctx context.Context) {
 			s.inputData <- aggregate
-			s.kernelCancel()
 		}).
 		Return(nil).
 		Once()
@@ -267,6 +266,7 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 		AckBatch(matcher.Context, mock.AnythingOfType("[]*stream.Message"), acks).
 		Run(func(ctx context.Context, msgs []*stream.Message, acks []bool) {
 			processed = len(msgs)
+			s.kernelCancel()
 		}).
 		Return(nil).
 		Once()

@@ -7,6 +7,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/reqctx"
@@ -90,9 +91,6 @@ func (c *Consumer) readData(ctx context.Context) error {
 
 	for {
 		select {
-		case <-ctx.Done():
-			return nil
-
 		case cdata, ok := <-c.data:
 			if !ok {
 				return nil
@@ -119,7 +117,6 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerD
 	defer span.Finish()
 
 	var err error
-	start := c.clock.Now()
 	batch := make([]*Message, 0)
 
 	if ctx, _, err = c.encoder.Decode(ctx, cdata.msg, &batch); err != nil {
@@ -132,16 +129,23 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerD
 		c.Acknowledge(ctx, cdata, true)
 	}
 	for _, m := range batch {
-		_ = c.process(ctx, m, false) // we can't natively retry aggregate messages
+		start := c.clock.Now()
+
+		_ = c.process(
+			ctx,
+			m,
+			// we can only retry aggregate messages if we haven't acknowledged them yet and support native retry
+			c.settings.AggregateMessageMode == AggregateMessageModeAtLeastOnce && c.hasNativeRetry(),
+		)
+
+		duration := c.clock.Now().Sub(start)
+		atomic.AddInt32(&c.processed, 1)
+
+		c.writeMetricDurationAndProcessedCount(ctx, duration, 1)
 	}
 	if c.settings.AggregateMessageMode == AggregateMessageModeAtLeastOnce {
 		c.Acknowledge(ctx, cdata, true)
 	}
-
-	duration := c.clock.Now().Sub(start)
-	atomic.AddInt32(&c.processed, int32(len(batch)))
-
-	c.writeMetricDurationAndProcessedCount(ctx, duration, len(batch))
 }
 
 func (c *Consumer) processSingleMessage(ctx context.Context, cdata *consumerData) {
@@ -172,6 +176,17 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 	defer c.healthCheckTimer.MarkHealthy()
 	defer c.recover(ctx, msg)
 
+	// if we are shutting down, don't acknowledge any messages and try to retry them if needed
+	select {
+	case <-ctx.Done():
+		if !hasNativeRetry {
+			c.retry(ctx, msg)
+		}
+
+		return false
+	default:
+	}
+
 	var err error
 	var ack bool
 	var model any
@@ -199,7 +214,10 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 		}).Debug(ctx, "processing sqs message")
 	}
 
-	if ack, err = c.callback.Consume(ctx, model, attributes); err != nil {
+	delayedCtx, stop := exec.WithDelayedCancelContext(ctx, c.settings.ConsumeGraceTime)
+	defer stop()
+
+	if ack, err = c.callback.Consume(delayedCtx, model, attributes); err != nil {
 		c.handleError(ctx, err, "an error occurred during the consume operation")
 	}
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -27,8 +28,9 @@ type RunnableUntypedBatchConsumerCallback interface {
 }
 
 type BatchConsumerSettings struct {
-	IdleTimeout time.Duration `cfg:"idle_timeout" default:"10s"`
-	BatchSize   int           `cfg:"batch_size" default:"1"`
+	IdleTimeout      time.Duration `cfg:"idle_timeout" default:"10s"`
+	BatchSize        int           `cfg:"batch_size" default:"1"`
+	ConsumeGraceTime time.Duration `cfg:"consume_grace_time" default:"5s"`
 }
 
 type BatchConsumer struct {
@@ -85,15 +87,12 @@ func (c *BatchConsumer) Run(kernelCtx context.Context) error {
 func (c *BatchConsumer) readFromInput(ctx context.Context) error {
 	defer c.logger.Debug(ctx, "run is ending")
 	defer c.wg.Done()
-	defer c.processBatch(context.Background())
+	defer c.processBatch(ctx)
 
 	for {
 		force := false
 
 		select {
-		case <-ctx.Done():
-			return fmt.Errorf("return from consuming as the coffin is dying")
-
 		case cdata, ok := <-c.data:
 			if !ok {
 				return nil
@@ -151,10 +150,26 @@ func (c *BatchConsumer) processBatch(ctx context.Context) {
 func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData) {
 	defer c.recover(ctx, nil)
 
+	// if we are shutting down, don't acknowledge any messages and try to retry them if needed
+	select {
+	case <-ctx.Done():
+		if !c.hasNativeRetry() {
+			for _, msg := range batch {
+				c.retry(ctx, msg.msg)
+			}
+		}
+
+		return
+	default:
+	}
+
 	start := c.clock.Now()
 
+	delayedCtx, stop := exec.WithDelayedCancelContext(ctx, c.settings.ConsumeGraceTime)
+	defer stop()
+
 	// make sure to create new context as we can't rely on the tracer to create a new one
-	batchCtx, cancel := context.WithCancel(ctx)
+	batchCtx, cancel := context.WithCancel(delayedCtx)
 	defer cancel()
 
 	var span tracing.Span
@@ -179,6 +194,14 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData)
 
 	if len(batch) != len(acks) {
 		c.logger.Error(batchCtx, "number of acks does not match number of messages in batch: %d != %d", len(acks), len(batch))
+
+		// make sure we have as many acks as we have messages
+		for len(acks) < len(batch) {
+			acks = append(acks, false)
+		}
+
+		// and drop any acks we have too many
+		acks = acks[:len(batch)]
 	}
 
 	ackMessages := make([]*consumerData, 0, len(batch))
