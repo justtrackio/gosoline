@@ -113,7 +113,14 @@ type metadataRepository struct {
 	finishedLck sync.Mutex
 }
 
-func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Logger, stream Stream, clientId ClientId, settings Settings) (MetadataRepository, error) {
+func NewMetadataRepository(
+	ctx context.Context,
+	config cfg.Config,
+	logger log.Logger,
+	stream Stream,
+	clientId ClientId,
+	settings Settings,
+) (MetadataRepository, error) {
 	ddbSettings := &ddb.Settings{
 		ClientName: settings.ClientName,
 		ModelId: mdl.ModelId{
@@ -121,9 +128,7 @@ func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Lo
 			Name:  "metadata",
 		},
 		Main: ddb.MainSettings{
-			Model:              &FullRecord{},
-			ReadCapacityUnits:  1,
-			WriteCapacityUnits: 1,
+			Model: &FullRecord{},
 		},
 		DisableTracing: true,
 	}
@@ -145,13 +150,21 @@ func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Lo
 	return NewMetadataRepositoryWithInterfaces(logger, stream, clientId, repo, settings, appId, clock.Provider), nil
 }
 
-func NewMetadataRepositoryWithInterfaces(logger log.Logger, stream Stream, clientId ClientId, repo ddb.Repository, settings Settings, appId cfg.AppId, clock clock.Clock) MetadataRepository {
-	clientTimeout := settings.DiscoverFrequency * 5
+func NewMetadataRepositoryWithInterfaces(
+	logger log.Logger,
+	stream Stream,
+	clientId ClientId,
+	repo ddb.Repository,
+	settings Settings,
+	appId cfg.AppId,
+	clock clock.Clock,
+) MetadataRepository {
+	clientTimeout := settings.DiscoverFrequency * time.Duration(settings.ClientExpirationPeriods)
 	if clientTimeout < time.Minute {
 		clientTimeout = time.Minute
 	}
 
-	checkpointTimeout := settings.PersistFrequency * 5
+	checkpointTimeout := settings.PersistFrequency * time.Duration(settings.CheckpointTimeoutPeriods)
 	if checkpointTimeout < time.Minute {
 		checkpointTimeout = time.Minute
 	}
@@ -342,7 +355,12 @@ func (m *metadataRepository) AcquireShard(ctx context.Context, shardId ShardId) 
 	}, nil
 }
 
-func (m *metadataRepository) handleExistingRecord(ctx context.Context, record *CheckpointRecord, shardId ShardId, timedOutBefore time.Time) (*CheckpointRecord, error) {
+func (m *metadataRepository) handleExistingRecord(
+	ctx context.Context,
+	record *CheckpointRecord,
+	shardId ShardId,
+	timedOutBefore time.Time,
+) (*CheckpointRecord, error) {
 	if record.OwningClientId != "" && record.UpdatedAt.After(timedOutBefore) {
 		m.logger.Info(ctx, "not trying to take over shard %s from %s, it is still in use", shardId, record.OwningClientId)
 
