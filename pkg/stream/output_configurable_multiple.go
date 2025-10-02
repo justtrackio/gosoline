@@ -36,25 +36,25 @@ func (m *multiOutput) Write(ctx context.Context, batch []WritableMessage) error 
 func NewConfigurableMultiOutput(ctx context.Context, config cfg.Config, logger log.Logger, base string) (Output, *OutputCapabilities, error) {
 	key := fmt.Sprintf("%s.types", ConfigurableOutputKey(base))
 
-	val, err := config.Get(key)
+	outputs, err := config.GetStringMap(key)
 	if err != nil {
 		return nil, nil, fmt.Errorf("can not get output types: %w", err)
 	}
-
-	outputs := val.(map[string]any)
 
 	multiOutput := &multiOutput{
 		outputs: make([]Output, 0),
 	}
 
 	outputCapabilities := &OutputCapabilities{
-		IsPartitionedOutput:               true,
-		ProvidesCompression:               true,
+		IsPartitionedOutput:               false,
+		ProvidesCompression:               false,
 		SupportsAggregation:               true,
 		MaxBatchSize:                      nil,
 		MaxMessageSize:                    nil,
 		IgnoreProducerDaemonBatchSettings: false,
 	}
+
+	atLeastOneWithoutPartitioningSupport := false
 
 	for outputName := range outputs {
 		name := fmt.Sprintf("%s.types.%s", base, outputName)
@@ -64,7 +64,11 @@ func NewConfigurableMultiOutput(ctx context.Context, config cfg.Config, logger l
 			return nil, nil, fmt.Errorf("can not create multi output %s: %w", base, err)
 		}
 
-		updateMultiOutputCapabilities(outputCapabilities, componentCapabilities)
+		if !componentCapabilities.IsPartitionedOutput {
+			atLeastOneWithoutPartitioningSupport = true
+		}
+
+		updateMultiOutputCapabilities(outputCapabilities, componentCapabilities, atLeastOneWithoutPartitioningSupport)
 
 		multiOutput.outputs = append(multiOutput.outputs, componentOutput)
 	}
@@ -72,23 +76,25 @@ func NewConfigurableMultiOutput(ctx context.Context, config cfg.Config, logger l
 	return multiOutput, outputCapabilities, nil
 }
 
-func updateMultiOutputCapabilities(multiOutputCapabilities *OutputCapabilities, componentCapabilities *OutputCapabilities) {
-	if (multiOutputCapabilities.MaxBatchSize == nil && componentCapabilities.MaxBatchSize != nil) ||
-		(multiOutputCapabilities.MaxBatchSize != nil && componentCapabilities.MaxBatchSize != nil && *multiOutputCapabilities.MaxBatchSize > *componentCapabilities.MaxBatchSize) {
+func updateMultiOutputCapabilities(multiOutputCapabilities *OutputCapabilities, componentCapabilities *OutputCapabilities, atLeastOneWithoutPartitioningSupport bool) {
+	if componentCapabilities.MaxBatchSize != nil &&
+		(multiOutputCapabilities.MaxBatchSize == nil || *multiOutputCapabilities.MaxBatchSize > *componentCapabilities.MaxBatchSize) {
 		multiOutputCapabilities.MaxBatchSize = componentCapabilities.MaxBatchSize
 	}
 
-	if (multiOutputCapabilities.MaxMessageSize == nil && componentCapabilities.MaxMessageSize != nil) ||
-		(multiOutputCapabilities.MaxMessageSize != nil && componentCapabilities.MaxMessageSize != nil && *multiOutputCapabilities.MaxMessageSize > *componentCapabilities.MaxMessageSize) {
+	if componentCapabilities.MaxMessageSize != nil &&
+		(multiOutputCapabilities.MaxMessageSize == nil || *multiOutputCapabilities.MaxMessageSize > *componentCapabilities.MaxMessageSize) {
 		multiOutputCapabilities.MaxMessageSize = componentCapabilities.MaxMessageSize
 	}
 
-	if !componentCapabilities.IsPartitionedOutput {
+	if atLeastOneWithoutPartitioningSupport {
 		multiOutputCapabilities.IsPartitionedOutput = false
+	} else {
+		multiOutputCapabilities.IsPartitionedOutput = componentCapabilities.IsPartitionedOutput
 	}
 
-	if !componentCapabilities.ProvidesCompression {
-		multiOutputCapabilities.ProvidesCompression = false
+	if componentCapabilities.ProvidesCompression {
+		multiOutputCapabilities.ProvidesCompression = true
 	}
 
 	if !componentCapabilities.SupportsAggregation {
