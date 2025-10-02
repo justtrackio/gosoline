@@ -58,7 +58,7 @@ type BaseOutputConfigurationTracing struct {
 	Enabled bool `cfg:"enabled" default:"true"`
 }
 
-func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputSettings, error) {
+func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
 	key := fmt.Sprintf("%s.type", ConfigurableOutputKey(name))
 	typ, err := config.GetString(key)
 	if err != nil {
@@ -68,13 +68,13 @@ func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Lo
 	var ok bool
 	var factory OutputFactory
 	var output Output
-	var outputSettings *OutputSettings
+	var outputCapabilities *OutputCapabilities
 
 	if factory, ok = outputFactories[typ]; !ok {
 		return nil, nil, fmt.Errorf("invalid output %s of type %s", name, typ)
 	}
 
-	if output, outputSettings, err = factory(ctx, config, logger, name); err != nil {
+	if output, outputCapabilities, err = factory(ctx, config, logger, name); err != nil {
 		return nil, nil, fmt.Errorf("can not create output %s: %w", name, err)
 	}
 
@@ -83,10 +83,10 @@ func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Lo
 		return nil, nil, fmt.Errorf("can not create output with tracer %s: %w", name, err)
 	}
 
-	return outputWithTracer, outputSettings, nil
+	return outputWithTracer, outputCapabilities, nil
 }
 
-func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputSettings, error) {
+func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
 	key := ConfigurableOutputKey(name)
 	settings := &FileOutputSettings{}
 	if err := config.UnmarshalKey(key, settings); err != nil {
@@ -97,7 +97,7 @@ func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Lo
 		settings.Filename = fmt.Sprintf("stream-output-%s", name)
 	}
 
-	return NewFileOutput(config, logger, settings), DefaultOutputSettings, nil
+	return NewFileOutput(config, logger, settings), DefaultOutputCapabilities, nil
 }
 
 type InMemoryOutputConfiguration struct {
@@ -105,8 +105,8 @@ type InMemoryOutputConfiguration struct {
 	Type string `cfg:"type" default:"inMemory"`
 }
 
-func newInMemoryOutputFromConfig(_ context.Context, _ cfg.Config, _ log.Logger, name string) (Output, *OutputSettings, error) {
-	return ProvideInMemoryOutput(name), DefaultOutputSettings, nil
+func newInMemoryOutputFromConfig(_ context.Context, _ cfg.Config, _ log.Logger, name string) (Output, *OutputCapabilities, error) {
+	return ProvideInMemoryOutput(name), DefaultOutputCapabilities, nil
 }
 
 type KafkaOutputConfiguration struct {
@@ -129,7 +129,7 @@ type KafkaOutputConfiguration struct {
 	MaxBatchBytes int32 `cfg:"max_batch_bytes" default:"1000012"`
 }
 
-func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputSettings, error) {
+func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
 	key := ConfigurableOutputKey(name)
 	configuration := &KafkaOutputConfiguration{}
 	if err := config.UnmarshalKey(key, configuration); err != nil {
@@ -154,7 +154,7 @@ func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log
 		compression = kafkaProducer.CompressionZstd
 	}
 
-	outputSettings := &OutputSettings{
+	outputCapabilities := &OutputCapabilities{
 		// we are not using the partitioned producer daemon aggregator.
 		// but the kafka library will partition by the AttributeKafkaKey in the message attributes if it is set.
 		IsPartitionedOutput: false,
@@ -192,7 +192,7 @@ func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log
 		return nil, nil, fmt.Errorf("can not create kafka output %s: %w", name, err)
 	}
 
-	return output, outputSettings, nil
+	return output, outputCapabilities, nil
 }
 
 type KinesisOutputConfiguration struct {
@@ -206,14 +206,14 @@ type KinesisOutputConfiguration struct {
 	StreamName  string `cfg:"stream_name"`
 }
 
-func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputSettings, error) {
+func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
 	key := ConfigurableOutputKey(name)
 	configuration := &KinesisOutputConfiguration{}
 	if err := config.UnmarshalKey(key, configuration); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal kinesis output settings for key %q in newKinesisOutputFromConfig: %w", key, err)
 	}
 
-	outputSettings := &OutputSettings{
+	outputCapabilities := &OutputCapabilities{
 		IsPartitionedOutput:               true,
 		ProvidesCompression:               false,
 		SupportsAggregation:               true,
@@ -236,7 +236,7 @@ func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger l
 		return nil, nil, fmt.Errorf("can not create kinesis output %s: %w", name, err)
 	}
 
-	return output, outputSettings, nil
+	return output, outputCapabilities, nil
 }
 
 type redisListOutputConfiguration struct {
@@ -249,7 +249,7 @@ type redisListOutputConfiguration struct {
 	BatchSize   int    `cfg:"batch_size" default:"100"`
 }
 
-func newRedisListOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputSettings, error) {
+func newRedisListOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
 	key := ConfigurableOutputKey(name)
 
 	configuration := redisListOutputConfiguration{}
@@ -272,7 +272,7 @@ func newRedisListOutputFromConfig(ctx context.Context, config cfg.Config, logger
 		return nil, nil, fmt.Errorf("can not create redis output %s: %w", name, err)
 	}
 
-	return output, DefaultOutputSettings, nil
+	return output, DefaultOutputCapabilities, nil
 }
 
 type SnsOutputConfiguration struct {
@@ -286,14 +286,14 @@ type SnsOutputConfiguration struct {
 	ClientName  string `cfg:"client_name" default:"default"`
 }
 
-func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputSettings, error) {
+func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
 	key := ConfigurableOutputKey(name)
 	configuration := SnsOutputConfiguration{}
 	if err := config.UnmarshalKey(key, &configuration); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal sns output settings for key %q in newSnsOutputFromConfig: %w", key, err)
 	}
 
-	outputSettings := &OutputSettings{
+	outputCapabilities := &OutputCapabilities{
 		IsPartitionedOutput:               false,
 		ProvidesCompression:               false,
 		SupportsAggregation:               true,
@@ -316,7 +316,7 @@ func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 		return nil, nil, fmt.Errorf("can not create sns output %s: %w", name, err)
 	}
 
-	return output, outputSettings, nil
+	return output, outputCapabilities, nil
 }
 
 type SqsOutputConfiguration struct {
@@ -333,14 +333,14 @@ type SqsOutputConfiguration struct {
 	ClientName        string            `cfg:"client_name" default:"default"`
 }
 
-func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputSettings, error) {
+func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
 	key := ConfigurableOutputKey(name)
 	configuration := SqsOutputConfiguration{}
 	if err := config.UnmarshalKey(key, &configuration); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal sqs output settings for key %q in newSqsOutputFromConfig: %w", key, err)
 	}
 
-	outputSettings := &OutputSettings{
+	outputCapabilities := &OutputCapabilities{
 		IsPartitionedOutput:               false,
 		ProvidesCompression:               false,
 		SupportsAggregation:               true,
@@ -366,7 +366,7 @@ func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 		return nil, nil, fmt.Errorf("can not create sqs output %s: %w", name, err)
 	}
 
-	return output, outputSettings, nil
+	return output, outputCapabilities, nil
 }
 
 func ConfigurableOutputKey(name string) string {

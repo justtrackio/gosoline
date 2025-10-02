@@ -33,7 +33,7 @@ func (m *multiOutput) Write(ctx context.Context, batch []WritableMessage) error 
 	return err.ErrorOrNil()
 }
 
-func NewConfigurableMultiOutput(ctx context.Context, config cfg.Config, logger log.Logger, base string) (Output, *OutputSettings, error) {
+func NewConfigurableMultiOutput(ctx context.Context, config cfg.Config, logger log.Logger, base string) (Output, *OutputCapabilities, error) {
 	key := fmt.Sprintf("%s.types", ConfigurableOutputKey(base))
 
 	val, err := config.Get(key)
@@ -47,7 +47,7 @@ func NewConfigurableMultiOutput(ctx context.Context, config cfg.Config, logger l
 		outputs: make([]Output, 0),
 	}
 
-	outputSettings := &OutputSettings{
+	outputCapabilities := &OutputCapabilities{
 		IsPartitionedOutput:               true,
 		ProvidesCompression:               true,
 		SupportsAggregation:               true,
@@ -59,43 +59,43 @@ func NewConfigurableMultiOutput(ctx context.Context, config cfg.Config, logger l
 	for outputName := range outputs {
 		name := fmt.Sprintf("%s.types.%s", base, outputName)
 
-		componentOutput, componentSettings, err := NewConfigurableOutput(ctx, config, logger, name)
+		componentOutput, componentCapabilities, err := NewConfigurableOutput(ctx, config, logger, name)
 		if err != nil {
 			return nil, nil, fmt.Errorf("can not create multi output %s: %w", base, err)
 		}
 
-		updateMultiOutputSettings(outputSettings, componentSettings)
+		updateMultiOutputCapabilities(outputCapabilities, componentCapabilities)
 
 		multiOutput.outputs = append(multiOutput.outputs, componentOutput)
 	}
 
-	return multiOutput, outputSettings, nil
+	return multiOutput, outputCapabilities, nil
 }
 
-func updateMultiOutputSettings(multiOutputSettings *OutputSettings, componentSettings *OutputSettings) {
-	if (multiOutputSettings.MaxBatchSize == nil && componentSettings.MaxBatchSize != nil) ||
-		(multiOutputSettings.MaxBatchSize != nil && componentSettings.MaxBatchSize != nil && *multiOutputSettings.MaxBatchSize > *componentSettings.MaxBatchSize) {
-		multiOutputSettings.MaxBatchSize = componentSettings.MaxBatchSize
+func updateMultiOutputCapabilities(multiOutputCapabilities *OutputCapabilities, componentCapabilities *OutputCapabilities) {
+	if (multiOutputCapabilities.MaxBatchSize == nil && componentCapabilities.MaxBatchSize != nil) ||
+		(multiOutputCapabilities.MaxBatchSize != nil && componentCapabilities.MaxBatchSize != nil && *multiOutputCapabilities.MaxBatchSize > *componentCapabilities.MaxBatchSize) {
+		multiOutputCapabilities.MaxBatchSize = componentCapabilities.MaxBatchSize
 	}
 
-	if (multiOutputSettings.MaxMessageSize == nil && componentSettings.MaxMessageSize != nil) ||
-		(multiOutputSettings.MaxMessageSize != nil && componentSettings.MaxMessageSize != nil && *multiOutputSettings.MaxMessageSize > *componentSettings.MaxMessageSize) {
-		multiOutputSettings.MaxMessageSize = componentSettings.MaxMessageSize
+	if (multiOutputCapabilities.MaxMessageSize == nil && componentCapabilities.MaxMessageSize != nil) ||
+		(multiOutputCapabilities.MaxMessageSize != nil && componentCapabilities.MaxMessageSize != nil && *multiOutputCapabilities.MaxMessageSize > *componentCapabilities.MaxMessageSize) {
+		multiOutputCapabilities.MaxMessageSize = componentCapabilities.MaxMessageSize
 	}
 
-	if !componentSettings.IsPartitionedOutput {
-		multiOutputSettings.IsPartitionedOutput = false
+	if !componentCapabilities.IsPartitionedOutput {
+		multiOutputCapabilities.IsPartitionedOutput = false
 	}
 
-	if !componentSettings.ProvidesCompression {
-		multiOutputSettings.ProvidesCompression = false
+	if !componentCapabilities.ProvidesCompression {
+		multiOutputCapabilities.ProvidesCompression = false
 	}
 
-	if !componentSettings.SupportsAggregation {
-		multiOutputSettings.SupportsAggregation = false
+	if !componentCapabilities.SupportsAggregation {
+		multiOutputCapabilities.SupportsAggregation = false
 	}
 
-	if componentSettings.IgnoreProducerDaemonBatchSettings {
-		multiOutputSettings.IgnoreProducerDaemonBatchSettings = true
+	if componentCapabilities.IgnoreProducerDaemonBatchSettings {
+		multiOutputCapabilities.IgnoreProducerDaemonBatchSettings = true
 	}
 }

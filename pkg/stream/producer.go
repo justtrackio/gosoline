@@ -104,12 +104,12 @@ func getOutput(ctx context.Context, config cfg.Config, logger log.Logger, name s
 		return output, nil
 	}
 
-	output, outputSettings, err := NewConfigurableOutput(ctx, config, logger, settings.Output)
+	output, outputCapabilities, err := NewConfigurableOutput(ctx, config, logger, settings.Output)
 	if err != nil {
 		return nil, fmt.Errorf("can not create output %s: %w", settings.Output, err)
 	}
 
-	if outputSettings.ProvidesCompression {
+	if outputCapabilities.ProvidesCompression {
 		settings.Compression = CompressionNone
 	}
 
