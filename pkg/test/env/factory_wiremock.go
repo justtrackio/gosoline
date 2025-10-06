@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -21,8 +22,9 @@ const componentWiremock = "wiremock"
 type wiremockSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	Mocks []string `cfg:"mocks"`
-	Port  int      `cfg:"port" default:"0"`
+	ContainerBindingSettings
+	Mocks                []string `cfg:"mocks"`
+	UseExternalContainer bool     `cfg:"use_external_container" default:"false"`
 }
 
 type wiremockFactory struct{}
@@ -46,6 +48,21 @@ func (f *wiremockFactory) DescribeContainers(settings any) componentContainerDes
 
 func (f *wiremockFactory) configureContainer(settings any) *containerConfig {
 	s := settings.(*wiremockSettings)
+
+	if s.UseExternalContainer {
+		return &containerConfig{
+			UseExternalContainer: true,
+			ContainerBindings: containerBindings{
+				"8080/tcp": containerBinding{
+					host: s.Host,
+					port: strconv.Itoa(s.Port),
+				},
+			},
+		}
+	}
+
+	// ensure to use a free port for the new container
+	s.Port = 0
 
 	return &containerConfig{
 		Auth:       s.Image.Auth,

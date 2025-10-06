@@ -3,6 +3,7 @@ package env
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/go-redis/redis/v8"
@@ -19,7 +20,8 @@ const componentRedis = "redis"
 type redisSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	Port int `cfg:"port" default:"0"`
+	ContainerBindingSettings
+	UseExternalContainer bool `cfg:"use_external_container" default:"false"`
 }
 
 type redisFactory struct {
@@ -70,6 +72,21 @@ func (f *redisFactory) DescribeContainers(settings any) componentContainerDescri
 
 func (f *redisFactory) configureContainer(settings any) *containerConfig {
 	s := settings.(*redisSettings)
+
+	if s.UseExternalContainer {
+		return &containerConfig{
+			UseExternalContainer: true,
+			ContainerBindings: containerBindings{
+				"6379/tcp": containerBinding{
+					host: s.Host,
+					port: strconv.Itoa(s.Port),
+				},
+			},
+		}
+	}
+
+	// ensure to use a free port for the new container
+	s.Port = 0
 
 	return &containerConfig{
 		Auth:       s.Image.Auth,

@@ -3,6 +3,7 @@ package env
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -21,7 +22,8 @@ const componentS3 = "s3"
 type s3Settings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	Port int `cfg:"port" default:"0"`
+	ContainerBindingSettings
+	UseExternalContainer bool `cfg:"use_external_container" default:"false"`
 }
 
 type s3Factory struct {
@@ -74,6 +76,21 @@ func (f *s3Factory) DescribeContainers(settings any) componentContainerDescripti
 
 func (f *s3Factory) configureContainer(settings any) *containerConfig {
 	s := settings.(*s3Settings)
+
+	if s.UseExternalContainer {
+		return &containerConfig{
+			UseExternalContainer: true,
+			ContainerBindings: containerBindings{
+				"9000/tcp": containerBinding{
+					host: s.Host,
+					port: strconv.Itoa(s.Port),
+				},
+			},
+		}
+	}
+
+	// ensure to use a free port for the new container
+	s.Port = 0
 
 	return &containerConfig{
 		Auth:       s.Image.Auth,
