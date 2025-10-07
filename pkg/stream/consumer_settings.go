@@ -19,7 +19,8 @@ type ConsumerSettings struct {
 	RunnerCount          int                        `cfg:"runner_count" default:"1" validate:"min=1"`
 	Encoding             EncodingType               `cfg:"encoding" default:"application/json"`
 	IdleTimeout          time.Duration              `cfg:"idle_timeout" default:"10s"`
-	ConsumeGraceTime     time.Duration              `cfg:"consume_grace_time" default:"5s"`
+	AcknowledgeGraceTime time.Duration              `cfg:"acknowledge_grace_time" default:"10s"`
+	ConsumeGraceTime     time.Duration              `cfg:"consume_grace_time" default:"10s"`
 	Retry                ConsumerRetrySettings      `cfg:"retry"`
 	Healthcheck          health.HealthCheckSettings `cfg:"healthcheck"`
 	AggregateMessageMode string                     `cfg:"aggregate_message_mode" default:"atMostOnce" validate:"oneof=atLeastOnce atMostOnce"`

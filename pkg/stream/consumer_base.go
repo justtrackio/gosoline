@@ -179,7 +179,7 @@ func NewBaseConsumerWithInterfaces(
 		logger:              logger,
 		metricWriter:        metricWriter,
 		tracer:              tracer,
-		consumerAcknowledge: newConsumerAcknowledgeWithInterfaces(logger, input),
+		consumerAcknowledge: newConsumerAcknowledgeWithInterfaces(settings.AcknowledgeGraceTime, logger, input),
 		encoder:             encoder,
 		retryInput:          retryInput,
 		retryHandler:        retryHandler,

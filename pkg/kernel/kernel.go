@@ -33,7 +33,7 @@ const (
 type ExitHandler func(code int)
 
 type Settings struct {
-	KillTimeout time.Duration       `cfg:"kill_timeout" default:"10s"`
+	KillTimeout time.Duration       `cfg:"kill_timeout" default:"30s"`
 	HealthCheck HealthCheckSettings `cfg:"health_check"`
 }
 
