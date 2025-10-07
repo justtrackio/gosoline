@@ -36,7 +36,7 @@ func (s *testSuite) SetupSuite() []suite.Option {
 		suite.WithLogLevel(log.LevelDebug),
 		suite.WithConfigFile("../config.dist.yml"),
 		suite.WithConfigFile("../config.with_protobuf_schema.yml"),
-		kafka.WithKafkaPorts(9199, 8189),
+		kafka.WithKafkaBrokerPort(9199),
 		suite.WithModule("producer-module", producer.NewProducerModule(s.produceCount, stream.WithSchemaSettings(schemaSettings))),
 		kafka.WithRegisteredSchema(s, schemaSettings.Subject, testEvent.SchemaProto, sr.TypeProtobuf),
 	}

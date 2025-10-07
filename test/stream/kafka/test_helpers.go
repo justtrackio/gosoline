@@ -23,15 +23,14 @@ func WithRegisteredSchema(s suite.TestingSuite, subject string, schema string, s
 	)
 }
 
-func WithKafkaPorts(brokerPort int, schemaRegistryPort int) suite.Option {
+func WithKafkaBrokerPort(brokerPort int) suite.Option {
 	return suite.WithConfigMap(
 		map[string]any{
 			"test": map[string]any{
 				"components": map[string]any{
 					"kafka": map[string]any{
 						"default": map[string]any{
-							"broker_port":          brokerPort,
-							"schema_registry_port": schemaRegistryPort,
+							"broker_port": brokerPort,
 						},
 					},
 				},

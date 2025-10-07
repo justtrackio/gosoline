@@ -36,7 +36,7 @@ func (s *testSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithLogLevel(log.LevelDebug),
 		suite.WithConfigFile("../config.dist.yml"),
-		kafka.WithKafkaPorts(9293, 8283),
+		kafka.WithKafkaBrokerPort(9293),
 		suite.WithModuleFactory(func(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
 			return mdlsub.SubscriberFactory(ctx, config, logger, subscriber.TransformerFactories(s.transformer))
 		}),

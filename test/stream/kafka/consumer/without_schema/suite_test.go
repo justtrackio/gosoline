@@ -31,7 +31,7 @@ func (s *testSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithLogLevel(log.LevelDebug),
 		suite.WithConfigFile("../config.dist.yml"),
-		kafka.WithKafkaPorts(9194, 8184),
+		kafka.WithKafkaBrokerPort(9194),
 		suite.WithConsumer(func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback[testEvent.TestEvent], error) {
 			return s.callback, nil
 		}),

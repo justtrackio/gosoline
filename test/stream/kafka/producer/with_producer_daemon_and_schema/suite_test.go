@@ -37,7 +37,7 @@ func (s *testSuite) SetupSuite() []suite.Option {
 		suite.WithConfigFile("../config.dist.yml"),
 		suite.WithConfigFile("../config.with_avro_schema.yml"),
 		suite.WithConfigFile("../config.with_producer_daemon.yml"),
-		kafka.WithKafkaPorts(9197, 8187),
+		kafka.WithKafkaBrokerPort(9197),
 		suite.WithModule("producer-module", producer.NewProducerModule(s.produceCount, stream.WithSchemaSettings(schemaSettings))),
 		kafka.WithRegisteredSchema(s, schemaSettings.Subject, testEvent.SchemaAvro, sr.TypeAvro),
 	}

@@ -44,7 +44,7 @@ func (s *testSuite) SetupSuite() []suite.Option {
 		suite.WithLogLevel(log.LevelDebug),
 		suite.WithConfigFile("../config.dist.yml"),
 		suite.WithConfigFile("../config.with_avro_schema.yml"),
-		kafka.WithKafkaPorts(9292, 8282),
+		kafka.WithKafkaBrokerPort(9292),
 		kafka.WithRegisteredSchema(s, s.schemaSettings.Subject, s.schemaSettings.Schema, sr.TypeAvro),
 		suite.WithModuleFactory(func(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
 			return mdlsub.SubscriberFactory(ctx, config, logger, subscriber.TransformerFactories(s.transformer))

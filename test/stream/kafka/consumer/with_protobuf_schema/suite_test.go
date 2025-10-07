@@ -39,7 +39,7 @@ func (s *testSuite) SetupSuite() []suite.Option {
 		suite.WithLogLevel(log.LevelDebug),
 		suite.WithConfigFile("../config.dist.yml"),
 		suite.WithConfigFile("../config.with_protobuf_schema.yml"),
-		kafka.WithKafkaPorts(9193, 8183),
+		kafka.WithKafkaBrokerPort(9193),
 		kafka.WithRegisteredSchema(s, s.schemaSettings.Subject, s.schemaSettings.Schema, sr.TypeProtobuf),
 		suite.WithConsumer(func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback[testEvent.TestEvent], error) {
 			return s.callback, nil

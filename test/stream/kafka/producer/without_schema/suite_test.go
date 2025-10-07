@@ -26,7 +26,7 @@ func (s *testSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithLogLevel(log.LevelDebug),
 		suite.WithConfigFile("../config.dist.yml"),
-		kafka.WithKafkaPorts(9291, 8281),
+		kafka.WithKafkaBrokerPort(9291),
 		suite.WithModule("producer-module", producer.NewProducerModule(s.produceCount)),
 	}
 }

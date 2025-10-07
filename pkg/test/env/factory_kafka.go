@@ -22,8 +22,8 @@ type kafkaFactory struct{}
 type kafkaSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	BrokerPort         int `cfg:"broker_port" default:"9092"`
-	SchemaRegistryPort int `cfg:"schema_registry_port" default:"8081"`
+	BrokerPort         int `cfg:"broker_port" default:"9092"` // we can't set this to 0 to get a random port because we need a specific port in the container run config
+	SchemaRegistryPort int `cfg:"schema_registry_port" default:"0"`
 }
 
 var _ componentFactory = &kafkaFactory{}
