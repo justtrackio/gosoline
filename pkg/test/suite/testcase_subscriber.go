@@ -117,7 +117,6 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (TestCaseRun
 			inputName := mdlsub.GetSubscriberFQN(tc.GetName(), sourceModel)
 			suite.Env().StreamInput(inputName).PublishAndStop(tc.GetInput(), attrs)
 
-			app.Stop()
 			app.WaitDone()
 
 			config := suite.Env().Config()
