@@ -67,6 +67,18 @@ type UpdateHandler interface {
 	BaseUpdateHandler
 }
 
+//go:generate go run github.com/vektra/mockery/v2 --name BasePatchHandler
+type BasePatchHandler interface {
+	GetPatchInput() any
+	TransformPatch(ctx context.Context, input any, model dbRepo.ModelBased) (err error)
+}
+
+//go:generate go run github.com/vektra/mockery/v2 --name PatchHandler
+type PatchHandler interface {
+	BaseHandler
+	BasePatchHandler
+}
+
 //go:generate go run github.com/vektra/mockery/v2 --name BaseListHandler
 type BaseListHandler interface {
 	List(ctx context.Context, qb *dbRepo.QueryBuilder, apiView string) (out any, err error)
@@ -86,6 +98,12 @@ type Handler interface {
 	BaseListHandler
 }
 
+//go:generate go run github.com/vektra/mockery/v2 --name HandlerWithPatch
+type HandlerWithPatch interface {
+	Handler
+	BasePatchHandler
+}
+
 func AddCrudHandlers(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler Handler) error {
 	if err := AddCreateHandler(config, logger, d, version, basePath, handler); err != nil {
 		return fmt.Errorf("failed to add create handler: %w", err)
@@ -102,6 +120,18 @@ func AddCrudHandlers(config cfg.Config, logger log.Logger, d *httpserver.Definit
 	}
 
 	AddListHandler(config, logger, d, version, basePath, handler)
+
+	return nil
+}
+
+func AddCrudHandlersWithPatch(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler HandlerWithPatch) error {
+	if err := AddCrudHandlers(config, logger, d, version, basePath, handler); err != nil {
+		return fmt.Errorf("failed to add crud handlers: %w", err)
+	}
+
+	if err := AddPatchHandler(config, logger, d, version, basePath, handler); err != nil {
+		return fmt.Errorf("failed to add patch handler: %w", err)
+	}
 
 	return nil
 }
@@ -134,6 +164,19 @@ func AddUpdateHandler(config cfg.Config, logger log.Logger, d *httpserver.Defini
 	}
 
 	d.PUT(idPath, updateHandler)
+
+	return nil
+}
+
+func AddPatchHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler PatchHandler) error {
+	_, idPath := getHandlerPaths(version, basePath)
+
+	patchHandler, err := NewPatchHandler(config, logger, handler)
+	if err != nil {
+		return fmt.Errorf("failed to create patch handler: %w", err)
+	}
+
+	d.PATCH(idPath, patchHandler)
 
 	return nil
 }
