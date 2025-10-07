@@ -30,7 +30,7 @@ type RunnableUntypedBatchConsumerCallback interface {
 type BatchConsumerSettings struct {
 	IdleTimeout      time.Duration `cfg:"idle_timeout" default:"10s"`
 	BatchSize        int           `cfg:"batch_size" default:"1"`
-	ConsumeGraceTime time.Duration `cfg:"consume_grace_time" default:"5s"`
+	ConsumeGraceTime time.Duration `cfg:"consume_grace_time" default:"10s"`
 }
 
 type BatchConsumer struct {

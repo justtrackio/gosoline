@@ -2,19 +2,23 @@ package stream
 
 import (
 	"context"
+	"time"
 
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type consumerAcknowledge struct {
-	logger log.Logger
-	input  Input
+	graceTime time.Duration
+	logger    log.Logger
+	input     Input
 }
 
-func newConsumerAcknowledgeWithInterfaces(logger log.Logger, input Input) consumerAcknowledge {
+func newConsumerAcknowledgeWithInterfaces(graceTime time.Duration, logger log.Logger, input Input) consumerAcknowledge {
 	return consumerAcknowledge{
-		logger: logger,
-		input:  input,
+		graceTime: graceTime,
+		logger:    logger,
+		input:     input,
 	}
 }
 
@@ -35,7 +39,10 @@ func (c *consumerAcknowledge) Acknowledge(ctx context.Context, cdata *consumerDa
 		}).Debug(ctx, "acknowledging sqs message")
 	}
 
-	if err := ackInput.Ack(ctx, cdata.msg, ack); err != nil {
+	delayedCtx, stop := exec.WithDelayedCancelContext(ctx, c.graceTime)
+	defer stop()
+
+	if err := ackInput.Ack(delayedCtx, cdata.msg, ack); err != nil {
 		c.logger.Error(ctx, "could not acknowledge the message: %w", err)
 	}
 }
@@ -70,8 +77,11 @@ func (c *consumerAcknowledge) AcknowledgeBatch(ctx context.Context, cdata []*con
 		inputAcks[data.src] = append(inputAcks[data.src], ack)
 	}
 
+	delayedCtx, stop := exec.WithDelayedCancelContext(ctx, c.graceTime)
+	defer stop()
+
 	for src, input := range inputs {
-		if err := input.AckBatch(ctx, inputMsgs[src], inputAcks[src]); err != nil {
+		if err := input.AckBatch(delayedCtx, inputMsgs[src], inputAcks[src]); err != nil {
 			c.logger.Error(ctx, "could not acknowledge the messages: %w", err)
 		}
 	}
