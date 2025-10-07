@@ -14,6 +14,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	gosoCloudwatch "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch"
+	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -98,11 +100,29 @@ func (w *cloudwatchWriter) WriteOne(ctx context.Context, data *Datum) {
 	w.Write(ctx, Data{data})
 }
 
-func (w *cloudwatchWriter) Write(ctx context.Context, batch Data) {
+func (w *cloudwatchWriter) Write(applicationCtx context.Context, batch Data) {
 	if len(batch) == 0 {
 		return
 	}
 
+	// TODO make the timeout configurable
+	manualCtx, cancel := exec.WithDelayedCancelContext(context.Background(), 10*time.Second)
+
+	cfn, manualCtx := coffin.WithContext(manualCtx)
+
+	cfn.GoWithContextf(manualCtx, func(ctx context.Context) error {
+		defer cancel()
+		return w.write(ctx, batch)
+	}, "panic during cloudwatch write")
+
+	<-manualCtx.Done()
+
+	if err := cfn.Wait(); err != nil {
+		w.logger.Error(applicationCtx, "could not write to cloudwatch: %w", err)
+	}
+}
+
+func (w *cloudwatchWriter) write(ctx context.Context, batch Data) error {
 	metricData, err := w.buildMetricData(ctx, batch)
 
 	logger := w.logger.WithFields(log.Fields{
@@ -112,7 +132,7 @@ func (w *cloudwatchWriter) Write(ctx context.Context, batch Data) {
 	if err != nil {
 		logger.Info(ctx, "could not build metric data: %w", err)
 
-		return
+		return nil
 	}
 
 	for i := 0; i < len(metricData); i += chunkSizeCloudWatch {
@@ -135,6 +155,8 @@ func (w *cloudwatchWriter) Write(ctx context.Context, batch Data) {
 	}
 
 	logger.Debug(ctx, "written %d metric data sets to cloudwatch", len(metricData))
+
+	return nil
 }
 
 func (w *cloudwatchWriter) buildMetricData(ctx context.Context, batch Data) ([]types.MetricDatum, error) {
