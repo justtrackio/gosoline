@@ -134,6 +134,20 @@ func (k *kernel) Run() {
 			reason := fmt.Sprintf("signal %s", receivedSignal.String())
 			k.Stop(reason)
 		}
+
+		// debounce double signals by a second to make sure we should really kill the app
+		killAfter := k.clock.Now().Add(time.Second)
+
+		for range sig {
+			if k.clock.Now().Before(killAfter) {
+				continue
+			}
+
+			k.logger.Warn(k.ctx, "kernel is being forcefully exited")
+			k.forceExit()
+
+			break
+		}
 	}()
 
 	runHandler := func(ctx context.Context) {
@@ -350,23 +364,27 @@ func (k *kernel) killIfNotStopped() {
 				err := fmt.Errorf("kernel was not able to shutdown in %v", k.killTimeout)
 				k.logger.Error(k.ctx, "kernel shutdown seems to be blocking.. exiting...: %w", err)
 
-				// we don't need to iterate in order, but doing so is much nicer, so let's do it
-				for _, stageIndex := range k.stages.getIndices() {
-					s := k.stages[stageIndex]
-					for name, ms := range s.modules.modules {
-						if atomic.LoadInt32(&ms.isRunning) != 0 {
-							k.logger.Info(k.ctx, "module in stage %d blocking the shutdown: %s", stageIndex, name)
-						}
-					}
-				}
-
-				k.exitCode = ExitCodeForced
-				k.exit()
+				k.forceExit()
 			case <-k.stopped.Channel():
 				return
 			}
 		}()
 	})
+}
+
+func (k *kernel) forceExit() {
+	// we don't need to iterate in order, but doing so is much nicer, so let's do it
+	for _, stageIndex := range k.stages.getIndices() {
+		s := k.stages[stageIndex]
+		for name, ms := range s.modules.modules {
+			if atomic.LoadInt32(&ms.isRunning) != 0 {
+				k.logger.Info(k.ctx, "module in stage %d blocking the shutdown: %s", stageIndex, name)
+			}
+		}
+	}
+
+	k.exitCode = ExitCodeForced
+	k.exit()
 }
 
 func readSettings(config cfg.Config) (Settings, error) {
