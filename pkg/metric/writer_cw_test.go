@@ -1,6 +1,7 @@
 package metric_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -16,17 +17,27 @@ import (
 
 func TestOutput_Write(t *testing.T) {
 	timestamp := time.Unix(1549283566, 0)
-	buildMocksAndWrite(t, timestamp, timestamp, true)
+	buildMocksAndWrite(t, t.Context(), timestamp, timestamp, true)
 }
 
 func TestOutput_Write_OutOfRange(t *testing.T) {
 	now := time.Unix(1549283566, 0)
 	timestamp := now.Add(-2 * 7 * 24 * time.Hour)
 
-	buildMocksAndWrite(t, now, timestamp, false)
+	buildMocksAndWrite(t, t.Context(), now, timestamp, false)
 }
 
-func buildMocksAndWrite(t *testing.T, now time.Time, metricTimeStamp time.Time, shouldPutMetricData bool) {
+func TestOutput_WriteWithCancelledContext(t *testing.T) {
+	now := time.Unix(1549283566, 0)
+	timestamp := now
+
+	deadCtx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	buildMocksAndWrite(t, deadCtx, now, timestamp, true)
+}
+
+func buildMocksAndWrite(t *testing.T, ctx context.Context, now time.Time, metricTimeStamp time.Time, shouldPutMetricData bool) {
 	testClock := clock.NewFakeClockAt(now)
 
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll)
@@ -50,7 +61,13 @@ func buildMocksAndWrite(t *testing.T, now time.Time, metricTimeStamp time.Time, 
 		}).Return(nil, nil)
 	}
 
-	mo := metric.NewCloudwatchWriterWithInterfaces(logger, testClock, cwClient, "my/test/namespace/grp/app")
+	mo := metric.NewCloudwatchWriterWithInterfaces(
+		logger,
+		testClock,
+		cwClient,
+		"my/test/namespace/grp/app",
+		10*time.Second,
+	)
 
 	data := metric.Data{
 		{
@@ -65,5 +82,5 @@ func buildMocksAndWrite(t *testing.T, now time.Time, metricTimeStamp time.Time, 
 		},
 	}
 
-	mo.Write(t.Context(), data)
+	mo.Write(ctx, data)
 }
