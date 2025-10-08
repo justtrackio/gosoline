@@ -33,12 +33,15 @@ const (
 	chunkSizeCloudWatch = 20
 	minusOneWeek        = -1 * 7 * 24 * time.Hour
 	plusOneHour         = 1 * time.Hour
+
+	defaultWriteTimeout = 10 * time.Second
 )
 
 type (
 	CloudWatchSettings struct {
-		Naming    CloudwatchNamingSettings `cfg:"naming"`
-		Aggregate bool                     `cfg:"aggregate" default:"true"`
+		Naming       CloudwatchNamingSettings `cfg:"naming"`
+		Aggregate    bool                     `cfg:"aggregate" default:"true"`
+		WriteTimeout time.Duration            `cfg:"write_timeout" default:"10s"`
 	}
 
 	CloudwatchNamingSettings struct {
@@ -50,10 +53,11 @@ type (
 	StandardUnit   = types.StandardUnit
 
 	cloudwatchWriter struct {
-		logger      log.Logger
-		clock       clock.Clock
-		client      gosoCloudwatch.Client
-		cwNamespace string
+		logger       log.Logger
+		clock        clock.Clock
+		client       gosoCloudwatch.Client
+		cwNamespace  string
+		writeTimeout time.Duration
 	}
 )
 
@@ -65,6 +69,11 @@ func ProvideCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.
 
 func NewCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	testClock := clock.NewRealClock()
+
+	cwSettings := &CloudWatchSettings{}
+	if err := getMetricWriterSettings(config, WriterTypeCloudwatch, cwSettings); err != nil {
+		return nil, fmt.Errorf("failed to get cloudwatch settings: %w", err)
+	}
 
 	cwNamespace, err := GetCloudWatchNamespace(config)
 	if err != nil {
@@ -80,15 +89,22 @@ func NewCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.Logg
 		return nil, fmt.Errorf("can not create cloudwatch client: %w", err)
 	}
 
-	return NewCloudwatchWriterWithInterfaces(logger, testClock, client, cwNamespace), nil
+	return NewCloudwatchWriterWithInterfaces(logger, testClock, client, cwNamespace, cwSettings.WriteTimeout), nil
 }
 
-func NewCloudwatchWriterWithInterfaces(logger log.Logger, clock clock.Clock, cw gosoCloudwatch.Client, cwNamespace string) Writer {
+func NewCloudwatchWriterWithInterfaces(
+	logger log.Logger,
+	clock clock.Clock,
+	cw gosoCloudwatch.Client,
+	cwNamespace string,
+	writeTimeout time.Duration,
+) Writer {
 	return &cloudwatchWriter{
-		logger:      logger.WithChannel("metrics"),
-		clock:       clock,
-		client:      cw,
-		cwNamespace: cwNamespace,
+		logger:       logger.WithChannel("metrics"),
+		clock:        clock,
+		client:       cw,
+		cwNamespace:  cwNamespace,
+		writeTimeout: writeTimeout,
 	}
 }
 
@@ -105,17 +121,20 @@ func (w *cloudwatchWriter) Write(applicationCtx context.Context, batch Data) {
 		return
 	}
 
-	// TODO make the timeout configurable
-	manualCtx, cancel := exec.WithDelayedCancelContext(context.Background(), 10*time.Second)
+	timeout := w.writeTimeout
+	if timeout <= 0 {
+		timeout = defaultWriteTimeout
+	}
+
+	manualCtx, cancel := exec.WithDelayedCancelContext(applicationCtx, timeout)
 
 	cfn, manualCtx := coffin.WithContext(manualCtx)
 
 	cfn.GoWithContextf(manualCtx, func(ctx context.Context) error {
 		defer cancel()
+
 		return w.write(ctx, batch)
 	}, "panic during cloudwatch write")
-
-	<-manualCtx.Done()
 
 	if err := cfn.Wait(); err != nil {
 		w.logger.Error(applicationCtx, "could not write to cloudwatch: %w", err)
