@@ -3,6 +3,8 @@ package aws
 import (
 	"context"
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
@@ -39,6 +41,10 @@ func GetCredentialsProvider(ctx context.Context, settings ClientSettings) (aws.C
 		return GetAssumeRoleCredentialsProvider(ctx, settings.AssumeRole)
 	}
 
+	if webIdentitySettings := GetWebIdentitySettings(); settings.UseWebIdentity && webIdentitySettings != nil {
+		return GetWebIdentityRoleProvider(ctx, webIdentitySettings)
+	}
+
 	return GetDefaultProvider(), nil
 }
 
@@ -53,4 +59,38 @@ func GetAssumeRoleCredentialsProvider(ctx context.Context, roleArn string) (aws.
 	stsClient := sts.NewFromConfig(conf)
 
 	return stscreds.NewAssumeRoleProvider(stsClient, roleArn), nil
+}
+
+func GetWebIdentityRoleProvider(ctx context.Context, webIdentitySettings *WebIdentitySettings) (aws.CredentialsProvider, error) {
+	var err error
+	var conf aws.Config
+
+	if conf, err = awsCfg.LoadDefaultConfig(ctx); err != nil {
+		return nil, fmt.Errorf("can not load default aws config: %w", err)
+	}
+	client := sts.NewFromConfig(conf)
+	credsCache := aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(
+		client,
+		webIdentitySettings.RoleARN,
+		stscreds.IdentityTokenFile(webIdentitySettings.TokenFilePath),
+		func(o *stscreds.WebIdentityRoleOptions) {
+			o.RoleSessionName = fmt.Sprintf("gosoline-%s", time.Now().Format("20060102150405"))
+		}))
+
+	return credsCache, nil
+}
+
+func GetWebIdentitySettings() *WebIdentitySettings {
+	awsRoleARN := os.Getenv("AWS_ROLE_ARN")
+	awsWebIdentityTokenFile := os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
+	if awsRoleARN == "" || awsWebIdentityTokenFile == "" {
+		return nil
+	}
+
+	settings := &WebIdentitySettings{
+		TokenFilePath: awsWebIdentityTokenFile,
+		RoleARN:       awsRoleARN,
+	}
+
+	return settings
 }

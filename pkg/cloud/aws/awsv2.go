@@ -37,6 +37,11 @@ type CredentialsCacheOptions struct {
 	ExpiryWindowJitterFrac float64       `cfg:"expiry_window_jitter_frac" default:"0.1"`
 }
 
+type WebIdentitySettings struct {
+	TokenFilePath string `cfg:"web_identity_token_file"`
+	RoleARN       string `cfg:"role_arn"`
+}
+
 type ClientHttpSettings struct {
 	Timeout time.Duration `cfg:"timeout" default:"0"`
 }
@@ -45,6 +50,7 @@ type ClientSettings struct {
 	Region               string                  `cfg:"region" default:"eu-central-1"`
 	Endpoint             string                  `cfg:"endpoint" default:"http://localhost:4566"`
 	AssumeRole           string                  `cfg:"assume_role"`
+	UseWebIdentity       bool                    `cfg:"use_web_identity"`
 	Profile              string                  `cfg:"profile"`
 	Credentials          Credentials             `cfg:"credentials"`
 	CredentialsCacheOpts CredentialsCacheOptions `cfg:"credentials_cache"`
@@ -61,6 +67,7 @@ func (s *ClientSettings) LogFields() log.Fields {
 		"settings_region":                          s.Region,
 		"settings_endpoint":                        s.Endpoint,
 		"settings_assume_role":                     s.AssumeRole,
+		"settings_use_web_identity":                s.UseWebIdentity,
 		"settings_credentials_cache_expiry_window": s.CredentialsCacheOpts.ExpiryWindow,
 		"settings_credentials_cache_jitter_frac":   s.CredentialsCacheOpts.ExpiryWindowJitterFrac,
 		"settings_http_client_timeout":             s.HttpClient.Timeout,
@@ -97,6 +104,7 @@ func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, se
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.http_client", "http_client"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.assume_role", "assume_role"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.profile", "profile"),
+		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.use_web_identity", "use_web_identity"),
 		cfg.UnmarshalWithDefaultsFromKey(defaultsKey, "."),
 		cfg.UnmarshalWithDefaultsFromKey(clientDefaultsKey, "."),
 		cfg.UnmarshalWithDefaultsFromKey(defaultClientKey, "."),

@@ -2,6 +2,7 @@ package aws_test
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -216,6 +217,18 @@ func (s *CredentialsTestSuite) TestCredentialsCacheOptions() {
 			s.Equal(test.expected.ExpiryWindowJitterFrac, settings.CredentialsCacheOpts.ExpiryWindowJitterFrac)
 		})
 	}
+}
+
+func (s *CredentialsTestSuite) TestWebIdentityRoleProvider() {
+	s.NoError(os.Setenv("AWS_ROLE_ARN", "arn:aws:iam::0000000000:role/test"))
+	s.NoError(os.Setenv("AWS_WEB_IDENTITY_TOKEN_FILE", "var/path/to/token"))
+
+	provider, err := gosoAws.GetCredentialsProvider(s.ctx, gosoAws.ClientSettings{
+		UseWebIdentity: true,
+	})
+
+	s.NoError(err)
+	s.IsType(&aws.CredentialsCache{}, provider, "the provider should be a assume role one")
 }
 
 func (s *CredentialsTestSuite) unmarshalClientSettings(values map[string]any) gosoAws.ClientSettings {
