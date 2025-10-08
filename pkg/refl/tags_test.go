@@ -34,3 +34,53 @@ func TestGetTagsJson(t *testing.T) {
 	tags3 := refl.GetTags([]model{{}}, "json")
 	assert.Equal(t, expected, tags3, "tags3 not matching")
 }
+
+func TestGetTagNames(t *testing.T) {
+	// base struct with multiple tags on a field
+	type model struct {
+		Id     int    `json:"id"  yaml:"id" db:"id"`
+		Name   string `db:"name,omitempty"`
+		Hidden string `form:"-"`
+	}
+	tags := refl.GetTagNames(model{})
+	assert.Equal(t, []string{"db", "form", "json", "yaml"}, tags, "basic model")
+
+	// pointer to struct
+	ptags := refl.GetTagNames(&model{})
+	assert.Equal(t, []string{"db", "form", "json", "yaml"}, ptags, "pointer model")
+
+	// slice of struct
+	stags := refl.GetTagNames([]model{{}})
+	assert.Equal(t, []string{"db", "form", "json", "yaml"}, stags, "slice model")
+
+	// struct with duplicated tag keys across fields
+	type modelDup struct {
+		A int `json:"a"`
+		B int `json:"b" db:"b"`
+		C int `xml:"c"`
+		D int `db:"d" xml:"d"`
+	}
+	tagsDup := refl.GetTagNames(modelDup{})
+	assert.Equal(t, []string{"db", "json", "xml"}, tagsDup, "duplicate tag keys aggregated once")
+
+	// struct with empty tag values
+	type modelEmpty struct {
+		A int `yaml:""`
+		B int `toml:""`
+	}
+	tagsEmpty := refl.GetTagNames(modelEmpty{})
+	assert.Equal(t, []string{"toml", "yaml"}, tagsEmpty, "empty values still count tag names")
+
+	// struct without tags
+	type modelNone struct {
+		A int
+		B string
+	}
+	tagsNone := refl.GetTagNames(modelNone{})
+	assert.Equal(t, []string{}, tagsNone, "no tags should return empty slice")
+
+	// pointer nil (should yield empty slice)
+	var ptr *modelNone
+	ptrTags := refl.GetTagNames(ptr)
+	assert.Equal(t, []string{}, ptrTags, "nil pointer should return empty slice")
+}
