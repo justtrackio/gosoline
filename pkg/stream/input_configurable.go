@@ -8,6 +8,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
+	kafkaConsumer "github.com/justtrackio/gosoline/pkg/kafka/consumer"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/stream/health"
 )
@@ -15,11 +16,11 @@ import (
 const (
 	InputTypeFile     = "file"
 	InputTypeInMemory = "inMemory"
+	InputTypeKafka    = "kafka"
 	InputTypeKinesis  = "kinesis"
 	InputTypeRedis    = "redis"
 	InputTypeSns      = "sns"
 	InputTypeSqs      = "sqs"
-	InputTypeKafka    = "kafka"
 )
 
 type InputFactory func(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error)
@@ -27,11 +28,11 @@ type InputFactory func(ctx context.Context, config cfg.Config, logger log.Logger
 var inputFactories = map[string]InputFactory{
 	InputTypeFile:     newFileInputFromConfig,
 	InputTypeInMemory: newInMemoryInputFromConfig,
+	InputTypeKafka:    newKafkaInputFromConfig,
 	InputTypeKinesis:  newKinesisInputFromConfig,
 	InputTypeRedis:    newRedisInputFromConfig,
 	InputTypeSns:      newSnsInputFromConfig,
 	InputTypeSqs:      newSqsInputFromConfig,
-	InputTypeKafka:    newKafkaInputFromConfig,
 }
 
 func SetInputFactory(typ string, factory InputFactory) {
@@ -96,10 +97,20 @@ func newInMemoryInputFromConfig(_ context.Context, config cfg.Config, _ log.Logg
 	return ProvideInMemoryInput(name, settings), nil
 }
 
+type KafkaInputConfiguration struct {
+	kafkaConsumer.Settings
+	Type string `cfg:"type" default:"kafka"`
+}
+
 func newKafkaInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 
-	return NewKafkaInput(ctx, config, logger, key)
+	settings := KafkaInputConfiguration{}
+	if err := config.UnmarshalKey(key, &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal kafka input settings: %w", err)
+	}
+
+	return NewKafkaInput(ctx, config, logger, settings.Settings)
 }
 
 type KinesisInputConfiguration struct {

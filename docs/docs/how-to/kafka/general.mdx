@@ -1,0 +1,38 @@
+---
+sidebar_position: 1
+title: Notes on general Kafka usage
+---
+
+In general, using Kafka with gosoline works like any other input/output type supported by the `stream` package.
+
+However, there are some caveats and minor differences to be considered as described below.
+
+## Compression
+
+Compression is handled entirely by the franz-go kafka library.
+
+You still need to set the compression type in your producer config as usual but gosoline itself will not compress your messages and let the kafka library handle it.
+
+In addition to the already natively supported compression type (`application/gzip`), you also have the option to select one of the following when writing to kafka:
+
+- `application/snappy`
+- `application/lz4`
+- `application/zstd`
+
+By default, no compression will be used.
+
+## Producer Daemon usage
+
+When enabling the producer daemon for a Kafka producer all producer daemon settings related to aggregation and batching will be ignored.
+
+Aggregation is not supported with Kafka as an aggregated message would not match the schema in case you are using the schema registry.
+Because of the way gosoline initializes the producer daemon it is also not possible to use aggregation without schema registry (as by the time the producer is aware of the schema registry usage the producer daemon will have already been initialized).
+
+Batching will still be done by the producer daemon, but it will use the `max_batch_size` and `max_batch_bytes` settings specified on the `KafkaOutputConfiguration`.
+This is to have a single source of truth for the settings and because the Kafka library has an internal process to batch messages and would possibly break up our batches if we ignore these settings.
+
+## Schema Registry
+
+You can optionally use the Kafka schema registry.
+
+Check this guide for more details on the schema registry usage: [How to use the Kafka Schema Registry](/how-to/kafka/use-schema-registry)

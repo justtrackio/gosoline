@@ -74,7 +74,7 @@ func NewProtobufMessage(body string, attributes ...map[string]string) *Message {
 }
 
 func MarshalProtobufMessage(body ProtobufEncodable, attributes ...map[string]string) (*Message, error) {
-	data, err := NewProtobufEncoder().Encode(body)
+	data, err := NewBase64LayeredProtobufEncoder().Encode(body)
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal body to protobuf: %w", err)
 	}
