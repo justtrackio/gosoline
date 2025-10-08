@@ -873,3 +873,48 @@ func TestPopulateMapWithGeneratorSideEffects(t *testing.T) {
 	assert.Equal(t, expected, result, "Generator should correctly process each key")
 	assert.Equal(t, 4, callCount, "Generator should be called once per key")
 }
+
+func TestRangeSorted(t *testing.T) {
+	m := map[int]string{
+		3: "three",
+		1: "one",
+		4: "four",
+		2: "two",
+	}
+
+	var keys []int
+	var values []string
+
+	for k, v := range funk.RangeSorted(m) {
+		keys = append(keys, k)
+		values = append(values, v)
+	}
+
+	expectedKeys := []int{1, 2, 3, 4}
+	expectedValues := []string{"one", "two", "three", "four"}
+
+	assert.Equal(t, expectedKeys, keys, "Keys should be sorted")
+	assert.Equal(t, expectedValues, values, "Values should correspond to sorted keys")
+}
+
+func TestRangeSorted_EmptyMap(t *testing.T) {
+	m := map[string]int{}
+
+	var keys []string
+	for k := range funk.RangeSorted(m) {
+		keys = append(keys, k)
+	}
+
+	assert.Empty(t, keys, "Iterating over an empty map should yield no items")
+}
+
+func TestRangeSorted_NilMap(t *testing.T) {
+	var m map[int]bool
+
+	var keys []int
+	for k := range funk.RangeSorted(m) {
+		keys = append(keys, k)
+	}
+
+	assert.Empty(t, keys, "Iterating over a nil map should yield no items")
+}

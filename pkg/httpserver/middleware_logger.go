@@ -14,6 +14,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/reqctx"
+	"github.com/justtrackio/gosoline/pkg/validation"
 )
 
 type logCall struct {
@@ -145,6 +146,8 @@ func (lc *logCall) finalize(ginCtx *gin.Context, requestTimeSecond float64) {
 			logger.Warn(ctx, "%s %s %s - bind error: %s", method, path, proto, e.Err.Error())
 		case e.IsType(gin.ErrorTypeRender):
 			logger.Warn(ctx, "%s %s %s - render error: %s", method, path, proto, e.Err.Error())
+		case validation.IsValidationError(e):
+			logger.Warn(ctx, "%s %s %s - validation error: %s", method, path, proto, e.Err.Error())
 		default:
 			logger.Error(ctx, "%s %s %s: %w", method, path, proto, e.Err)
 		}
