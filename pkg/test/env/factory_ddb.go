@@ -3,6 +3,7 @@ package env
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 
 	toxiproxy "github.com/Shopify/toxiproxy/v2/client"
@@ -23,8 +24,9 @@ const componentDdb = "ddb"
 type ddbSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	Port             int  `cfg:"port" default:"0"`
-	ToxiproxyEnabled bool `cfg:"toxiproxy_enabled" default:"false"`
+	ContainerBindingSettings
+	ToxiproxyEnabled     bool `cfg:"toxiproxy_enabled" default:"false"`
+	UseExternalContainer bool `cfg:"use_external_container" default:"false"`
 }
 
 type ddbFactory struct {
@@ -80,6 +82,21 @@ func (f *ddbFactory) DescribeContainers(settings any) componentContainerDescript
 
 func (f *ddbFactory) configureContainer(settings any) *containerConfig {
 	s := settings.(*ddbSettings)
+
+	if s.UseExternalContainer {
+		return &containerConfig{
+			UseExternalContainer: true,
+			ContainerBindings: containerBindings{
+				"8000/tcp": containerBinding{
+					host: s.Host,
+					port: strconv.Itoa(s.Port),
+				},
+			},
+		}
+	}
+
+	// ensure to use a free port for the new container
+	s.Port = 0
 
 	return &containerConfig{
 		Auth:       s.Image.Auth,

@@ -3,6 +3,7 @@ package env
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -18,8 +19,9 @@ const componentMailpit = "mailpit"
 type mailpitSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	Port    int `cfg:"port" default:"0"`
-	WebPort int `cfg:"web_port" default:"0"`
+	ContainerBindingSettings
+	WebPort              int  `cfg:"web_port" default:"0"`
+	UseExternalContainer bool `cfg:"use_external_container" default:"false"`
 }
 
 type mailpitFactory struct{}
@@ -84,6 +86,26 @@ func (m mailpitFactory) Component(_ cfg.Config, logger log.Logger, container map
 }
 
 func (m mailpitFactory) configureContainer(settings *mailpitSettings) *containerConfig {
+	if settings.UseExternalContainer {
+		return &containerConfig{
+			UseExternalContainer: true,
+			ContainerBindings: containerBindings{
+				"1025/tcp": containerBinding{
+					host: settings.Host,
+					port: strconv.Itoa(settings.Port),
+				},
+				"8025/tcp": containerBinding{
+					host: settings.Host,
+					port: strconv.Itoa(settings.WebPort),
+				},
+			},
+		}
+	}
+
+	// ensure to use a free port for the new container
+	settings.Port = 0
+	settings.WebPort = 0
+
 	return &containerConfig{
 		Auth:       settings.Image.Auth,
 		Repository: settings.Image.Repository,
