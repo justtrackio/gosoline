@@ -39,8 +39,14 @@ func (f *streamInputFactory) Detect(config cfg.Config, manager *ComponentsConfig
 			return fmt.Errorf("could not unmarshal defaults for input %s: %w", inputName, err)
 		}
 
+		inMemoryOverride, err := config.GetBool(fmt.Sprintf("stream.input.%s.in_memory_override", inputName), settings.InMemoryOverride)
+		if err != nil {
+			return fmt.Errorf("could not get stream.input.%s.in_memory_override from config: %w", inputName, err)
+		}
+
 		settings.Name = inputName
 		settings.Type = componentStreamInput
+		settings.InMemoryOverride = inMemoryOverride
 
 		if err := manager.Add(settings); err != nil {
 			return fmt.Errorf("could not add input %s: %w", inputName, err)

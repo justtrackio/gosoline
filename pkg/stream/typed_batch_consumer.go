@@ -29,6 +29,7 @@ type untypedBatchConsumerCallback[M any] struct {
 var (
 	_ InitializeableCallback               = untypedBatchConsumerCallback[any]{}
 	_ RunnableUntypedBatchConsumerCallback = untypedBatchConsumerCallback[any]{}
+	_ SchemaSettingsAwareCallback          = untypedBatchConsumerCallback[any]{}
 )
 
 func NewTypedBatchConsumer[M any](name string, callbackFactory BatchConsumerCallbackFactory[M]) kernel.ModuleFactory {
@@ -80,4 +81,12 @@ func (u untypedBatchConsumerCallback[M]) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (u untypedBatchConsumerCallback[M]) GetSchemaSettings() (*SchemaSettings, error) {
+	if schemaAware, ok := u.consumerCallback.(SchemaSettingsAwareCallback); ok {
+		return schemaAware.GetSchemaSettings()
+	}
+
+	return nil, nil
 }

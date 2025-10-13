@@ -1,0 +1,7 @@
+stream:
+  consumer:
+    default:
+      encoding: application/avro
+  producer:
+    testEvent:
+      encoding: application/avro

@@ -243,6 +243,64 @@ func (_c *SubscriberCore_GetTransformer_Call) RunAndReturn(run func(*mdlsub.Mode
 	return _c
 }
 
+// GetTransformersForModel provides a mock function with given fields: modelId
+func (_m *SubscriberCore) GetTransformersForModel(modelId mdl.ModelId) (mdlsub.VersionedModelTransformers, error) {
+	ret := _m.Called(modelId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTransformersForModel")
+	}
+
+	var r0 mdlsub.VersionedModelTransformers
+	var r1 error
+	if rf, ok := ret.Get(0).(func(mdl.ModelId) (mdlsub.VersionedModelTransformers, error)); ok {
+		return rf(modelId)
+	}
+	if rf, ok := ret.Get(0).(func(mdl.ModelId) mdlsub.VersionedModelTransformers); ok {
+		r0 = rf(modelId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(mdlsub.VersionedModelTransformers)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(mdl.ModelId) error); ok {
+		r1 = rf(modelId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SubscriberCore_GetTransformersForModel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTransformersForModel'
+type SubscriberCore_GetTransformersForModel_Call struct {
+	*mock.Call
+}
+
+// GetTransformersForModel is a helper method to define mock.On call
+//   - modelId mdl.ModelId
+func (_e *SubscriberCore_Expecter) GetTransformersForModel(modelId interface{}) *SubscriberCore_GetTransformersForModel_Call {
+	return &SubscriberCore_GetTransformersForModel_Call{Call: _e.mock.On("GetTransformersForModel", modelId)}
+}
+
+func (_c *SubscriberCore_GetTransformersForModel_Call) Run(run func(modelId mdl.ModelId)) *SubscriberCore_GetTransformersForModel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(mdl.ModelId))
+	})
+	return _c
+}
+
+func (_c *SubscriberCore_GetTransformersForModel_Call) Return(_a0 mdlsub.VersionedModelTransformers, _a1 error) *SubscriberCore_GetTransformersForModel_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *SubscriberCore_GetTransformersForModel_Call) RunAndReturn(run func(mdl.ModelId) (mdlsub.VersionedModelTransformers, error)) *SubscriberCore_GetTransformersForModel_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Persist provides a mock function with given fields: ctx, spec, model
 func (_m *SubscriberCore) Persist(ctx context.Context, spec *mdlsub.ModelSpecification, model mdlsub.Model) error {
 	ret := _m.Called(ctx, spec, model)

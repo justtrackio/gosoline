@@ -6,6 +6,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/spf13/cast"
 )
 
@@ -27,6 +28,7 @@ type ModelTransformer interface {
 	getInput() any
 	GetModel() any
 	transform(ctx context.Context, inp any) (out Model, err error)
+	getSchemaSettings() (*stream.SchemaSettings, error)
 }
 
 // A TypedTransformer implements a subscriber. For every item it has to transform it into the corresponding persisted model. If it returns nil, the
@@ -48,6 +50,14 @@ func (u untypedTransformer[I, M]) getInput() any {
 
 func (u untypedTransformer[I, M]) GetModel() any {
 	return new(M)
+}
+
+func (u untypedTransformer[I, M]) getSchemaSettings() (*stream.SchemaSettings, error) {
+	if schemaAware, ok := u.transformer.(stream.SchemaSettingsAwareCallback); ok {
+		return schemaAware.GetSchemaSettings()
+	}
+
+	return nil, nil
 }
 
 func (u untypedTransformer[I, M]) transform(ctx context.Context, inp any) (out Model, err error) {

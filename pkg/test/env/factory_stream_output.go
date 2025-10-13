@@ -16,6 +16,7 @@ const componentStreamOutput = "streamOutput"
 
 type streamOutputSettings struct {
 	ComponentBaseSettings
+	InMemoryOverride bool `cfg:"in_memory_override" default:"true"`
 }
 
 type streamOutputFactory struct{}
@@ -32,8 +33,14 @@ func (f *streamOutputFactory) Detect(config cfg.Config, manager *ComponentsConfi
 			return fmt.Errorf("could not unmarshal defaults for output %s: %w", outputName, err)
 		}
 
+		inMemoryOverride, err := config.GetBool(fmt.Sprintf("stream.output.%s.in_memory_override", outputName), settings.InMemoryOverride)
+		if err != nil {
+			return fmt.Errorf("could not get stream.output.%s.in_memory_override from config: %w", outputName, err)
+		}
+
 		settings.Name = outputName
 		settings.Type = componentStreamOutput
+		settings.InMemoryOverride = inMemoryOverride
 
 		if err := manager.Add(settings); err != nil {
 			return fmt.Errorf("could not add output %s: %w", outputName, err)
@@ -55,9 +62,10 @@ func (f streamOutputFactory) Component(_ cfg.Config, _ log.Logger, _ map[string]
 	s := settings.(*streamOutputSettings)
 
 	component := &streamOutputComponent{
-		name:    s.Name,
-		output:  stream.ProvideInMemoryOutput(s.Name),
-		encoder: stream.NewMessageEncoder(&stream.MessageEncoderSettings{}),
+		name:             s.Name,
+		output:           stream.ProvideInMemoryOutput(s.Name),
+		encoder:          stream.NewMessageEncoder(&stream.MessageEncoderSettings{}),
+		inMemoryOverride: s.InMemoryOverride,
 	}
 
 	return component, nil

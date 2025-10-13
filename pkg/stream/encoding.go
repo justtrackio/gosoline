@@ -7,6 +7,7 @@ import (
 type EncodingType string
 
 const (
+	EncodingAvro     EncodingType = "application/avro"
 	EncodingJson     EncodingType = "application/json"
 	EncodingProtobuf EncodingType = "application/x-protobuf"
 )
@@ -30,7 +31,7 @@ type MessageBodyEncoder interface {
 
 var messageBodyEncoders = map[EncodingType]MessageBodyEncoder{
 	EncodingJson:     new(jsonEncoder),
-	EncodingProtobuf: new(protobufEncoder),
+	EncodingProtobuf: new(base64LayeredProtobufEncoder),
 }
 
 func AddMessageBodyEncoder(encoding EncodingType, encoder MessageBodyEncoder) {

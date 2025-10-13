@@ -38,7 +38,7 @@ func newOutputModule(ctx context.Context, config cfg.Config, logger log.Logger) 
 	var err error
 	var output stream.Output
 
-	if output, err = stream.NewConfigurableOutput(ctx, config, logger, "exampleRecord"); err != nil {
+	if output, _, err = stream.NewConfigurableOutput(ctx, config, logger, "exampleRecord"); err != nil {
 		return nil, fmt.Errorf("can not create output exampleRecord: %w", err)
 	}
 

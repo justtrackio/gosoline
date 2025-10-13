@@ -40,20 +40,20 @@ type publisher struct {
 	settings *PublisherSettings
 }
 
-func NewPublisher(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Publisher, error) {
+func NewPublisher(ctx context.Context, config cfg.Config, logger log.Logger, name string, options ...stream.ProducerOption) (Publisher, error) {
 	settings, err := readPublisherSetting(config, name)
 	if err != nil {
 		return nil, fmt.Errorf("can not read publisher settings for %s: %w", name, err)
 	}
 
-	return NewPublisherWithSettings(ctx, config, logger, settings)
+	return NewPublisherWithSettings(ctx, config, logger, settings, options...)
 }
 
-func NewPublisherWithSettings(ctx context.Context, config cfg.Config, logger log.Logger, settings *PublisherSettings) (Publisher, error) {
+func NewPublisherWithSettings(ctx context.Context, config cfg.Config, logger log.Logger, settings *PublisherSettings, options ...stream.ProducerOption) (Publisher, error) {
 	var err error
 	var producer stream.Producer
 
-	if producer, err = stream.NewProducer(ctx, config, logger, settings.Producer); err != nil {
+	if producer, err = stream.NewProducer(ctx, config, logger, settings.Producer, options...); err != nil {
 		return nil, fmt.Errorf("can not create producer %s: %w", settings.Producer, err)
 	}
 

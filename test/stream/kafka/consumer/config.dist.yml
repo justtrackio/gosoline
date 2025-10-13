@@ -1,0 +1,28 @@
+env: test
+
+app_project: gosoline
+app_family: test
+app_group: grp
+app_name: kafka-consumer-test
+
+stream:
+  output:
+    testEvent:
+      type: kafka
+      family: goso
+      group: test
+      topic_id: testEvent
+      in_memory_override: false
+  input:
+    consumer:
+      type: kafka
+      family: goso
+      group: test
+      topic_id: testEvent
+      group_id: testEvent
+      in_memory_override: false
+
+test:
+  components:
+    kafka:
+      default:

@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "TestEvent",
+  "namespace": "io.justtrack.events",
+  "fields": [
+    {
+      "name": "id",
+      "type": "int"
+    },
+    {
+      "name": "name",
+      "type": "string"
+    }
+  ]
+}

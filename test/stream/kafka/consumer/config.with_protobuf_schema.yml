@@ -1,0 +1,7 @@
+stream:
+  consumer:
+    default:
+      encoding: application/x-protobuf
+  producer:
+    testEvent:
+      encoding: application/x-protobuf

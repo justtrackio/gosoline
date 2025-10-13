@@ -1,0 +1,6 @@
+stream:
+  producer:
+    testEvent:
+      daemon:
+        enabled: true
+        aggregation_size: 3 # should be ignored

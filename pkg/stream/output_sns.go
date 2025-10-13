@@ -7,7 +7,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sns"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type SnsOutputSettings struct {
@@ -34,7 +33,9 @@ type snsOutput struct {
 }
 
 func NewSnsOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SnsOutputSettings) (Output, error) {
-	settings.PadFromConfig(config)
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
+	}
 
 	var err error
 	var topic sns.Topic
@@ -92,9 +93,9 @@ func (o *snsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	return nil
 }
 
-func (o *snsOutput) computeMessagesAttributes(batch []WritableMessage) ([]string, []map[string]string, error) {
-	messages := make([]string, 0, len(batch))
-	attributes := make([]map[string]string, 0, len(batch))
+func (o *snsOutput) computeMessagesAttributes(batch []WritableMessage) (messages []string, attributes []map[string]string, err error) {
+	messages = make([]string, 0, len(batch))
+	attributes = make([]map[string]string, 0, len(batch))
 
 	for i := 0; i < len(batch); i++ {
 		message, err := batch[i].MarshalToString()
@@ -107,12 +108,4 @@ func (o *snsOutput) computeMessagesAttributes(batch []WritableMessage) ([]string
 	}
 
 	return messages, attributes, nil
-}
-
-func (o *snsOutput) GetMaxMessageSize() *int {
-	return mdl.Box(256 * 1024)
-}
-
-func (o *snsOutput) GetMaxBatchSize() *int {
-	return mdl.Box(10)
 }

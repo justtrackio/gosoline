@@ -15,6 +15,8 @@ type outputTracer struct {
 	name   string
 }
 
+var _ SchemaRegistryAwareOutput = &outputTracer{}
+
 func NewOutputTracer(ctx context.Context, config cfg.Config, logger log.Logger, base Output, name string) (*outputTracer, error) {
 	key := ConfigurableOutputKey(name)
 
@@ -61,24 +63,10 @@ func (o outputTracer) Write(ctx context.Context, batch []WritableMessage) error 
 	return o.base.Write(ctx, batch)
 }
 
-func (o outputTracer) IsPartitionedOutput() bool {
-	po, ok := o.base.(PartitionedOutput)
-
-	return ok && po.IsPartitionedOutput()
-}
-
-func (o outputTracer) GetMaxMessageSize() *int {
-	if sro, ok := o.base.(SizeRestrictedOutput); ok {
-		return sro.GetMaxMessageSize()
+func (o outputTracer) InitSchemaRegistry(ctx context.Context, settings SchemaSettingsWithEncoding) (MessageBodyEncoder, error) {
+	if schemaRegistryAwareOutput, ok := o.base.(SchemaRegistryAwareOutput); ok {
+		return schemaRegistryAwareOutput.InitSchemaRegistry(ctx, settings)
 	}
 
-	return nil
-}
-
-func (o outputTracer) GetMaxBatchSize() *int {
-	if sro, ok := o.base.(SizeRestrictedOutput); ok {
-		return sro.GetMaxBatchSize()
-	}
-
-	return nil
+	return nil, fmt.Errorf("output does not support a schema registry")
 }
