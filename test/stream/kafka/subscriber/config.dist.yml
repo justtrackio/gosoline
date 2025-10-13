@@ -1,0 +1,34 @@
+env: test
+
+app_project: justtrack
+app_family: gosoline
+app_group: kafka
+app_name: subscriber
+
+cloud:
+  aws:
+    dynamodb:
+      clients: ~
+
+mdlsub:
+  subscribers:
+    testModel:
+      input: kafka
+      output: ddb
+      source: { group: source-group, name: testEvent }
+
+stream:
+  input:
+    subscriber-testModel:
+      in_memory_override: false
+  output:
+    testEvent:
+      type: kafka
+      group: source-group
+      topic_id: testEvent
+      in_memory_override: false
+
+test:
+  components:
+    kafka:
+      default:

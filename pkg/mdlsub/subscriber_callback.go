@@ -23,20 +23,22 @@ type SubscriberModel struct {
 }
 
 type SubscriberCallback struct {
-	logger log.Logger
-	metric metric.Writer
-	core   SubscriberCore
+	logger      log.Logger
+	metric      metric.Writer
+	core        SubscriberCore
+	sourceModel SubscriberModel
 }
 
-func NewSubscriberCallbackFactory(core SubscriberCore) stream.UntypedConsumerCallbackFactory {
+func NewSubscriberCallbackFactory(core SubscriberCore, sourceModel SubscriberModel) stream.UntypedConsumerCallbackFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.UntypedConsumerCallback, error) {
 		defaultMetrics := getSubscriberCallbackDefaultMetrics(core.GetModelIds())
 		metricWriter := metric.NewWriter(defaultMetrics...)
 
 		callback := &SubscriberCallback{
-			logger: logger,
-			metric: metricWriter,
-			core:   core,
+			logger:      logger,
+			metric:      metricWriter,
+			core:        core,
+			sourceModel: sourceModel,
 		}
 
 		return callback, nil
@@ -57,6 +59,28 @@ func (s *SubscriberCallback) GetModel(attributes map[string]string) any {
 	}
 
 	return transformer.getInput()
+}
+
+func (s *SubscriberCallback) GetSchemaSettings() (*stream.SchemaSettings, error) {
+	transformersMap, err := s.core.GetTransformersForModel(s.sourceModel.ModelId)
+	if err != nil {
+		return nil, err
+	}
+
+	var schemaSettings *stream.SchemaSettings
+
+	for _, transformer := range transformersMap {
+		schemaSettings, err = transformer.getSchemaSettings()
+		if err != nil {
+			return nil, err
+		}
+
+		if schemaSettings != nil && len(transformersMap) > 1 {
+			return nil, fmt.Errorf("there should be only one transformer per input model when using the schema registry")
+		}
+	}
+
+	return schemaSettings, nil
 }
 
 func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes map[string]string) (ack bool, err error) {

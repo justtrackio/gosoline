@@ -33,7 +33,7 @@ func (s *OutputKinesisTestSuite) TestRawMessageSuccess() {
 	}
 	s.recordWriter.EXPECT().PutRecords(s.ctx, expectedRecords).Return(nil)
 
-	rawMessage := stream.NewRawJsonMessage("body")
+	rawMessage := stream.NewRawMessageWithJsonEncoder("body")
 
 	err := s.output.WriteOne(s.ctx, rawMessage)
 	s.NoError(err)

@@ -11,17 +11,22 @@ import (
 
 type streamOutputComponent struct {
 	baseComponent
-	name    string
-	output  *stream.InMemoryOutput
-	encoder stream.MessageEncoder
+	name             string
+	output           *stream.InMemoryOutput
+	encoder          stream.MessageEncoder
+	inMemoryOverride bool
 }
 
 func (s *streamOutputComponent) CfgOptions() []cfg.Option {
 	key := fmt.Sprintf("stream.output.%s.type", s.name)
 
-	return []cfg.Option{
-		cfg.WithConfigSetting(key, stream.OutputTypeInMemory),
+	if s.inMemoryOverride {
+		return []cfg.Option{
+			cfg.WithConfigSetting(key, stream.InputTypeInMemory),
+		}
 	}
+
+	return []cfg.Option{}
 }
 
 func (s *streamOutputComponent) Len() int {

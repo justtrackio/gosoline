@@ -48,6 +48,11 @@ type RunnableCallback interface {
 	Run(ctx context.Context) error
 }
 
+//go:generate go run github.com/vektra/mockery/v2 --name SchemaSettingsAwareCallback
+type SchemaSettingsAwareCallback interface {
+	GetSchemaSettings() (*SchemaSettings, error)
+}
+
 type BaseConsumerCallback interface {
 	GetModel(attributes map[string]string) any
 }
@@ -118,9 +123,31 @@ func NewBaseConsumer(
 		return nil, err
 	}
 
-	encoder := NewMessageEncoder(&MessageEncoderSettings{
+	encoderSettings := &MessageEncoderSettings{
 		Encoding: settings.Encoding,
-	})
+	}
+
+	var schemaSettings *SchemaSettings
+	schemaRegistryAwareInput, isSchemaRegistryAwareInput := input.(SchemaRegistryAwareInput)
+	schemaSettingsAware, isSchemaSettingsAwareCallback := consumerCallback.(SchemaSettingsAwareCallback)
+
+	if isSchemaSettingsAwareCallback {
+		schemaSettings, err = schemaSettingsAware.GetSchemaSettings()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if isSchemaRegistryAwareInput && schemaSettings != nil {
+		externalEncoder, err := schemaRegistryAwareInput.InitSchemaRegistry(ctx, schemaSettings.WithEncoding(settings.Encoding))
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize schema registry: %w", err)
+		}
+
+		encoderSettings.ExternalEncoder = externalEncoder
+	}
+
+	encoder := NewMessageEncoder(encoderSettings)
 
 	// if our input knows how to retry already,
 	if retryingInput, ok := input.(RetryingInput); ok {

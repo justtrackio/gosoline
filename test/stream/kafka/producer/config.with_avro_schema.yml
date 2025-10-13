@@ -1,0 +1,5 @@
+stream:
+  producer:
+    testEvent:
+      compression: application/snappy
+      encoding: application/avro

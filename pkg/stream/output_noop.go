@@ -9,8 +9,8 @@ import (
 
 type NoOpOutput struct{}
 
-func newNoOpOutput(_ context.Context, _ cfg.Config, _ log.Logger, _ string) (Output, error) {
-	return &NoOpOutput{}, nil
+func newNoOpOutput(_ context.Context, _ cfg.Config, _ log.Logger, _ string) (Output, *OutputCapabilities, error) {
+	return &NoOpOutput{}, DefaultOutputCapabilities, nil
 }
 
 func (o *NoOpOutput) WriteOne(_ context.Context, _ WritableMessage) error {

@@ -10,7 +10,6 @@ import (
 	gosoKinesis "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/spf13/cast"
 )
 
@@ -42,7 +41,9 @@ type kinesisOutput struct {
 }
 
 func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *KinesisOutputSettings) (Output, error) {
-	settings.PadFromConfig(config)
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
+	}
 
 	var err error
 	var recordWriter gosoKinesis.RecordWriter
@@ -93,18 +94,6 @@ func (o *kinesisOutput) Write(ctx context.Context, batch []WritableMessage) erro
 	}
 
 	return o.recordWriter.PutRecords(ctx, records)
-}
-
-func (o *kinesisOutput) IsPartitionedOutput() bool {
-	return true
-}
-
-func (o *kinesisOutput) GetMaxMessageSize() *int {
-	return mdl.Box(1024 * 1024)
-}
-
-func (o *kinesisOutput) GetMaxBatchSize() *int {
-	return mdl.Box(500)
 }
 
 func (o *kinesisOutput) buildRecord(msg WritableMessage) (*gosoKinesis.Record, error) {

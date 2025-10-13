@@ -71,7 +71,17 @@ func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel int, batchSize int, ag
 	s.aggregator, err = stream.NewProducerDaemonAggregator(settings, stream.CompressionNone)
 	s.NoError(err)
 
-	s.daemon = stream.NewProducerDaemonWithInterfaces(logger, metric, s.aggregator, s.output, s.clock, "testDaemon", settings)
+	s.daemon = stream.NewProducerDaemonWithInterfaces(
+		logger,
+		metric,
+		s.aggregator,
+		stream.NewProducerDaemonBatcher(settings),
+		s.output,
+		s.clock,
+		"testDaemon",
+		settings,
+		true,
+	)
 
 	running := make(chan struct{})
 

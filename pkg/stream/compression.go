@@ -11,6 +11,11 @@ type CompressionType string
 const (
 	CompressionNone CompressionType = "none"
 	CompressionGZip CompressionType = "application/gzip"
+
+	// compressors that are only provided externally (e.g. by kafka)
+	CompressionSnappy CompressionType = "application/snappy"
+	CompressionLZ4    CompressionType = "application/lz4"
+	CompressionZstd   CompressionType = "application/zstd"
 )
 
 func (s CompressionType) String() string {
@@ -73,7 +78,7 @@ type gZipCompressor struct{}
 
 func (g gZipCompressor) Compress(body []byte) ([]byte, error) {
 	if body == nil {
-		return body, nil
+		return nil, nil
 	}
 
 	var out bytes.Buffer
@@ -94,7 +99,7 @@ func (g gZipCompressor) Compress(body []byte) ([]byte, error) {
 
 func (g gZipCompressor) Decompress(body []byte) ([]byte, error) {
 	if body == nil {
-		return body, nil
+		return nil, nil
 	}
 
 	bufBody := bytes.NewBuffer(body)

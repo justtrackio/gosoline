@@ -1,0 +1,7 @@
+stream:
+  consumer:
+    subscriber-testModel:
+      encoding: application/avro
+  producer:
+    testEvent:
+      encoding: application/avro
