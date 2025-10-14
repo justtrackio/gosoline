@@ -5,11 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -23,6 +26,7 @@ type StreamDescription struct {
 type Service struct {
 	logger         log.Logger
 	client         Client
+	clock          clock.Clock
 	fullStreamName string
 }
 
@@ -42,6 +46,7 @@ func NewService(ctx context.Context, config cfg.Config, logger log.Logger, setti
 	return &Service{
 		logger:         logger,
 		client:         client,
+		clock:          clock.NewRealClock(),
 		fullStreamName: string(fullStreamName),
 	}, nil
 }
@@ -75,7 +80,7 @@ func (s *Service) Create(ctx context.Context) error {
 	if err != nil && errors.As(err, &errResourceInUseException) && strings.Contains(err.Error(), "already exists") {
 		s.logger.Info(ctx, "kinesis stream already being created: %s", s.fullStreamName)
 
-		return nil
+		return s.waitForStreamBeingActive(ctx)
 	}
 
 	if err != nil {
@@ -84,7 +89,7 @@ func (s *Service) Create(ctx context.Context) error {
 
 	s.logger.Info(ctx, "created kinesis stream: %s", s.fullStreamName)
 
-	return nil
+	return s.waitForStreamBeingActive(ctx)
 }
 
 func (s *Service) DescribeStream(ctx context.Context) (*StreamDescription, error) {
@@ -105,4 +110,39 @@ func (s *Service) DescribeStream(ctx context.Context) (*StreamDescription, error
 		StreamName:     *out.StreamDescriptionSummary.StreamName,
 		OpenShardCount: int(*out.StreamDescriptionSummary.OpenShardCount),
 	}, err
+}
+
+func (s *Service) waitForStreamBeingActive(ctx context.Context) error {
+	var err error
+	var out *kinesis.DescribeStreamSummaryOutput
+
+	start := s.clock.Now()
+	ticker := clock.NewRealTicker(time.Second)
+	defer ticker.Stop()
+	timer := clock.NewRealTimer(time.Minute)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("context cancelled while waiting for kinesis stream %s to become active: %w", s.fullStreamName, context.Canceled)
+
+		case <-ticker.Chan():
+			out, err = s.client.DescribeStreamSummary(ctx, &kinesis.DescribeStreamSummaryInput{
+				StreamName: aws.String(s.fullStreamName),
+			})
+			if err != nil {
+				return fmt.Errorf("failed to describe kinesis stream %s: %w", s.fullStreamName, err)
+			}
+
+			if funk.Contains([]types.StreamStatus{types.StreamStatusActive, types.StreamStatusUpdating}, out.StreamDescriptionSummary.StreamStatus) {
+				return nil
+			}
+
+			s.logger.Info(ctx, "waiting for %s for kinesis stream %s getting active", time.Since(start), s.fullStreamName)
+
+		case <-timer.Chan():
+			return fmt.Errorf("timed out after %s waiting for kinesis stream %s to become active", time.Since(start), s.fullStreamName)
+		}
+	}
 }
