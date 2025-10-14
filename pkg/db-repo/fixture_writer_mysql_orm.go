@@ -3,6 +3,7 @@ package db_repo
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db"
@@ -13,7 +14,7 @@ import (
 type mysqlOrmFixtureWriter struct {
 	logger   log.Logger
 	metadata *Metadata
-	repo     Repository
+	repo     *repository
 }
 
 func MysqlOrmFixtureSetFactory[T any](metadata *Metadata, data fixtures.NamedFixtures[T], options ...fixtures.FixtureSetOption) fixtures.FixtureSetFactory {
@@ -56,11 +57,12 @@ func NewMysqlOrmFixtureWriter(ctx context.Context, config cfg.Config, logger log
 	if repo, err = NewWithDbSettings(ctx, config, logger, dbSettings, repoSettings); err != nil {
 		return nil, fmt.Errorf("can not create repo: %w", err)
 	}
+	repo.noDeleteRefresh = true
 
 	return NewMysqlFixtureWriterWithInterfaces(logger, metadata, repo), nil
 }
 
-func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *Metadata, repo Repository) fixtures.FixtureWriter {
+func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *Metadata, repo *repository) fixtures.FixtureWriter {
 	return &mysqlOrmFixtureWriter{
 		logger:   logger,
 		metadata: metadata,
@@ -77,7 +79,15 @@ func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fixtures []any) error
 			return fmt.Errorf("assertion failed: %T is not db_repo.ModelBased", item)
 		}
 
-		err := m.repo.Update(ctx, model)
+		now := time.Now()
+		model.SetUpdatedAt(&now)
+
+		err := m.repo.orm.Save(model).Error
+		if err != nil {
+			return err
+		}
+
+		err = m.repo.refreshAssociations(model, Update)
 		if err != nil {
 			return err
 		}

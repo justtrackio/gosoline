@@ -2,67 +2,86 @@ package env
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net"
-	"regexp"
-	"runtime"
-	"strings"
-	"sync"
 	"time"
 
-	"github.com/cenkalti/backoff"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/uuid"
-	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 )
 
 const (
-	networkBridge = "bridge"
-	osLinux       = "linux"
+	networkBridge    = "bridge"
+	osLinux          = "linux"
+	RunnerTypeLocal  = "local"
+	RunnerTypeRemote = "remote"
 )
 
-type containerConfig struct {
-	Hostname             string
-	Auth                 authSettings
-	Repository           string
-	Tmpfs                []TmpfsSettings
-	Tag                  string
-	Env                  []string
-	Cmd                  []string
-	PortBindings         portBindings
-	ExposedPorts         []string
-	ExpireAfter          time.Duration
-	UseExternalContainer bool
-	ContainerBindings    containerBindings
+var containerRunnerFactories = map[string]func(cfg.Config, log.Logger, *ContainerManagerSettings) (ContainerRunner, error){
+	RunnerTypeLocal:  NewContainerRunnerLocal,
+	RunnerTypeRemote: NewContainerRunnerRemote,
 }
 
-type portBindings map[string]int
+type ContainerRunner interface {
+	RunContainer(ctx context.Context, request ContainerRequest) (*Container, error)
+	Stop(ctx context.Context) error
+}
 
-type containerBindings map[string]containerBinding
+type ContainerRequest struct {
+	TestName             string
+	ComponentType        string
+	ComponentName        string
+	ContainerName        string
+	ContainerDescription *ComponentContainerDescription
+	ExpireAfter          time.Duration
+}
 
-type containerBinding struct {
+func (r ContainerRequest) id() string {
+	return fmt.Sprintf("%s-%s", r.ComponentType, r.ComponentName)
+}
+
+type ContainerConfig struct {
+	RunnerType   string
+	Hostname     string
+	Auth         authSettings
+	Repository   string
+	Tmpfs        []TmpfsSettings
+	Tag          string
+	Env          map[string]string
+	Cmd          []string
+	PortBindings PortBindings
+	ExposedPorts []string
+}
+
+func (c ContainerConfig) String() string {
+	return fmt.Sprintf("%s:%s", c.Repository, c.Tag)
+}
+
+type PortBindings map[string]PortBinding
+
+type PortBinding struct {
+	ContainerPort int    `json:"container_port"`
+	HostPort      int    `json:"host_port"`
+	Protocol      string `json:"protocol"`
+}
+
+func (b PortBinding) DockerPort() string {
+	return fmt.Sprintf("%d/%s", b.ContainerPort, b.Protocol)
+}
+
+type Container struct {
+	typ      string
+	name     string
+	bindings map[string]ContainerBinding
+}
+
+type ContainerBinding struct {
 	host string
 	port string
 }
 
-func (b containerBinding) getAddress() string {
+func (b ContainerBinding) getAddress() string {
 	return fmt.Sprintf("%s:%s", b.host, b.port)
-}
-
-type container struct {
-	typ      string
-	name     string
-	bindings map[string]containerBinding
-}
-
-type healthCheckSettings struct {
-	InitialInterval time.Duration `cfg:"initial_interval" default:"1s"`
-	MaxInterval     time.Duration `cfg:"max_interval"     default:"3s"`
-	MaxElapsedTime  time.Duration `cfg:"max_elapsed_time" default:"1m"`
 }
 
 type authSettings struct {
@@ -84,435 +103,4 @@ func (a authSettings) GetAuthConfig() docker.AuthConfiguration {
 // IsEmpty returns true when username and password are empty as both are the minimum needed for authentication
 func (a authSettings) IsEmpty() bool {
 	return a.Username == "" && a.Password == ""
-}
-
-type containerRunnerSettings struct {
-	Endpoint    string              `cfg:"endpoint"`
-	NamePrefix  string              `cfg:"name_prefix"  default:"goso"`
-	HealthCheck healthCheckSettings `cfg:"health_check"`
-	ExpireAfter time.Duration       `cfg:"expire_after"`
-	Auth        authSettings        `cfg:"auth"`
-}
-
-type containerRunner struct {
-	logger            log.Logger
-	pool              *dockertest.Pool
-	id                string
-	resources         map[string]*dockertest.Resource
-	resourcesLck      sync.Mutex
-	settings          *containerRunnerSettings
-	shutdownCallbacks map[string]func() error
-}
-
-func NewContainerRunner(config cfg.Config, logger log.Logger) (*containerRunner, error) {
-	id := uuid.New().NewV4()
-	logger = logger.WithChannel("container-runner")
-
-	settings := &containerRunnerSettings{}
-	if err := config.UnmarshalKey("test.container_runner", settings); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal container runner settings: %w", err)
-	}
-
-	pool, err := dockertest.NewPool(settings.Endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("can not create docker pool: %w", err)
-	}
-
-	// do this here, if we let the call to `pool.Retry` do this, we trigger a data race (not bad in this case, but annoying
-	// for the race detector)
-	if pool.MaxWait == 0 {
-		pool.MaxWait = time.Minute
-	}
-
-	return &containerRunner{
-		logger:            logger,
-		pool:              pool,
-		id:                id,
-		resources:         make(map[string]*dockertest.Resource),
-		resourcesLck:      sync.Mutex{},
-		settings:          settings,
-		shutdownCallbacks: make(map[string]func() error, 0),
-	}, nil
-}
-
-func (r *containerRunner) PullContainerImages(skeletons []*componentSkeleton) error {
-	cfn := coffin.New()
-	cfn.Go(func() error {
-		for _, skeleton := range skeletons {
-			for _, description := range skeleton.containerDescriptions {
-				if description.containerConfig.UseExternalContainer {
-					continue
-				}
-
-				cfn.Gof(func() error {
-					return r.PullContainerImage(description)
-				}, "can not pull container %s", skeleton.id())
-			}
-		}
-
-		return nil
-	})
-
-	return cfn.Wait()
-}
-
-func (r *containerRunner) PullContainerImage(description *componentContainerDescription) error {
-	config := description.containerConfig
-	imageName := fmt.Sprintf("%s:%s", config.Repository, config.Tag)
-	_, err := r.pool.Client.InspectImage(imageName)
-	if err != nil && !errors.Is(err, docker.ErrNoSuchImage) {
-		return fmt.Errorf("could not check if image %s exists: %w", imageName, err)
-	}
-
-	if err == nil {
-		return nil
-	}
-
-	pullImageOptions := docker.PullImageOptions{
-		Repository: config.Repository,
-		Tag:        config.Tag,
-	}
-
-	containerAuth := description.containerConfig.Auth
-	authConfig := r.getAuthConfig(containerAuth)
-
-	err = r.pool.Client.PullImage(pullImageOptions, authConfig)
-	if err != nil {
-		return fmt.Errorf("could not pull image %q: %w", imageName, err)
-	}
-
-	return nil
-}
-
-func (r *containerRunner) getAuthConfig(containerAuth authSettings) docker.AuthConfiguration {
-	if !containerAuth.IsEmpty() {
-		return containerAuth.GetAuthConfig()
-	}
-
-	return r.settings.Auth.GetAuthConfig()
-}
-
-func (r *containerRunner) RunContainers(ctx context.Context, skeletons []*componentSkeleton) error {
-	if len(skeletons) == 0 {
-		return nil
-	}
-
-	if err := r.PullContainerImages(skeletons); err != nil {
-		return err
-	}
-
-	cfn := coffin.New()
-	lck := new(sync.Mutex)
-
-	for i := range skeletons {
-		for name, description := range skeletons[i].containerDescriptions {
-			skeleton := skeletons[i]
-
-			cfn.Gof(func() error {
-				var err error
-				var container *container
-
-				if container, err = r.RunContainer(ctx, skeleton, name, description); err != nil {
-					return fmt.Errorf(
-						"can not run container %s (%s:%s): %w",
-						skeleton.id(),
-						description.containerConfig.Repository,
-						description.containerConfig.Tag,
-						err,
-					)
-				}
-
-				lck.Lock()
-				defer lck.Unlock()
-
-				skeleton.containers[name] = container
-
-				return nil
-			}, "can not run container %s", skeleton.id())
-		}
-	}
-
-	return cfn.Wait()
-}
-
-func (r *containerRunner) RunContainer(ctx context.Context, skeleton *componentSkeleton, name string, description *componentContainerDescription) (*container, error) {
-	config := description.containerConfig
-	containerName := fmt.Sprintf("%s-%s-%s-%s", r.settings.NamePrefix, r.id, skeleton.id(), name)
-
-	var container *container
-	var err error
-
-	if config.UseExternalContainer {
-		container, err = r.createExternalContainer(ctx, containerName, skeleton.typ, description.containerConfig)
-		if err != nil {
-			return nil, fmt.Errorf("could not create external container: %w", err)
-		}
-	} else {
-		container, err = r.runNewContainer(ctx, containerName, skeleton, name, config)
-		if err != nil {
-			return nil, fmt.Errorf("could not run new container: %w", err)
-		}
-	}
-
-	if err = r.waitUntilHealthy(ctx, container, description.healthCheck); err != nil {
-		if description.containerConfig.UseExternalContainer {
-			return nil, fmt.Errorf(
-				"healthcheck failed on container for component %s. The container is configured to use an external container, is that container running? %w",
-				skeleton.id(),
-				err,
-			)
-		}
-
-		return nil, fmt.Errorf("healthcheck failed on container for component %s: %w", skeleton.id(), err)
-	}
-
-	if description.shutdownCallback != nil {
-		if _, exists := r.shutdownCallbacks[name]; exists {
-			return nil, fmt.Errorf("there already exists a shutdown callback for %s", name)
-		}
-
-		r.shutdownCallbacks[name] = description.shutdownCallback(container)
-	}
-
-	return container, err
-}
-
-func (r *containerRunner) createExternalContainer(ctx context.Context, containerName, skeletonTyp string, config *containerConfig) (*container, error) {
-	r.logger.Debug(ctx, "create external container %s %s", skeletonTyp, containerName)
-
-	containerBindings := make(map[string]containerBinding, len(config.ContainerBindings))
-	for key, cb := range config.ContainerBindings {
-		containerBindings[key] = containerBinding{
-			host: cb.host,
-			port: cb.port,
-		}
-	}
-
-	return &container{
-		typ:      skeletonTyp,
-		name:     containerName,
-		bindings: containerBindings,
-	}, nil
-}
-
-func (r *containerRunner) runNewContainer(
-	ctx context.Context,
-	containerName string,
-	skeleton *componentSkeleton,
-	name string,
-	config *containerConfig,
-) (*container, error) {
-	r.logger.Debug(ctx, "run container %s %s:%s %s", skeleton.typ, config.Repository, config.Tag, containerName)
-
-	bindings := make(map[docker.Port][]docker.PortBinding)
-
-	for containerPort, hostPort := range config.PortBindings {
-		bindings[docker.Port(containerPort)] = []docker.PortBinding{
-			{
-				HostPort: fmt.Sprint(hostPort),
-			},
-		}
-	}
-
-	containerAuth := config.Auth
-	authConfig := r.getAuthConfig(containerAuth)
-
-	runOptions := &dockertest.RunOptions{
-		Hostname:     config.Hostname,
-		Name:         containerName,
-		Repository:   config.Repository,
-		Tag:          config.Tag,
-		Env:          config.Env,
-		Cmd:          config.Cmd,
-		PortBindings: bindings,
-		ExposedPorts: config.ExposedPorts,
-		Auth:         authConfig,
-	}
-
-	tmpfsConfig := r.getTmpfsConfig(config.Tmpfs)
-
-	resourceId := fmt.Sprintf("%s-%s", skeleton.id(), name)
-
-	container, err := r.runContainer(runOptions, resourceId, config.ExpireAfter, config.PortBindings, skeleton.typ, tmpfsConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return container, nil
-}
-
-func (r *containerRunner) runContainer(
-	options *dockertest.RunOptions,
-	resourceId string,
-	expireAfter time.Duration,
-	bindings portBindings,
-	typ string,
-	tmpfs map[string]string,
-) (*container, error) {
-	var resourceContainer *container
-
-	resource, err := r.pool.RunWithOptions(options, func(hc *docker.HostConfig) {
-		hc.AutoRemove = true
-		hc.Tmpfs = tmpfs
-	})
-	if err != nil {
-		return nil, fmt.Errorf("can not run container %s: %w", resourceId, err)
-	}
-
-	r.resourcesLck.Lock()
-	r.resources[resourceId] = resource
-	r.resourcesLck.Unlock()
-
-	if err = r.expireAfter(resource, expireAfter); err != nil {
-		return nil, fmt.Errorf("could not set expiry on container %s: %w", options.Name, err)
-	}
-
-	resolvedBindings, err := r.resolveBindings(resource, bindings)
-	if err != nil {
-		return nil, fmt.Errorf("can not resolve bindings: %w", err)
-	}
-
-	resourceContainer = &container{
-		typ:      typ,
-		name:     options.Name,
-		bindings: resolvedBindings,
-	}
-
-	return resourceContainer, nil
-}
-
-func (r *containerRunner) getTmpfsConfig(settings []TmpfsSettings) map[string]string {
-	config := make(map[string]string)
-
-	for _, setting := range settings {
-		params := make([]string, 0)
-
-		if setting.Size != "" {
-			params = append(params, fmt.Sprintf("size=%s", setting.Size))
-		}
-
-		if setting.Mode != "" {
-			params = append(params, fmt.Sprintf("mode=%s", setting.Mode))
-		}
-
-		config[setting.Path] = strings.Join(params, ",")
-	}
-
-	return config
-}
-
-func (r *containerRunner) expireAfter(resource *dockertest.Resource, expireAfter time.Duration) error {
-	if r.settings.ExpireAfter > 0 {
-		expireAfter = r.settings.ExpireAfter
-	}
-
-	if err := resource.Expire(uint(expireAfter.Seconds())); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r *containerRunner) resolveBindings(resource *dockertest.Resource, bindings portBindings) (map[string]containerBinding, error) {
-	var err error
-	resolvedAddresses := make(map[string]containerBinding)
-
-	for containerPort := range bindings {
-		if resolvedAddresses[containerPort], err = r.resolveBinding(resource, containerPort); err != nil {
-			return nil, fmt.Errorf("failed to resolve binding: %w", err)
-		}
-	}
-
-	return resolvedAddresses, nil
-}
-
-func (r *containerRunner) resolveBinding(resource *dockertest.Resource, containerPort string) (containerBinding, error) {
-	var err error
-	var hostPort string
-	var address containerBinding
-
-	err = r.pool.Retry(func() error {
-		if hostPort = resource.GetHostPort(containerPort); hostPort == "" {
-			return fmt.Errorf("port is not ready yet")
-		}
-
-		return nil
-	})
-	if err != nil {
-		return address, fmt.Errorf("can not resolve binding for port %s: %w", containerPort, err)
-	}
-
-	if address.host, address.port, err = net.SplitHostPort(hostPort); err != nil {
-		return address, fmt.Errorf("could not split hostPort into host and port: %w", err)
-	}
-
-	// On non-linux environments, the docker containers cannot be reached via the bridge network from outside the network.
-	if runtime.GOOS == osLinux {
-		if network, ok := resource.Container.NetworkSettings.Networks[networkBridge]; ok {
-			address.host = network.Gateway
-		}
-	}
-
-	return address, nil
-}
-
-func (r *containerRunner) waitUntilHealthy(ctx context.Context, container *container, healthCheck ComponentHealthCheck) error {
-	backoffSetting := backoff.NewExponentialBackOff()
-	backoffSetting.InitialInterval = r.settings.HealthCheck.InitialInterval
-	backoffSetting.MaxInterval = r.settings.HealthCheck.MaxInterval
-	backoffSetting.MaxElapsedTime = r.settings.HealthCheck.MaxElapsedTime
-	backoffSetting.Multiplier = 1.5
-	backoffSetting.RandomizationFactor = 1
-
-	start := time.Now()
-	time.Sleep(time.Second)
-
-	typ := container.typ
-	name := container.name
-
-	notify := func(err error, _ time.Duration) {
-		r.logger.Debug(ctx, "%s %s is still unhealthy since %v: %s", typ, name, time.Since(start), err)
-	}
-
-	err := backoff.RetryNotify(func() error {
-		return healthCheck(container)
-	}, backoffSetting, notify)
-	if err != nil {
-		return err
-	}
-
-	r.logger.Debug(ctx, "%s %s got healthy after %s", typ, name, time.Since(start))
-
-	return nil
-}
-
-var (
-	alreadyExists   = regexp.MustCompile(`API error \(409\): removal of container (\w+) is already in progress`)
-	noSuchContainer = regexp.MustCompile(`No such container: (\w+)`)
-)
-
-func (r *containerRunner) Stop(ctx context.Context) error {
-	for name, cb := range r.shutdownCallbacks {
-		err := cb()
-		if err != nil {
-			r.logger.Error(ctx, "shutdown callback failed for container %s: %w", name, err)
-		}
-	}
-
-	r.resourcesLck.Lock()
-	defer r.resourcesLck.Unlock()
-
-	for name, resource := range r.resources {
-		if err := r.pool.Purge(resource); err != nil {
-			if !alreadyExists.MatchString(err.Error()) && !noSuchContainer.MatchString(err.Error()) {
-				return fmt.Errorf("could not stop container %s: %w", name, err)
-			}
-
-			r.logger.Debug(ctx, "someone else is already stopping container %s, ignoring error %s", name, err.Error())
-		}
-
-		r.logger.Debug(ctx, "stopping container %s", name)
-	}
-
-	return nil
 }

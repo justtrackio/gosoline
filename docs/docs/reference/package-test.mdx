@@ -43,7 +43,10 @@ This is the starting point for a gosoline integration test. This performs the fo
 Test components are docker container like wiremock or localstack which support you in your integration tests to mock
 your applications infrastructure.
 
-#### image configuration
+#### Container expiry
+All test containers are configured with an automatic expiry time to prevent orphaned containers if tests crash. The default is `5m` (5 minutes). This is configured globally via `test.container_manager.expire_after` and applies to all test containers. You can also use `suite.WithContainerExpireAfter()` to set it programmatically.
+
+#### Image configuration
 The used image for a component can be configured on a global and on a per component level. The following configuration
 snipped shows a config for two wiremock components. **mockA** gets the image configuration from the global level which is
 configured via the key `test.defaults.images.wiremock` and **mockB** has local configuration. With this, **mockA** gets
@@ -51,6 +54,8 @@ tag `3.4.0` and **mockB** gets `3.3.0`.
 
 ```yaml
 test:
+  container_manager:
+    expire_after: 5m  # applies to all containers
   defaults:
     images:
       wiremock:
@@ -58,11 +63,9 @@ test:
         tag: 3.4.0
   components:
     wiremock:
-      mockA:
-        expire_after: 5m
+      mockA: {}
       mockB:
         image:
           repository: wiremock/wiremock
           tag: 3.3.0
-        expire_after: 5m
 ```

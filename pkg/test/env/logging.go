@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -65,7 +66,7 @@ func prepareLoggerSettings(options ...LoggerOption) (*LoggerSettings, error) {
 	return settings, nil
 }
 
-func NewRecordingConsoleLogger(config cfg.Config, options ...LoggerOption) (RecordingLogger, error) {
+func NewRecordingConsoleLogger(t *testing.T, config cfg.Config, options ...LoggerOption) (RecordingLogger, error) {
 	settings, err := prepareLoggerSettings(options...)
 	if err != nil {
 		return nil, err

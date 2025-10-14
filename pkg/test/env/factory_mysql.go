@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
-	"strconv"
 	"sync"
 
 	toxiproxy "github.com/Shopify/toxiproxy/v2/client"
@@ -12,7 +11,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 func init() {
@@ -32,9 +30,8 @@ type mysqlSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
 	ContainerBindingSettings
-	Credentials          mysqlCredentials `cfg:"credentials"`
-	ToxiproxyEnabled     bool             `cfg:"toxiproxy_enabled" default:"false"`
-	UseExternalContainer bool             `cfg:"use_external_container" default:"false"`
+	Credentials      mysqlCredentials `cfg:"credentials"`
+	ToxiproxyEnabled bool             `cfg:"toxiproxy_enabled" default:"false"`
 }
 
 type mysqlFactory struct {
@@ -92,41 +89,33 @@ func (f *mysqlFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &mysqlSettings{}
 }
 
-func (f *mysqlFactory) DescribeContainers(settings any) componentContainerDescriptions {
+func (f *mysqlFactory) DescribeContainers(settings any) ComponentContainerDescriptions {
 	s := settings.(*mysqlSettings)
 
-	descriptions := componentContainerDescriptions{
+	descriptions := ComponentContainerDescriptions{
 		"main": {
-			containerConfig:  f.configureContainer(settings),
-			healthCheck:      f.healthCheck(settings),
-			shutdownCallback: f.dropDatabase(settings),
+			ContainerConfig:  f.configureContainer(settings),
+			HealthCheck:      f.healthCheck(settings),
+			ShutdownCallback: f.dropDatabase(settings),
 		},
 	}
 
 	if s.ToxiproxyEnabled {
-		descriptions["toxiproxy"] = f.toxiproxyFactory.describeContainer(s.ExpireAfter)
+		descriptions["toxiproxy"] = f.toxiproxyFactory.describeContainer()
 	}
 
 	return descriptions
 }
 
-func (f *mysqlFactory) configureContainer(settings any) *containerConfig {
+func (f *mysqlFactory) configureContainer(settings any) *ContainerConfig {
 	s := settings.(*mysqlSettings)
 
-	if s.UseExternalContainer {
-		// when using an external instance we need to generate a new database
-		s.Credentials.DatabaseName = uuid.New().NewV4()
-	} else {
-		// ensure to use a free port for the new container
-		s.Port = 0
-	}
-
-	env := []string{
-		fmt.Sprintf("MYSQL_DATABASE=%s", s.Credentials.DatabaseName),
-		fmt.Sprintf("MYSQL_USER=%s", s.Credentials.UserName),
-		fmt.Sprintf("MYSQL_PASSWORD=%s", s.Credentials.UserPassword),
-		fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", s.Credentials.RootPassword),
-		fmt.Sprintf("MYSQL_ROOT_HOST=%s", "%"),
+	env := map[string]string{
+		"MYSQL_DATABASE":      s.Credentials.DatabaseName,
+		"MYSQL_USER":          s.Credentials.UserName,
+		"MYSQL_PASSWORD":      s.Credentials.UserPassword,
+		"MYSQL_ROOT_PASSWORD": s.Credentials.RootPassword,
+		"MYSQL_ROOT_HOST":     "%",
 	}
 
 	if len(s.Tmpfs) == 0 {
@@ -135,36 +124,27 @@ func (f *mysqlFactory) configureContainer(settings any) *containerConfig {
 		})
 	}
 
-	if s.UseExternalContainer {
-		return &containerConfig{
-			UseExternalContainer: true,
-			ContainerBindings: containerBindings{
-				"3306/tcp": containerBinding{
-					host: s.Host,
-					port: strconv.Itoa(s.Port),
-				},
-			},
-		}
-	}
-
-	return &containerConfig{
+	return &ContainerConfig{
 		Auth:       s.Image.Auth,
 		Repository: s.Image.Repository,
 		Tag:        s.Image.Tag,
 		Tmpfs:      s.Tmpfs,
 		Env:        env,
 		Cmd:        []string{"--sql_mode=NO_ENGINE_SUBSTITUTION", "--log-bin-trust-function-creators=TRUE", "--max_connections=1000"},
-		PortBindings: portBindings{
-			"3306/tcp": s.Port,
+		PortBindings: PortBindings{
+			"main": {
+				ContainerPort: 3306,
+				HostPort:      s.Port,
+				Protocol:      "tcp",
+			},
 		},
-		ExpireAfter: s.ExpireAfter,
 	}
 }
 
 func (f *mysqlFactory) healthCheck(settings any) ComponentHealthCheck {
-	return func(container *container) error {
+	return func(container *Container) error {
 		s := settings.(*mysqlSettings)
-		binding := container.bindings["3306/tcp"]
+		binding := container.bindings["main"]
 		client, err := f.connection(s, binding)
 		if err != nil {
 			return fmt.Errorf("can not create client: %w", err)
@@ -174,14 +154,14 @@ func (f *mysqlFactory) healthCheck(settings any) ComponentHealthCheck {
 	}
 }
 
-func (f *mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings any) (Component, error) {
+func (f *mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*Container, settings any) (Component, error) {
 	s := settings.(*mysqlSettings)
 
 	var err error
 	var con *sqlx.DB
 	var proxy *toxiproxy.Proxy
 
-	mysqlBinding := containers["main"].bindings["3306/tcp"]
+	mysqlBinding := containers["main"].bindings["main"]
 
 	if s.ToxiproxyEnabled {
 		toxiproxyClient := f.toxiproxyFactory.client(containers["toxiproxy"])
@@ -190,7 +170,7 @@ func (f *mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[stri
 			return nil, fmt.Errorf("can not create toxiproxy proxy for ddb component: %w", err)
 		}
 
-		mysqlBinding = containers["toxiproxy"].bindings["56248/tcp"]
+		mysqlBinding = containers["toxiproxy"].bindings["main"]
 	}
 
 	if con, err = f.connection(s, mysqlBinding); err != nil {
@@ -210,7 +190,7 @@ func (f *mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[stri
 	return component, nil
 }
 
-func (f *mysqlFactory) connection(settings *mysqlSettings, binding containerBinding) (*sqlx.DB, error) {
+func (f *mysqlFactory) connection(settings *mysqlSettings, binding ContainerBinding) (*sqlx.DB, error) {
 	dsn := url.URL{
 		User: url.UserPassword(settings.Credentials.UserName, settings.Credentials.UserPassword),
 		Host: fmt.Sprintf("tcp(%s:%v)", binding.host, binding.port),
@@ -247,7 +227,7 @@ func (f *mysqlFactory) connection(settings *mysqlSettings, binding containerBind
 	return f.connections[dsn.String()], nil
 }
 
-func (f *mysqlFactory) setup(settings *mysqlSettings, binding containerBinding) error {
+func (f *mysqlFactory) setup(settings *mysqlSettings, binding ContainerBinding) error {
 	dsn := url.URL{
 		User: url.UserPassword("root", settings.Credentials.RootPassword),
 		Host: fmt.Sprintf("tcp(%s:%v)", binding.host, binding.port),
@@ -294,10 +274,10 @@ func (f *mysqlFactory) setup(settings *mysqlSettings, binding containerBinding) 
 }
 
 func (f *mysqlFactory) dropDatabase(settings any) ComponentShutdownCallback {
-	return func(container *container) func() error {
+	return func(container *Container) func() error {
 		return func() error {
 			s := settings.(*mysqlSettings)
-			binding := container.bindings["3306/tcp"]
+			binding := container.bindings["main"]
 
 			client, err := f.connection(s, binding)
 			if err != nil {

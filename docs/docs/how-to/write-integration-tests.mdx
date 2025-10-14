@@ -156,6 +156,41 @@ func (s *SubscriberTestSuite) TestSuccess() (suite.SubscriberTestCase, error) {
 
 This test will publish an item to an input, stops the application and waits for it to finish, then looks inside a ddd table to see if it was written there.
 
+## Container expiry and cleanup
+
+When Gosoline's test environment starts Docker containers (e.g. Localstack, Kafka, MySQL), it also configures an automatic expiry to ensure resources are cleaned up even if a test crashes.
+
+By default, containers are configured to expire after `5m`:
+
+```yaml
+test:
+  container_manager:
+    runner_type: local
+    name_prefix: goso
+    expire_after: 5m  # default
+```
+
+You can override this per suite using `WithContainerExpireAfter`:
+
+```go
+func (s *MySuite) SetupSuite() []suite.Option {
+    return []suite.Option{
+        // keep containers alive for up to 30 minutes
+        suite.WithContainerExpireAfter(30 * time.Minute),
+    }
+}
+```
+
+Or globally via your configuration:
+
+```yaml
+test:
+  container_manager:
+    expire_after: 30m
+```
+
+The value is a Go duration string (e.g. `30s`, `5m`, `1h`). The test environment will still stop containers normally when the test finishes; `expire_after` is a safety net to avoid orphaned containers.
+
 ## External Dependencies
 The test suite supports configuring and launching external dependencies as docker containers via its environment component.
 An overview over supported can be found inside the `test/env` module.
@@ -175,13 +210,11 @@ test:
   components:
     ddb:
       default:
-        expire_after: 4m
     mysql:
       default:
-        expire_after: 4m
 ```
 
-We define two components of type ddb (for DynamoDB) and mysql (for a MySql server); additionally we set both their expiration times to four minutes.
+We define two components of type ddb (for DynamoDB) and mysql (for a MySQL server).
 
 ### Using external container instances
 When booting a container takes some time, or you want to preconfigure it, it can be beneficial to fallback to a already running container instance.

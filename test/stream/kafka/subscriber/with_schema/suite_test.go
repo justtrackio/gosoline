@@ -58,7 +58,7 @@ func (s *testSuite) SetupTest() (err error) {
 		return err
 	}
 
-	s.repo, err = s.Env().DynamoDb("default").Repository(&ddb.Settings{
+	s.repo, err = s.Env().Localstack("default").DdbRepository(&ddb.Settings{
 		ModelId: mdl.ModelId{
 			Project:     "justtrack",
 			Environment: "test",

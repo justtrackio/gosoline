@@ -3,7 +3,6 @@ package env
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -12,24 +11,24 @@ import (
 
 var componentFactories = map[string]componentFactory{}
 
-type componentContainerDescription struct {
-	containerConfig  *containerConfig
-	healthCheck      ComponentHealthCheck
-	shutdownCallback ComponentShutdownCallback
+type ComponentContainerDescription struct {
+	ContainerConfig  *ContainerConfig
+	HealthCheck      ComponentHealthCheck
+	ShutdownCallback ComponentShutdownCallback
 }
 
-type componentContainerDescriptions map[string]*componentContainerDescription
+type ComponentContainerDescriptions map[string]*ComponentContainerDescription
 
 type componentFactory interface {
 	Detect(config cfg.Config, manager *ComponentsConfigManager) error
 	GetSettingsSchema() ComponentBaseSettingsAware
-	DescribeContainers(settings any) componentContainerDescriptions
-	Component(config cfg.Config, logger log.Logger, container map[string]*container, settings any) (Component, error)
+	DescribeContainers(settings any) ComponentContainerDescriptions
+	Component(config cfg.Config, logger log.Logger, container map[string]*Container, settings any) (Component, error)
 }
 
 type (
-	ComponentHealthCheck      func(container *container) error
-	ComponentShutdownCallback func(container *container) func() error
+	ComponentHealthCheck      func(container *Container) error
+	ComponentShutdownCallback func(container *Container) func() error
 )
 
 type ComponentBaseSettingsAware interface {
@@ -72,9 +71,8 @@ type ContainerBindingSettings struct {
 }
 
 type ComponentContainerSettings struct {
-	Image       ContainerImageSettings `cfg:"image"`
-	ExpireAfter time.Duration          `cfg:"expire_after" default:"60s"`
-	Tmpfs       []TmpfsSettings        `cfg:"tmpfs"`
+	Image ContainerImageSettings `cfg:"image"`
+	Tmpfs []TmpfsSettings        `cfg:"tmpfs"`
 }
 
 type TmpfsSettings struct {
@@ -112,8 +110,8 @@ type componentSkeleton struct {
 	typ                   string
 	name                  string
 	settings              ComponentBaseSettingsAware
-	containerDescriptions componentContainerDescriptions
-	containers            map[string]*container
+	containerDescriptions ComponentContainerDescriptions
+	containers            map[string]*Container
 }
 
 func (s componentSkeleton) id() string {
@@ -143,7 +141,7 @@ func buildComponentSkeletons(manager *ComponentsConfigManager) ([]*componentSkel
 			name:                  settings.GetName(),
 			settings:              settings,
 			containerDescriptions: containerConfigs,
-			containers:            make(map[string]*container),
+			containers:            make(map[string]*Container),
 		}
 
 		skeletons = append(skeletons, skeleton)

@@ -41,7 +41,7 @@ func (s *S3TestSuite) TestS3() {
 	err := s.Env().LoadFixtureSet(purgeDisabledFixtureSetsFactory)
 	s.NoError(err)
 
-	s3Client := s.Env().S3("default").Client()
+	s3Client := s.Env().Localstack("default").S3Client()
 	bucketName, err := s.Env().Config().GetString("blob.test.bucket")
 	s.NoError(err)
 

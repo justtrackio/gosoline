@@ -2,27 +2,25 @@ package env
 
 import (
 	"fmt"
-	"time"
 
 	toxiproxy "github.com/Shopify/toxiproxy/v2/client"
 )
 
 type toxiproxyFactory struct{}
 
-func (f *toxiproxyFactory) describeContainer(expireAfter time.Duration) *componentContainerDescription {
-	return &componentContainerDescription{
-		containerConfig: &containerConfig{
+func (f *toxiproxyFactory) describeContainer() *ComponentContainerDescription {
+	return &ComponentContainerDescription{
+		ContainerConfig: &ContainerConfig{
 			Repository: "ghcr.io/shopify/toxiproxy",
 			Tag:        "2.9.0",
-			PortBindings: portBindings{
-				"8474/tcp":  0,
-				"56248/tcp": 0,
+			PortBindings: PortBindings{
+				"admin": {ContainerPort: 8474, HostPort: 0, Protocol: "tcp"},
+				"main":  {ContainerPort: 56248, HostPort: 0, Protocol: "tcp"},
 			},
 			ExposedPorts: []string{"56248"},
-			ExpireAfter:  expireAfter,
 		},
-		healthCheck: func(container *container) error {
-			binding := container.bindings["8474/tcp"]
+		HealthCheck: func(container *Container) error {
+			binding := container.bindings["admin"]
 			address := fmt.Sprintf("%s:%s", binding.host, binding.port)
 			client := toxiproxy.NewClient(address)
 
@@ -33,8 +31,8 @@ func (f *toxiproxyFactory) describeContainer(expireAfter time.Duration) *compone
 	}
 }
 
-func (f *toxiproxyFactory) client(container *container) *toxiproxy.Client {
-	binding := container.bindings["8474/tcp"]
+func (f *toxiproxyFactory) client(container *Container) *toxiproxy.Client {
+	binding := container.bindings["admin"]
 	address := fmt.Sprintf("%s:%s", binding.host, binding.port)
 	client := toxiproxy.NewClient(address)
 

@@ -11,7 +11,7 @@ import (
 type wiremockComponent struct {
 	baseComponent
 	logger  log.Logger
-	binding containerBinding
+	binding ContainerBinding
 	client  http.Client
 }
 
