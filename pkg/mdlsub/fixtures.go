@@ -129,6 +129,10 @@ func (f FixtureSet) Write(ctx context.Context) error {
 			return fmt.Errorf("failed to transform model %s: %w", f.source.String(), err)
 		}
 
+		if model == nil {
+			continue
+		}
+
 		if err = output.Persist(ctx, model, res.spec.CrudType); err != nil {
 			return fmt.Errorf("failed to persist model %s: %w", f.source.String(), err)
 		}
