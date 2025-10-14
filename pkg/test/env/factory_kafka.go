@@ -60,12 +60,12 @@ func (f *kafkaFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &kafkaSettings{}
 }
 
-func (f *kafkaFactory) DescribeContainers(settings any) componentContainerDescriptions {
-	descriptions := componentContainerDescriptions{
+func (f *kafkaFactory) DescribeContainers(settings any) ComponentContainerDescriptions {
+	descriptions := ComponentContainerDescriptions{
 		"main": {
-			containerConfig:  f.configureContainer(settings),
-			healthCheck:      f.healthCheck(),
-			shutdownCallback: nil,
+			ContainerConfig:  f.configureContainer(settings),
+			HealthCheck:      f.healthCheck(),
+			ShutdownCallback: nil,
 		},
 	}
 
@@ -73,7 +73,7 @@ func (f *kafkaFactory) DescribeContainers(settings any) componentContainerDescri
 }
 
 func (f *kafkaFactory) healthCheck() ComponentHealthCheck {
-	return func(container *container) error {
+	return func(container *Container) error {
 		ctx := context.Background()
 
 		client, err := kafkaAdmin.NewClient(ctx, log.NewLogger(), []string{f.brokerAddress(container)})
@@ -103,25 +103,33 @@ func (f *kafkaFactory) healthCheck() ComponentHealthCheck {
 	}
 }
 
-func (f *kafkaFactory) configureContainer(settings any) *containerConfig {
+func (f *kafkaFactory) configureContainer(settings any) *ContainerConfig {
 	s := settings.(*kafkaSettings)
 	hostName := "redpanda"
 
-	return &containerConfig{
+	return &ContainerConfig{
+		RunnerType: RunnerTypeLocal,
 		Hostname:   hostName,
 		Auth:       s.Image.Auth,
 		Repository: s.Image.Repository,
 		Tag:        s.Image.Tag,
-		PortBindings: portBindings{
-			"9092/tcp": s.BrokerPort,
-			"8081/tcp": s.SchemaRegistryPort,
+		PortBindings: PortBindings{
+			"main": {
+				ContainerPort: 9092,
+				HostPort:      s.BrokerPort,
+				Protocol:      "tcp",
+			},
+			"schema-registry": {
+				ContainerPort: 8081,
+				HostPort:      s.SchemaRegistryPort,
+				Protocol:      "tcp",
+			},
 		},
-		ExpireAfter: s.ExpireAfter,
 		Cmd: []string{
 			"redpanda start",
 			"--smp 1",
 			"--overprovisioned",
-			"--kafka-addr internal://0.0.0.0:19092,external://0.0.0.0:9092",
+			fmt.Sprintf("--kafka-addr internal://0.0.0.0:19092,external://0.0.0.0:%d", 9092),
 			fmt.Sprintf("--advertise-kafka-addr internal://%s:19092,external://localhost:%d", hostName, s.BrokerPort),
 			"--schema-registry-addr internal://0.0.0.0:18081,external://0.0.0.0:8081",
 			"--mode dev-container",
@@ -129,21 +137,21 @@ func (f *kafkaFactory) configureContainer(settings any) *containerConfig {
 	}
 }
 
-func (f *kafkaFactory) brokerAddress(container *container) string {
-	binding := container.bindings["9092/tcp"]
+func (f *kafkaFactory) brokerAddress(container *Container) string {
+	binding := container.bindings["main"]
 	address := fmt.Sprintf("%s:%s", binding.host, binding.port)
 
 	return address
 }
 
-func (f *kafkaFactory) schemaRegistryAddress(container *container) string {
-	binding := container.bindings["8081/tcp"]
+func (f *kafkaFactory) schemaRegistryAddress(container *Container) string {
+	binding := container.bindings["schema-registry"]
 	address := fmt.Sprintf("%s:%s", binding.host, binding.port)
 
 	return address
 }
 
-func (f *kafkaFactory) Component(_ cfg.Config, logger log.Logger, containers map[string]*container, _ any) (Component, error) {
+func (f *kafkaFactory) Component(_ cfg.Config, logger log.Logger, containers map[string]*Container, _ any) (Component, error) {
 	main := containers["main"]
 
 	adminClient, err := kafkaAdmin.NewClient(context.Background(), logger, []string{f.brokerAddress(main)})
