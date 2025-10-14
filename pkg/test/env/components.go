@@ -13,7 +13,7 @@ import (
 var componentFactories = map[string]componentFactory{}
 
 type componentContainerDescription struct {
-	containerConfig  *containerConfig
+	containerConfig  *ContainerConfig
 	healthCheck      ComponentHealthCheck
 	shutdownCallback ComponentShutdownCallback
 }
@@ -24,12 +24,12 @@ type componentFactory interface {
 	Detect(config cfg.Config, manager *ComponentsConfigManager) error
 	GetSettingsSchema() ComponentBaseSettingsAware
 	DescribeContainers(settings any) componentContainerDescriptions
-	Component(config cfg.Config, logger log.Logger, container map[string]*container, settings any) (Component, error)
+	Component(config cfg.Config, logger log.Logger, container map[string]*Container, settings any) (Component, error)
 }
 
 type (
-	ComponentHealthCheck      func(container *container) error
-	ComponentShutdownCallback func(container *container) func() error
+	ComponentHealthCheck      func(container *Container) error
+	ComponentShutdownCallback func(container *Container) func() error
 )
 
 type ComponentBaseSettingsAware interface {
@@ -113,7 +113,7 @@ type componentSkeleton struct {
 	name                  string
 	settings              ComponentBaseSettingsAware
 	containerDescriptions componentContainerDescriptions
-	containers            map[string]*container
+	containers            map[string]*Container
 }
 
 func (s componentSkeleton) id() string {
@@ -143,7 +143,7 @@ func buildComponentSkeletons(manager *ComponentsConfigManager) ([]*componentSkel
 			name:                  settings.GetName(),
 			settings:              settings,
 			containerDescriptions: containerConfigs,
-			containers:            make(map[string]*container),
+			containers:            make(map[string]*Container),
 		}
 
 		skeletons = append(skeletons, skeleton)

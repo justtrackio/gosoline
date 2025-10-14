@@ -44,15 +44,19 @@ func (f *wiremockFactory) DescribeContainers(settings any) componentContainerDes
 	}
 }
 
-func (f *wiremockFactory) configureContainer(settings any) *containerConfig {
+func (f *wiremockFactory) configureContainer(settings any) *ContainerConfig {
 	s := settings.(*wiremockSettings)
 
-	return &containerConfig{
+	return &ContainerConfig{
 		Auth:       s.Image.Auth,
 		Repository: s.Image.Repository,
 		Tag:        s.Image.Tag,
-		PortBindings: portBindings{
-			"8080/tcp": s.Port,
+		PortBindings: PortBindings{
+			"main": {
+				ContainerPort: 8080,
+				HostPort:      s.Port,
+				Protocol:      "tcp",
+			},
 		},
 		ExpireAfter: s.ExpireAfter,
 		Cmd:         []string{"--local-response-templating"},
@@ -60,8 +64,8 @@ func (f *wiremockFactory) configureContainer(settings any) *containerConfig {
 }
 
 func (f *wiremockFactory) healthCheck() ComponentHealthCheck {
-	return func(container *container) error {
-		binding := container.bindings["8080/tcp"]
+	return func(container *Container) error {
+		binding := container.bindings["main"]
 		url := fmt.Sprintf("%s/", f.getUrl(binding))
 
 		resp, err := http.Get(url)
@@ -74,14 +78,14 @@ func (f *wiremockFactory) healthCheck() ComponentHealthCheck {
 	}
 }
 
-func (f *wiremockFactory) Component(_ cfg.Config, logger log.Logger, containers map[string]*container, settings any) (Component, error) {
+func (f *wiremockFactory) Component(_ cfg.Config, logger log.Logger, containers map[string]*Container, settings any) (Component, error) {
 	component := &wiremockComponent{
 		logger:  logger,
-		binding: containers["main"].bindings["8080/tcp"],
+		binding: containers["main"].bindings["main"],
 	}
 
 	s := settings.(*wiremockSettings)
-	url := f.getUrl(containers["main"].bindings["8080/tcp"])
+	url := f.getUrl(containers["main"].bindings["main"])
 
 	for _, mock := range s.Mocks {
 		if err := f.importMocks(url, mock); err != nil {
@@ -123,6 +127,6 @@ func (f *wiremockFactory) importMocks(url string, mockFile string) error {
 	return fmt.Errorf("could not import mocks: %s", body)
 }
 
-func (f *wiremockFactory) getUrl(binding containerBinding) string {
+func (f *wiremockFactory) getUrl(binding ContainerBinding) string {
 	return fmt.Sprintf("http://%s:%s/__admin", binding.host, binding.port)
 }

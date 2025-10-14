@@ -58,7 +58,7 @@ func (f streamOutputFactory) DescribeContainers(settings any) componentContainer
 	return nil
 }
 
-func (f streamOutputFactory) Component(_ cfg.Config, _ log.Logger, _ map[string]*container, settings any) (Component, error) {
+func (f streamOutputFactory) Component(_ cfg.Config, _ log.Logger, _ map[string]*Container, settings any) (Component, error) {
 	s := settings.(*streamOutputSettings)
 
 	component := &streamOutputComponent{

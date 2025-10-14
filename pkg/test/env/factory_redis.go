@@ -68,22 +68,26 @@ func (f *redisFactory) DescribeContainers(settings any) componentContainerDescri
 	}
 }
 
-func (f *redisFactory) configureContainer(settings any) *containerConfig {
+func (f *redisFactory) configureContainer(settings any) *ContainerConfig {
 	s := settings.(*redisSettings)
 
-	return &containerConfig{
+	return &ContainerConfig{
 		Auth:       s.Image.Auth,
 		Repository: s.Image.Repository,
 		Tag:        s.Image.Tag,
-		PortBindings: portBindings{
-			"6379/tcp": s.Port,
+		PortBindings: PortBindings{
+			"main": {
+				ContainerPort:     6379,
+				HostPort:          s.Port,
+				Protocol: "tcp",
+			},
 		},
 		ExpireAfter: s.ExpireAfter,
 	}
 }
 
 func (f *redisFactory) healthCheck() ComponentHealthCheck {
-	return func(container *container) error {
+	return func(container *Container) error {
 		client := f.client(container)
 		err := client.Ping(context.Background()).Err()
 
@@ -91,7 +95,7 @@ func (f *redisFactory) healthCheck() ComponentHealthCheck {
 	}
 }
 
-func (f *redisFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, _ any) (Component, error) {
+func (f *redisFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*Container, _ any) (Component, error) {
 	component := &RedisComponent{
 		address: f.address(containers["main"]),
 		client:  f.client(containers["main"]),
@@ -100,14 +104,14 @@ func (f *redisFactory) Component(_ cfg.Config, _ log.Logger, containers map[stri
 	return component, nil
 }
 
-func (f *redisFactory) address(container *container) string {
-	binding := container.bindings["6379/tcp"]
+func (f *redisFactory) address(container *Container) string {
+	binding := container.bindings["main"]
 	address := fmt.Sprintf("%s:%s", binding.host, binding.port)
 
 	return address
 }
 
-func (f *redisFactory) client(container *container) *redis.Client {
+func (f *redisFactory) client(container *Container) *redis.Client {
 	address := f.address(container)
 
 	f.lck.Lock()
