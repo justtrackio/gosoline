@@ -15,6 +15,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
+func TestStoreTestSuite(t *testing.T) {
+	suite.Run(t, new(StoreTestSuite))
+}
+
 type StoreTestSuite struct {
 	suite.Suite
 
@@ -133,8 +137,4 @@ func (s *StoreTestSuite) TestMultiStoreNoBatchRunnerChannelIssues(_ suite.AppUnd
 
 		s.Len(batch, 1)
 	}
-}
-
-func TestStoreTestSuite(t *testing.T) {
-	suite.Run(t, new(StoreTestSuite))
 }

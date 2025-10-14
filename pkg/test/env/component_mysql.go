@@ -12,7 +12,7 @@ type mysqlComponent struct {
 	baseComponent
 	client      *sqlx.DB
 	credentials mysqlCredentials
-	binding     containerBinding
+	binding     ContainerBinding
 	toxiproxy   *toxiproxy.Proxy
 }
 

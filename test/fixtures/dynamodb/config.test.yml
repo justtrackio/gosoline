@@ -7,5 +7,5 @@ app_name: app
 
 test:
   components:
-    ddb:
+    localstack:
       default:

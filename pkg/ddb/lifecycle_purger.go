@@ -72,24 +72,35 @@ func (s *LifeCyclePurger) purgeDropTable(ctx context.Context, table *types.Table
 		return fmt.Errorf("failed to delete table %s: %w", s.tableName, err)
 	}
 
+	gsi := funk.NilIfEmpty(funk.Map(table.GlobalSecondaryIndexes, func(index types.GlobalSecondaryIndexDescription) types.GlobalSecondaryIndex {
+		return types.GlobalSecondaryIndex{
+			IndexName:  index.IndexName,
+			KeySchema:  index.KeySchema,
+			Projection: index.Projection,
+			ProvisionedThroughput: &types.ProvisionedThroughput{
+				ReadCapacityUnits:  index.ProvisionedThroughput.ReadCapacityUnits,
+				WriteCapacityUnits: index.ProvisionedThroughput.WriteCapacityUnits,
+			},
+		}
+	}))
+	lsi := funk.NilIfEmpty(funk.Map(table.LocalSecondaryIndexes, func(index types.LocalSecondaryIndexDescription) types.LocalSecondaryIndex {
+		return types.LocalSecondaryIndex{
+			IndexName:  index.IndexName,
+			KeySchema:  index.KeySchema,
+			Projection: index.Projection,
+		}
+	}))
+
 	input := &dynamodb.CreateTableInput{
-		AttributeDefinitions: table.AttributeDefinitions,
-		KeySchema:            table.KeySchema,
-		TableName:            table.TableName,
-		GlobalSecondaryIndexes: funk.Map(table.GlobalSecondaryIndexes, func(index types.GlobalSecondaryIndexDescription) types.GlobalSecondaryIndex {
-			return types.GlobalSecondaryIndex{
-				IndexName:  index.IndexName,
-				KeySchema:  index.KeySchema,
-				Projection: index.Projection,
-			}
-		}),
-		LocalSecondaryIndexes: funk.Map(table.LocalSecondaryIndexes, func(index types.LocalSecondaryIndexDescription) types.LocalSecondaryIndex {
-			return types.LocalSecondaryIndex{
-				IndexName:  index.IndexName,
-				KeySchema:  index.KeySchema,
-				Projection: index.Projection,
-			}
-		}),
+		AttributeDefinitions:   table.AttributeDefinitions,
+		KeySchema:              table.KeySchema,
+		TableName:              table.TableName,
+		GlobalSecondaryIndexes: gsi,
+		LocalSecondaryIndexes:  lsi,
+		ProvisionedThroughput: &types.ProvisionedThroughput{
+			ReadCapacityUnits:  table.ProvisionedThroughput.ReadCapacityUnits,
+			WriteCapacityUnits: table.ProvisionedThroughput.WriteCapacityUnits,
+		},
 	}
 
 	if _, err = s.client.CreateTable(ctx, input); err != nil {

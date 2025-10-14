@@ -393,3 +393,13 @@ func Empty[S ~[]T, T any](inp S) bool {
 func NotEmpty[S ~[]T, T any](inp S) bool {
 	return len(inp) > 0
 }
+
+func NilIfEmpty[S ~[]T, T any](inp S) S {
+	if Empty(inp) {
+		var nilSlice S
+
+		return nilSlice
+	}
+
+	return inp
+}
