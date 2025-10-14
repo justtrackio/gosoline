@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
@@ -69,6 +70,14 @@ func (s *Service) Create(ctx context.Context) error {
 		ShardCount: aws.Int32(1),
 		StreamName: aws.String(s.fullStreamName),
 	})
+
+	var errResourceInUseException *types.ResourceInUseException
+	if err != nil && errors.As(err, &errResourceInUseException) && strings.Contains(err.Error(), "already exists") {
+		s.logger.Info(ctx, "kinesis stream already being created: %s", s.fullStreamName)
+
+		return nil
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to create kinesis stream %s: %w", s.fullStreamName, err)
 	}

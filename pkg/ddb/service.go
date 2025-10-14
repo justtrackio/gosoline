@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -142,7 +143,7 @@ func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 	_, err = s.client.CreateTable(ctx, input)
 
 	var errResourceInUseException *types.ResourceInUseException
-	if errors.As(err, &errResourceInUseException) {
+	if errors.As(err, &errResourceInUseException) && strings.Contains(err.Error(), "already exists") {
 		return metadata, nil
 	}
 
