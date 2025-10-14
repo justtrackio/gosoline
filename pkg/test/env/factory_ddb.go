@@ -61,39 +61,42 @@ func (f *ddbFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &ddbSettings{}
 }
 
-func (f *ddbFactory) DescribeContainers(settings any) componentContainerDescriptions {
+func (f *ddbFactory) DescribeContainers(settings any) ComponentContainerDescriptions {
 	s := settings.(*ddbSettings)
 
-	descriptions := componentContainerDescriptions{
+	descriptions := ComponentContainerDescriptions{
 		"main": {
-			containerConfig: f.configureContainer(settings),
-			healthCheck:     f.healthCheck(),
+			ContainerConfig: f.configureContainer(settings),
+			HealthCheck:     f.healthCheck(),
 		},
 	}
 
 	if s.ToxiproxyEnabled {
-		descriptions["toxiproxy"] = f.toxiproxyFactory.describeContainer(s.ExpireAfter)
+		descriptions["toxiproxy"] = f.toxiproxyFactory.describeContainer()
 	}
 
 	return descriptions
 }
 
-func (f *ddbFactory) configureContainer(settings any) *containerConfig {
+func (f *ddbFactory) configureContainer(settings any) *ContainerConfig {
 	s := settings.(*ddbSettings)
 
-	return &containerConfig{
+	return &ContainerConfig{
 		Auth:       s.Image.Auth,
 		Repository: s.Image.Repository,
 		Tag:        s.Image.Tag,
-		PortBindings: portBindings{
-			"8000/tcp": s.Port,
+		PortBindings: PortBindings{
+			"main": {
+				ContainerPort: 8000,
+				HostPort:      s.Port,
+				Protocol:      "tcp",
+			},
 		},
-		ExpireAfter: s.ExpireAfter,
 	}
 }
 
 func (f *ddbFactory) healthCheck() ComponentHealthCheck {
-	return func(container *container) error {
+	return func(container *Container) error {
 		var err error
 		var client *dynamodb.Client
 
@@ -107,13 +110,13 @@ func (f *ddbFactory) healthCheck() ComponentHealthCheck {
 	}
 }
 
-func (f *ddbFactory) Component(config cfg.Config, logger log.Logger, containers map[string]*container, settings any) (Component, error) {
+func (f *ddbFactory) Component(config cfg.Config, logger log.Logger, containers map[string]*Container, settings any) (Component, error) {
 	var err error
 	var namingSettings *ddb.TableNamingSettings
 	var proxy *toxiproxy.Proxy
 
 	s := settings.(*ddbSettings)
-	ddbAddress := containers["main"].bindings["8000/tcp"].getAddress()
+	ddbAddress := containers["main"].bindings["main"].getAddress()
 
 	if namingSettings, err = ddb.GetTableNamingSettings(config, s.Name); err != nil {
 		return nil, fmt.Errorf("can not get table naming settings for ddb component: %w", err)
@@ -126,7 +129,7 @@ func (f *ddbFactory) Component(config cfg.Config, logger log.Logger, containers 
 			return nil, fmt.Errorf("can not create toxiproxy proxy for ddb component: %w", err)
 		}
 
-		ddbAddress = containers["toxiproxy"].bindings["56248/tcp"].getAddress()
+		ddbAddress = containers["toxiproxy"].bindings["main"].getAddress()
 	}
 
 	component := &DdbComponent{
@@ -143,8 +146,8 @@ func (f *ddbFactory) Component(config cfg.Config, logger log.Logger, containers 
 	return component, nil
 }
 
-func (f *ddbFactory) client(container *container) (*dynamodb.Client, error) {
-	binding := container.bindings["8000/tcp"]
+func (f *ddbFactory) client(container *Container) (*dynamodb.Client, error) {
+	binding := container.bindings["main"]
 	address := fmt.Sprintf("http://%s:%s", binding.host, binding.port)
 
 	f.lck.Lock()

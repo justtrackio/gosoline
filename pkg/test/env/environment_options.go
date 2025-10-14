@@ -2,7 +2,6 @@ package env
 
 import (
 	"strings"
-	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
@@ -50,14 +49,6 @@ func WithConfigSetting(key string, settings any) Option {
 	return func(env *Environment) {
 		env.addConfigOption(func(config cfg.GosoConf) error {
 			return config.Option(cfg.WithConfigSetting(key, settings))
-		})
-	}
-}
-
-func WithContainerExpireAfter(expireAfter time.Duration) Option {
-	return func(env *Environment) {
-		env.addConfigOption(func(config cfg.GosoConf) error {
-			return config.Option(cfg.WithConfigSetting("test.container_runner.expire_after", expireAfter.String()))
 		})
 	}
 }

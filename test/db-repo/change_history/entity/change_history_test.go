@@ -4,7 +4,6 @@ package change_history_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
@@ -31,7 +30,6 @@ func (s *ChangeHistoryTestSuite) SetupSuite() []suite.Option {
 		suite.WithModule("default", definitions.ModuleFactory),
 		suite.WithDbRepoChangeHistory(),
 		suite.WithClockProviderAt("2024-01-01T00:00:00Z"),
-		suite.WithContainerExpireAfter(10 * time.Minute),
 		suite.WithFixtureSetFactory(definitions.FixtureSetsFactory),
 	}
 }

@@ -84,35 +84,37 @@ func (f *localstackFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &localstackSettings{}
 }
 
-func (f *localstackFactory) DescribeContainers(settings any) componentContainerDescriptions {
-	return componentContainerDescriptions{
+func (f *localstackFactory) DescribeContainers(settings any) ComponentContainerDescriptions {
+	return ComponentContainerDescriptions{
 		"main": {
-			containerConfig: f.configureContainer(settings),
-			healthCheck:     f.healthCheck(settings),
+			ContainerConfig: f.configureContainer(settings),
+			HealthCheck:     f.healthCheck(settings),
 		},
 	}
 }
 
-func (f *localstackFactory) configureContainer(settings any) *containerConfig {
+func (f *localstackFactory) configureContainer(settings any) *ContainerConfig {
 	s := settings.(*localstackSettings)
 
-	return &containerConfig{
+	return &ContainerConfig{
 		Auth:       s.Image.Auth,
 		Repository: s.Image.Repository,
 		Tag:        s.Image.Tag,
-		Env:        []string{},
-		PortBindings: portBindings{
-			"4566/tcp": s.Port,
+		PortBindings: PortBindings{
+			"main": {
+				ContainerPort: 4566,
+				HostPort:      s.Port,
+				Protocol:      "tcp",
+			},
 		},
-		ExpireAfter: s.ExpireAfter,
 	}
 }
 
 func (f *localstackFactory) healthCheck(settings any) ComponentHealthCheck {
 	s := settings.(*localstackSettings)
 
-	return func(container *container) error {
-		binding := container.bindings["4566/tcp"]
+	return func(container *Container) error {
+		binding := container.bindings["main"]
 		url := fmt.Sprintf("http://%s:%s/_localstack/health", binding.host, binding.port)
 
 		var err error
@@ -126,6 +128,10 @@ func (f *localstackFactory) healthCheck(settings any) ComponentHealthCheck {
 
 		if body, err = io.ReadAll(resp.Body); err != nil {
 			return err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("status %d: %s", resp.StatusCode, body)
 		}
 
 		if err := json.Unmarshal(body, &status); err != nil {
@@ -155,12 +161,12 @@ func (f *localstackFactory) healthCheck(settings any) ComponentHealthCheck {
 	}
 }
 
-func (f *localstackFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings any) (Component, error) {
+func (f *localstackFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*Container, settings any) (Component, error) {
 	s := settings.(*localstackSettings)
 
 	component := &localstackComponent{
 		services: s.Services,
-		binding:  containers["main"].bindings["4566/tcp"],
+		binding:  containers["main"].bindings["main"],
 		region:   s.Region,
 	}
 

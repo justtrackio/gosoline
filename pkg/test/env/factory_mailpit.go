@@ -56,17 +56,17 @@ func (m mailpitFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &mailpitSettings{}
 }
 
-func (m mailpitFactory) DescribeContainers(settings any) componentContainerDescriptions {
-	return componentContainerDescriptions{
+func (m mailpitFactory) DescribeContainers(settings any) ComponentContainerDescriptions {
+	return ComponentContainerDescriptions{
 		"main": {
-			containerConfig:  m.configureContainer(settings.(*mailpitSettings)),
-			healthCheck:      m.healthCheck(),
-			shutdownCallback: nil,
+			ContainerConfig:  m.configureContainer(settings.(*mailpitSettings)),
+			HealthCheck:      m.healthCheck(),
+			ShutdownCallback: nil,
 		},
 	}
 }
 
-func (m mailpitFactory) Component(_ cfg.Config, logger log.Logger, container map[string]*container, _ any) (Component, error) {
+func (m mailpitFactory) Component(_ cfg.Config, logger log.Logger, container map[string]*Container, _ any) (Component, error) {
 	main := container["main"]
 
 	client := mailpit.NewClientWithInterfaces(http.Client{}, mailpit.Config{
@@ -83,35 +83,42 @@ func (m mailpitFactory) Component(_ cfg.Config, logger log.Logger, container map
 	}, nil
 }
 
-func (m mailpitFactory) configureContainer(settings *mailpitSettings) *containerConfig {
-	return &containerConfig{
+func (m mailpitFactory) configureContainer(settings *mailpitSettings) *ContainerConfig {
+	return &ContainerConfig{
 		Auth:       settings.Image.Auth,
 		Repository: settings.Image.Repository,
 		Tag:        settings.Image.Tag,
-		PortBindings: portBindings{
-			"1025/tcp": settings.Port,
-			"8025/tcp": settings.WebPort,
+		PortBindings: PortBindings{
+			"main": {
+				ContainerPort: 1025,
+				HostPort:      settings.Port,
+				Protocol:      "tcp",
+			},
+			"web": {
+				ContainerPort: 8025,
+				HostPort:      settings.WebPort,
+				Protocol:      "tcp",
+			},
 		},
-		ExpireAfter: settings.ExpireAfter,
 	}
 }
 
-func (m mailpitFactory) addressSmtp(c *container) string {
-	binding := c.bindings["1025/tcp"]
+func (m mailpitFactory) addressSmtp(c *Container) string {
+	binding := c.bindings["main"]
 	address := fmt.Sprintf("%s:%s", binding.host, binding.port)
 
 	return address
 }
 
-func (m mailpitFactory) addressWeb(c *container) string {
-	binding := c.bindings["8025/tcp"]
+func (m mailpitFactory) addressWeb(c *Container) string {
+	binding := c.bindings["web"]
 	address := fmt.Sprintf("%s:%s", binding.host, binding.port)
 
 	return address
 }
 
 func (m mailpitFactory) healthCheck() ComponentHealthCheck {
-	return func(container *container) error {
+	return func(container *Container) error {
 		url := fmt.Sprintf("http://%s/livez", m.addressWeb(container))
 
 		var err error

@@ -25,14 +25,14 @@ type Environment struct {
 	configOptions    []ConfigOption
 	loggerOptions    []LoggerOption
 
-	t          *testing.T
-	ctx        context.Context
-	config     cfg.GosoConf
-	logger     RecordingLogger
-	resManager *reslife.LifeCycleManager
-	filesystem *filesystem
-	runner     *containerRunner
-	components *ComponentsContainer
+	t                *testing.T
+	ctx              context.Context
+	config           cfg.GosoConf
+	logger           RecordingLogger
+	resManager       *reslife.LifeCycleManager
+	filesystem       *filesystem
+	containerManager ContainerManager
+	components       *ComponentsContainer
 }
 
 func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
@@ -70,11 +70,11 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 		return env, fmt.Errorf("can not create component skeletons: %w", err)
 	}
 
-	if env.runner, err = NewContainerRunner(env.config, env.logger); err != nil {
-		return env, fmt.Errorf("can not create container runner: %w", err)
+	if env.containerManager, err = NewContainerManager(env.config, env.logger); err != nil {
+		return env, fmt.Errorf("can not create container containerManager: %w", err)
 	}
 
-	if err := env.runner.RunContainers(env.ctx, skeletons); err != nil {
+	if err := env.containerManager.RunContainers(env.ctx, skeletons); err != nil {
 		return env, err
 	}
 
@@ -162,7 +162,7 @@ func (e *Environment) addLoggerOption(opt LoggerOption) {
 }
 
 func (e *Environment) Stop() error {
-	return e.runner.Stop(e.ctx)
+	return e.containerManager.Stop(e.ctx)
 }
 
 func (e *Environment) Context() context.Context {

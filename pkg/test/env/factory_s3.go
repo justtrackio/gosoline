@@ -61,21 +61,21 @@ func (f *s3Factory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &s3Settings{}
 }
 
-func (f *s3Factory) DescribeContainers(settings any) componentContainerDescriptions {
-	descriptions := componentContainerDescriptions{
+func (f *s3Factory) DescribeContainers(settings any) ComponentContainerDescriptions {
+	descriptions := ComponentContainerDescriptions{
 		"main": {
-			containerConfig: f.configureContainer(settings),
-			healthCheck:     f.healthCheck(),
+			ContainerConfig: f.configureContainer(settings),
+			HealthCheck:     f.healthCheck(),
 		},
 	}
 
 	return descriptions
 }
 
-func (f *s3Factory) configureContainer(settings any) *containerConfig {
+func (f *s3Factory) configureContainer(settings any) *ContainerConfig {
 	s := settings.(*s3Settings)
 
-	return &containerConfig{
+	return &ContainerConfig{
 		Auth:       s.Image.Auth,
 		Repository: s.Image.Repository,
 		Tag:        s.Image.Tag,
@@ -83,19 +83,22 @@ func (f *s3Factory) configureContainer(settings any) *containerConfig {
 			"server",
 			"/data",
 		},
-		Env: []string{
-			fmt.Sprintf("MINIO_ACCESS_KEY=%s", DefaultAccessKeyID),
-			fmt.Sprintf("MINIO_SECRET_KEY=%s", DefaultSecretAccessKey),
+		Env: map[string]string{
+			"MINIO_ACCESS_KEY": DefaultAccessKeyID,
+			"MINIO_SECRET_KEY": DefaultSecretAccessKey,
 		},
-		PortBindings: portBindings{
-			"9000/tcp": s.Port,
+		PortBindings: PortBindings{
+			"main": {
+				ContainerPort: 9000,
+				HostPort:      s.Port,
+				Protocol:      "tcp",
+			},
 		},
-		ExpireAfter: s.ExpireAfter,
 	}
 }
 
 func (f *s3Factory) healthCheck() ComponentHealthCheck {
-	return func(container *container) error {
+	return func(container *Container) error {
 		var err error
 		var client *s3.Client
 
@@ -108,8 +111,8 @@ func (f *s3Factory) healthCheck() ComponentHealthCheck {
 	}
 }
 
-func (f *s3Factory) client(container *container) (*s3.Client, error) {
-	binding := container.bindings["9000/tcp"]
+func (f *s3Factory) client(container *Container) (*s3.Client, error) {
+	binding := container.bindings["main"]
 	address := fmt.Sprintf("http://%s:%s", binding.host, binding.port)
 
 	f.lck.Lock()
@@ -135,9 +138,9 @@ func (f *s3Factory) client(container *container) (*s3.Client, error) {
 	return f.clients[address], nil
 }
 
-func (f *s3Factory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings any) (Component, error) {
+func (f *s3Factory) Component(_ cfg.Config, _ log.Logger, containers map[string]*Container, settings any) (Component, error) {
 	s := settings.(*s3Settings)
-	s3Address := fmt.Sprintf("http://%s", containers["main"].bindings["9000/tcp"].getAddress())
+	s3Address := fmt.Sprintf("http://%s", containers["main"].bindings["main"].getAddress())
 
 	result := &S3Component{
 		baseComponent: baseComponent{

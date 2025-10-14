@@ -13,7 +13,7 @@ import (
 type localstackComponent struct {
 	baseComponent
 	services []string
-	binding  containerBinding
+	binding  ContainerBinding
 	region   string
 }
 
