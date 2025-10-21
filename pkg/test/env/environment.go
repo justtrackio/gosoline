@@ -70,7 +70,7 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 		return env, fmt.Errorf("can not create component skeletons: %w", err)
 	}
 
-	if env.containerManager, err = NewContainerManager(env.config, env.logger); err != nil {
+	if env.containerManager, err = NewContainerManager(env.config, env.logger, t.Name()); err != nil {
 		return env, fmt.Errorf("can not create container containerManager: %w", err)
 	}
 

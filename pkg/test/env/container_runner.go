@@ -24,16 +24,16 @@ var containerRunnerFactories = map[string]func(cfg.Config, log.Logger, *Containe
 
 type ContainerRunner interface {
 	RunContainer(ctx context.Context, request ContainerRequest) (*Container, error)
-	ExtendLifetime(ctx context.Context, duration time.Duration) error
 	Stop(ctx context.Context) error
 }
 
 type ContainerRequest struct {
+	TestName             string
 	ComponentType        string
 	ComponentName        string
 	ContainerName        string
 	ContainerDescription *ComponentContainerDescription
-	InitialLifeTime      time.Duration
+	ExpireAfter          time.Duration
 }
 
 func (r ContainerRequest) id() string {

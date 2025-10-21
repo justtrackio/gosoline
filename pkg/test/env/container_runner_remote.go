@@ -2,13 +2,16 @@ package env
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
@@ -23,6 +26,7 @@ type ContainerRunnerRemoteSettings struct {
 type ContainerStartInput struct {
 	PoolId        string        `json:"pool_id"`
 	TestId        string        `json:"test_id"`
+	TestName      string        `json:"test_name"`
 	ComponentType string        `json:"component_type"`
 	ComponentName string        `json:"component_name"`
 	ContainerName string        `json:"container_name"`
@@ -68,15 +72,30 @@ func NewContainerRunnerRemote(config cfg.Config, logger log.Logger, managerSetti
 	}
 
 	logger = logger.WithChannel("container-runner-remote")
+
 	client := resty.New().SetBaseURL(runnerSettings.Endpoint)
-	testId := uuid.New().NewV4()[:8]
+	client.SetTimeout(10 * time.Second)
+	client.SetRetryCount(32)
+	client.SetRetryWaitTime(3 * time.Second)
+	client.AddRetryCondition(func(r *resty.Response, err error) bool {
+		if exec.IsConnectionError(err) {
+			return true
+		}
+
+		return false
+	})
+	client.SetRetryCount(10)
+	client.SetRetryWaitTime(3 * time.Second)
+	client.AddRetryCondition(func(r *resty.Response, err error) bool {
+		return errors.Is(err, io.EOF)
+	})
 
 	return &containerRunnerRemote{
 		logger:          logger,
 		client:          client,
 		managerSettings: managerSettings,
 		runnerSettings:  runnerSettings,
-		testId:          testId,
+		testId:          uuid.New().NewV4(),
 	}, nil
 }
 
@@ -87,6 +106,7 @@ func (r *containerRunnerRemote) RunContainer(ctx context.Context, request Contai
 	input := &ContainerStartInput{
 		PoolId:        r.runnerSettings.PoolId,
 		TestId:        r.testId,
+		TestName:      request.TestName,
 		ComponentType: request.ComponentType,
 		ComponentName: request.ComponentName,
 		ContainerName: request.ContainerName,
@@ -97,7 +117,7 @@ func (r *containerRunnerRemote) RunContainer(ctx context.Context, request Contai
 			Cmd:          config.Cmd,
 			PortBindings: config.PortBindings,
 		},
-		ExpireAfter: request.InitialLifeTime,
+		ExpireAfter: request.ExpireAfter,
 	}
 
 	var err error

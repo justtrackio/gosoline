@@ -140,7 +140,7 @@ func (r *containerRunnerLocal) runContainer(request ContainerRequest, options *d
 	r.resources[resourceId] = resource
 	r.resourcesLck.Unlock()
 
-	if err = r.expireAfter(resource, request.InitialLifeTime); err != nil {
+	if err = r.expireAfter(resource, request.ExpireAfter); err != nil {
 		return nil, fmt.Errorf("could not set expiry on container %s: %w", options.Name, err)
 	}
 
@@ -263,19 +263,6 @@ func (r *containerRunnerLocal) resolveBinding(resource *dockertest.Resource, bin
 	}
 
 	return address, nil
-}
-
-func (r *containerRunnerLocal) ExtendLifetime(ctx context.Context, duration time.Duration) error {
-	r.resourcesLck.Lock()
-	defer r.resourcesLck.Unlock()
-
-	for _, resource := range r.resources {
-		if err := r.expireAfter(resource, duration); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (r *containerRunnerLocal) Stop(ctx context.Context) error {

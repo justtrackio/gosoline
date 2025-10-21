@@ -23,7 +23,7 @@ type ContainerManagerSettings struct {
 	RunnerType  string              `cfg:"runner_type"  default:"local"`
 	NamePrefix  string              `cfg:"name_prefix"  default:"goso"`
 	HealthCheck HealthCheckSettings `cfg:"health_check"`
-	LifeTime    LifeTimeSettings    `cfg:"life_time"`
+	ExpireAfter time.Duration       `cfg:"expire_after" default:"5m"`
 }
 
 type HealthCheckSettings struct {
@@ -32,21 +32,16 @@ type HealthCheckSettings struct {
 	MaxElapsedTime  time.Duration `cfg:"max_elapsed_time" default:"1m"`
 }
 
-type LifeTimeSettings struct {
-	InitialDuration time.Duration `cfg:"initial_duration" default:"3m"`
-	RefreshInterval time.Duration `cfg:"refresh_interval" default:"1m"`
-}
-
 type containerManager struct {
 	logger            log.Logger
 	runnerFactory     func(typ string) (ContainerRunner, error)
 	runners           map[string]ContainerRunner
 	settings          *ContainerManagerSettings
-	refreshCancel     context.CancelFunc
 	shutdownCallbacks map[string]func() error
+	testName          string
 }
 
-func NewContainerManager(config cfg.Config, logger log.Logger) (ContainerManager, error) {
+func NewContainerManager(config cfg.Config, logger log.Logger, testName string) (ContainerManager, error) {
 	var err error
 	runners := map[string]ContainerRunner{}
 
@@ -79,8 +74,8 @@ func NewContainerManager(config cfg.Config, logger log.Logger) (ContainerManager
 		runnerFactory:     runnerFactory,
 		runners:           runners,
 		settings:          settings,
-		refreshCancel:     func() {},
 		shutdownCallbacks: make(map[string]func() error),
+		testName:          testName,
 	}, nil
 }
 
@@ -101,11 +96,12 @@ func (m *containerManager) RunContainers(ctx context.Context, skeletons []*compo
 				var container *Container
 
 				request := ContainerRequest{
+					TestName:             m.testName,
 					ComponentType:        skeleton.typ,
 					ComponentName:        skeleton.name,
 					ContainerName:        containerName,
 					ContainerDescription: description,
-					InitialLifeTime:      m.settings.LifeTime.InitialDuration,
+					ExpireAfter:          m.settings.ExpireAfter,
 				}
 
 				if container, err = m.runContainer(ctx, request); err != nil {
@@ -129,8 +125,6 @@ func (m *containerManager) RunContainers(ctx context.Context, skeletons []*compo
 	if err := cfn.Wait(); err != nil {
 		return fmt.Errorf("could not run all containers: %w", err)
 	}
-
-	m.refreshLifetimes(ctx)
 
 	return nil
 }
@@ -169,32 +163,7 @@ func (m *containerManager) runContainer(ctx context.Context, request ContainerRe
 	return container, nil
 }
 
-func (m *containerManager) refreshLifetimes(ctx context.Context) {
-	ticker := time.NewTicker(m.settings.LifeTime.RefreshInterval)
-	ctx, m.refreshCancel = context.WithCancel(ctx)
-
-	go func() {
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-
-			case <-ticker.C:
-				for name, runner := range m.runners {
-					if err := runner.ExtendLifetime(ctx, m.settings.LifeTime.RefreshInterval); err != nil {
-						m.logger.Error(ctx, "could not refresh lifetimes for runner %s: %w", name, err)
-					}
-				}
-			}
-		}
-	}()
-}
-
 func (m *containerManager) Stop(ctx context.Context) error {
-	m.refreshCancel()
-
 	for name, cb := range m.shutdownCallbacks {
 		err := cb()
 		if err != nil {

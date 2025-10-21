@@ -67,6 +67,12 @@ func WithConfigMap(settings map[string]any) Option {
 	}
 }
 
+func WithContainerExpireAfter(expireAfter time.Duration) Option {
+	return func(s *SuiteConfiguration) {
+		s.addEnvOption(env.WithContainerExpireAfter(expireAfter))
+	}
+}
+
 func WithUntypedConsumer(callback stream.UntypedConsumerCallbackFactory) Option {
 	return WithModule("consumer-default", stream.NewUntypedConsumer("default", callback))
 }
