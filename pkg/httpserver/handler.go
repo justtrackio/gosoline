@@ -266,6 +266,16 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 
 		err = handler.Handle(ginCtx, reqCtx, request)
 		if err != nil {
+			validErr := &validation.Error{}
+			if errors.As(err, &validErr) {
+				handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
+					Err:  validErr,
+					Type: gin.ErrorTypePrivate,
+				})
+
+				return
+			}
+
 			handleError(ginCtx, errHandler, http.StatusInternalServerError, gin.Error{
 				Err:  err,
 				Type: gin.ErrorTypePrivate,
