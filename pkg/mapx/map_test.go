@@ -104,6 +104,16 @@ func (s *MapTestSuite) TestSetMap() {
 	s.Equal(msi, actual)
 }
 
+func (s *MapTestSuite) TestSetKeyWithDots() {
+	s.m.Set(`key\.with\.dots`, "value")
+
+	keys := s.m.Keys()
+	s.Equal([]string{`key\.with\.dots`}, keys)
+
+	actual := s.m.Get(`key\.with\.dots`).Data()
+	s.Equal("value", actual)
+}
+
 func (s *MapTestSuite) TestSetSliceOffset() {
 	s.m.Set("sl[1]", 1)
 
