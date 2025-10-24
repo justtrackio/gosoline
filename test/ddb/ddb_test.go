@@ -19,6 +19,10 @@ type TestData struct {
 	Ttl  int64  `json:"ttl" ddb:"ttl=enabled"`
 }
 
+func TestDdb(t *testing.T) {
+	suite.Run(t, new(DdbTestSuite))
+}
+
 type DdbTestSuite struct {
 	suite.Suite
 	repo  ddb.Repository
@@ -199,8 +203,4 @@ func (s *DdbTestSuite) makeItem(id string, data string, ttl time.Duration) *Test
 		Data: data,
 		Ttl:  s.clock.Now().Add(ttl).Unix(),
 	}
-}
-
-func TestDdb(t *testing.T) {
-	suite.Run(t, new(DdbTestSuite))
 }

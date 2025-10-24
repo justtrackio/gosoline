@@ -1,9 +1,6 @@
 test:
   defaults:
     images:
-      ddb:
-        repository: "amazon/dynamodb-local"
-        tag: "2.5.4"
       kafka:
         repository: "docker.redpanda.com/redpandadata/redpanda"
         tag: "v24.2.20"
