@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"time"
@@ -19,8 +18,15 @@ import (
 var _ ContainerRunner = (*containerRunnerRemote)(nil)
 
 type ContainerRunnerRemoteSettings struct {
-	Endpoint string `cfg:"endpoint" default:"http://localhost:8890"`
-	PoolId   string `cfg:"pool_id"`
+	Endpoint   string                                  `cfg:"endpoint" default:"http://localhost:8890"`
+	PoolId     string                                  `cfg:"pool_id"`
+	HttpClient ContainerRunnerRemoteHttpClientSettings `cfg:"http_client"`
+}
+
+type ContainerRunnerRemoteHttpClientSettings struct {
+	Timeout       time.Duration `cfg:"timeout" default:"30s"`
+	RetryCount    int           `cfg:"retry_count" default:"32"`
+	RetryWaitTime time.Duration `cfg:"retry_wait" default:"3s"`
 }
 
 type ContainerStartInput struct {
@@ -74,20 +80,19 @@ func NewContainerRunnerRemote(config cfg.Config, logger log.Logger, managerSetti
 	logger = logger.WithChannel("container-runner-remote")
 
 	client := resty.New().SetBaseURL(runnerSettings.Endpoint)
-	client.SetTimeout(10 * time.Second)
-	client.SetRetryCount(32)
-	client.SetRetryWaitTime(3 * time.Second)
+	client.SetTimeout(runnerSettings.HttpClient.Timeout)
+	client.SetRetryCount(runnerSettings.HttpClient.RetryCount)
+	client.SetRetryWaitTime(runnerSettings.HttpClient.RetryWaitTime)
 	client.AddRetryCondition(func(r *resty.Response, err error) bool {
 		if exec.IsConnectionError(err) {
 			return true
 		}
 
+		if errors.Is(err, context.DeadlineExceeded) {
+			return true
+		}
+
 		return false
-	})
-	client.SetRetryCount(10)
-	client.SetRetryWaitTime(3 * time.Second)
-	client.AddRetryCondition(func(r *resty.Response, err error) bool {
-		return errors.Is(err, io.EOF)
 	})
 
 	return &containerRunnerRemote{
