@@ -2,9 +2,9 @@ package env
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
@@ -12,9 +12,8 @@ import (
 
 type localstackComponent struct {
 	baseComponent
-	services []string
-	binding  ContainerBinding
-	region   string
+	binding ContainerBinding
+	region  string
 }
 
 func (c *localstackComponent) CfgOptions() []cfg.Option {
@@ -34,18 +33,23 @@ func (c *localstackComponent) CfgOptions() []cfg.Option {
 		}),
 	}
 
-	if slices.Contains(c.services, localstackServiceS3) {
-		options = append(options, cfg.WithConfigMap(map[string]any{
-			"aws_s3_endpoint":   c.Address(),
-			"aws_s3_autoCreate": true,
-		}))
-	}
-
 	return options
 }
 
 func (c *localstackComponent) Address() string {
 	return fmt.Sprintf("http://%s:%s", c.binding.host, c.binding.port)
+}
+
+func (c *localstackComponent) S3Client() *s3.Client {
+	awsCfg := aws.Config{
+		Region:      "eu-central-1",
+		Credentials: GetDefaultStaticCredentials(),
+	}
+
+	return s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		o.UsePathStyle = true
+		o.BaseEndpoint = gosoAws.NilIfEmpty(c.Address())
+	})
 }
 
 func (c *localstackComponent) SnsClient() *sns.Client {

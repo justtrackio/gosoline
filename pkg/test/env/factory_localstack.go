@@ -26,9 +26,8 @@ const (
 type localstackSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	Port     int      `cfg:"port" default:"0"`
-	Region   string   `cfg:"region" default:"eu-central-1"`
-	Services []string `cfg:"services"`
+	Port   int    `cfg:"port" default:"0"`
+	Region string `cfg:"region" default:"eu-central-1"`
 }
 
 type localstackFactory struct{}
@@ -44,25 +43,7 @@ func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigM
 		return nil
 	}
 
-	services := make([]string, 0)
-
-	if config.IsSet("cloud.aws.cloudwatch") {
-		services = append(services, localstackServiceCloudWatch)
-	}
-
-	if config.IsSet("aws_s3_endpoint") {
-		services = append(services, localstackServiceS3)
-	}
-
-	if config.IsSet("cloud.aws.sns") {
-		services = append(services, localstackServiceSns)
-	}
-
-	if config.IsSet("cloud.aws.sqs") {
-		services = append(services, localstackServiceSqs)
-	}
-
-	if len(services) == 0 {
+	if !config.IsSet("cloud.aws") {
 		return nil
 	}
 
@@ -71,7 +52,6 @@ func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigM
 		return fmt.Errorf("can not detect localstack settings: %w", err)
 	}
 	settings.Type = ComponentLocalstack
-	settings.Services = services
 
 	if err := manager.Add(settings); err != nil {
 		return fmt.Errorf("can not add default localstack component: %w", err)
@@ -111,8 +91,6 @@ func (f *localstackFactory) configureContainer(settings any) *ContainerConfig {
 }
 
 func (f *localstackFactory) healthCheck(settings any) ComponentHealthCheck {
-	s := settings.(*localstackSettings)
-
 	return func(container *Container) error {
 		binding := container.bindings["main"]
 		url := fmt.Sprintf("http://%s:%s/_localstack/health", binding.host, binding.port)
@@ -142,21 +120,6 @@ func (f *localstackFactory) healthCheck(settings any) ComponentHealthCheck {
 			return fmt.Errorf("no localstack services up yet")
 		}
 
-		services, ok := status[localstackServicesKey].(map[string]any)
-		if !ok {
-			return fmt.Errorf("could not assert services key in healthcheck object as map[string]any")
-		}
-
-		for _, service := range s.Services {
-			if _, ok := services[service]; !ok {
-				return fmt.Errorf("%s service is not up yet", service)
-			}
-
-			if services[service] != "available" {
-				return fmt.Errorf("%s service is in %s state", service, services[service])
-			}
-		}
-
 		return nil
 	}
 }
@@ -165,9 +128,8 @@ func (f *localstackFactory) Component(_ cfg.Config, _ log.Logger, containers map
 	s := settings.(*localstackSettings)
 
 	component := &localstackComponent{
-		services: s.Services,
-		binding:  containers["main"].bindings["main"],
-		region:   s.Region,
+		binding: containers["main"].bindings["main"],
+		region:  s.Region,
 	}
 
 	return component, nil

@@ -208,10 +208,6 @@ func (e *Environment) Redis(name string) *RedisComponent {
 	return e.Component(componentRedis, name).(*RedisComponent)
 }
 
-func (e *Environment) S3(name string) *S3Component {
-	return e.Component(componentS3, name).(*S3Component)
-}
-
 func (e *Environment) DynamoDb(name string) *DdbComponent {
 	return e.Component(componentDdb, name).(*DdbComponent)
 }
