@@ -36,6 +36,10 @@ type WrongTestModel struct {
 	WrongName *string
 }
 
+func TestDbRepoQueryTestSuite(t *testing.T) {
+	suite.Run(t, new(DbRepoQueryTestSuite))
+}
+
 type DbRepoQueryTestSuite struct {
 	suite.Suite
 }
@@ -369,8 +373,4 @@ func (s *DbRepoQueryTestSuite) TestQueryWrongModel() {
 	models = make([]TestModel, 0)
 	err = repo.Query(s.T().Context(), qb, &models)
 	s.EqualError(err, `table "wrong_test_models": cross querying wrong model from repo`)
-}
-
-func TestDbRepoQueryTestSuite(t *testing.T) {
-	suite.Run(t, new(DbRepoQueryTestSuite))
 }
