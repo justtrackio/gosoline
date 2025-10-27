@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
@@ -26,9 +27,10 @@ const (
 type localstackSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	Port     int      `cfg:"port" default:"0"`
-	Region   string   `cfg:"region" default:"eu-central-1"`
-	Services []string `cfg:"services"`
+	ContainerBindingSettings
+	Region               string   `cfg:"region" default:"eu-central-1"`
+	Services             []string `cfg:"services"`
+	UseExternalContainer bool     `cfg:"use_external_container" default:"false"`
 }
 
 type localstackFactory struct{}
@@ -95,6 +97,21 @@ func (f *localstackFactory) DescribeContainers(settings any) componentContainerD
 
 func (f *localstackFactory) configureContainer(settings any) *containerConfig {
 	s := settings.(*localstackSettings)
+
+	if s.UseExternalContainer {
+		return &containerConfig{
+			UseExternalContainer: true,
+			ContainerBindings: containerBindings{
+				"4566/tcp": containerBinding{
+					host: s.Host,
+					port: strconv.Itoa(s.Port),
+				},
+			},
+		}
+	}
+
+	// ensure to use a free port for the new container
+	s.Port = 0
 
 	return &containerConfig{
 		Auth:       s.Image.Auth,
