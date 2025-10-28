@@ -38,6 +38,13 @@ func (c *localstackComponent) CfgOptions() []cfg.Option {
 					"region":   c.region,
 					"endpoint": c.Address(),
 				},
+				"dynamodb": map[string]any{
+					"clients": map[string]any{
+						"default": map[string]any{
+							"purge_type": "drop_table",
+						},
+					},
+				},
 			},
 		}),
 	}
