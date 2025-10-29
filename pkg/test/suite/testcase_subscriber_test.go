@@ -31,8 +31,18 @@ func (m TestModel) GetId() any {
 
 func (s *SubscriberTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
-		suite.WithLogLevel("info"),
+		suite.WithLogLevel("debug"),
 		suite.WithConfigMap(map[string]any{
+			"cloud": map[string]any{
+				"aws": map[string]any{
+					"defaults": map[string]any{
+						"credentials": map[string]any{
+							"access_key_id":     "test",
+							"secret_access_key": "test",
+						},
+					},
+				},
+			},
 			"kvstore": map[string]any{
 				"testModel": map[string]any{
 					"type": "chain",
@@ -51,7 +61,7 @@ func (s *SubscriberTestSuite) SetupSuite() []suite.Option {
 			},
 			"test": map[string]any{
 				"components": map[string]any{
-					"ddb": map[string]any{
+					"localstack": map[string]any{
 						"default": map[string]any{},
 					},
 				},

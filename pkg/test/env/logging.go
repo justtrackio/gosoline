@@ -3,8 +3,8 @@ package env
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -65,7 +65,7 @@ func prepareLoggerSettings(options ...LoggerOption) (*LoggerSettings, error) {
 	return settings, nil
 }
 
-func NewRecordingConsoleLogger(config cfg.Config, options ...LoggerOption) (RecordingLogger, error) {
+func NewRecordingConsoleLogger(t *testing.T, config cfg.Config, options ...LoggerOption) (RecordingLogger, error) {
 	settings, err := prepareLoggerSettings(options...)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func NewRecordingConsoleLogger(config cfg.Config, options ...LoggerOption) (Reco
 	}
 
 	cl := clock.NewRealClock()
-	handler := log.NewHandlerIoWriter(config, priority, log.FormatterConsole, "test", "15:04:05.000", os.Stdout)
+	handler := log.NewHandlerIoWriter(config, priority, log.FormatterConsole, "test", "15:04:05.000", tLogWriter{t})
 
 	logger := log.NewLoggerWithInterfaces(cl, []log.Handler{handler})
 

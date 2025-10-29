@@ -168,7 +168,11 @@ func (m *MapX) prepareInput(value any) any {
 
 func (m *MapX) access(current any, selector string, value any, mode *OpMode) any {
 	selector = strings.Trim(selector, ".")
-	selSegs := strings.SplitN(selector, PathSeparator, 2)
+	selSegs := SplitUnescapedDotN(selector, 2)
+
+	if len(selSegs) > 1 {
+		selSegs = []string{selSegs[0], strings.Join(selSegs[1:], ".")}
+	}
 
 	thisSel := selSegs[0]
 	index := -1

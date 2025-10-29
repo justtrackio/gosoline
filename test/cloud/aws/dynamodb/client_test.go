@@ -92,7 +92,7 @@ func (s *ClientTestSuite) TestSuccess() {
 }
 
 func (s *ClientTestSuite) TestHttpTimeout() {
-	proxy := s.Env().DynamoDb("default").Toxiproxy()
+	proxy := s.Env().Localstack("default").Toxiproxy()
 	_, err := proxy.AddToxic("latency_down", "latency", "downstream", 1.0, toxiproxy.Attributes{
 		"latency": 200,
 	})
@@ -140,7 +140,7 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 }
 
 func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
-	proxy := s.Env().DynamoDb("default").Toxiproxy()
+	proxy := s.Env().Localstack("default").Toxiproxy()
 	_, err := proxy.AddToxic("latency_down", "latency", "downstream", 1.0, toxiproxy.Attributes{
 		"latency": 200,
 	})
