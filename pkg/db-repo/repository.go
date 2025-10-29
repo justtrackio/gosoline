@@ -61,11 +61,12 @@ type Repository interface {
 }
 
 type repository struct {
-	logger   log.Logger
-	tracer   tracing.Tracer
-	orm      *gorm.DB
-	clock    clock.Clock
-	metadata Metadata
+	logger          log.Logger
+	tracer          tracing.Tracer
+	orm             *gorm.DB
+	clock           clock.Clock
+	metadata        Metadata
+	noDeleteRefresh bool
 }
 
 func New(ctx context.Context, config cfg.Config, logger log.Logger, settings Settings) (*repository, error) {
@@ -413,6 +414,10 @@ func (r *repository) refreshAssociationsCreate(model any, fieldNum int, tags map
 		err = r.orm.Model(model).Association(scopeField.Name).Replace(values.Interface()).Error
 
 	default:
+		if r.noDeleteRefresh {
+			return
+		}
+
 		assocIds := readIdsFromReflectValue(values)
 		parentId := valueReflection.FieldByName("Id").Elem().Interface()
 

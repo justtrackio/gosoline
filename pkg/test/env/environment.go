@@ -125,7 +125,7 @@ func (e *Environment) init(options ...Option) error {
 		return fmt.Errorf("can not apply post processor on config: %w", err)
 	}
 
-	if logger, err = NewRecordingConsoleLogger(config, e.loggerOptions...); err != nil {
+	if logger, err = NewRecordingConsoleLogger(e.t, config, e.loggerOptions...); err != nil {
 		return fmt.Errorf("can apply logger option: %w", err)
 	}
 
