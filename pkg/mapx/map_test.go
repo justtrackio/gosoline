@@ -205,6 +205,9 @@ func (s *MapTestSuite) TestGet() {
 	s.Equal([]any{1, 2}, msi.Get("sl1").Data())
 	s.Equal(2, msi.Get("sl1[1]").Data())
 	s.Equal(nil, msi.Get("sl1[2]").Data())
+
+	root := msi.Get(".").Data()
+	s.Equal(data, root)
 }
 
 func (s *MapTestSuite) TestMergeRootEmpty() {

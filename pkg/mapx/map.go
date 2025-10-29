@@ -73,6 +73,10 @@ func (m *MapX) Get(key string) *MapXNode {
 }
 
 func (m *MapX) doGet(key string) *MapXNode {
+	if key == "." {
+		return &MapXNode{value: m.msn}
+	}
+
 	val := m.access(m.msn, key, nil, &OpMode{})
 
 	return &MapXNode{value: val}
