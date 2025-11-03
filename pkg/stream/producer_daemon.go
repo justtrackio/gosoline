@@ -225,7 +225,7 @@ func (d *producerDaemon) restart() {
 }
 
 func (d *producerDaemon) GetStage() int {
-	return 512
+	return kernel.StageProducerDaemon
 }
 
 func (d *producerDaemon) Run(kernelCtx context.Context) error {

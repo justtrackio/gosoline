@@ -16,6 +16,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -36,7 +37,7 @@ type HandlerMetadata struct {
 
 type HttpServer struct {
 	kernel.EssentialModule
-	kernel.ServiceStage
+	kernel.ApplicationStage
 
 	logger   log.Logger
 	server   *http.Server
@@ -154,12 +155,13 @@ func NewWithInterfaces(ctx context.Context, logger log.Logger, router *gin.Engin
 	return apiServer, nil
 }
 
-func (s *HttpServer) IsHealthy(ctx context.Context) (bool, error) {
+func (s *HttpServer) IsHealthy(_ context.Context) (bool, error) {
 	return s.healthy.Load(), nil
 }
 
 func (s *HttpServer) Run(ctx context.Context) error {
-	go s.waitForStop(ctx)
+	cfn := coffin.New()
+	cfn.GoWithContext(ctx, s.waitForStop)
 
 	err := s.server.Serve(s.listener)
 
@@ -171,10 +173,10 @@ func (s *HttpServer) Run(ctx context.Context) error {
 
 	s.logger.Info(ctx, "leaving httpserver")
 
-	return nil
+	return cfn.Wait()
 }
 
-func (s *HttpServer) waitForStop(ctx context.Context) {
+func (s *HttpServer) waitForStop(ctx context.Context) error {
 	s.healthy.Store(true)
 	<-ctx.Done()
 	s.healthy.Store(false)
@@ -193,6 +195,8 @@ func (s *HttpServer) waitForStop(ctx context.Context) {
 	if err := s.server.Shutdown(shutdownCtx); err != nil {
 		s.logger.Error(ctx, "server shutdown: %w", err)
 	}
+
+	return nil
 }
 
 func (s *HttpServer) GetPort() (*int, error) {

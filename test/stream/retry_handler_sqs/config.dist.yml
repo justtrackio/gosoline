@@ -27,6 +27,7 @@ test:
     localstack:
       default:
         services: sqs
+        expire_after: 5m
     streamInput:
       consumer:
         in_memory_override: false

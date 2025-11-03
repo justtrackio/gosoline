@@ -23,3 +23,4 @@ test:
     localstack:
       default:
         services: sqs
+        expire_after: 5m
