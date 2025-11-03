@@ -8,18 +8,21 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+// The kernel is split into multiple stages.
+//  * Essential: Starts first and shuts down last. Includes metric writers and anything else that gets data from other modules
+//    and must not exist before the other modules do so.
+//  * ProducerDaemon: The producer daemon runs in its own stage. You can think of it as basically an additional service stage.
+//  * Service: Contains services provided to the application that should start first but still depend on the essential modules.
+//    This includes the modules provided by gosoline, for example a GeoIP database or the currency service.
+//  * Application: Your code should normally run in this stage. It will be started after other services are already
+//    running and shut down first so other stages still have some time to process the messages they did receive from
+//    your application. This stage includes the HTTP servers, consumers, and subscribers building your application.
+
 const (
-	// The kernel is split into three stages.
-	//  * Essential: Starts first and shuts down last. Includes metric writers and anything else that gets data from other
-	//    modules and must not exist before the other modules do so.
-	//  * Service: Contains services provided to the application that should start first but still depend on the essential
-	//    modules. This includes the modules provided by gosoline, for example the ApiServer.
-	//  * Application: Your code should normally run in this stage. It will be started after other services are already
-	//    running and shut down first so other stages still have some time to process the messages they did receive from
-	//    your application.
-	StageEssential   = common.StageEssential
-	StageService     = common.StageService
-	StageApplication = common.StageApplication
+	StageEssential      = common.StageEssential
+	StageProducerDaemon = common.StageProducerDaemon
+	StageService        = common.StageService
+	StageApplication    = common.StageApplication
 )
 
 type (

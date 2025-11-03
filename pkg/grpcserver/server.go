@@ -9,6 +9,7 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -25,7 +26,7 @@ const (
 // Server a basic grpc.Server wrapper that allows also can have a basic Health Check functionality.
 type Server struct {
 	kernel.EssentialModule
-	kernel.ServiceStage
+	kernel.ApplicationStage
 
 	logger       log.Logger
 	listener     net.Listener
@@ -148,7 +149,8 @@ func NewWithInterfaces(
 // Run starts the Server kernel.Module, listens to the port configured and gracefully shuts down when the context is closed
 // or if the HealthChecks are enabled when a service becomes unhealthy.
 func (g *Server) Run(ctx context.Context) error {
-	go g.waitForStop(ctx)
+	cfn := coffin.New()
+	cfn.GoWithContext(ctx, g.waitForStop)
 
 	err := g.server.Serve(g.listener)
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -159,7 +161,7 @@ func (g *Server) Run(ctx context.Context) error {
 		return err
 	}
 
-	return nil
+	return cfn.Wait()
 }
 
 // Addr Returns the net.Addr of the Server.
@@ -167,7 +169,7 @@ func (g *Server) Addr() net.Addr {
 	return g.listener.Addr()
 }
 
-func (g *Server) waitForStop(ctx context.Context) {
+func (g *Server) waitForStop(ctx context.Context) error {
 	if g.cancelFunc != nil {
 		defer g.cancelFunc()
 	}
@@ -181,4 +183,6 @@ func (g *Server) waitForStop(ctx context.Context) {
 
 	g.server.GracefulStop()
 	g.logger.Info(ctx, "leaving grpc_server")
+
+	return nil
 }

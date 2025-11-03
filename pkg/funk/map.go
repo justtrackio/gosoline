@@ -129,6 +129,7 @@ func Values[K comparable, V any, M ~map[K]V](m M) []V {
 	return values
 }
 
+// MapFilter removes entries from a map which don't satisfy a predicate. The order of the calls to the predicate is undefined.
 func MapFilter[K comparable, V any, M ~map[K]V](m M, f func(key K, value V) bool) map[K]V {
 	filteredMap := map[K]V{}
 
@@ -171,7 +172,7 @@ func MapKeysWith[K1 comparable, K2 comparable, V any, M1 ~map[K1]V](m M1, f func
 	return r
 }
 
-// MapValues applies a function to all values of a map.
+// MapValues applies a function to all values of a map. The order in which the function will be called for each value is undefined.
 func MapValues[K comparable, V1, V2 any, M1 ~map[K]V1](m M1, f func(value V1) V2) map[K]V2 {
 	r := make(map[K]V2, len(m))
 

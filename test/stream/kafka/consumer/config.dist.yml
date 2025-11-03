@@ -26,3 +26,4 @@ test:
   components:
     kafka:
       default:
+        expire_after: 5m

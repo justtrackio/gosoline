@@ -112,6 +112,10 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 	shardIterator := s.getCheckpoint().GetShardIterator()
 	iterator, err := s.getShardIterator(ctx, sequenceNumber, shardIterator)
 	if err != nil {
+		if exec.IsRequestCanceled(err) {
+			return nil
+		}
+
 		return fmt.Errorf("failed to get shard iterator: %w", err)
 	}
 
