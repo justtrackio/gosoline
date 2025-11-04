@@ -2,6 +2,7 @@ package mdlsub
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
@@ -16,11 +17,12 @@ type Settings struct {
 }
 
 type SubscriberSettings struct {
-	Input       string          `cfg:"input" default:"sns"`
-	Output      string          `cfg:"output"`
-	RunnerCount int             `cfg:"runner_count" default:"10" validate:"min=1"`
-	SourceModel SubscriberModel `cfg:"source"`
-	TargetModel SubscriberModel `cfg:"target"`
+	Input            string          `cfg:"input" default:"sns"`
+	Output           string          `cfg:"output"`
+	PersistGraceTime time.Duration   `cfg:"persist_grace_time" default:"10s" validate:"min=0"`
+	RunnerCount      int             `cfg:"runner_count" default:"10" validate:"min=1"`
+	SourceModel      SubscriberModel `cfg:"source"`
+	TargetModel      SubscriberModel `cfg:"target"`
 }
 
 func unmarshalSettings(config cfg.Config) (*Settings, error) {
