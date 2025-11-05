@@ -32,4 +32,8 @@ func amendFromDefault(datum *Datum) {
 	if datum.Unit == "" {
 		datum.Unit = def.Unit
 	}
+
+	if datum.Kind.kind == "" {
+		datum.Kind = def.Kind
+	}
 }
