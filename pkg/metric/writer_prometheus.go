@@ -24,15 +24,6 @@ func init() {
 
 var _ Writer = &prometheusWriter{}
 
-const (
-	errFailedToRegisterMetricMsg                  = "register metric %s: %w"
-	errFailedToAddMetricToPrometheus              = "add metric: %w"
-	UnitPromCounter                  StandardUnit = "prom-counter"
-	UnitPromGauge                    StandardUnit = "prom-gauge"
-	UnitPromHistogram                StandardUnit = "prom-histogram"
-	UnitPromSummary                  StandardUnit = "prom-summary"
-)
-
 type (
 	prometheusMetricProcessor func(metric prometheus.Collector)
 	prometheusWriterCtxKey    string
@@ -110,7 +101,7 @@ func (w *prometheusWriter) GetPriority() int {
 // with that metric. This is not needed on prometheus, as we can just create the total through summing
 // up all our dimensions.
 func (w *prometheusWriter) shouldFilterMetric(datum *Datum) bool {
-	return datum.Priority < w.GetPriority() || datum.Kind == KindTotal
+	return datum.Priority < w.GetPriority() || datum.Kind.kind == KindTotal.kind
 }
 
 func (w *prometheusWriter) Write(ctx context.Context, batch Data) {
@@ -149,20 +140,40 @@ func (w *prometheusWriter) writeMetricFromDatum(ctx context.Context, datum *Datu
 		datum.MetricName = replacer.Replace(datum.MetricName)
 	}
 
-	switch datum.Unit {
-	case UnitCount, UnitPromCounter:
+	switch w.getEffectiveKind(datum) {
+	case kindCounter:
 		w.counter(ctx, datum)
-	case UnitPromSummary, UnitMilliseconds, UnitSeconds:
-		w.summary(ctx, datum)
-	case UnitPromHistogram:
-		w.histogram(ctx, datum)
-	default:
+	case kindGauge:
 		w.gauge(ctx, datum)
+	case kindHistogram:
+		w.histogram(ctx, datum)
+	case kindSummary:
+		w.summary(ctx, datum)
 	}
 }
 
-func (w *prometheusWriter) buildHelp(data *Datum) string {
-	return fmt.Sprintf("unit: %s", data.Unit)
+func (w *prometheusWriter) getEffectiveKind(datum *Datum) kind {
+	switch datum.Kind.kind {
+	case kindCounter, kindGauge, kindHistogram, kindSummary:
+		return datum.Kind.kind
+	}
+
+	switch datum.Unit {
+	case UnitCount:
+		return kindCounter
+	case UnitMilliseconds, UnitSeconds:
+		return kindSummary
+	default:
+		return kindGauge
+	}
+}
+
+func (w *prometheusWriter) buildHelp(datum *Datum) string {
+	if datum.Kind.help != "" {
+		return datum.Kind.help
+	}
+
+	return fmt.Sprintf("unit: %s", datum.Unit)
 }
 
 func (w *prometheusWriter) createCounter(datum *Datum) *prometheus.CounterVec {
@@ -183,9 +194,13 @@ func (w *prometheusWriter) createGauge(datum *Datum) *prometheus.GaugeVec {
 
 func (w *prometheusWriter) createSummary(datum *Datum) *prometheus.SummaryVec {
 	return prometheus.NewSummaryVec(prometheus.SummaryOpts{
-		Namespace: w.namespace,
-		Name:      datum.MetricName,
-		Help:      w.buildHelp(datum),
+		Namespace:  w.namespace,
+		Name:       datum.MetricName,
+		Help:       w.buildHelp(datum),
+		Objectives: datum.Kind.objectives,
+		MaxAge:     datum.Kind.maxAge,
+		AgeBuckets: datum.Kind.ageBuckets,
+		BufCap:     datum.Kind.bufCap,
 	}, w.DatumDimensionKeys(datum))
 }
 
@@ -194,6 +209,7 @@ func (w *prometheusWriter) createHistogram(datum *Datum) *prometheus.HistogramVe
 		Namespace: w.namespace,
 		Name:      datum.MetricName,
 		Help:      w.buildHelp(datum),
+		Buckets:   datum.Kind.buckets,
 	}, w.DatumDimensionKeys(datum))
 }
 
@@ -220,14 +236,14 @@ func (w *prometheusWriter) registerAndProcessMetric(metric prometheus.Collector,
 	if err := w.registry.Register(metric); err != nil {
 		metricR, err := handleRegistrationError(err)
 		if err != nil {
-			return fmt.Errorf(errFailedToRegisterMetricMsg, metricName, err)
+			return fmt.Errorf("register metric %s: %w", metricName, err)
 		}
 
 		metric = metricR
 	} else {
 		err = w.addMetric()
 		if err != nil {
-			return fmt.Errorf(errFailedToAddMetricToPrometheus, err)
+			return fmt.Errorf("add metric: %w", err)
 		}
 	}
 

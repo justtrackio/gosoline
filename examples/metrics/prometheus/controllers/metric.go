@@ -72,7 +72,8 @@ func (ctrl *metricController) apiCallCounterMetric(ctx context.Context, handler 
 			"handler": handler,
 		},
 		Value: 1,
-		Unit:  metric.UnitPromCounter,
+		Unit:  metric.UnitCount,
+		Kind:  metric.KindCounter.Build(),
 	})
 }
 
@@ -81,7 +82,7 @@ func (ctrl *metricController) apiCallSummaryMetric(ctx context.Context, val floa
 		Priority:   metric.PriorityHigh,
 		MetricName: "my_summary",
 		Value:      val,
-		Unit:       metric.UnitPromSummary,
+		Kind:       metric.KindSummary.Build(),
 	})
 }
 
