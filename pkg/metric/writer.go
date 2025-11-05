@@ -10,9 +10,6 @@ const (
 	PriorityLow  = 1
 	PriorityHigh = 2
 
-	KindTotal   Kind = "total"
-	KindDefault Kind = ""
-
 	DimensionDefault = "{{default}}"
 )
 
@@ -28,8 +25,6 @@ type (
 		clock   clock.Clock
 		channel *metricChannel
 	}
-
-	Kind string
 )
 
 func NewWriter(defaults ...*Datum) Writer {
