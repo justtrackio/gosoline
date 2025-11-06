@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -90,6 +91,10 @@ func (m *RefreshModule) Run(ctx context.Context) (err error) {
 
 		case <-ticker.C:
 			if err = m.provider.Refresh(ctx); err != nil {
+				if exec.IsRequestCanceled(err) {
+					return m.provider.Close()
+				}
+
 				m.logger.Error(ctx, "can not refresh provider: %w", err)
 			}
 		}
