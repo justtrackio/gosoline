@@ -80,7 +80,7 @@ require (
 	github.com/spf13/cast v1.7.1
 	github.com/stretchr/objx v0.5.2
 	github.com/stretchr/testify v1.10.0
-	github.com/twmb/franz-go v1.20.2
+	github.com/twmb/franz-go v1.20.3
 	github.com/twmb/franz-go/pkg/kadm v1.16.1
 	github.com/twmb/franz-go/pkg/sr v1.5.0
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
