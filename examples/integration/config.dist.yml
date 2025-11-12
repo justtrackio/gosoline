@@ -21,4 +21,4 @@ db:
     migrations:
       enabled: true
       table_prefixed: false
-      path: file://migrations
+      path: ./migrations
