@@ -19,7 +19,3 @@ db:
       enabled: true
       table_prefixed: false
       path: migrations
-
-change_history:
-  table_suffix: history_entries
-  change_author_column: change_author
