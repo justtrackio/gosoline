@@ -20,43 +20,65 @@ func Test_promWriter_WriteOne(t *testing.T) {
 		data *metric.Datum
 	}{
 		{
-			name: "no dimensions prom-counter",
+			name: "no dimensions counter",
 			data: &metric.Datum{
 				Priority:   metric.PriorityHigh,
 				MetricName: "counter",
 				Dimensions: nil,
 				Value:      1,
-				Unit:       metric.UnitPromCounter,
+				Unit:       metric.UnitCount,
 			},
 		},
 		{
-			name: "no dimensions prom-gauge",
+			name: "no dimensions counter via kind",
+			data: &metric.Datum{
+				Priority:   metric.PriorityHigh,
+				MetricName: "counter",
+				Dimensions: nil,
+				Value:      1,
+				Kind:       metric.KindCounter.Build(),
+			},
+		},
+		{
+			name: "no dimensions gauge",
 			data: &metric.Datum{
 				Priority:   metric.PriorityHigh,
 				MetricName: "gauge",
 				Dimensions: nil,
 				Value:      1,
-				Unit:       metric.UnitPromGauge,
 			},
 		},
 		{
-			name: "no dimensions prom-histogram",
+			name: "no dimensions gauge",
+			data: &metric.Datum{
+				Priority:   metric.PriorityHigh,
+				MetricName: "gauge",
+				Dimensions: nil,
+				Value:      1,
+				Unit:       metric.UnitSeconds,
+				Kind:       metric.KindGauge.Build(),
+			},
+		},
+		{
+			name: "no dimensions histogram",
 			data: &metric.Datum{
 				Priority:   metric.PriorityHigh,
 				MetricName: "histogram",
 				Dimensions: nil,
 				Value:      1,
-				Unit:       metric.UnitPromHistogram,
+				Unit:       metric.UnitSeconds,
+				Kind:       metric.KindHistogram.Build(),
 			},
 		},
 		{
-			name: "no dimensions prom-summary",
+			name: "no dimensions summary",
 			data: &metric.Datum{
 				Priority:   metric.PriorityHigh,
 				MetricName: "summary",
 				Dimensions: nil,
 				Value:      1,
-				Unit:       metric.UnitPromSummary,
+				Unit:       metric.UnitSeconds,
+				Kind:       metric.KindSummary.Build(),
 			},
 		},
 	}
@@ -96,25 +118,25 @@ func Test_promWriter_Write(t *testing.T) {
 					MetricName: "counter",
 					Dimensions: nil,
 					Value:      1,
-					Unit:       metric.UnitPromCounter,
+					Unit:       metric.UnitCount,
 				},
 				&metric.Datum{
 					Priority:   metric.PriorityHigh,
 					MetricName: "counter",
 					Dimensions: nil,
 					Value:      1,
-					Unit:       metric.UnitPromCounter,
+					Unit:       metric.UnitCount,
 				},
 				&metric.Datum{
 					Priority:   metric.PriorityHigh,
 					MetricName: "counter",
 					Dimensions: nil,
 					Value:      1,
-					Unit:       metric.UnitPromCounter,
+					Unit:       metric.UnitCount,
 				},
 			},
 			expected: fields{
-				unit:  "prom-counter",
+				unit:  "Count",
 				name:  "ns:test:write_counter",
 				count: 3,
 			},
@@ -126,7 +148,7 @@ func Test_promWriter_Write(t *testing.T) {
 					Priority:   metric.PriorityHigh,
 					MetricName: "counter",
 					Value:      0,
-					Unit:       metric.UnitPromCounter,
+					Unit:       metric.UnitCount,
 				})
 			},
 			data: metric.Data{
@@ -144,7 +166,7 @@ func Test_promWriter_Write(t *testing.T) {
 				},
 			},
 			expected: fields{
-				unit:  "prom-counter",
+				unit:  "Count",
 				name:  "ns:test:write_counter",
 				count: 3,
 			},
@@ -182,7 +204,7 @@ func Test_promWriter_ExceedsLimit(t *testing.T) {
 		MetricName: "counter",
 		Dimensions: nil,
 		Value:      1,
-		Unit:       metric.UnitPromCounter,
+		Unit:       metric.UnitCount,
 	})
 
 	w.WriteOne(t.Context(), &metric.Datum{
@@ -190,7 +212,7 @@ func Test_promWriter_ExceedsLimit(t *testing.T) {
 		MetricName: "over_limit",
 		Dimensions: nil,
 		Value:      1,
-		Unit:       metric.UnitPromCounter,
+		Unit:       metric.UnitCount,
 	})
 
 	count, err := testutil.GatherAndCount(registry, "ns:test:exceedslimit_counter")

@@ -36,6 +36,7 @@ type BatchedMetricDatum struct {
 	Dimensions Dimensions
 	Values     []float64
 	Unit       types.StandardUnit
+	Kind       Kind
 }
 
 type Daemon struct {
@@ -197,6 +198,7 @@ func (d *Daemon) append(ctx context.Context, datum *Datum) {
 			Dimensions: datum.Dimensions,
 			Unit:       datum.Unit,
 			Values:     []float64{datum.Value},
+			Kind:       datum.Kind,
 		}
 
 		return
@@ -248,6 +250,7 @@ func (d *Daemon) buildMetricData() Data {
 			Dimensions: v.Dimensions,
 			Unit:       unit,
 			Value:      value,
+			Kind:       v.Kind,
 		}
 
 		data = append(data, datum)
