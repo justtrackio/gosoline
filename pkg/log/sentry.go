@@ -26,7 +26,9 @@ type SentryHubSettings struct {
 
 func NewSentryHub(config cfg.Config) (SentryHub, error) {
 	var appId cfg.AppId
-	appId.PadFromConfig(config)
+	if err := appId.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad from config: %w", err)
+	}
 
 	settings := &SentryHubSettings{
 		Environment: appId.Environment,
