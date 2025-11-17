@@ -38,7 +38,7 @@ require (
 	github.com/elliotchance/redismock/v8 v8.11.0
 	github.com/emersion/go-smtp v0.21.3
 	github.com/fatih/color v1.13.0
-	github.com/getsentry/sentry-go v0.13.0
+	github.com/getsentry/sentry-go v0.38.0
 	github.com/gin-contrib/cors v1.6.0
 	github.com/gin-contrib/gzip v0.0.5
 	github.com/gin-contrib/location v0.0.2
