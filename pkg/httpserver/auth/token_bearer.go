@@ -90,6 +90,10 @@ func NewTokenBearerHandler(config cfg.Config, logger log.Logger, provider TokenB
 		return nil, fmt.Errorf("can not create token bearer authenticator: %w", err)
 	}
 
+	return NewTokenBearerHandlerWithInterfaces(auth), nil
+}
+
+func NewTokenBearerHandlerWithInterfaces(auth Authenticator) gin.HandlerFunc {
 	return func(ginCtx *gin.Context) {
 		valid, err := auth.IsValid(ginCtx)
 
@@ -103,7 +107,7 @@ func NewTokenBearerHandler(config cfg.Config, logger log.Logger, provider TokenB
 
 		ginCtx.JSON(http.StatusUnauthorized, gin.H{"err": err.Error()})
 		ginCtx.Abort()
-	}, nil
+	}
 }
 
 func NewTokenBearerAuthenticator(config cfg.Config, logger log.Logger, provider TokenBearerProvider) (Authenticator, error) {
