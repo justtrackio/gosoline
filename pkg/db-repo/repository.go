@@ -176,7 +176,7 @@ func (r *repository) Read(ctx context.Context, id *uint, out ModelBased) error {
 	_, span := r.startSubSpan(ctx, "Get")
 	defer span.Finish()
 
-	err := r.orm.First(out, *id).Error
+	err := r.orm.Unscoped().First(out, *id).Error
 
 	if gorm.IsRecordNotFoundError(err) {
 		return NewRecordNotFoundError(*id, modelId, err)
