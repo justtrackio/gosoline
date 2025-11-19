@@ -180,12 +180,6 @@ func WithoutAutoDetectedComponents(components ...string) Option {
 	}
 }
 
-func WithDbRepoChangeHistory() Option {
-	return func(s *SuiteConfiguration) {
-		s.addAppOption(application.WithDbRepoChangeHistory)
-	}
-}
-
 func WithHttpServerShares() Option {
 	return func(s *SuiteConfiguration) {
 		s.addAppOption(application.WithHttpServerShares)

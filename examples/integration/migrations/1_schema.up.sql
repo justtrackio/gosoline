@@ -1,3 +1,4 @@
+-- +goose Up
 create table items
 (
     id         int unsigned auto_increment primary key,
