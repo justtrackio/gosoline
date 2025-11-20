@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -23,22 +24,28 @@ type SubscriberModel struct {
 }
 
 type SubscriberCallback struct {
-	logger      log.Logger
-	metric      metric.Writer
-	core        SubscriberCore
-	sourceModel SubscriberModel
+	logger           log.Logger
+	metric           metric.Writer
+	core             SubscriberCore
+	sourceModel      SubscriberModel
+	persistGraceTime time.Duration
 }
 
-func NewSubscriberCallbackFactory(core SubscriberCore, sourceModel SubscriberModel) stream.UntypedConsumerCallbackFactory {
+func NewSubscriberCallbackFactory(
+	core SubscriberCore,
+	sourceModel SubscriberModel,
+	persistGraceTime time.Duration,
+) stream.UntypedConsumerCallbackFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.UntypedConsumerCallback, error) {
 		defaultMetrics := getSubscriberCallbackDefaultMetrics(core.GetModelIds())
 		metricWriter := metric.NewWriter(defaultMetrics...)
 
 		callback := &SubscriberCallback{
-			logger:      logger,
-			metric:      metricWriter,
-			core:        core,
-			sourceModel: sourceModel,
+			logger:           logger,
+			metric:           metricWriter,
+			core:             core,
+			sourceModel:      sourceModel,
+			persistGraceTime: persistGraceTime,
 		}
 
 		return callback, nil
@@ -108,8 +115,15 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 	}
 
 	if model, err = transformer.transform(ctx, input); err != nil {
-		if IsDelayOpError(err) {
-			logger.Info(ctx, "delaying %s op for subscription for modelId %s and version %d: %s", spec.CrudType, spec.ModelId, spec.Version, err.Error())
+		if IsDelayOpError(err) || exec.IsRequestCanceled(err) {
+			logger.Info(
+				ctx,
+				"delaying %s op for subscription for modelId %s and version %d: %s",
+				spec.CrudType,
+				spec.ModelId,
+				spec.Version,
+				err.Error(),
+			)
 
 			return false, nil
 		}
@@ -127,12 +141,22 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 		return false, err
 	}
 
+	ctx, stop := exec.WithDelayedCancelContext(ctx, s.persistGraceTime)
+	defer stop()
+
 	err = output.Persist(ctx, model, spec.CrudType)
 	if err != nil {
 		return false, fmt.Errorf("can not persist subscription of model %s and version %d: %w", spec.ModelId, spec.Version, err)
 	}
 
-	logger.Info(ctx, "persisted %s op for subscription for modelId %s and version %d with id %v", spec.CrudType, spec.ModelId, spec.Version, model.GetId())
+	logger.Info(
+		ctx,
+		"persisted %s op for subscription for modelId %s and version %d with id %v",
+		spec.CrudType,
+		spec.ModelId,
+		spec.Version,
+		model.GetId(),
+	)
 
 	return true, nil
 }
