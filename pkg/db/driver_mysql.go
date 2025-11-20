@@ -41,6 +41,7 @@ func (m *mysqlDriver) GetDSN(settings *Settings) string {
 	parameters["charset"] = settings.Charset
 	parameters["readTimeout"] = settings.Timeouts.ReadTimeout.String()
 	parameters["writeTimeout"] = settings.Timeouts.WriteTimeout.String()
+	parameters["interpolateParams"] = strconv.FormatBool(settings.InterpolateParams)
 
 	if settings.Timeouts.Timeout > 0 {
 		parameters["timeout"] = settings.Timeouts.Timeout.String()
