@@ -5,7 +5,9 @@ import (
 	"io"
 	"net/http"
 
+	toxiproxy "github.com/Shopify/toxiproxy/v2/client"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -26,12 +28,14 @@ const (
 type localstackSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	Port     int      `cfg:"port" default:"0"`
-	Region   string   `cfg:"region" default:"eu-central-1"`
-	Services []string `cfg:"services"`
+	Port             int    `cfg:"port" default:"0"`
+	Region           string `cfg:"region" default:"eu-central-1"`
+	ToxiproxyEnabled bool   `cfg:"toxiproxy_enabled" default:"false"`
 }
 
-type localstackFactory struct{}
+type localstackFactory struct {
+	toxiproxyFactory toxiproxyFactory
+}
 
 func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
 	if has, err := manager.HasType(ComponentLocalstack); err != nil {
@@ -44,25 +48,7 @@ func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigM
 		return nil
 	}
 
-	services := make([]string, 0)
-
-	if config.IsSet("cloud.aws.cloudwatch") {
-		services = append(services, localstackServiceCloudWatch)
-	}
-
-	if config.IsSet("aws_s3_endpoint") {
-		services = append(services, localstackServiceS3)
-	}
-
-	if config.IsSet("cloud.aws.sns") {
-		services = append(services, localstackServiceSns)
-	}
-
-	if config.IsSet("cloud.aws.sqs") {
-		services = append(services, localstackServiceSqs)
-	}
-
-	if len(services) == 0 {
+	if !config.IsSet("cloud.aws") {
 		return nil
 	}
 
@@ -71,7 +57,6 @@ func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigM
 		return fmt.Errorf("can not detect localstack settings: %w", err)
 	}
 	settings.Type = ComponentLocalstack
-	settings.Services = services
 
 	if err := manager.Add(settings); err != nil {
 		return fmt.Errorf("can not add default localstack component: %w", err)
@@ -84,35 +69,43 @@ func (f *localstackFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &localstackSettings{}
 }
 
-func (f *localstackFactory) DescribeContainers(settings any) componentContainerDescriptions {
-	return componentContainerDescriptions{
-		"main": {
-			containerConfig: f.configureContainer(settings),
-			healthCheck:     f.healthCheck(settings),
-		},
-	}
-}
-
-func (f *localstackFactory) configureContainer(settings any) *containerConfig {
+func (f *localstackFactory) DescribeContainers(settings any) ComponentContainerDescriptions {
 	s := settings.(*localstackSettings)
 
-	return &containerConfig{
+	descriptions := ComponentContainerDescriptions{
+		"main": {
+			ContainerConfig: f.configureContainer(settings),
+			HealthCheck:     f.healthCheck(settings),
+		},
+	}
+
+	if s.ToxiproxyEnabled {
+		descriptions["toxiproxy"] = f.toxiproxyFactory.describeContainer()
+	}
+
+	return descriptions
+}
+
+func (f *localstackFactory) configureContainer(settings any) *ContainerConfig {
+	s := settings.(*localstackSettings)
+
+	return &ContainerConfig{
 		Auth:       s.Image.Auth,
 		Repository: s.Image.Repository,
 		Tag:        s.Image.Tag,
-		Env:        []string{},
-		PortBindings: portBindings{
-			"4566/tcp": s.Port,
+		PortBindings: PortBindings{
+			"main": {
+				ContainerPort: 4566,
+				HostPort:      s.Port,
+				Protocol:      "tcp",
+			},
 		},
-		ExpireAfter: s.ExpireAfter,
 	}
 }
 
 func (f *localstackFactory) healthCheck(settings any) ComponentHealthCheck {
-	s := settings.(*localstackSettings)
-
-	return func(container *container) error {
-		binding := container.bindings["4566/tcp"]
+	return func(container *Container) error {
+		binding := container.bindings["main"]
 		url := fmt.Sprintf("http://%s:%s/_localstack/health", binding.host, binding.port)
 
 		var err error
@@ -128,6 +121,10 @@ func (f *localstackFactory) healthCheck(settings any) ComponentHealthCheck {
 			return err
 		}
 
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("status %d: %s", resp.StatusCode, body)
+		}
+
 		if err := json.Unmarshal(body, &status); err != nil {
 			return err
 		}
@@ -136,32 +133,39 @@ func (f *localstackFactory) healthCheck(settings any) ComponentHealthCheck {
 			return fmt.Errorf("no localstack services up yet")
 		}
 
-		services, ok := status[localstackServicesKey].(map[string]any)
-		if !ok {
-			return fmt.Errorf("could not assert services key in healthcheck object as map[string]any")
-		}
-
-		for _, service := range s.Services {
-			if _, ok := services[service]; !ok {
-				return fmt.Errorf("%s service is not up yet", service)
-			}
-
-			if services[service] != "available" {
-				return fmt.Errorf("%s service is in %s state", service, services[service])
-			}
-		}
-
 		return nil
 	}
 }
 
-func (f *localstackFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings any) (Component, error) {
+func (f *localstackFactory) Component(config cfg.Config, logger log.Logger, containers map[string]*Container, settings any) (Component, error) {
+	var err error
+	var ddbNamingSettings *ddb.TableNamingSettings
+	var proxy *toxiproxy.Proxy
+
 	s := settings.(*localstackSettings)
+	endpoint := containers["main"].bindings["main"].getAddress()
+
+	if ddbNamingSettings, err = ddb.GetTableNamingSettings(config, s.Name); err != nil {
+		return nil, fmt.Errorf("can not get table naming settings for ddb component: %w", err)
+	}
+
+	if s.ToxiproxyEnabled {
+		toxiproxyClient := f.toxiproxyFactory.client(containers["toxiproxy"])
+
+		if proxy, err = toxiproxyClient.CreateProxy("ddb", ":56248", endpoint); err != nil {
+			return nil, fmt.Errorf("can not create toxiproxy proxy for ddb component: %w", err)
+		}
+
+		endpoint = containers["toxiproxy"].bindings["main"].getAddress()
+	}
 
 	component := &localstackComponent{
-		services: s.Services,
-		binding:  containers["main"].bindings["4566/tcp"],
-		region:   s.Region,
+		config:            config,
+		logger:            logger,
+		endpointAddress:   endpoint,
+		region:            s.Region,
+		ddbNamingSettings: ddbNamingSettings,
+		toxiproxy:         proxy,
 	}
 
 	return component, nil

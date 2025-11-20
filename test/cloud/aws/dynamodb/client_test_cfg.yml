@@ -25,6 +25,6 @@ cloud:
 
 test:
   components:
-    ddb:
+    localstack:
       default:
         toxiproxy_enabled: true
