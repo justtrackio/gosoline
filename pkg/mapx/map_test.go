@@ -265,17 +265,26 @@ func (s *MapTestSuite) TestMerge() {
 }
 
 func (s *MapTestSuite) TestMergeMap() {
-	msi := map[string]any{
-		"a":   1,
-		"b":   2,
-		"msi": map[string]any{},
-	}
-	mapToMerge := mapx.NewMapX(msi)
+	mapToMerge := mapx.NewMapX(map[string]any{
+		"a":        1,
+		"b":        2,
+		"nested.a": 3,
+		"msi":      map[string]any{},
+	})
 
 	s.m.Merge(".", mapToMerge)
 	actual := s.m.Msi()
 
-	s.Equal(msi, actual)
+	expected := map[string]any{
+		"a": 1,
+		"b": 2,
+		"nested": map[string]any{
+			"a": 3,
+		},
+		"msi": map[string]any{},
+	}
+
+	s.Equal(expected, actual)
 }
 
 func (s *MapTestSuite) TestAppend() {

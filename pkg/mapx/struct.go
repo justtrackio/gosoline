@@ -569,21 +569,25 @@ func (s *Struct) doWriteMap(tag *StructTag, targetValue reflect.Value, sourceMap
 		return fmt.Errorf("value for field %s has to be a map but instead is %T", tag.Name, sourceData)
 	}
 
-	for _, key := range sourceValue.MapKeys() {
-		if keyValue, err := s.cast(targetKeyType, key.Interface()); err != nil {
-			return fmt.Errorf("key type %s does not match target type %s: %w", key.Type().Name(), targetKeyType.Name(), err)
+	for _, sourceKey := range sourceValue.MapKeys() {
+		var targetKey reflect.Value
+		if keyValue, err := s.cast(targetKeyType, sourceKey.Interface()); err != nil {
+			return fmt.Errorf("key type %s does not match target type %s: %w", sourceKey.Type().Name(), targetKeyType.Name(), err)
 		} else {
-			key = reflect.ValueOf(keyValue)
+			targetKey = reflect.ValueOf(keyValue)
 		}
 
-		selector := fmt.Sprintf("%s.%v", tag.Name, key.Interface())
-		elementData := sourceMap.Get(selector)
+		// Get the element value directly from the source map using the original key
+		sourceElementValue := sourceValue.MapIndex(sourceKey).Interface()
 
-		if elementData.IsMap() && targetValue.Type().Elem().Kind() == reflect.Struct {
+		// Wrap it in a MapXNode to handle struct/map cases
+		elementNode := interfaceToMapNode(sourceElementValue)
+
+		if elementNode.IsMap() && targetValue.Type().Elem().Kind() == reflect.Struct {
 			elementValue = reflect.New(targetValue.Type().Elem())
 			elementInterface := elementValue.Interface()
 
-			if elementMap, err = elementData.Map(); err != nil {
+			if elementMap, err = elementNode.Map(); err != nil {
 				return fmt.Errorf("element of field %s is not of type map: %w", tag.Name, err)
 			}
 
@@ -591,19 +595,23 @@ func (s *Struct) doWriteMap(tag *StructTag, targetValue reflect.Value, sourceMap
 				return fmt.Errorf("can not write map element of field %s: %w", tag.Name, err)
 			}
 
-			targetValue.SetMapIndex(key, elementValue.Elem())
+			targetValue.SetMapIndex(targetKey, elementValue.Elem())
 
 			continue
 		}
 
 		targetMapElementType := targetValue.Type().Elem()
-		elementValue := elementData.Data()
+		elementValue := elementNode.Data()
 
 		if finalValue, err = s.decodeAndCastValue(tag, targetMapElementType, elementValue); err != nil {
 			return fmt.Errorf("can not decode and cast value for key %s: %w", tag.Name, err)
 		}
 
-		targetValue.SetMapIndex(key, reflect.ValueOf(finalValue))
+		if finalValue == nil {
+			targetValue.SetMapIndex(targetKey, reflect.Zero(targetMapElementType))
+		} else {
+			targetValue.SetMapIndex(targetKey, reflect.ValueOf(finalValue))
+		}
 	}
 
 	return nil
@@ -668,6 +676,10 @@ func (s *Struct) doWriteStruct(cfg string, targetValue reflect.Value, sourceValu
 
 func (s *Struct) decodeAndCastValue(tag *StructTag, targetType reflect.Type, sourceValue any) (any, error) {
 	var err error
+
+	if sourceValue == nil {
+		return nil, nil
+	}
 
 	if !tag.NoCast {
 		if sourceValue, err = s.cast(targetType, sourceValue); err != nil {

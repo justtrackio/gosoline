@@ -68,9 +68,9 @@ func (d *insertData[T]) toSql() (sqlStr string, err error) {
 	sql.WriteString(" ")
 
 	if len(d.Columns) > 0 {
-		sql.WriteString("(")
-		sql.WriteString(strings.Join(d.Columns, ","))
-		sql.WriteString(") ")
+		sql.WriteString("(`")
+		sql.WriteString(strings.Join(d.Columns, "`,`"))
+		sql.WriteString("`) ")
 	}
 
 	if err = d.appendValuesToSQL(sql); err != nil {

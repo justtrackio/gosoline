@@ -661,6 +661,35 @@ func TestMapStructIO_WriteEmbedded(t *testing.T) {
 	assert.Equal(t, expected, source)
 }
 
+func TestMapStructIO_WriteMap(t *testing.T) {
+	type sourceStruct struct {
+		M map[string]any `cfg:"m"`
+	}
+
+	values := mapx.NewMapX(map[string]any{
+		"m": map[string]any{
+			"s":          "string",
+			"n":          nil,
+			"key.nested": "value",
+		},
+	})
+
+	expected := &sourceStruct{
+		M: map[string]any{
+			"s":          "string",
+			"n":          nil,
+			"key.nested": "value",
+		},
+	}
+
+	source := &sourceStruct{}
+	ms := setupMapStructIO(t, source)
+	err := ms.Write(values)
+
+	assert.NoError(t, err, "there should be no error during write")
+	assert.Equal(t, expected, source)
+}
+
 func TestMapStructIO_WriteStructNested(t *testing.T) {
 	type nestedStruct struct {
 		S string `cfg:"s"`

@@ -29,6 +29,47 @@ func InterfaceToInterfaceSlice(in any) ([]any, error) {
 	return out, nil
 }
 
+// Flatten takes a variadic list of elements and flattens any slices or arrays
+// found at the top level into a single []any slice. Non-slice elements are
+// preserved as-is in the output. Pointers to slices/arrays are dereferenced
+// before flattening.
+//
+// Note: This function only performs one level of flattening. Nested slices
+// within slices are not recursively flattened.
+//
+// Examples:
+//
+//	Flatten(1, 2, 3) // returns []any{1, 2, 3}
+//	Flatten([]int{1, 2}, 3) // returns []any{1, 2, 3}
+//	Flatten([]int{1, 2}, []string{"a", "b"}) // returns []any{1, 2, "a", "b"}
+//	Flatten(1, []int{2, 3}, 4, []string{"a"}) // returns []any{1, 2, 3, 4, "a"}
+//	Flatten([3]int{1, 2, 3}) // returns []any{1, 2, 3} (arrays work too)
+//	Flatten([]any{1, []int{2, 3}}) // returns []any{1, []int{2, 3}} (no recursive flattening)
+//	slice := []int{1, 2}; Flatten(&slice) // returns []any{1, 2} (pointers are dereferenced)
+func Flatten(elements ...any) []any {
+	flattened := make([]any, 0, len(elements))
+
+	for _, r := range elements {
+		rv := reflect.ValueOf(r)
+
+		// Dereference pointers
+		if rv.Kind() == reflect.Ptr {
+			rv = rv.Elem()
+		}
+
+		switch rv.Kind() {
+		case reflect.Slice, reflect.Array:
+			for i := 0; i < rv.Len(); i++ {
+				flattened = append(flattened, rv.Index(i).Interface())
+			}
+		default:
+			flattened = append(flattened, r)
+		}
+	}
+
+	return flattened
+}
+
 type sliceIterator struct {
 	current int
 	length  int

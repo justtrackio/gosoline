@@ -36,7 +36,7 @@ func NewExecutor(logger log.Logger, res *ExecutableResource, settings *BackoffSe
 
 type DefaultExecutor struct{}
 
-func NewDefaultExecutor() *DefaultExecutor {
+func NewDefaultExecutor() Executor {
 	return &DefaultExecutor{}
 }
 
