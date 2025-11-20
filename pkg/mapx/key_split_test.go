@@ -44,3 +44,25 @@ func TestSplitUnescapedDotN(t *testing.T) {
 		})
 	}
 }
+
+func TestEscapeDots(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"no dots", "abc", "abc"},
+		{"single dot", "a.b", "a\\.b"},
+		{"multiple dots", "a.b.c", "a\\.b\\.c"},
+		{"only dots", "...", "\\.\\.\\."},
+		{"empty string", "", ""},
+		{"already escaped", "a\\.b", "a\\\\.b"}, // backslash should not be special in input
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := mapx.EscapeDots(tt.in)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

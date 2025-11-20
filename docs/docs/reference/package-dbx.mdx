@@ -36,7 +36,59 @@ The `table` argument is the name of the database table.
 
 ## Query Builders
 
-The dbx package provides query builders for SELECT, INSERT, UPDATE and DELETE statements.
+The dbx package provides query builders for SELECT, INSERT, UPDATE, DELETE, and GET statements.
+
+### [Get()](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/client.go)
+
+#### Usage
+
+```go
+result, err := client.Get().Where(dbx.Eq{"id": 1}).Exec(ctx)
+if errors.Is(err, dbx.ErrNotFound) {
+    // handle not found
+}
+```
+```sql
+SELECT id, name FROM your_table WHERE id = 1 LIMIT 2
+```
+
+#### Description
+
+Creates a new GET query builder. This is a convenience method that wraps `Select()` and returns a single element or an error.
+
+**Return values:**
+- Returns a single element of type `T` if exactly one row is found
+- Returns `dbx.ErrNotFound` if no rows match the query
+- Returns an error if more than one row is found
+
+The `Get` builder automatically adds `LIMIT 2` to detect when multiple rows match the query.
+
+You can also pass a struct of type `T` to the `Where` clause:
+
+```go
+result, err := client.Get().Where(YourModel{Id: 1}).Exec(ctx)
+```
+```sql
+SELECT id, name FROM your_table WHERE id = 1 LIMIT 2
+```
+
+The `Get` builder supports the same methods as the `Select` builder, including `Join`, `OrderBy`, `GroupBy`, and `Having`.
+
+**Advanced Usage:**
+
+```go
+// Get with JOIN
+result, err := client.Get().
+    Join("profiles p ON your_table.id = p.user_id").
+    Where(dbx.Eq{"p.verified": true}).
+    Exec(ctx)
+
+// Get with ORDER BY (returns first match after ordering)
+result, err := client.Get().
+    Where(dbx.Eq{"status": "active"}).
+    OrderBy("created_at DESC").
+    Exec(ctx)
+```
 
 ### [Select()](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/client.go)
 
@@ -144,9 +196,28 @@ DELETE FROM your_table WHERE id = 1
 
 Creates a new DELETE query builder. You can use the `Where` method to add conditions to your query. The `Exec` method executes the query.
 
-## Select Builder Methods
+## Error Handling
 
-In addition to the `Where` method, the `Select` builder provides the following methods:
+### [ErrNotFound](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/client.go)
+
+The `dbx.ErrNotFound` error is returned by the `Get()` method when no rows match the query. You can use `errors.Is()` to check for this error:
+
+```go
+result, err := client.Get().Where(dbx.Eq{"id": 1}).Exec(ctx)
+if errors.Is(err, dbx.ErrNotFound) {
+    // handle not found case
+    return nil, fmt.Errorf("user not found")
+}
+if err != nil {
+    // handle other errors
+    return nil, err
+}
+// use result
+```
+
+## Query Builder Methods
+
+The `Select` and `Get` builders provide the following methods to build complex queries. Note that `Get` automatically adds `LIMIT 2` to detect multiple results.
 
 ### [Distinct()](https://github.com/justtrackio/gosoline/blob/main/pkg/dbx/select.go)
 

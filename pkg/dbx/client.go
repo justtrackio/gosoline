@@ -2,6 +2,7 @@ package dbx
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -11,6 +12,9 @@ import (
 	"github.com/justtrackio/gosoline/pkg/refl"
 	"github.com/lann/builder"
 )
+
+// ErrNotFound is returned by GetBuilder.Exec when no row matches.
+var ErrNotFound = errors.New("dbx: not found")
 
 // Client is the main entry point to the package. It is used to create query builders.
 type Client[T any] interface {
@@ -25,15 +29,22 @@ type Client[T any] interface {
 	// Replace creates a new REPLACE query builder.
 	//
 	//	_, err := client.Replace(YourModel{Id: 1, Name: "test"}).Exec(ctx)
-	Replace(val T) InsertBuilder[T]
+	Replace(val ...T) InsertBuilder[T]
 	// Select creates a new SELECT query builder.
 	//
-	//	results, err := client.Select().Where(dbx.Eq{"id": 1}).Exec(ctx)
+	//	results, err := client.Columns().Where(dbx.Eq{"id": 1}).Exec(ctx)
 	Select() SelectBuilder[T]
 	// Update creates a new UPDATE query builder.
 	//
 	//	_, err := client.Update(map[string]any{"name": "new_name"}).Where(dbx.Eq{"id": 1}).Exec(ctx)
 	Update(updateMaps ...any) UpdateBuilder[T]
+	// Get creates a new GET query builder.
+	//
+	//	result, err := client.Get().Where(dbx.Eq{"id": 1}).Exec(ctx)
+	//	- Returns a single element if found.
+	//	- Returns ErrNotFound if no row matches.
+	//	- Returns an error if more than one row is found.
+	Get() GetBuilder[T]
 }
 
 var _ Client[any] = (*client[any])(nil)
@@ -75,6 +86,7 @@ func NewClientWithInterfaces[T any](dbClient db.Client, table string, placeholde
 	builder.Register(InsertBuilder[T]{}, insertData[T]{})
 	builder.Register(SelectBuilder[T]{}, selectData[T]{})
 	builder.Register(UpdateBuilder[T]{}, updateData[T]{})
+	builder.Register(GetBuilder[T]{}, getData[T]{})
 
 	return &client[T]{
 		client:            dbClient,
@@ -101,8 +113,8 @@ func (c *client[T]) Insert(values ...T) InsertBuilder[T] {
 // Replace creates a new REPLACE query builder.
 //
 //	_, err := client.Replace(YourModel{Id: 1, Name: "test"}).Exec(ctx)
-func (c *client[T]) Replace(val T) InsertBuilder[T] {
-	rb := c.Insert(val)
+func (c *client[T]) Replace(val ...T) InsertBuilder[T] {
+	rb := c.Insert(val...)
 	rb = rb.statementKeyword("REPLACE")
 
 	return rb
@@ -110,9 +122,13 @@ func (c *client[T]) Replace(val T) InsertBuilder[T] {
 
 // Select creates a new SELECT query builder.
 //
-//	results, err := client.Select().Where(dbx.Eq{"id": 1}).Exec(ctx)
+//	results, err := client.Columns().Where(dbx.Eq{"id": 1}).Exec(ctx)
 func (c *client[T]) Select() SelectBuilder[T] {
-	return newSelectBuilder[T](c.client, c.table, c.placeholderFormat).columns(c.columns...)
+	escaped := funk.Map(c.columns, func(col string) string {
+		return fmt.Sprintf("`%s`", col)
+	})
+
+	return newSelectBuilder[T](c.client, c.table, c.placeholderFormat).columns(escaped...)
 }
 
 // Update creates a new UPDATE query builder.
@@ -142,4 +158,11 @@ func (c *client[T]) Update(updateValues ...any) UpdateBuilder[T] {
 	}
 
 	return ub.SetMap(finalMap)
+}
+
+// Get creates a new GET query builder.
+//
+//	result, err := client.Get().Where(dbx.Eq{"id": 1}).Exec(ctx)
+func (c *client[T]) Get() GetBuilder[T] {
+	return newGetBuilder[T](c.client, c.table, c.placeholderFormat).columns(c.columns...)
 }

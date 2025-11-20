@@ -34,3 +34,18 @@ func SplitUnescapedDotN(s string, n int) []string {
 
 	return parts
 }
+
+// EscapeDots escapes all dots in the string with a backslash
+// so they won't be treated as path separators
+func EscapeDots(s string) string {
+	var result []rune
+
+	for _, r := range s {
+		if r == '.' {
+			result = append(result, '\\')
+		}
+		result = append(result, r)
+	}
+
+	return string(result)
+}

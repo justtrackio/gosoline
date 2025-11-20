@@ -24,6 +24,7 @@ type selectData[T any] struct {
 	PlaceholderFormat PlaceholderFormat
 	Options           []string
 	Columns           []Sqlizer
+	CustomColumns     bool // tracks if columns were explicitly set via Column()
 	From              Sqlizer
 	Joins             []Sqlizer
 	WhereParts        []Sqlizer
@@ -200,7 +201,18 @@ func (b SelectBuilder[T]) columns(columns ...string) SelectBuilder[T] {
 // the columns string, for example:
 //
 //	Column("IF(col IN ("+squirrel.Placeholders(3)+"), 1, 0) as col", 1, 2, 3)
+//
+// The first call to Column() will clear any default columns and replace them
+// with the specified custom columns. Subsequent calls will append.
 func (b SelectBuilder[T]) Column(column any, args ...any) SelectBuilder[T] {
+	data := builder.GetStruct(b).(selectData[T])
+
+	// If this is the first explicit Column call, clear default columns
+	if !data.CustomColumns {
+		b = builder.Set(b, "Columns", []any{}).(SelectBuilder[T])
+		b = builder.Set(b, "CustomColumns", true).(SelectBuilder[T])
+	}
+
 	return builder.Append(b, "Columns", newPart(column, args...)).(SelectBuilder[T])
 }
 

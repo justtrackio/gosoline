@@ -10155,7 +10155,7 @@ func (_m *Pipeliner) Select(ctx context.Context, index int) *redis.StatusCmd {
 	ret := _m.Called(ctx, index)
 
 	if len(ret) == 0 {
-		panic("no return value specified for Select")
+		panic("no return value specified for Columns")
 	}
 
 	var r0 *redis.StatusCmd
@@ -10170,7 +10170,7 @@ func (_m *Pipeliner) Select(ctx context.Context, index int) *redis.StatusCmd {
 	return r0
 }
 
-// Pipeliner_Select_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Select'
+// Pipeliner_Select_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Columns'
 type Pipeliner_Select_Call struct {
 	*mock.Call
 }
@@ -10179,7 +10179,7 @@ type Pipeliner_Select_Call struct {
 //   - ctx context.Context
 //   - index int
 func (_e *Pipeliner_Expecter) Select(ctx interface{}, index interface{}) *Pipeliner_Select_Call {
-	return &Pipeliner_Select_Call{Call: _e.mock.On("Select", ctx, index)}
+	return &Pipeliner_Select_Call{Call: _e.mock.On("Columns", ctx, index)}
 }
 
 func (_c *Pipeliner_Select_Call) Run(run func(ctx context.Context, index int)) *Pipeliner_Select_Call {
