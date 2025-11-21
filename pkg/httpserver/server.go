@@ -160,8 +160,16 @@ func (s *HttpServer) IsHealthy(_ context.Context) (bool, error) {
 }
 
 func (s *HttpServer) Run(ctx context.Context) error {
+	defer s.logger.Info(ctx, "leaving httpserver")
+
 	cfn := coffin.New()
 	cfn.GoWithContext(ctx, s.waitForStop)
+
+	connStateLogger := s.logger.WithChannel("connState")
+
+	s.server.ConnState = func(c net.Conn, state http.ConnState) {
+		connStateLogger.Info(ctx, "%s -> %s is now in state %s", c.RemoteAddr(), c.LocalAddr(), state)
+	}
 
 	err := s.server.Serve(s.listener)
 
@@ -170,8 +178,6 @@ func (s *HttpServer) Run(ctx context.Context) error {
 
 		return err
 	}
-
-	s.logger.Info(ctx, "leaving httpserver")
 
 	return cfn.Wait()
 }
