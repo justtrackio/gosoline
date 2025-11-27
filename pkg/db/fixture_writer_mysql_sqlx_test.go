@@ -59,12 +59,10 @@ func (s *MysqlSqlxFixtureWriterTestSuite) TestWrite() {
 		},
 	}
 
-	s.mock.ExpectExec(`INSERT INTO table (id,name,is_active) VALUES (?,?,?)`).
-		WithArgs(1, "Bob", true).
-		WillReturnResult(sqlmock.NewResult(0, 1))
-	s.mock.ExpectExec(`INSERT INTO table (id,name,is_active) VALUES (?,?,?)`).
-		WithArgs(2, "Alice", false).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+	// Batch insert: all fixtures are inserted in a single statement
+	s.mock.ExpectExec(`INSERT INTO table (id,name,is_active) VALUES (?,?,?),(?,?,?)`).
+		WithArgs(1, "Bob", true, 2, "Alice", false).
+		WillReturnResult(sqlmock.NewResult(0, 2))
 
 	err := s.writer.Write(s.T().Context(), fixtureSetFixtures)
 	s.NoError(err)

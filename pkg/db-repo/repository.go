@@ -56,6 +56,7 @@ type RepositoryReadOnly interface {
 type Repository interface {
 	RepositoryReadOnly
 	Create(ctx context.Context, value ModelBased) error
+	BatchCreate(ctx context.Context, values []ModelBased, batchSize int) error
 	Update(ctx context.Context, value ModelBased) error
 	Delete(ctx context.Context, value ModelBased) error
 }
