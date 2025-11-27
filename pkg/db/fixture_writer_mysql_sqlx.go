@@ -14,12 +14,14 @@ import (
 
 type MysqlSqlxMetaData struct {
 	TableName string
+	BatchSize int
 }
 
 type mysqlSqlxFixtureWriter struct {
-	logger   log.Logger
-	client   Client
-	metadata *MysqlSqlxMetaData
+	logger    log.Logger
+	client    Client
+	metadata  *MysqlSqlxMetaData
+	batchSize int
 }
 
 func MysqlSqlxFixtureSetFactory[T any](metadata *MysqlSqlxMetaData, data fixtures.NamedFixtures[T], options ...fixtures.FixtureSetOption) fixtures.FixtureSetFactory {
@@ -45,24 +47,40 @@ func NewMysqlSqlxFixtureWriter(ctx context.Context, config cfg.Config, logger lo
 }
 
 func NewMysqlSqlxFixtureWriterWithInterfaces(logger log.Logger, client Client, metadata *MysqlSqlxMetaData) fixtures.FixtureWriter {
+	batchSize := metadata.BatchSize
+	if batchSize <= 0 {
+		batchSize = fixtures.DefaultBatchSize
+	}
+
 	return &mysqlSqlxFixtureWriter{
-		logger:   logger,
-		client:   client,
-		metadata: metadata,
+		logger:    logger,
+		client:    client,
+		metadata:  metadata,
+		batchSize: batchSize,
 	}
 }
 
 func (m *mysqlSqlxFixtureWriter) Write(ctx context.Context, fixtures []any) error {
-	for _, item := range fixtures {
-		columns := refl.GetTags(item, "db")
-		placeholders := funk.Map(columns, func(column string) string {
-			return ":" + column
-		})
+	if len(fixtures) == 0 {
+		return nil
+	}
 
-		sql := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", m.metadata.TableName, strings.Join(columns, ","), strings.Join(placeholders, ","))
+	// Build SQL statement once - all items share the same structure
+	columns := refl.GetTags(fixtures[0], "db")
+	placeholders := funk.Map(columns, func(column string) string {
+		return ":" + column
+	})
+	sql := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", m.metadata.TableName, strings.Join(columns, ","), strings.Join(placeholders, ","))
 
-		if _, err := m.client.NamedExec(ctx, sql, item); err != nil {
-			return fmt.Errorf("can not insert item %T into %s: %w", item, m.metadata.TableName, err)
+	// Insert in batches
+	for start := 0; start < len(fixtures); start += m.batchSize {
+		end := start + m.batchSize
+		if end > len(fixtures) {
+			end = len(fixtures)
+		}
+		batch := fixtures[start:end]
+		if _, err := m.client.NamedExec(ctx, sql, batch); err != nil {
+			return fmt.Errorf("can not batch insert items into %s: %w", m.metadata.TableName, err)
 		}
 	}
 

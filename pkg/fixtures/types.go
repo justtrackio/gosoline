@@ -7,6 +7,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+// DefaultBatchSize is the default number of items to insert per batch
+// for fixture writers that support batching (e.g., MySQL SQLX, MySQL ORM).
+const DefaultBatchSize = 100
+
 type (
 	FixtureSetFactory  func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureSet, error)
 	FixtureSetsFactory func(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]FixtureSet, error)

@@ -220,6 +220,7 @@ require (
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/spf13/viper v1.20.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
+	github.com/t-tiger/gorm-bulk-insert/v2 v2.1.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/twmb/franz-go/pkg/kmsg v1.12.0 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect

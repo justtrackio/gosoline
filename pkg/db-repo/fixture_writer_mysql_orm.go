@@ -10,10 +10,15 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+type MysqlOrmSettings struct {
+	BatchSize int
+}
+
 type mysqlOrmFixtureWriter struct {
-	logger   log.Logger
-	metadata *Metadata
-	repo     Repository
+	logger    log.Logger
+	metadata  *Metadata
+	repo      Repository
+	batchSize int
 }
 
 func MysqlOrmFixtureSetFactory[T any](metadata *Metadata, data fixtures.NamedFixtures[T], options ...fixtures.FixtureSetOption) fixtures.FixtureSetFactory {
@@ -57,30 +62,41 @@ func NewMysqlOrmFixtureWriter(ctx context.Context, config cfg.Config, logger log
 		return nil, fmt.Errorf("can not create repo: %w", err)
 	}
 
-	return NewMysqlFixtureWriterWithInterfaces(logger, metadata, repo), nil
+	return NewMysqlFixtureWriterWithInterfaces(logger, metadata, repo, nil), nil
 }
 
-func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *Metadata, repo Repository) fixtures.FixtureWriter {
+func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *Metadata, repo Repository, settings *MysqlOrmSettings) fixtures.FixtureWriter {
+	batchSize := fixtures.DefaultBatchSize
+	if settings != nil && settings.BatchSize > 0 {
+		batchSize = settings.BatchSize
+	}
+
 	return &mysqlOrmFixtureWriter{
-		logger:   logger,
-		metadata: metadata,
-		repo:     repo,
+		logger:    logger,
+		metadata:  metadata,
+		repo:      repo,
+		batchSize: batchSize,
 	}
 }
 
 func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fixtures []any) error {
-	var ok bool
-	var model ModelBased
+	if len(fixtures) == 0 {
+		return nil
+	}
 
+	// Convert fixtures to []ModelBased for BatchCreate
+	models := make([]ModelBased, 0, len(fixtures))
 	for _, item := range fixtures {
-		if model, ok = item.(ModelBased); !ok {
+		model, ok := item.(ModelBased)
+		if !ok {
 			return fmt.Errorf("assertion failed: %T is not db_repo.ModelBased", item)
 		}
+		models = append(models, model)
+	}
 
-		err := m.repo.Update(ctx, model)
-		if err != nil {
-			return err
-		}
+	// Use BatchCreate which supports explicit IDs for fixtures
+	if err := m.repo.BatchCreate(ctx, models, m.batchSize); err != nil {
+		return fmt.Errorf("can not batch insert fixtures: %w", err)
 	}
 
 	m.logger.Info(ctx, "loaded %d mysql fixtures", len(fixtures))
