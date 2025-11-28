@@ -11,8 +11,8 @@ test:
         repository: "axllent/mailpit"
         tag: "v1.23.2"
       mysql:
-        repository: "mysql/mysql-server"
-        tag: "8.0"
+        repository: "mysql"
+        tag: "8.0.42"
       redis:
         repository: "redis"
         tag: "7-alpine"

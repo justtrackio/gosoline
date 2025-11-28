@@ -4,13 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
-	"runtime"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -40,15 +37,7 @@ func NewLifeCyclePurgerWithSettings(logger log.Logger, settings *Settings) (*Lif
 	var err error
 	var db *sqlx.DB
 
-	fkSettings := *settings
-	fkSettings.Parameters = map[string]string{
-		"FOREIGN_KEY_CHECKS": "0",
-	}
-	for k, v := range settings.Parameters {
-		fkSettings.Parameters[k] = v
-	}
-
-	if db, err = NewConnectionWithInterfaces(logger, &fkSettings); err != nil {
+	if db, err = NewConnectionWithInterfaces(logger, settings); err != nil {
 		return nil, fmt.Errorf("could not connect to database: %w", err)
 	}
 
@@ -68,63 +57,80 @@ func (p LifeCyclePurger) Purge(ctx context.Context) (err error) {
 		}
 	}()
 
-	rows, err := p.db.QueryContext(ctx, "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?;", p.settings.Uri.Database)
+	if tables, err = p.getTables(ctx); err != nil {
+		return err
+	}
+
+	if len(tables) == 0 {
+		return nil
+	}
+
+	if err := p.deleteTables(ctx, tables); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// getTables returns all tables in the database that should be purged.
+func (p LifeCyclePurger) getTables(ctx context.Context) ([]string, error) {
+	var tables []string
+
+	err := p.db.SelectContext(ctx, &tables, "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE'", p.settings.Uri.Database)
 	if err != nil {
-		return fmt.Errorf("failed to check tables of database: %w", err)
-	}
-
-	for rows.Next() {
-		var table string
-		if err = rows.Scan(&table); err != nil {
-			// on error, we will end the iteration and read the error afterwards with rows.Err()
-			break
-		}
-		tables = append(tables, table)
-	}
-
-	if err = rows.Close(); err != nil {
-		return fmt.Errorf("could not close rows: %w", err)
-	}
-
-	if err = rows.Err(); err != nil {
-		return fmt.Errorf("could not iterate over rows: %w", err)
+		return nil, fmt.Errorf("failed to query tables of database: %w", err)
 	}
 
 	tables = funk.Filter(tables, func(s string) bool {
 		return !funk.Contains(tableExcludes, s)
 	})
 
-	if len(tables) == 0 {
-		return nil
+	return tables, nil
+}
+
+// deleteTables deletes all rows from the given tables in a single transaction.
+// FK checks are disabled within the transaction to handle circular references
+// and avoid ordering issues. Using DELETE instead of TRUNCATE avoids the
+// MySQL/InnoDB issue where TRUNCATE changes the internal table_id, which can
+// cause other connections with cached FK metadata to fail with Error 1452.
+//
+// For performance, all DELETE statements are batched into a single multi-statement
+// query to minimize round trips to the database.
+func (p LifeCyclePurger) deleteTables(ctx context.Context, tables []string) error {
+	tx, err := p.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	chunks := funk.Chunk(tables, int(math.Ceil(float64(len(tables))/float64(runtime.NumCPU()))))
+	committed := false
 
-	cfn := coffin.New()
-	cfn.GoWithContext(ctx, func(ctx context.Context) error {
-		for _, chunk := range chunks {
-			cfn.GoWithContext(ctx, func(ctx context.Context) error {
-				var table string
-				var sqls []string
-
-				for _, table = range chunk {
-					sqls = append(sqls, fmt.Sprintf("TRUNCATE TABLE %s;", table))
-				}
-
-				if _, err = p.db.ExecContext(ctx, strings.Join(sqls, " ")); err != nil {
-					return fmt.Errorf("could not truncate tables: %w", err)
-				}
-
-				return nil
-			})
+	defer func() {
+		if !committed {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				p.logger.Warn(ctx, "failed to rollback transaction: %s", rollbackErr.Error())
+			}
 		}
+	}()
 
-		return nil
-	})
-
-	if err = cfn.Wait(); err != nil {
-		return fmt.Errorf("error while truncating tables: %w", err)
+	// Build a single multi-statement query with all DELETEs
+	// This reduces round trips and improves performance significantly
+	var statements []string
+	statements = append(statements, "SET FOREIGN_KEY_CHECKS = 0")
+	for _, table := range tables {
+		statements = append(statements, fmt.Sprintf("DELETE FROM `%s`", table))
 	}
+	statements = append(statements, "SET FOREIGN_KEY_CHECKS = 1")
+
+	query := strings.Join(statements, "; ")
+	if _, err = tx.ExecContext(ctx, query); err != nil {
+		return fmt.Errorf("failed to purge tables: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	committed = true
 
 	return nil
 }
