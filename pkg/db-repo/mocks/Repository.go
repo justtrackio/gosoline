@@ -22,6 +22,54 @@ func (_m *Repository) EXPECT() *Repository_Expecter {
 	return &Repository_Expecter{mock: &_m.Mock}
 }
 
+// BatchCreate provides a mock function with given fields: ctx, values, batchSize
+func (_m *Repository) BatchCreate(ctx context.Context, values []db_repo.ModelBased, batchSize int) error {
+	ret := _m.Called(ctx, values, batchSize)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BatchCreate")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []db_repo.ModelBased, int) error); ok {
+		r0 = rf(ctx, values, batchSize)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Repository_BatchCreate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BatchCreate'
+type Repository_BatchCreate_Call struct {
+	*mock.Call
+}
+
+// BatchCreate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - values []db_repo.ModelBased
+//   - batchSize int
+func (_e *Repository_Expecter) BatchCreate(ctx interface{}, values interface{}, batchSize interface{}) *Repository_BatchCreate_Call {
+	return &Repository_BatchCreate_Call{Call: _e.mock.On("BatchCreate", ctx, values, batchSize)}
+}
+
+func (_c *Repository_BatchCreate_Call) Run(run func(ctx context.Context, values []db_repo.ModelBased, batchSize int)) *Repository_BatchCreate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]db_repo.ModelBased), args[2].(int))
+	})
+	return _c
+}
+
+func (_c *Repository_BatchCreate_Call) Return(_a0 error) *Repository_BatchCreate_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Repository_BatchCreate_Call) RunAndReturn(run func(context.Context, []db_repo.ModelBased, int) error) *Repository_BatchCreate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Count provides a mock function with given fields: ctx, qb, model
 func (_m *Repository) Count(ctx context.Context, qb *db_repo.QueryBuilder, model db_repo.ModelBased) (int, error) {
 	ret := _m.Called(ctx, qb, model)
