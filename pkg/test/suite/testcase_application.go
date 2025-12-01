@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
@@ -96,7 +97,9 @@ func RunTestCaseApplication(t *testing.T, _ TestingSuite, suiteConf *SuiteConfig
 	config := environment.Config()
 	logger := environment.Logger()
 
-	app, err := application.NewWithInterfaces(environment.Context(), config, logger, appOptions...)
+	// We need to create a new context here to isolate the individual apps from each other.
+	// Else they would share the same container and module instances which can lead to issues.
+	app, err := application.NewWithInterfaces(appctx.WithContainer(context.Background()), config, logger, appOptions...)
 	if err != nil {
 		assert.FailNow(t, "failed to create application under test", err.Error())
 
