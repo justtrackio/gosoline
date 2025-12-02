@@ -80,11 +80,6 @@ func suiteConfApplyOptions(suite TestingSuite, extraOptions []Option) *SuiteConf
 		WithClockProvider(clock.NewFakeClock()),
 		WithConfigMap(map[string]any{
 			"cloud.aws.default.ec2.metadata.available": false,
-			"kernel": map[string]any{
-				"health_check": map[string]any{
-					"wait_interval": "10ms",
-				},
-			},
 		}),
 	}
 	options = append(options, suite.SetupSuite()...)
