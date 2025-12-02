@@ -28,8 +28,8 @@ const (
 type localstackSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	Port             int    `cfg:"port" default:"0"`
-	Region           string `cfg:"region" default:"eu-central-1"`
+	Port             int    `cfg:"port"              default:"0"`
+	Region           string `cfg:"region"            default:"eu-central-1"`
 	ToxiproxyEnabled bool   `cfg:"toxiproxy_enabled" default:"false"`
 }
 
