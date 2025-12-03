@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 type Service struct {
@@ -13,8 +14,8 @@ type Service struct {
 	topic  string
 }
 
-func NewService(ctx context.Context, logger log.Logger, topic string, brokers []string) (*Service, error) {
-	client, err := NewClient(ctx, logger, brokers)
+func NewService(ctx context.Context, logger log.Logger, topic string, opts []kgo.Opt) (*Service, error) {
+	client, err := NewClient(ctx, logger, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka admin client: %w", err)
 	}

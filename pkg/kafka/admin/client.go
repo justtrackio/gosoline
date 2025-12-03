@@ -16,12 +16,8 @@ type Client interface {
 	ListTopics(ctx context.Context, topics ...string) (kadm.TopicDetails, error)
 }
 
-func NewClient(ctx context.Context, logger log.Logger, brokers []string) (Client, error) {
-	opts := []kgo.Opt{
-		kgo.SeedBrokers(brokers...),
-		kgo.WithContext(ctx),
-		kgo.WithLogger(logging.NewKafkaLogger(ctx, logger)),
-	}
+func NewClient(ctx context.Context, logger log.Logger, opts []kgo.Opt) (Client, error) {
+	opts = append(opts, kgo.WithContext(ctx), kgo.WithLogger(logging.NewKafkaLogger(ctx, logger)))
 
 	return kadm.NewOptClient(opts...)
 }

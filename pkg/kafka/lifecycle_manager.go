@@ -34,12 +34,12 @@ var _ LifecycleManager = &lifecycleManager{}
 
 func NewLifecycleManager(connectionName string, topic string) reslife.LifeCycleerFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (reslife.LifeCycleer, error) {
-		conn, err := connection.ParseSettings(config, connectionName)
+		connectionOptions, err := connection.BuildConnectionOptions(config, connectionName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse kafka connection settings for connection name %q: %w", connectionName, err)
+			return nil, fmt.Errorf("failed to build kafka connection options for connection name %q: %w", connectionName, err)
 		}
 
-		service, err := admin.NewService(ctx, logger, topic, conn.Brokers)
+		service, err := admin.NewService(ctx, logger, topic, connectionOptions)
 		if err != nil {
 			return nil, fmt.Errorf("could not create kafka lifecycle manager: %w", err)
 		}

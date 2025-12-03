@@ -9,6 +9,7 @@ import (
 	kafkaAdmin "github.com/justtrackio/gosoline/pkg/kafka/admin"
 	schemaRegistry "github.com/justtrackio/gosoline/pkg/kafka/schema-registry"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 func init() {
@@ -76,7 +77,11 @@ func (f *kafkaFactory) healthCheck() ComponentHealthCheck {
 	return func(container *Container) error {
 		ctx := context.Background()
 
-		client, err := kafkaAdmin.NewClient(ctx, log.NewLogger(), []string{f.brokerAddress(container)})
+		opts := []kgo.Opt{
+			kgo.SeedBrokers(f.brokerAddress(container)),
+		}
+
+		client, err := kafkaAdmin.NewClient(ctx, log.NewLogger(), opts)
 		if err != nil {
 			return fmt.Errorf("failed to create kafka admin client: %w", err)
 		}
@@ -154,7 +159,11 @@ func (f *kafkaFactory) schemaRegistryAddress(container *Container) string {
 func (f *kafkaFactory) Component(_ cfg.Config, logger log.Logger, containers map[string]*Container, _ any) (Component, error) {
 	main := containers["main"]
 
-	adminClient, err := kafkaAdmin.NewClient(context.Background(), logger, []string{f.brokerAddress(main)})
+	opts := []kgo.Opt{
+		kgo.SeedBrokers(f.brokerAddress(main)),
+	}
+
+	adminClient, err := kafkaAdmin.NewClient(context.Background(), logger, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka admin client: %w", err)
 	}
