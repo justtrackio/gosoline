@@ -56,9 +56,17 @@ type RepositoryReadOnly interface {
 type Repository interface {
 	RepositoryReadOnly
 	Create(ctx context.Context, value ModelBased) error
-	BatchCreate(ctx context.Context, values []ModelBased, batchSize int) error
 	Update(ctx context.Context, value ModelBased) error
 	Delete(ctx context.Context, value ModelBased) error
+}
+
+// BatchedRepository extends Repository with batch creation capabilities.
+// Use this interface when you need to insert multiple records at once.
+//
+//go:generate go run github.com/vektra/mockery/v2 --name BatchedRepository
+type BatchedRepository interface {
+	Repository
+	BatchCreate(ctx context.Context, values []ModelBased, batchSize int) error
 }
 
 type repository struct {
