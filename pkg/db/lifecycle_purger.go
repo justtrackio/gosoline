@@ -117,7 +117,7 @@ func (p LifeCyclePurger) deleteTables(ctx context.Context, tables []string) erro
 	var statements []string
 	statements = append(statements, "SET FOREIGN_KEY_CHECKS = 0")
 	for _, table := range tables {
-		statements = append(statements, fmt.Sprintf("DELETE FROM `%s`", table))
+		statements = append(statements, fmt.Sprintf("TRUNCATE TABLE `%s`", table))
 	}
 	statements = append(statements, "SET FOREIGN_KEY_CHECKS = 1")
 
