@@ -187,7 +187,11 @@ func (s *stage) stopWait() {
 	<-s.running.Channel()
 
 	s.cfn.Kill(ErrKernelStopping)
-	s.err = s.cfn.Wait()
+
+	// Filter out cancellation errors from the coffin itself
+	if err := s.cfn.Wait(); !exec.IsRequestCanceled(err) {
+		s.err = err
+	}
 
 	// if the stage already failed, we had a race condition in the past. On the one hand, the error wasn't propagated to
 	// the coffin/tomb yet, on the other hand, we had spawned a go routine to stop the kernel (which would eventually call

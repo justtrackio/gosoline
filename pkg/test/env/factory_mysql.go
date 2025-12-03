@@ -21,7 +21,7 @@ const componentMySql = "mysql"
 
 type mysqlCredentials struct {
 	DatabaseName string `cfg:"database_name" default:"gosoline"`
-	UserName     string `cfg:"user_name" default:"gosoline"`
+	UserName     string `cfg:"user_name"     default:"gosoline"`
 	UserPassword string `cfg:"user_password" default:"gosoline"`
 	RootPassword string `cfg:"root_password" default:"gosoline"`
 }

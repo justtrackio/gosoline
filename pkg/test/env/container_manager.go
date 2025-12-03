@@ -189,7 +189,6 @@ func (m *containerManager) waitUntilHealthy(ctx context.Context, container *Cont
 	backoffSetting.RandomizationFactor = 1
 
 	start := time.Now()
-	time.Sleep(time.Second)
 
 	typ := container.typ
 	name := container.name
