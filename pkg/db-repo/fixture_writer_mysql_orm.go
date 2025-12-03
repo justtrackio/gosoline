@@ -17,7 +17,7 @@ type MysqlOrmSettings struct {
 type mysqlOrmFixtureWriter struct {
 	logger    log.Logger
 	metadata  *Metadata
-	repo      Repository
+	repo      BatchedRepository
 	batchSize int
 }
 
@@ -65,7 +65,7 @@ func NewMysqlOrmFixtureWriter(ctx context.Context, config cfg.Config, logger log
 	return NewMysqlFixtureWriterWithInterfaces(logger, metadata, repo, nil), nil
 }
 
-func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *Metadata, repo Repository, settings *MysqlOrmSettings) fixtures.FixtureWriter {
+func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *Metadata, repo BatchedRepository, settings *MysqlOrmSettings) fixtures.FixtureWriter {
 	batchSize := fixtures.DefaultBatchSize
 	if settings != nil && settings.BatchSize > 0 {
 		batchSize = settings.BatchSize
