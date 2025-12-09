@@ -161,19 +161,34 @@ func (f *mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[stri
 	var con *sqlx.DB
 	var proxy *toxiproxy.Proxy
 
-	mysqlBinding := containers["main"].bindings["main"]
+	// Always use the direct mysql binding for setup (database, user, permissions)
+	// The health check already ran setup via the direct binding, but we ensure it here
+	// in case the component is built without a prior health check.
+	directMysqlBinding := containers["main"].bindings["main"]
+
+	// The connection binding may be different if toxiproxy is enabled
+	connectionBinding := directMysqlBinding
 
 	if s.ToxiproxyEnabled {
 		toxiproxyClient := f.toxiproxyFactory.client(containers["toxiproxy"])
 
-		if proxy, err = toxiproxyClient.CreateProxy("ddb", ":56248", mysqlBinding.getAddress()); err != nil {
-			return nil, fmt.Errorf("can not create toxiproxy proxy for ddb component: %w", err)
+		// Use the internal address for container-to-container communication
+		// This allows toxiproxy to reach mysql on the Docker network
+		mysqlInternalAddress := containers["main"].getInternalAddress("main")
+		if mysqlInternalAddress == "" {
+			// Fallback to external binding if internal is not available
+			mysqlInternalAddress = directMysqlBinding.getAddress()
 		}
 
-		mysqlBinding = containers["toxiproxy"].bindings["main"]
+		if proxy, err = toxiproxyClient.CreateProxy("mysql", ":56248", mysqlInternalAddress); err != nil {
+			return nil, fmt.Errorf("cannot create toxiproxy proxy for mysql component: %w", err)
+		}
+
+		connectionBinding = containers["toxiproxy"].bindings["main"]
 	}
 
-	if con, err = f.connection(s, mysqlBinding); err != nil {
+	// Create connection using the appropriate binding, but setup using direct binding
+	if con, err = f.connectionWithSetupBinding(s, connectionBinding, directMysqlBinding); err != nil {
 		return nil, fmt.Errorf("can not create client: %w", err)
 	}
 
@@ -183,7 +198,7 @@ func (f *mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[stri
 		},
 		client:      con,
 		credentials: s.Credentials,
-		binding:     mysqlBinding,
+		binding:     connectionBinding,
 		toxiproxy:   proxy,
 	}
 
@@ -191,9 +206,14 @@ func (f *mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[stri
 }
 
 func (f *mysqlFactory) connection(settings *mysqlSettings, binding ContainerBinding) (*sqlx.DB, error) {
+	// When called without a separate setup binding, use the same binding for both
+	return f.connectionWithSetupBinding(settings, binding, binding)
+}
+
+func (f *mysqlFactory) connectionWithSetupBinding(settings *mysqlSettings, connectionBinding ContainerBinding, setupBinding ContainerBinding) (*sqlx.DB, error) {
 	dsn := url.URL{
 		User: url.UserPassword(settings.Credentials.UserName, settings.Credentials.UserPassword),
-		Host: fmt.Sprintf("tcp(%s:%v)", binding.host, binding.port),
+		Host: fmt.Sprintf("tcp(%s:%v)", connectionBinding.host, connectionBinding.port),
 		Path: settings.Credentials.DatabaseName,
 	}
 
@@ -205,7 +225,9 @@ func (f *mysqlFactory) connection(settings *mysqlSettings, binding ContainerBind
 	}
 
 	if _, ok := f.connections[dsn.String()]; !ok {
-		err := f.setup(settings, binding)
+		// Run setup using the setup binding (direct mysql connection)
+		// This ensures we can always reach mysql for database/user creation
+		err := f.setup(settings, setupBinding)
 		if err != nil {
 			return nil, fmt.Errorf("can not prepare database: %w", err)
 		}

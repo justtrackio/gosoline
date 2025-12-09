@@ -21,6 +21,9 @@ stream:
   input:
     subscriber-testModel:
       in_memory_override: false
+      # start from the beginning of the topic to ensure we consume messages
+      # produced before the consumer joins the group (default is "last")
+      start_offset: first
   output:
     testEvent:
       type: kafka
