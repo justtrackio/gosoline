@@ -90,9 +90,10 @@ func (p LifeCyclePurger) getTables(ctx context.Context) ([]string, error) {
 
 // deleteTables deletes all rows from the given tables in a single transaction.
 // FK checks are disabled within the transaction to handle circular references
-// and avoid ordering issues. Using DELETE instead of TRUNCATE avoids the
-// MySQL/InnoDB issue where TRUNCATE changes the internal table_id, which can
-// cause other connections with cached FK metadata to fail with Error 1452.
+// and avoid ordering issues. Using Truncate ensures a cleaner slate for each
+// individual test to run. However Truncate changes the underlying InnoDB table IDs
+// and that means caches pointing to the old table ID will fail in interaction with the new one.
+// To avoid this we must ensure proper separation of individual test cases.
 //
 // For performance, all DELETE statements are batched into a single multi-statement
 // query to minimize round trips to the database.
