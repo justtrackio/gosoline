@@ -20,6 +20,7 @@ stream:
       group: test
       topic_id: testEvent
       group_id: testEvent
+      start_offset: first
       in_memory_override: false
 
 test:
