@@ -1,9 +1,11 @@
 package metric_test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -11,6 +13,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 )
+
+const writeGraceTime = 10 * time.Second
 
 func Test_promWriter_WriteOne(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
@@ -85,7 +89,7 @@ func Test_promWriter_WriteOne(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			registry := prometheus.NewRegistry()
-			w := metric.NewPrometheusWriterWithInterfaces(logger, registry, "ns:test", 1000)
+			w := metric.NewPrometheusWriterWithInterfaces(logger, registry, "ns:test", 1000, writeGraceTime)
 			w.WriteOne(t.Context(), tt.data)
 
 			count, err := testutil.GatherAndCount(registry, "ns:test_"+tt.data.MetricName)
@@ -179,7 +183,7 @@ func Test_promWriter_Write(t *testing.T) {
 			}
 
 			registry := prometheus.NewRegistry()
-			w := metric.NewPrometheusWriterWithInterfaces(logger, registry, "ns:test:write", 1000)
+			w := metric.NewPrometheusWriterWithInterfaces(logger, registry, "ns:test:write", 1000, writeGraceTime)
 			w.Write(t.Context(), tt.data)
 
 			metricOutput := fmt.Sprintf(`
@@ -198,7 +202,7 @@ func Test_promWriter_ExceedsLimit(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	registry := prometheus.NewRegistry()
-	w := metric.NewPrometheusWriterWithInterfaces(logger, registry, "ns:test:exceedslimit", 1)
+	w := metric.NewPrometheusWriterWithInterfaces(logger, registry, "ns:test:exceedslimit", 1, writeGraceTime)
 	w.WriteOne(t.Context(), &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: "counter",
@@ -222,4 +226,28 @@ func Test_promWriter_ExceedsLimit(t *testing.T) {
 	count, err = testutil.GatherAndCount(registry, "ns:test:exceedslimit_over_limit")
 	assert.Equal(t, 0, count)
 	assert.NoError(t, err)
+}
+
+func Test_promWriter_Write_WithCanceledContextStillWrites(t *testing.T) {
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+
+	registry := prometheus.NewRegistry()
+	w := metric.NewPrometheusWriterWithInterfaces(logger, registry, "ns:test:grace", 1000, writeGraceTime)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	w.Write(ctx, metric.Data{
+		&metric.Datum{
+			Priority:   metric.PriorityHigh,
+			MetricName: "counter",
+			Dimensions: nil,
+			Value:      1,
+			Unit:       metric.UnitCount,
+		},
+	})
+
+	count, err := testutil.GatherAndCount(registry, "ns:test:grace_counter")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count)
 }

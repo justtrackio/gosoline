@@ -36,8 +36,9 @@ type PrometheusSettings struct {
 	Aggregate bool `cfg:"aggregate" default:"false"`
 	// MetricLimit is used to avoid having metrics for which the name is programmatically generated (or have large number
 	// of possible dimensions) which could lead in a memory leak.
-	MetricLimit int64                    `cfg:"metric_limit" default:"10000"`
-	Api         PrometheusServerSettings `cfg:"api"`
+	MetricLimit    int64                    `cfg:"metric_limit" default:"10000"`
+	Api            PrometheusServerSettings `cfg:"api"`
+	WriteGraceTime time.Duration            `cfg:"write_grace_time" default:"10s"`
 }
 
 type PrometheusServerSettings struct {

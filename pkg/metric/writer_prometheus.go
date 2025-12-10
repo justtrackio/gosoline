@@ -8,10 +8,12 @@ import (
 	"sort"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/prometheus/client_golang/prometheus"
@@ -41,11 +43,12 @@ func ProvideRegistry(ctx context.Context, name string) (*prometheus.Registry, er
 }
 
 type prometheusWriter struct {
-	logger      log.Logger
-	registry    *prometheus.Registry
-	namespace   string
-	metricLimit int64
-	metrics     *int64
+	logger         log.Logger
+	registry       *prometheus.Registry
+	namespace      string
+	metricLimit    int64
+	metrics        *int64
+	writeGraceTime time.Duration
 }
 
 // ProvidePrometheusWriter provides a prometheus writer. If one is registered under the default key in
@@ -77,16 +80,29 @@ func NewPrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logg
 		return nil, err
 	}
 
-	return NewPrometheusWriterWithInterfaces(logger, registry, namespace, promSettings.MetricLimit), nil
+	return NewPrometheusWriterWithInterfaces(
+		logger,
+		registry,
+		namespace,
+		promSettings.MetricLimit,
+		promSettings.WriteGraceTime,
+	), nil
 }
 
-func NewPrometheusWriterWithInterfaces(logger log.Logger, registry *prometheus.Registry, namespace string, metricLimit int64) Writer {
+func NewPrometheusWriterWithInterfaces(
+	logger log.Logger,
+	registry *prometheus.Registry,
+	namespace string,
+	metricLimit int64,
+	writeGraceTime time.Duration,
+) Writer {
 	return &prometheusWriter{
-		logger:      logger.WithChannel("metrics"),
-		registry:    registry,
-		namespace:   namespace,
-		metricLimit: metricLimit,
-		metrics:     mdl.Box(int64(0)),
+		logger:         logger.WithChannel("metrics"),
+		registry:       registry,
+		namespace:      namespace,
+		metricLimit:    metricLimit,
+		metrics:        mdl.Box(int64(0)),
+		writeGraceTime: writeGraceTime,
 	}
 }
 
@@ -104,11 +120,18 @@ func (w *prometheusWriter) shouldFilterMetric(datum *Datum) bool {
 	return datum.Priority < w.GetPriority() || datum.Kind.kind == KindTotal.kind
 }
 
-func (w *prometheusWriter) Write(ctx context.Context, batch Data) {
+func (w *prometheusWriter) Write(applicationCtx context.Context, batch Data) {
 	if len(batch) == 0 {
 		return
 	}
 
+	delayedCtx, stop := exec.WithDelayedCancelContext(applicationCtx, w.writeGraceTime)
+	defer stop()
+
+	w.write(delayedCtx, batch)
+}
+
+func (w *prometheusWriter) write(ctx context.Context, batch Data) {
 	for _, datum := range batch {
 		datum = mdl.Box(preprocessPrometheusMetric(datum))
 		amendFromDefault(datum)

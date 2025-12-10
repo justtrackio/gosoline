@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/es"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -24,11 +26,16 @@ type esMetricDatum struct {
 	Namespace string `json:"namespace"`
 }
 
+type ElasticsearchSettings struct {
+	WriteGraceTime time.Duration `cfg:"write_grace_time" default:"10s"`
+}
+
 type elasticsearchWriter struct {
-	logger    log.Logger
-	clock     clock.Clock
-	client    *es.ClientV7
-	namespace string
+	logger         log.Logger
+	clock          clock.Clock
+	client         *es.ClientV7
+	namespace      string
+	writeGraceTime time.Duration
 }
 
 type esWriterCtxKey string
@@ -39,7 +46,12 @@ func ProvideElasticsearchWriter(ctx context.Context, config cfg.Config, logger l
 	})
 }
 
-func NewElasticsearchWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
+func NewElasticsearchWriter(_ context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
+	esSettings := &ElasticsearchSettings{}
+	if err := getMetricWriterSettings(config, WriterTypeElasticsearch, esSettings); err != nil {
+		return nil, fmt.Errorf("could not get elasticsearch writer settings: %w", err)
+	}
+
 	client, err := es.ProvideClient(config, es.NewLogger(logger), "metric")
 	if err != nil {
 		return nil, fmt.Errorf("can not create es client: %w", err)
@@ -53,15 +65,22 @@ func NewElasticsearchWriter(ctx context.Context, config cfg.Config, logger log.L
 	}
 	namespace := fmt.Sprintf("%s/%s/%s/%s-%s", appId.Project, appId.Environment, appId.Family, appId.Group, appId.Application)
 
-	return NewElasticsearchWriterWithInterfaces(logger, client, testClock, namespace), nil
+	return NewElasticsearchWriterWithInterfaces(logger, client, testClock, namespace, esSettings.WriteGraceTime), nil
 }
 
-func NewElasticsearchWriterWithInterfaces(logger log.Logger, client *es.ClientV7, clock clock.Clock, namespace string) Writer {
+func NewElasticsearchWriterWithInterfaces(
+	logger log.Logger,
+	client *es.ClientV7,
+	clock clock.Clock,
+	namespace string,
+	writeGraceTime time.Duration,
+) Writer {
 	return &elasticsearchWriter{
-		logger:    logger.WithChannel("metrics"),
-		clock:     clock,
-		client:    client,
-		namespace: namespace,
+		logger:         logger.WithChannel("metrics"),
+		clock:          clock,
+		client:         client,
+		namespace:      namespace,
+		writeGraceTime: writeGraceTime,
 	}
 }
 
@@ -87,12 +106,19 @@ func (w elasticsearchWriter) bulkWriteToES(ctx context.Context, buf bytes.Buffer
 	}
 }
 
-func (w elasticsearchWriter) Write(ctx context.Context, batch Data) {
-	var buf bytes.Buffer
-
+func (w elasticsearchWriter) Write(applicationCtx context.Context, batch Data) {
 	if len(batch) == 0 {
 		return
 	}
+
+	delayedCtx, stop := exec.WithDelayedCancelContext(applicationCtx, w.writeGraceTime)
+	defer stop()
+
+	w.write(delayedCtx, batch)
+}
+
+func (w elasticsearchWriter) write(ctx context.Context, batch Data) {
+	var buf bytes.Buffer
 
 	for i := range batch {
 		if batch[i].Timestamp.IsZero() {
