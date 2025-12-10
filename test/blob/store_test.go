@@ -4,13 +4,16 @@ package blob_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/blob"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
-	"github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
+	"github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
@@ -21,9 +24,6 @@ func TestStoreTestSuite(t *testing.T) {
 
 type StoreTestSuite struct {
 	suite.Suite
-
-	s3Client s3.Client
-	stores   map[string]blob.Store
 }
 
 func (s *StoreTestSuite) SetupSuite() []suite.Option {
@@ -31,42 +31,80 @@ func (s *StoreTestSuite) SetupSuite() []suite.Option {
 		suite.WithConfigFile("store_test_cfg.yml"),
 		suite.WithLogLevel("debug"),
 		suite.WithClockProvider(clock.NewRealClock()),
+		// Add batch runners first - they create the channels in appctx
 		suite.WithModule("blob-store-runner-default", blob.ProvideBatchRunner("default")),
 		suite.WithModule("blob-store-runner-foo", blob.ProvideBatchRunner("foo")),
+		// Add store setup module after batch runners - it creates stores that share channels
+		// and registers their lifecycle handlers for bucket creation
+		suite.WithModule("blob-store-setup", provideStoreSetup("default", "foo")),
 	}
 }
 
-func (s *StoreTestSuite) SetupTest() error {
-	var err error
+// provideStoreSetup returns a module factory that creates blob stores during app initialization.
+// This ensures stores are created:
+// 1. AFTER batch runner modules (so they share the same channels via appctx)
+// 2. BEFORE the lifecycle middleware runs (so buckets get created)
+// The module itself does nothing - it just triggers store creation as a side effect.
+func provideStoreSetup(storeNames ...string) kernel.ModuleFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+		for _, name := range storeNames {
+			if _, err := blob.ProvideStore(ctx, config, logger, name); err != nil {
+				return nil, fmt.Errorf("can not create blob store %s: %w", name, err)
+			}
+		}
 
-	ctx := s.Env().Context()
+		// Return a no-op background module that just waits for context cancellation
+		return &storeSetupModule{}, nil
+	}
+}
+
+// storeSetupModule is a no-op background module that exists just to trigger store creation
+// during the module factory phase.
+type storeSetupModule struct {
+	kernel.BackgroundModule
+}
+
+func (m *storeSetupModule) Run(ctx context.Context) error {
+	<-ctx.Done()
+
+	return nil
+}
+
+// getStores retrieves blob stores from the app's context.
+// Stores were created during app initialization by the store setup module.
+func (s *StoreTestSuite) getStores(app suite.AppUnderTest) (map[string]blob.Store, error) {
+	ctx := app.Context()
 	config := s.Env().Config()
 	logger := s.Env().Logger()
 
-	s.stores = map[string]blob.Store{}
-	var stores map[string]any
-	if stores, err = config.GetStringMap("blob"); err != nil {
-		return err
+	stores := map[string]blob.Store{}
+	var storeNames map[string]any
+	var err error
+
+	if storeNames, err = config.GetStringMap("blob"); err != nil {
+		return nil, err
 	}
 
-	for storeName := range stores {
-		if s.stores[storeName], err = blob.NewStore(ctx, config, logger, storeName); err != nil {
-			return err
+	for storeName := range storeNames {
+		// ProvideStore retrieves the existing store from appctx (created by store setup module)
+		if stores[storeName], err = blob.ProvideStore(ctx, config, logger, storeName); err != nil {
+			return nil, err
 		}
 	}
 
-	if s.s3Client, err = s3.ProvideClient(ctx, config, logger, "default"); err != nil {
-		return err
-	}
-
-	return nil
+	return stores, nil
 }
 
 // This tests the following scenarios:
 // * general ability to store objects
 // * pagination of the ListObjects func of the store
-func (s *StoreTestSuite) TestNewDefault(_ suite.AppUnderTest) {
-	store := s.stores["default"]
+func (s *StoreTestSuite) TestNewDefault(app suite.AppUnderTest) {
+	stores, err := s.getStores(app)
+	if !s.NoError(err) {
+		return
+	}
+
+	store := stores["default"]
 
 	// make sure this exceeds the default batch size for ListObjectV2 requests, as we are testing the pagination here
 	size := 1001
@@ -80,7 +118,7 @@ func (s *StoreTestSuite) TestNewDefault(_ suite.AppUnderTest) {
 		}
 	}
 
-	err := store.Write(batch)
+	err = store.Write(batch)
 	if !s.NoError(err) {
 		return
 	}
@@ -95,14 +133,14 @@ func (s *StoreTestSuite) TestNewDefault(_ suite.AppUnderTest) {
 
 // This Test is to ensure that we can write to multiple stores and that there are no stalled
 // go routines during that due to wrong handling in batch runner channel provider
-func (s *StoreTestSuite) TestMultiStoreNoBatchRunnerChannelIssues(_ suite.AppUnderTest) {
-	stores, err := s.Env().Config().GetStringMap("blob")
+func (s *StoreTestSuite) TestMultiStoreNoBatchRunnerChannelIssues(app suite.AppUnderTest) {
+	stores, err := s.getStores(app)
 	if !s.NoError(err) {
 		return
 	}
 
 	for storeName := range stores {
-		store := s.stores[storeName]
+		store := stores[storeName]
 
 		ch := make(chan struct{})
 		t := time.NewTicker(10 * time.Second)

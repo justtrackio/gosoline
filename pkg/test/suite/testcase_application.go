@@ -99,7 +99,8 @@ func RunTestCaseApplication(t *testing.T, _ TestingSuite, suiteConf *SuiteConfig
 
 	// We need to create a new context here to isolate the individual apps from each other.
 	// Else they would share the same container and module instances which can lead to issues.
-	app, err := application.NewWithInterfaces(appctx.WithContainer(t.Context()), config, logger, appOptions...)
+	appCtx := appctx.WithContainer(t.Context())
+	app, err := application.NewWithInterfaces(appCtx, config, logger, appOptions...)
 	if err != nil {
 		assert.FailNow(t, "failed to create application under test", err.Error())
 
@@ -111,7 +112,7 @@ func RunTestCaseApplication(t *testing.T, _ TestingSuite, suiteConf *SuiteConfig
 		<-done
 	}
 
-	appUnderTest := newAppUnderTest(app, appDone)
+	appUnderTest := newAppUnderTest(appCtx, app, appDone)
 
 	go func() {
 		app.Run()
