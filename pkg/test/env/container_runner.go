@@ -43,6 +43,7 @@ func (r ContainerRequest) id() string {
 type ContainerConfig struct {
 	RunnerType   string
 	Hostname     string
+	ExternalHost string // Host address for external containers (used by external runner)
 	Auth         authSettings
 	Repository   string
 	Tmpfs        []TmpfsSettings

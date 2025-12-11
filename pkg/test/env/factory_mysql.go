@@ -11,6 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 func init() {
@@ -30,8 +31,9 @@ type mysqlSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
 	ContainerBindingSettings
-	Credentials      mysqlCredentials `cfg:"credentials"`
-	ToxiproxyEnabled bool             `cfg:"toxiproxy_enabled" default:"false"`
+	Credentials          mysqlCredentials `cfg:"credentials"`
+	ToxiproxyEnabled     bool             `cfg:"toxiproxy_enabled"      default:"false"`
+	UseExternalContainer bool             `cfg:"use_external_container" default:"false"`
 }
 
 type mysqlFactory struct {
@@ -109,6 +111,24 @@ func (f *mysqlFactory) DescribeContainers(settings any) ComponentContainerDescri
 
 func (f *mysqlFactory) configureContainer(settings any) *ContainerConfig {
 	s := settings.(*mysqlSettings)
+
+	if s.UseExternalContainer {
+		// When using an external instance we need to generate a new database name
+		// to avoid conflicts with other tests using the same external container
+		s.Credentials.DatabaseName = uuid.New().NewV4()
+
+		return &ContainerConfig{
+			RunnerType:   RunnerTypeExternal,
+			ExternalHost: s.Host,
+			PortBindings: PortBindings{
+				"main": {
+					ContainerPort: s.Port,
+					HostPort:      s.Port,
+					Protocol:      "tcp",
+				},
+			},
+		}
+	}
 
 	env := map[string]string{
 		"MYSQL_DATABASE":      s.Credentials.DatabaseName,
