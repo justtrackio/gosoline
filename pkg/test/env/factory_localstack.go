@@ -28,8 +28,8 @@ const (
 type localstackSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	Port             int    `cfg:"port" default:"0"`
-	Region           string `cfg:"region" default:"eu-central-1"`
+	Port             int    `cfg:"port"              default:"0"`
+	Region           string `cfg:"region"            default:"eu-central-1"`
 	ToxiproxyEnabled bool   `cfg:"toxiproxy_enabled" default:"false"`
 }
 
@@ -152,8 +152,16 @@ func (f *localstackFactory) Component(config cfg.Config, logger log.Logger, cont
 	if s.ToxiproxyEnabled {
 		toxiproxyClient := f.toxiproxyFactory.client(containers["toxiproxy"])
 
-		if proxy, err = toxiproxyClient.CreateProxy("ddb", ":56248", endpoint); err != nil {
-			return nil, fmt.Errorf("can not create toxiproxy proxy for ddb component: %w", err)
+		// Use the internal address for container-to-container communication
+		// This allows toxiproxy to reach localstack on the Docker network
+		localstackInternalAddress := containers["main"].getInternalAddress("main")
+		if localstackInternalAddress == "" {
+			// Fallback to external binding if internal is not available
+			localstackInternalAddress = endpoint
+		}
+
+		if proxy, err = toxiproxyClient.CreateProxy("localstack", ":56248", localstackInternalAddress); err != nil {
+			return nil, fmt.Errorf("can not create toxiproxy proxy for localstack component: %w", err)
 		}
 
 		endpoint = containers["toxiproxy"].bindings["main"].getAddress()

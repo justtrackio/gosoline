@@ -149,10 +149,14 @@ func (r *containerRunnerLocal) runContainer(request ContainerRequest, options *d
 		return nil, fmt.Errorf("can not resolve bindings: %w", err)
 	}
 
+	// Resolve internal bindings for container-to-container communication
+	internalBindings := r.resolveInternalBindings(resource, config.PortBindings)
+
 	resourceContainer = &Container{
-		typ:      request.ComponentType,
-		name:     options.Name,
-		bindings: resolvedBindings,
+		typ:              request.ComponentType,
+		name:             options.Name,
+		bindings:         resolvedBindings,
+		internalBindings: internalBindings,
 	}
 
 	return resourceContainer, nil
@@ -263,6 +267,27 @@ func (r *containerRunnerLocal) resolveBinding(resource *dockertest.Resource, bin
 	}
 
 	return address, nil
+}
+
+// resolveInternalBindings returns bindings using the container's internal Docker IP address.
+// These should be used for container-to-container communication (e.g., toxiproxy → mysql).
+func (r *containerRunnerLocal) resolveInternalBindings(resource *dockertest.Resource, bindings PortBindings) map[string]ContainerBinding {
+	internalBindings := make(map[string]ContainerBinding)
+
+	network, ok := resource.Container.NetworkSettings.Networks[networkBridge]
+	if !ok || network.IPAddress == "" {
+		// No internal network available, return empty map
+		return internalBindings
+	}
+
+	for name, binding := range bindings {
+		internalBindings[name] = ContainerBinding{
+			host: network.IPAddress,
+			port: fmt.Sprintf("%d", binding.ContainerPort),
+		}
+	}
+
+	return internalBindings
 }
 
 func (r *containerRunnerLocal) Stop(ctx context.Context) error {

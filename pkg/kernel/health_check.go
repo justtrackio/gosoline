@@ -11,8 +11,8 @@ import (
 )
 
 type HealthCheckSettings struct {
-	Timeout      time.Duration `cfg:"timeout" default:"1m"`
-	WaitInterval time.Duration `cfg:"wait_interval" default:"3s"`
+	Timeout      time.Duration `cfg:"timeout"       default:"1m"`
+	WaitInterval time.Duration `cfg:"wait_interval" default:"10ms"`
 }
 
 type ModuleHealthCheckResult struct {

@@ -18,15 +18,15 @@ import (
 var _ ContainerRunner = (*containerRunnerRemote)(nil)
 
 type ContainerRunnerRemoteSettings struct {
-	Endpoint   string                                  `cfg:"endpoint" default:"http://localhost:8890"`
+	Endpoint   string                                  `cfg:"endpoint"    default:"http://localhost:8890"`
 	PoolId     string                                  `cfg:"pool_id"`
 	HttpClient ContainerRunnerRemoteHttpClientSettings `cfg:"http_client"`
 }
 
 type ContainerRunnerRemoteHttpClientSettings struct {
-	Timeout       time.Duration `cfg:"timeout" default:"30s"`
+	Timeout       time.Duration `cfg:"timeout"     default:"30s"`
 	RetryCount    int           `cfg:"retry_count" default:"32"`
-	RetryWaitTime time.Duration `cfg:"retry_wait" default:"3s"`
+	RetryWaitTime time.Duration `cfg:"retry_wait"  default:"3s"`
 }
 
 type ContainerStartInput struct {

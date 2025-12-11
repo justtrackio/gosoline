@@ -43,6 +43,7 @@ func (r ContainerRequest) id() string {
 type ContainerConfig struct {
 	RunnerType   string
 	Hostname     string
+	ExternalHost string // Host address for external containers (used by external runner)
 	Auth         authSettings
 	Repository   string
 	Tmpfs        []TmpfsSettings
@@ -70,9 +71,10 @@ func (b PortBinding) DockerPort() string {
 }
 
 type Container struct {
-	typ      string
-	name     string
-	bindings map[string]ContainerBinding
+	typ              string
+	name             string
+	bindings         map[string]ContainerBinding
+	internalBindings map[string]ContainerBinding // For container-to-container communication
 }
 
 type ContainerBinding struct {
@@ -82,6 +84,21 @@ type ContainerBinding struct {
 
 func (b ContainerBinding) getAddress() string {
 	return fmt.Sprintf("%s:%s", b.host, b.port)
+}
+
+// getInternalAddress returns the address that should be used for container-to-container
+// communication. If an internal binding exists for this name, it uses that; otherwise
+// it falls back to the external binding.
+func (c *Container) getInternalAddress(bindingName string) string {
+	if internal, ok := c.internalBindings[bindingName]; ok {
+		return internal.getAddress()
+	}
+
+	if external, ok := c.bindings[bindingName]; ok {
+		return external.getAddress()
+	}
+
+	return ""
 }
 
 type authSettings struct {
