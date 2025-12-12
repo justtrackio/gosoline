@@ -95,7 +95,7 @@ func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fixtures []any) error
 	}
 
 	// Use BatchCreate which supports explicit IDs for fixtures
-	if err := m.repo.BatchCreate(ctx, models, m.batchSize); err != nil {
+	if err := m.repo.BatchReplace(ctx, models, m.batchSize, BatchReplaceWithSuspendForeignKeyChecks()); err != nil {
 		return fmt.Errorf("can not batch insert fixtures: %w", err)
 	}
 

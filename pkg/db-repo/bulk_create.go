@@ -32,7 +32,7 @@ type batchReplaceOptions struct {
 // WithSuspendForeignKeyChecks suspends foreign key checks before the replace
 // operation and re-enables them afterward. This is useful when replacing records
 // that have foreign key relationships.
-func WithSuspendForeignKeyChecks() BatchReplaceOption {
+func BatchReplaceWithSuspendForeignKeyChecks() BatchReplaceOption {
 	return func(opts *batchReplaceOptions) {
 		opts.suspendForeignKeyChecks = true
 	}
