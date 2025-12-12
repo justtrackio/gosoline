@@ -67,6 +67,7 @@ type Repository interface {
 type BatchedRepository interface {
 	Repository
 	BatchCreate(ctx context.Context, values []ModelBased, batchSize int) error
+	BatchReplace(ctx context.Context, values []ModelBased, batchSize int, opts ...BatchReplaceOption) error
 }
 
 type repository struct {

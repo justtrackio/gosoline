@@ -14,6 +14,30 @@ import (
 
 const defaultBatchSize = 100
 
+// bulkOperation defines the type of bulk SQL operation.
+type bulkOperation string
+
+const (
+	bulkOperationInsert  bulkOperation = "INSERT INTO"
+	bulkOperationReplace bulkOperation = "REPLACE INTO"
+)
+
+// BatchReplaceOption is a functional option for BatchReplace.
+type BatchReplaceOption func(*batchReplaceOptions)
+
+type batchReplaceOptions struct {
+	suspendForeignKeyChecks bool
+}
+
+// WithSuspendForeignKeyChecks suspends foreign key checks before the replace
+// operation and re-enables them afterward. This is useful when replacing records
+// that have foreign key relationships.
+func WithSuspendForeignKeyChecks() BatchReplaceOption {
+	return func(opts *batchReplaceOptions) {
+		opts.suspendForeignKeyChecks = true
+	}
+}
+
 // BatchCreate inserts multiple records at once using a bulk INSERT statement.
 // Unlike the standard gormbulk library, this implementation supports explicit IDs
 // by only excluding AUTO_INCREMENT fields when they are blank (zero/nil).
@@ -26,6 +50,29 @@ const defaultBatchSize = 100
 // for fixture loading where the model struct name may not match the table naming
 // convention. The table name is always taken from the repository's metadata.
 func (r *repository) BatchCreate(ctx context.Context, values []ModelBased, batchSize int) error {
+	return r.doBulkOperation(ctx, values, batchSize, bulkOperationInsert, "BatchCreate", false)
+}
+
+// BatchReplace replaces multiple records at once using a bulk REPLACE INTO statement.
+// Unlike BatchCreate which uses INSERT, REPLACE will delete and re-insert rows that
+// would cause duplicate key violations. This is useful for upserting fixture data.
+//
+// The batchSize parameter controls how many records are replaced per statement
+// to avoid exceeding database parameter limits. Use 0 for the default batch size (100).
+//
+// Options:
+//   - WithSuspendForeignKeyChecks(): Suspends foreign key checks before the operation
+//     and re-enables them afterward.
+func (r *repository) BatchReplace(ctx context.Context, values []ModelBased, batchSize int, opts ...BatchReplaceOption) error {
+	options := &batchReplaceOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	return r.doBulkOperation(ctx, values, batchSize, bulkOperationReplace, "BatchReplace", options.suspendForeignKeyChecks)
+}
+
+func (r *repository) doBulkOperation(ctx context.Context, values []ModelBased, batchSize int, operation bulkOperation, spanName string, suspendForeignKeyChecks bool) error {
 	if len(values) == 0 {
 		return nil
 	}
@@ -36,7 +83,7 @@ func (r *repository) BatchCreate(ctx context.Context, values []ModelBased, batch
 
 	modelId := r.GetModelId()
 
-	ctx, span := r.startSubSpan(ctx, "BatchCreate")
+	ctx, span := r.startSubSpan(ctx, spanName)
 	defer span.Finish()
 
 	// Set timestamps for all records
@@ -46,7 +93,7 @@ func (r *repository) BatchCreate(ctx context.Context, values []ModelBased, batch
 		value.SetCreatedAt(&now)
 	}
 
-	// Convert to []any for bulk insert
+	// Convert to []any for bulk operation
 	objects := make([]any, len(values))
 	for i, v := range values {
 		objects[i] = v
@@ -55,23 +102,45 @@ func (r *repository) BatchCreate(ctx context.Context, values []ModelBased, batch
 	// Use the table name from metadata
 	db := r.orm.Table(r.metadata.TableName)
 
-	err := bulkInsert(db, objects, batchSize)
+	// Suspend foreign key checks if requested
+	if suspendForeignKeyChecks {
+		foreignKeyChecksSuspended := false
+		defer func() {
+			if !foreignKeyChecksSuspended {
+				return
+			}
+
+			if err := db.Exec("SET FOREIGN_KEY_CHECKS = 1").Error; err != nil {
+				r.logger.Error(ctx, "could not re-enable foreign key checks: %w", err)
+			}
+		}()
+
+		if err := db.Exec("SET FOREIGN_KEY_CHECKS = 0").Error; err != nil {
+			r.logger.Error(ctx, "could not suspend foreign key checks: %w", err)
+
+			return fmt.Errorf("could not suspend foreign key checks: %w", err)
+		}
+
+		foreignKeyChecksSuspended = true
+	}
+
+	err := bulkExecute(db, objects, batchSize, operation)
 	if err != nil {
-		r.logger.Error(ctx, "could not batch create models of type %v: %w", modelId, err)
+		r.logger.Error(ctx, "could not %s models of type %v: %w", spanName, modelId, err)
 
 		return err
 	}
 
-	r.logger.Info(ctx, "batch created %d models of type %s", len(values), modelId)
+	r.logger.Info(ctx, "%s %d models of type %s", spanName, len(values), modelId)
 
 	return nil
 }
 
-// bulkInsert executes a bulk INSERT statement for the given objects.
+// bulkExecute executes a bulk INSERT or REPLACE statement for the given objects.
 // This is a fork of github.com/t-tiger/gorm-bulk-insert that supports explicit IDs.
-func bulkInsert(db *gorm.DB, objects []any, chunkSize int, excludeColumns ...string) error {
+func bulkExecute(db *gorm.DB, objects []any, chunkSize int, operation bulkOperation, excludeColumns ...string) error {
 	for _, objSet := range splitObjects(objects, chunkSize) {
-		if err := insertObjSet(db, objSet, excludeColumns...); err != nil {
+		if err := executeObjSet(db, objSet, operation, excludeColumns...); err != nil {
 			return err
 		}
 	}
@@ -79,7 +148,7 @@ func bulkInsert(db *gorm.DB, objects []any, chunkSize int, excludeColumns ...str
 	return nil
 }
 
-func insertObjSet(db *gorm.DB, objects []any, excludeColumns ...string) error {
+func executeObjSet(db *gorm.DB, objects []any, operation bulkOperation, excludeColumns ...string) error {
 	if len(objects) == 0 {
 		return nil
 	}
@@ -138,7 +207,8 @@ func insertObjSet(db *gorm.DB, objects []any, excludeColumns ...string) error {
 		insertOption = strVal
 	}
 
-	mainScope.Raw(fmt.Sprintf("INSERT INTO %s (%s) VALUES %s %s",
+	mainScope.Raw(fmt.Sprintf("%s %s (%s) VALUES %s %s",
+		operation,
 		mainScope.QuotedTableName(),
 		strings.Join(dbColumns, ", "),
 		strings.Join(placeholders, ", "),
