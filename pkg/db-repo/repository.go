@@ -60,6 +60,16 @@ type Repository interface {
 	Delete(ctx context.Context, value ModelBased) error
 }
 
+// BatchedRepository extends Repository with batch creation capabilities.
+// Use this interface when you need to insert multiple records at once.
+//
+//go:generate go run github.com/vektra/mockery/v2 --name BatchedRepository
+type BatchedRepository interface {
+	Repository
+	BatchCreate(ctx context.Context, values []ModelBased, batchSize int) error
+	BatchReplace(ctx context.Context, values []ModelBased, batchSize int, opts ...BatchReplaceOption) error
+}
+
 type repository struct {
 	logger          log.Logger
 	tracer          tracing.Tracer
