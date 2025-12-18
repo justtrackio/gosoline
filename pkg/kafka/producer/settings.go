@@ -26,8 +26,8 @@ type Settings struct {
 	MaxBatchSize           int
 	LingerTimeout          time.Duration
 	RequestTimeout         time.Duration
-	RequestTimeoutOverhead *time.Duration
-	RetryTimes             *int
+	RequestTimeoutOverhead time.Duration
+	RetryTimes             int
 }
 
 func (s Settings) GetKafkaCompressor() kgo.CompressionCodec {
