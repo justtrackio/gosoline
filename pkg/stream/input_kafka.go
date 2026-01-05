@@ -110,7 +110,7 @@ func CheckKafkaRetryableError(_ any, err error) exec.ErrorType {
 		return exec.ErrorTypeRetryable
 	}
 
-	// Check if this is a retriable Kafka protocol error
+	// Check if this is a retryable Kafka protocol error
 	if kerr.IsRetriable(err) {
 		return exec.ErrorTypeRetryable
 	}

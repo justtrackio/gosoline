@@ -54,28 +54,28 @@ func TestCheckKafkaRetryableError(t *testing.T) {
 			expected: exec.ErrorTypeRetryable,
 		},
 		{
-			name:     "kafka retriable error - NotLeaderForPartition (code 6)",
+			name:     "kafka retryable error - NotLeaderForPartition (code 6)",
 			err:      kerr.ErrorForCode(6), // NotLeaderForPartition
 			expected: exec.ErrorTypeRetryable,
 		},
 		{
-			name:     "kafka retriable error - LeaderNotAvailable (code 5)",
+			name:     "kafka retryable error - LeaderNotAvailable (code 5)",
 			err:      kerr.ErrorForCode(5), // LeaderNotAvailable
 			expected: exec.ErrorTypeRetryable,
 		},
 		{
-			name:     "kafka non-retriable error - RebalanceInProgress (code 27)",
-			err:      kerr.ErrorForCode(27), // RebalanceInProgress - not considered retriable by kerr
+			name:     "kafka non-retryable error - RebalanceInProgress (code 27)",
+			err:      kerr.ErrorForCode(27), // RebalanceInProgress - not considered retryable by kerr
 			expected: exec.ErrorTypeUnknown,
 		},
 		{
-			name:     "kafka non-retriable error - InvalidTopic (code 17)",
+			name:     "kafka non-retryable error - InvalidTopic (code 17)",
 			err:      kerr.ErrorForCode(17), // InvalidTopic
 			expected: exec.ErrorTypeUnknown,
 		},
 		{
-			name:     "kafka retriable error - UnknownTopicOrPartition (code 3)",
-			err:      kerr.ErrorForCode(3), // UnknownTopicOrPartition - considered retriable by kerr
+			name:     "kafka retryable error - UnknownTopicOrPartition (code 3)",
+			err:      kerr.ErrorForCode(3), // UnknownTopicOrPartition - considered retryable by kerr
 			expected: exec.ErrorTypeRetryable,
 		},
 		{
