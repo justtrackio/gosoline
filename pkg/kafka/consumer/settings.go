@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/stream/health"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
@@ -41,6 +42,7 @@ type Settings struct {
 	HeartbeatInterval time.Duration `cfg:"heartbeat_interval" default:"3s"`
 
 	Healthcheck health.HealthCheckSettings `cfg:"healthcheck"`
+	Backoff     exec.BackoffSettings       `cfg:"backoff"`
 }
 
 func (s *Settings) GetStartOffset() kgo.Offset {
