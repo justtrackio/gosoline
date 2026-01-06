@@ -82,6 +82,8 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ..
 				return err
 			case ErrorTypePermanent:
 				return backoff.Permanent(err)
+			case ErrorTypeUnknown:
+				// try next check
 			}
 		}
 

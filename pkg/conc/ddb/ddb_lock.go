@@ -13,7 +13,7 @@ import (
 
 //go:generate go run github.com/vektra/mockery/v2 --name LockManager
 type LockManager interface {
-	RenewLock(ctx context.Context, lockTime time.Duration, resource string, token string) error
+	RenewLock(ctx context.Context, lockTime time.Duration, resource string, token string) (expiry time.Time, err error)
 	ReleaseLock(ctx context.Context, resource string, token string) error
 }
 
@@ -35,7 +35,7 @@ func NewDdbLockFromInterfaces(
 	ctx context.Context,
 	resource string,
 	token string,
-	expires int64,
+	expires time.Time,
 ) *ddbLock {
 	return &ddbLock{
 		manager:  manager,
@@ -44,20 +44,20 @@ func NewDdbLockFromInterfaces(
 		ctx:      ctx,
 		resource: resource,
 		token:    token,
-		expires:  expires,
+		expires:  expires.UnixMicro(),
 		released: conc.NewSignalOnce(),
 	}
 }
 
 func (l *ddbLock) Renew(ctx context.Context, lockTime time.Duration) error {
 	if l == nil {
-		return conc.ErrNotOwned
+		return conc.ErrLockNotOwned
 	}
 
-	err := l.manager.RenewLock(ctx, lockTime, l.resource, l.token)
+	expiry, err := l.manager.RenewLock(ctx, lockTime, l.resource, l.token)
 
 	if err == nil {
-		atomic.StoreInt64(&l.expires, l.clock.Now().Add(lockTime).Unix())
+		atomic.StoreInt64(&l.expires, expiry.UnixMicro())
 	}
 
 	return err
@@ -65,23 +65,23 @@ func (l *ddbLock) Renew(ctx context.Context, lockTime time.Duration) error {
 
 func (l *ddbLock) Release() error {
 	if l == nil {
-		return conc.ErrNotOwned
+		return conc.ErrLockNotOwned
 	}
 
 	// stop the debug thread if needed
 	l.released.Signal()
 
-	deadline := time.Unix(atomic.LoadInt64(&l.expires), 0)
+	deadline := time.UnixMicro(atomic.LoadInt64(&l.expires))
 	remainingLockTime := deadline.Sub(l.clock.Now())
 
 	if remainingLockTime <= 0 {
-		return conc.ErrNotOwned
+		return conc.ErrLockNotOwned
 	}
 
 	done := make(chan struct{})
 	defer close(done)
 
-	// we should always release the lock, even when our parent gets cancelled.
+	// we should always release the lock, even when our parent gets canceled.
 	// if we don't manage to do this until it expires anyway, there is no further point in trying.
 	ctx, cancel := exec.WithManualCancelContext(l.ctx)
 	go func() {
@@ -100,18 +100,21 @@ func (l *ddbLock) Release() error {
 }
 
 func (l *ddbLock) runWatcher() {
+	t := l.clock.NewTimer(time.Hour)
+	defer t.Stop()
+
 	for {
-		expires := atomic.LoadInt64(&l.expires)
+		expires := time.UnixMicro(atomic.LoadInt64(&l.expires))
 		now := l.clock.Now()
 
-		if expires < now.Unix() {
+		if !expires.After(now) {
 			break
 		}
 
-		t := time.NewTimer(time.Unix(expires, 0).Sub(now))
+		t.Reset(expires.Sub(now))
 
 		select {
-		case <-t.C:
+		case <-t.Chan():
 			continue
 		case <-l.released.Channel():
 			return
