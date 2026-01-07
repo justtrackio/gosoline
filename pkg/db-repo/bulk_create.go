@@ -22,10 +22,15 @@ const defaultBatchSize = 100
 // The batchSize parameter controls how many records are inserted per statement
 // to avoid exceeding database parameter limits. Use 0 for the default batch size (100).
 //
+// Options can be provided to control duplicate key behavior:
+//   - WithOnDuplicateKeyBehavior(DuplicateKeyUpdate): Update existing rows on conflict (MySQL ON DUPLICATE KEY UPDATE)
+//   - WithOnDuplicateKeyBehavior(DuplicateKeyIgnore): Skip duplicate rows silently (MySQL INSERT IGNORE)
+//   - WithOnDuplicateKeyBehavior(DuplicateKeyError): Fail on duplicate keys (default, standard INSERT)
+//
 // Note: This method does not perform cross-model validation because it's designed
 // for fixture loading where the model struct name may not match the table naming
 // convention. The table name is always taken from the repository's metadata.
-func (r *repository) BatchCreate(ctx context.Context, values []ModelBased, batchSize int) error {
+func (r *repository) BatchCreate(ctx context.Context, values []ModelBased, batchSize int, opts ...BatchCreateOption) error {
 	if len(values) == 0 {
 		return nil
 	}
@@ -34,6 +39,7 @@ func (r *repository) BatchCreate(ctx context.Context, values []ModelBased, batch
 		batchSize = defaultBatchSize
 	}
 
+	settings := newBatchCreateSettings(opts...)
 	modelId := r.GetModelId()
 
 	ctx, span := r.startSubSpan(ctx, "BatchCreate")
@@ -55,7 +61,7 @@ func (r *repository) BatchCreate(ctx context.Context, values []ModelBased, batch
 	// Use the table name from metadata
 	db := r.orm.Table(r.metadata.TableName)
 
-	err := bulkInsert(db, objects, batchSize)
+	err := bulkInsert(db, objects, batchSize, settings)
 	if err != nil {
 		r.logger.Error(ctx, "could not batch create models of type %v: %w", modelId, err)
 
@@ -68,10 +74,11 @@ func (r *repository) BatchCreate(ctx context.Context, values []ModelBased, batch
 }
 
 // bulkInsert executes a bulk INSERT statement for the given objects.
-// This is a fork of github.com/t-tiger/gorm-bulk-insert that supports explicit IDs.
-func bulkInsert(db *gorm.DB, objects []any, chunkSize int, excludeColumns ...string) error {
+// This is a fork of github.com/t-tiger/gorm-bulk-insert that supports explicit IDs
+// and configurable duplicate key behavior.
+func bulkInsert(db *gorm.DB, objects []any, chunkSize int, settings *BatchCreateSettings, excludeColumns ...string) error {
 	for _, objSet := range splitObjects(objects, chunkSize) {
-		if err := insertObjSet(db, objSet, excludeColumns...); err != nil {
+		if err := insertObjSet(db, objSet, settings, excludeColumns...); err != nil {
 			return err
 		}
 	}
@@ -79,7 +86,7 @@ func bulkInsert(db *gorm.DB, objects []any, chunkSize int, excludeColumns ...str
 	return nil
 }
 
-func insertObjSet(db *gorm.DB, objects []any, excludeColumns ...string) error {
+func insertObjSet(db *gorm.DB, objects []any, settings *BatchCreateSettings, excludeColumns ...string) error {
 	if len(objects) == 0 {
 		return nil
 	}
@@ -138,12 +145,39 @@ func insertObjSet(db *gorm.DB, objects []any, excludeColumns ...string) error {
 		insertOption = strVal
 	}
 
-	mainScope.Raw(fmt.Sprintf("INSERT INTO %s (%s) VALUES %s %s",
-		mainScope.QuotedTableName(),
-		strings.Join(dbColumns, ", "),
-		strings.Join(placeholders, ", "),
-		insertOption,
-	))
+	// Build SQL based on duplicate key behavior
+	var sql string
+	switch settings.DuplicateKeyBehavior {
+	case DuplicateKeyIgnore:
+		sql = fmt.Sprintf("INSERT IGNORE INTO %s (%s) VALUES %s %s",
+			mainScope.QuotedTableName(),
+			strings.Join(dbColumns, ", "),
+			strings.Join(placeholders, ", "),
+			insertOption,
+		)
+	case DuplicateKeyUpdate:
+		// Build ON DUPLICATE KEY UPDATE clause for all non-primary columns
+		updateClauses := make([]string, 0, len(dbColumns))
+		for _, col := range dbColumns {
+			updateClauses = append(updateClauses, fmt.Sprintf("%s = VALUES(%s)", col, col))
+		}
+		sql = fmt.Sprintf("INSERT INTO %s (%s) VALUES %s ON DUPLICATE KEY UPDATE %s %s",
+			mainScope.QuotedTableName(),
+			strings.Join(dbColumns, ", "),
+			strings.Join(placeholders, ", "),
+			strings.Join(updateClauses, ", "),
+			insertOption,
+		)
+	default: // DuplicateKeyError
+		sql = fmt.Sprintf("INSERT INTO %s (%s) VALUES %s %s",
+			mainScope.QuotedTableName(),
+			strings.Join(dbColumns, ", "),
+			strings.Join(placeholders, ", "),
+			insertOption,
+		)
+	}
+
+	mainScope.Raw(sql)
 
 	return db.Exec(mainScope.SQL, mainScope.SQLVars...).Error
 }

@@ -22,17 +22,24 @@ func (_m *BatchedRepository) EXPECT() *BatchedRepository_Expecter {
 	return &BatchedRepository_Expecter{mock: &_m.Mock}
 }
 
-// BatchCreate provides a mock function with given fields: ctx, values, batchSize
-func (_m *BatchedRepository) BatchCreate(ctx context.Context, values []db_repo.ModelBased, batchSize int) error {
-	ret := _m.Called(ctx, values, batchSize)
+// BatchCreate provides a mock function with given fields: ctx, values, batchSize, opts
+func (_m *BatchedRepository) BatchCreate(ctx context.Context, values []db_repo.ModelBased, batchSize int, opts ...db_repo.BatchCreateOption) error {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, values, batchSize)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for BatchCreate")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []db_repo.ModelBased, int) error); ok {
-		r0 = rf(ctx, values, batchSize)
+	if rf, ok := ret.Get(0).(func(context.Context, []db_repo.ModelBased, int, ...db_repo.BatchCreateOption) error); ok {
+		r0 = rf(ctx, values, batchSize, opts...)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -49,13 +56,21 @@ type BatchedRepository_BatchCreate_Call struct {
 //   - ctx context.Context
 //   - values []db_repo.ModelBased
 //   - batchSize int
-func (_e *BatchedRepository_Expecter) BatchCreate(ctx interface{}, values interface{}, batchSize interface{}) *BatchedRepository_BatchCreate_Call {
-	return &BatchedRepository_BatchCreate_Call{Call: _e.mock.On("BatchCreate", ctx, values, batchSize)}
+//   - opts ...db_repo.BatchCreateOption
+func (_e *BatchedRepository_Expecter) BatchCreate(ctx interface{}, values interface{}, batchSize interface{}, opts ...interface{}) *BatchedRepository_BatchCreate_Call {
+	return &BatchedRepository_BatchCreate_Call{Call: _e.mock.On("BatchCreate",
+		append([]interface{}{ctx, values, batchSize}, opts...)...)}
 }
 
-func (_c *BatchedRepository_BatchCreate_Call) Run(run func(ctx context.Context, values []db_repo.ModelBased, batchSize int)) *BatchedRepository_BatchCreate_Call {
+func (_c *BatchedRepository_BatchCreate_Call) Run(run func(ctx context.Context, values []db_repo.ModelBased, batchSize int, opts ...db_repo.BatchCreateOption)) *BatchedRepository_BatchCreate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]db_repo.ModelBased), args[2].(int))
+		variadicArgs := make([]db_repo.BatchCreateOption, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(db_repo.BatchCreateOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].([]db_repo.ModelBased), args[2].(int), variadicArgs...)
 	})
 	return _c
 }
@@ -65,7 +80,7 @@ func (_c *BatchedRepository_BatchCreate_Call) Return(_a0 error) *BatchedReposito
 	return _c
 }
 
-func (_c *BatchedRepository_BatchCreate_Call) RunAndReturn(run func(context.Context, []db_repo.ModelBased, int) error) *BatchedRepository_BatchCreate_Call {
+func (_c *BatchedRepository_BatchCreate_Call) RunAndReturn(run func(context.Context, []db_repo.ModelBased, int, ...db_repo.BatchCreateOption) error) *BatchedRepository_BatchCreate_Call {
 	_c.Call.Return(run)
 	return _c
 }

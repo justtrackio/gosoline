@@ -66,7 +66,7 @@ type Repository interface {
 //go:generate go run github.com/vektra/mockery/v2 --name BatchedRepository
 type BatchedRepository interface {
 	Repository
-	BatchCreate(ctx context.Context, values []ModelBased, batchSize int) error
+	BatchCreate(ctx context.Context, values []ModelBased, batchSize int, opts ...BatchCreateOption) error
 }
 
 type repository struct {

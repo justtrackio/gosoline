@@ -99,8 +99,8 @@ func (f FieldMapping) WithJoin(join string) FieldMapping {
 	return f
 }
 
-func (f FieldMapping) WithBool(bool string) FieldMapping {
-	f.bool = bool
+func (f FieldMapping) WithBool(b string) FieldMapping {
+	f.bool = b
 
 	return f
 }
