@@ -27,31 +27,37 @@ func TestSliceOf(t *testing.T) {
 	assert.EqualError(t, err, "the slice has to be addressable", "it should fail if the slice is not addressable")
 
 	s1 := make([]int, 0)
-	rs, _ := refl.SliceOf(&s1)
+	rs, err := refl.SliceOf(&s1)
+	assert.NoError(t, err)
 
 	i1 := 4
-	_ = rs.Append(i1)
+	err = rs.Append(i1)
+	assert.NoError(t, err)
 
 	i2 := 5
-	_ = rs.Append(i2)
+	err = rs.Append(i2)
+	assert.NoError(t, err)
 
 	assert.Len(t, s1, 2)
 	assert.Equal(t, 4, s1[0])
 	assert.Equal(t, 5, s1[1])
 
 	s2 := make([]*int, 0)
-	rs, _ = refl.SliceOf(&s2)
+	rs, err = refl.SliceOf(&s2)
+	assert.NoError(t, err)
 
 	i0 := 0
 	err = rs.Append(i0)
+	assert.EqualError(t, err, "the value which you try to append to the slice has to be addressable")
 
 	i1 = 1
-	_ = rs.Append(&i1)
+	err = rs.Append(&i1)
+	assert.NoError(t, err)
 
 	i2 = 2
-	_ = rs.Append(&i2)
+	err = rs.Append(&i2)
+	assert.NoError(t, err)
 
-	assert.EqualError(t, err, "the value which you try to append to the slice has to be addressable", "the element has to be addressable")
 	assert.Len(t, s2, 2)
 	assert.Equal(t, 1, *s2[0])
 	assert.Equal(t, 2, *s2[1])

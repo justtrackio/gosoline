@@ -255,44 +255,60 @@ func (s *Struct) doReadMap(path string, mapValues *MapX, mp any) error {
 
 	switch valueType.Kind() {
 	case reflect.Map:
-		for _, key := range mapValue.MapKeys() {
-			if key.Kind() != reflect.String {
-				return fmt.Errorf("only string values are allowed as map keys for path %s", path)
-			}
-
-			element := mapValue.MapIndex(key).Interface()
-			elementPath := fmt.Sprintf("%s.%s", path, key.String())
-
-			if err := s.doReadMap(elementPath, mapValues, element); err != nil {
-				return fmt.Errorf("can not read path value %s: %w", elementPath, err)
-			}
-		}
+		return s.doReadMapOfMap(path, mapValues, mapValue)
 	case reflect.Slice:
-		for _, key := range mapValue.MapKeys() {
-			if key.Kind() != reflect.String {
-				return fmt.Errorf("only string values are allowed as map keys for path %s", path)
-			}
-
-			element := mapValue.MapIndex(key).Interface()
-			elementPath := fmt.Sprintf("%s.%s", path, key.String())
-
-			mapValues.Set(elementPath, element)
-		}
+		return s.doReadMapOfSlice(path, mapValues, mapValue)
 	case reflect.Struct:
-		for _, key := range mapValue.MapKeys() {
-			if key.Kind() != reflect.String {
-				return fmt.Errorf("only string values are allowed as map keys for path %s", path)
-			}
-
-			element := mapValue.MapIndex(key).Interface()
-			elementPath := fmt.Sprintf("%s.%s", path, key.String())
-
-			if err := s.doReadStruct(elementPath, mapValues, element); err != nil {
-				return fmt.Errorf("can not read path value %s: %w", elementPath, err)
-			}
-		}
+		return s.doReadMapOfStruct(path, mapValues, mapValue)
 	default:
 		return fmt.Errorf("MSI fields or a map of structs are allowed only for path %s", path)
+	}
+}
+
+func (s *Struct) doReadMapOfMap(path string, mapValues *MapX, mapValue reflect.Value) error {
+	for _, key := range mapValue.MapKeys() {
+		if key.Kind() != reflect.String {
+			return fmt.Errorf("only string values are allowed as map keys for path %s", path)
+		}
+
+		element := mapValue.MapIndex(key).Interface()
+		elementPath := fmt.Sprintf("%s.%s", path, key.String())
+
+		if err := s.doReadMap(elementPath, mapValues, element); err != nil {
+			return fmt.Errorf("can not read path value %s: %w", elementPath, err)
+		}
+	}
+
+	return nil
+}
+
+func (s *Struct) doReadMapOfSlice(path string, mapValues *MapX, mapValue reflect.Value) error {
+	for _, key := range mapValue.MapKeys() {
+		if key.Kind() != reflect.String {
+			return fmt.Errorf("only string values are allowed as map keys for path %s", path)
+		}
+
+		element := mapValue.MapIndex(key).Interface()
+		elementPath := fmt.Sprintf("%s.%s", path, key.String())
+
+		mapValues.Set(elementPath, element)
+	}
+
+	return nil
+}
+
+func (s *Struct) doReadMapOfStruct(path string, mapValues *MapX, mapValue reflect.Value) error {
+	for _, key := range mapValue.MapKeys() {
+		if key.Kind() != reflect.String {
+			return fmt.Errorf("only string values are allowed as map keys for path %s", path)
+		}
+
+		element := mapValue.MapIndex(key).Interface()
+		elementPath := fmt.Sprintf("%s.%s", path, key.String())
+
+		if err := s.doReadStruct(elementPath, mapValues, element); err != nil {
+			return fmt.Errorf("can not read path value %s: %w", elementPath, err)
+		}
 	}
 
 	return nil

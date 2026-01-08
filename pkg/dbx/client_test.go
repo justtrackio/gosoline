@@ -158,7 +158,7 @@ func (s *ClientTestSuite) TestSelect() {
 	}
 
 	s.sqlMock.
-		ExpectQuery("SELECT id, name, enabled FROM test_table WHERE id = ?").
+		ExpectQuery("SELECT `id`, `name`, `enabled` FROM test_table WHERE id = ?").
 		WillReturnRows(goSqlMock.NewRows([]string{"id", "name"}).AddRow(testEntity.Id, testEntity.Name))
 
 	_, err := s.client.Select().Where(dbx.Eq{"id": 1}).Exec(context.Background())
@@ -172,7 +172,7 @@ func (s *ClientTestSuite) TestSelectWhereStruct() {
 	}
 
 	s.sqlMock.
-		ExpectQuery("SELECT id, name, enabled FROM test_table WHERE id = ?").
+		ExpectQuery("SELECT `id`, `name`, `enabled` FROM test_table WHERE id = ?").
 		WithArgs(1).
 		WillReturnRows(goSqlMock.NewRows([]string{"id", "name"}).
 			AddRow(testEntity.Id, testEntity.Name))
@@ -189,7 +189,7 @@ func (s *ClientTestSuite) TestSelectOptions() {
 	}
 
 	s.sqlMock.
-		ExpectQuery("SELECT SQL_NO_CACHE HIGH_PRIORITY id, name, enabled FROM test_table").
+		ExpectQuery("SELECT SQL_NO_CACHE HIGH_PRIORITY `id`, `name`, `enabled` FROM test_table").
 		WillReturnRows(goSqlMock.NewRows([]string{"id", "name"}).AddRow(testEntity.Id, testEntity.Name))
 
 	_, err := s.client.Select().Options("SQL_NO_CACHE", "HIGH_PRIORITY").Exec(context.Background())
@@ -213,7 +213,7 @@ func (s *ClientTestSuite) TestSelectJoinGroupBy() {
 		Exec(context.Background())
 
 	s.NoError(err)
-	s.Equal(map[string]any{}, res[0])
+	s.Equal(TestEntity{Id: 1, Name: "Test Name"}, res[0])
 }
 
 func (s *ClientTestSuite) TestUpdate() {
