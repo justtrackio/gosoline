@@ -32,7 +32,7 @@ type Client[T any] interface {
 	Replace(val ...T) InsertBuilder[T]
 	// Select creates a new SELECT query builder.
 	//
-	//	results, err := client.Columns().Where(dbx.Eq{"id": 1}).Exec(ctx)
+	//	results, err := client.Select().Where(dbx.Eq{"id": 1}).Exec(ctx)
 	Select() SelectBuilder[T]
 	// Update creates a new UPDATE query builder.
 	//
@@ -164,5 +164,9 @@ func (c *client[T]) Update(updateValues ...any) UpdateBuilder[T] {
 //
 //	result, err := client.Get().Where(dbx.Eq{"id": 1}).Exec(ctx)
 func (c *client[T]) Get() GetBuilder[T] {
-	return newGetBuilder[T](c.client, c.table, c.placeholderFormat).columns(c.columns...)
+	escaped := funk.Map(c.columns, func(col string) string {
+		return fmt.Sprintf("`%s`", col)
+	})
+
+	return newGetBuilder[T](c.client, c.table, c.placeholderFormat).columns(escaped...)
 }

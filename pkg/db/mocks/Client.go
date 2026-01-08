@@ -1031,7 +1031,7 @@ func (_m *Client) Select(ctx context.Context, dest interface{}, query string, ar
 	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
-		panic("no return value specified for Columns")
+		panic("no return value specified for Select")
 	}
 
 	var r0 error
@@ -1044,7 +1044,7 @@ func (_m *Client) Select(ctx context.Context, dest interface{}, query string, ar
 	return r0
 }
 
-// Client_Select_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Columns'
+// Client_Select_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Select'
 type Client_Select_Call struct {
 	*mock.Call
 }
@@ -1055,7 +1055,7 @@ type Client_Select_Call struct {
 //   - query string
 //   - args ...interface{}
 func (_e *Client_Expecter) Select(ctx interface{}, dest interface{}, query interface{}, args ...interface{}) *Client_Select_Call {
-	return &Client_Select_Call{Call: _e.mock.On("Columns",
+	return &Client_Select_Call{Call: _e.mock.On("Select",
 		append([]interface{}{ctx, dest, query}, args...)...)}
 }
 
