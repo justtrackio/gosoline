@@ -76,12 +76,14 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ..
 	var err error
 	var errType ErrorType
 
-	backoffConfig := NewExponentialBackOff(e.settings)
-	backoffCtx := backoff.WithContext(backoffConfig, ctx)
-
 	attempts := 1
 	timeTracker := e.timeTrackerFactory()
 	timeTracker.Start()
+
+	// Use TrackedBackOff which delegates elapsed time checking to our tracker.
+	// This ensures the MaxElapsedTime budget is measured according to the tracker's strategy.
+	trackedBackoff := NewTrackedBackOff(e.settings, timeTracker)
+	backoffCtx := backoff.WithContext(trackedBackoff, ctx)
 
 	notify := func(err error, dur time.Duration) {
 		for _, n := range append(e.notifier, notifier...) {
