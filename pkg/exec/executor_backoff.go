@@ -10,23 +10,56 @@ import (
 )
 
 type BackoffExecutor struct {
-	logger   log.Logger
-	uuidGen  uuid.Uuid
-	resource *ExecutableResource
-	settings *BackoffSettings
-	checks   []ErrorChecker
-	notifier []Notify
+	logger             log.Logger
+	uuidGen            uuid.Uuid
+	resource           *ExecutableResource
+	settings           *BackoffSettings
+	checks             []ErrorChecker
+	notifier           []Notify
+	timeTrackerFactory func() ElapsedTimeTracker
+}
+
+// BackoffExecutorOption is a functional option for configuring a BackoffExecutor.
+type BackoffExecutorOption func(*BackoffExecutor)
+
+// WithElapsedTimeTrackerFactory sets a factory function for creating elapsed time trackers.
+// Each Execute call will use a new tracker instance, making it safe for concurrent use.
+// Use this to change how the MaxElapsedTime budget is measured.
+func WithElapsedTimeTrackerFactory(factory func() ElapsedTimeTracker) BackoffExecutorOption {
+	return func(e *BackoffExecutor) {
+		e.timeTrackerFactory = factory
+	}
 }
 
 func NewBackoffExecutor(logger log.Logger, res *ExecutableResource, settings *BackoffSettings, checks []ErrorChecker, notifier ...Notify) *BackoffExecutor {
-	return &BackoffExecutor{
-		logger:   logger,
-		uuidGen:  uuid.New(),
-		resource: res,
-		checks:   checks,
-		settings: settings,
-		notifier: notifier,
+	return NewBackoffExecutorWithOptions(logger, res, settings, checks, notifier)
+}
+
+// NewBackoffExecutorWithOptions creates a BackoffExecutor with functional options.
+// Use this when you need to customize behavior like elapsed time tracking.
+func NewBackoffExecutorWithOptions(
+	logger log.Logger,
+	res *ExecutableResource,
+	settings *BackoffSettings,
+	checks []ErrorChecker,
+	notifier []Notify,
+	opts ...BackoffExecutorOption,
+) *BackoffExecutor {
+	e := &BackoffExecutor{
+		logger:             logger,
+		uuidGen:            uuid.New(),
+		resource:           res,
+		checks:             checks,
+		settings:           settings,
+		notifier:           notifier,
+		timeTrackerFactory: func() ElapsedTimeTracker { return NewDefaultElapsedTimeTracker() },
 	}
+
+	for _, opt := range opts {
+		opt(e)
+	}
+
+	return e
 }
 
 func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ...Notify) (any, error) {
@@ -43,11 +76,14 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ..
 	var err error
 	var errType ErrorType
 
-	backoffConfig := NewExponentialBackOff(e.settings)
-	backoffCtx := backoff.WithContext(backoffConfig, ctx)
-
 	attempts := 1
-	start := time.Now()
+	timeTracker := e.timeTrackerFactory()
+	timeTracker.Start()
+
+	// Use TrackedBackOff which delegates elapsed time checking to our tracker.
+	// This ensures the MaxElapsedTime budget is measured according to the tracker's strategy.
+	trackedBackoff := NewTrackedBackOff(e.settings, timeTracker)
+	backoffCtx := backoff.WithContext(trackedBackoff, ctx)
 
 	notify := func(err error, dur time.Duration) {
 		for _, n := range append(e.notifier, notifier...) {
@@ -65,6 +101,8 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ..
 		res, err = f(delayedCtx)
 
 		if err == nil {
+			timeTracker.OnSuccess()
+
 			return nil
 		}
 
@@ -77,8 +115,12 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ..
 
 			switch errType {
 			case ErrorTypeOk:
+				timeTracker.OnSuccess()
+
 				return nil
 			case ErrorTypeRetryable:
+				timeTracker.OnError(err)
+
 				return err
 			case ErrorTypePermanent:
 				return backoff.Permanent(err)
@@ -88,7 +130,7 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ..
 		return backoff.Permanent(err)
 	}, backoffCtx, notify)
 
-	duration := time.Since(start)
+	duration := timeTracker.Elapsed()
 	logger = logger.WithFields(log.Fields{
 		"attempts":        attempts,
 		"duration_millis": duration.Milliseconds(),
