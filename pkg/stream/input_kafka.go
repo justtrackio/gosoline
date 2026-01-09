@@ -61,11 +61,18 @@ func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, se
 		Type: "kafka",
 		Name: settings.TopicId,
 	}
-	executor := exec.NewBackoffExecutorWithOptions(logger, res, &settings.Backoff, []exec.ErrorChecker{
-		CheckKafkaRetryableError(reader),
-	}, nil, exec.WithElapsedTimeTrackerFactory(func() exec.ElapsedTimeTracker {
-		return exec.NewErrorTriggeredElapsedTimeTracker()
-	}))
+	executor := exec.NewBackoffExecutor(
+		logger,
+		res,
+		&settings.Backoff,
+		[]exec.ErrorChecker{
+			CheckKafkaRetryableError(reader),
+		},
+		nil,
+		exec.WithElapsedTimeTrackerFactory(func() exec.ElapsedTimeTracker {
+			return exec.NewErrorTriggeredElapsedTimeTracker()
+		}),
+	)
 
 	return NewKafkaInputWithInterfaces(logger, *conn, healthCheckTimer, partitionManager, reader, schemaRegistryService, executor, settings.MaxPollRecords, data), nil
 }

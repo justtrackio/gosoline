@@ -1,137 +1,122 @@
 package exec_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/exec"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestTrackedBackOff_NextBackOff_WithDefaultTracker(t *testing.T) {
-	fakeClock := clock.NewFakeClock()
-	tracker := exec.NewDefaultElapsedTimeTrackerWithInterfaces(fakeClock)
-	tracker.Start()
+type TrackedBackOffTestSuite struct {
+	suite.Suite
+	fakeClock clock.FakeClock
+	settings  *exec.BackoffSettings
+	tracker   exec.ElapsedTimeTracker
+	bo        *exec.TrackedBackOff
+}
 
-	settings := &exec.BackoffSettings{
+func (s *TrackedBackOffTestSuite) SetupTest() {
+	s.fakeClock = clock.NewFakeClock()
+	s.settings = &exec.BackoffSettings{
 		InitialInterval: 100 * time.Millisecond,
 		MaxInterval:     1 * time.Second,
 		MaxElapsedTime:  5 * time.Second,
 	}
+	s.tracker = exec.NewErrorTriggeredElapsedTimeTrackerWithInterfaces(s.fakeClock)
+	s.bo = exec.NewTrackedBackOff(s.settings, s.tracker)
+}
 
-	bo := exec.NewTrackedBackOff(settings, tracker)
-
+func (s *TrackedBackOffTestSuite) TestNextBackOff_WithDefaultTracker() {
+	s.tracker.Start()
 	// First backoff should return an interval
-	interval := bo.NextBackOff()
-	assert.NotEqual(t, backoff.Stop, interval)
-	assert.GreaterOrEqual(t, interval, 100*time.Millisecond)
+	interval := s.bo.NextBackOff()
+	s.NotEqual(backoff.Stop, interval)
+	s.GreaterOrEqual(interval, 100*time.Millisecond)
 
 	// Advance time past max elapsed
-	fakeClock.Advance(6 * time.Second)
+	s.fakeClock.Advance(6 * time.Second)
 
 	// Now it should stop
-	interval = bo.NextBackOff()
-	assert.Equal(t, backoff.Stop, interval)
+	interval = s.bo.NextBackOff()
+	s.Equal(backoff.Stop, interval)
 }
 
-func TestTrackedBackOff_NextBackOff_WithErrorTriggeredTracker(t *testing.T) {
-	fakeClock := clock.NewFakeClock()
-	tracker := exec.NewErrorTriggeredElapsedTimeTrackerWithInterfaces(fakeClock)
-	tracker.Start()
-
-	settings := &exec.BackoffSettings{
-		InitialInterval: 100 * time.Millisecond,
-		MaxInterval:     1 * time.Second,
-		MaxElapsedTime:  5 * time.Second,
-	}
-
-	bo := exec.NewTrackedBackOff(settings, tracker)
+func (s *TrackedBackOffTestSuite) TestNextBackOff_WithErrorTriggeredTracker() {
+	s.tracker.Start()
 
 	// Simulate blocking for 10 seconds before first error (e.g., Kafka poll)
-	fakeClock.Advance(10 * time.Second)
+	s.fakeClock.Advance(10 * time.Second)
 
 	// No error yet, so elapsed should be 0 - should NOT stop
-	interval := bo.NextBackOff()
-	assert.NotEqual(t, backoff.Stop, interval, "should not stop when no error has occurred yet")
+	interval := s.bo.NextBackOff()
+	s.NotEqual(backoff.Stop, interval, "should not stop when no error has occurred yet")
 
 	// Now an error occurs
-	tracker.OnError(assert.AnError)
+	s.tracker.OnError(errors.New(s.T().Name()))
 
 	// Should still be able to get intervals (we just started the error clock)
-	interval = bo.NextBackOff()
-	assert.NotEqual(t, backoff.Stop, interval, "should not stop immediately after first error")
+	interval = s.bo.NextBackOff()
+	s.NotEqual(backoff.Stop, interval, "should not stop immediately after first error")
 
 	// Advance 3 seconds (still within budget)
-	fakeClock.Advance(3 * time.Second)
-	interval = bo.NextBackOff()
-	assert.NotEqual(t, backoff.Stop, interval, "should not stop within max elapsed time")
+	s.fakeClock.Advance(3 * time.Second)
+	interval = s.bo.NextBackOff()
+	s.NotEqual(backoff.Stop, interval, "should not stop within max elapsed time")
 
 	// Advance past max elapsed time from first error
-	fakeClock.Advance(3 * time.Second) // total 6s since error
-	interval = bo.NextBackOff()
-	assert.Equal(t, backoff.Stop, interval, "should stop after max elapsed time since first error")
+	s.fakeClock.Advance(3 * time.Second) // total 6s since error
+	interval = s.bo.NextBackOff()
+	s.Equal(backoff.Stop, interval, "should stop after max elapsed time since first error")
 }
 
-func TestTrackedBackOff_NextBackOff_ErrorTriggeredTracker_ResetOnSuccess(t *testing.T) {
-	fakeClock := clock.NewFakeClock()
-	tracker := exec.NewErrorTriggeredElapsedTimeTrackerWithInterfaces(fakeClock)
-	tracker.Start()
-
-	settings := &exec.BackoffSettings{
-		InitialInterval: 100 * time.Millisecond,
-		MaxInterval:     1 * time.Second,
-		MaxElapsedTime:  5 * time.Second,
-	}
-
-	bo := exec.NewTrackedBackOff(settings, tracker)
+func (s *TrackedBackOffTestSuite) TestNextBackOff_ErrorTriggeredTracker_ResetOnSuccess() {
+	s.tracker.Start()
 
 	// Error occurs
-	tracker.OnError(assert.AnError)
-	fakeClock.Advance(3 * time.Second)
+	s.tracker.OnError(errors.New(s.T().Name()))
+	s.fakeClock.Advance(3 * time.Second)
 
-	interval := bo.NextBackOff()
-	assert.NotEqual(t, backoff.Stop, interval)
+	interval := s.bo.NextBackOff()
+	s.NotEqual(backoff.Stop, interval)
 
 	// Success resets the error clock
-	tracker.OnSuccess()
-	bo.Reset()
+	s.tracker.OnSuccess()
+	s.bo.Reset()
 
 	// Even after 10 more seconds, we should not stop (no error active)
-	fakeClock.Advance(10 * time.Second)
-	interval = bo.NextBackOff()
-	assert.NotEqual(t, backoff.Stop, interval, "should not stop after success reset")
+	s.fakeClock.Advance(10 * time.Second)
+	interval = s.bo.NextBackOff()
+	s.NotEqual(backoff.Stop, interval, "should not stop after success reset")
 
 	// New error occurs
-	tracker.OnError(assert.AnError)
+	s.tracker.OnError(errors.New(s.T().Name()))
 
 	// New budget starts from this error
-	fakeClock.Advance(3 * time.Second)
-	interval = bo.NextBackOff()
-	assert.NotEqual(t, backoff.Stop, interval, "should not stop within new budget")
+	s.fakeClock.Advance(3 * time.Second)
+	interval = s.bo.NextBackOff()
+	s.NotEqual(backoff.Stop, interval, "should not stop within new budget")
 
-	fakeClock.Advance(3 * time.Second) // 6s since new error
-	interval = bo.NextBackOff()
-	assert.Equal(t, backoff.Stop, interval, "should stop after exceeding new budget")
+	s.fakeClock.Advance(3 * time.Second) // 6s since new error
+	interval = s.bo.NextBackOff()
+	s.Equal(backoff.Stop, interval, "should stop after exceeding new budget")
 }
 
-func TestTrackedBackOff_NextBackOff_NoMaxElapsedTime(t *testing.T) {
-	fakeClock := clock.NewFakeClock()
-	tracker := exec.NewDefaultElapsedTimeTrackerWithInterfaces(fakeClock)
-	tracker.Start()
-
-	settings := &exec.BackoffSettings{
-		InitialInterval: 100 * time.Millisecond,
-		MaxInterval:     1 * time.Second,
-		MaxElapsedTime:  0, // disabled
-	}
-
-	bo := exec.NewTrackedBackOff(settings, tracker)
+func (s *TrackedBackOffTestSuite) TestNextBackOff_NoMaxElapsedTime() {
+	s.settings.MaxElapsedTime = 0 // disabled
+	s.bo = exec.NewTrackedBackOff(s.settings, s.tracker)
+	s.tracker.Start()
 
 	// Even after a very long time, should not stop
-	fakeClock.Advance(24 * time.Hour)
+	s.fakeClock.Advance(24 * time.Hour)
 
-	interval := bo.NextBackOff()
-	assert.NotEqual(t, backoff.Stop, interval, "should never stop when MaxElapsedTime is 0")
+	interval := s.bo.NextBackOff()
+	s.NotEqual(backoff.Stop, interval, "should never stop when MaxElapsedTime is 0")
+}
+
+func TestTrackedBackOffTestSuite(t *testing.T) {
+	suite.Run(t, new(TrackedBackOffTestSuite))
 }
