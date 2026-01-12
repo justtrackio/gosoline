@@ -54,8 +54,8 @@ func EraseConsumerCallbackTypes[M any](consumerCallback ConsumerCallback[M]) Unt
 	}
 }
 
-func (u untypedConsumerCallback[M]) GetModel(_ map[string]string) any {
-	return new(M)
+func (u untypedConsumerCallback[M]) GetModel(_ map[string]string) (any, error) {
+	return new(M), nil
 }
 
 func (u untypedConsumerCallback[M]) Consume(ctx context.Context, model any, attributes map[string]string) (bool, error) {

@@ -18,13 +18,20 @@ func init() {
 }
 
 func outputDdbFactory(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
-	var err error
 	outputs := make(map[int]Output)
 
 	for version, transformer := range transformers {
-		if outputs[version], err = NewOutputDdb(ctx, config, logger, transformer.GetModel(), settings); err != nil {
+		model, err := transformer.GetModel()
+		if err != nil {
+			return nil, fmt.Errorf("can not get model from transformer: %w", err)
+		}
+
+		var output Output
+		if output, err = NewOutputDdb(ctx, config, logger, model, settings); err != nil {
 			return nil, fmt.Errorf("can not create ddb output: %w", err)
 		}
+
+		outputs[version] = output
 	}
 
 	return outputs, nil

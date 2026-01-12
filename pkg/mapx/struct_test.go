@@ -1149,3 +1149,278 @@ func setupMapStructIO(t *testing.T, source any) *mapx.Struct {
 
 	return ms
 }
+
+func TestSnakeCaseMatchName(t *testing.T) {
+	tests := []struct {
+		mapKey    string
+		fieldName string
+		expected  bool
+	}{
+		{"id", "Id", true},
+		{"id", "ID", true},
+		{"business_unit_id", "BusinessUnitId", true},
+		{"created_at", "CreatedAt", true},
+		{"api_token", "ApiToken", true},
+		{"foo", "Bar", false},
+		{"some_field", "SomeField", true},
+		{"some_field", "someField", true},
+		{"", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.mapKey+"_"+tt.fieldName, func(t *testing.T) {
+			assert.Equal(t, tt.expected, mapx.SnakeCaseMatchName(tt.mapKey, tt.fieldName))
+		})
+	}
+}
+
+func TestMapStructIO_WriteWithMatchName(t *testing.T) {
+	type Target struct {
+		UserId    uint   `cfg:"UserId"`
+		FirstName string `cfg:"FirstName"`
+		CreatedAt string `cfg:"CreatedAt"`
+	}
+
+	values := mapx.NewMapX(map[string]any{
+		"user_id":    42,
+		"first_name": "John",
+		"created_at": "2023-01-01",
+	})
+
+	source := &Target{}
+	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
+		FieldTag:  "cfg",
+		MatchName: mapx.SnakeCaseMatchName,
+	})
+	assert.NoError(t, err)
+
+	err = ms.Write(values)
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint(42), source.UserId)
+	assert.Equal(t, "John", source.FirstName)
+	assert.Equal(t, "2023-01-01", source.CreatedAt)
+}
+
+func TestMapStructIO_WriteWithMatchName_ExactMatchTakesPrecedence(t *testing.T) {
+	type Target struct {
+		Value string `cfg:"value"`
+	}
+
+	values := mapx.NewMapX(map[string]any{
+		"value":       "exact",
+		"other_value": "snake",
+	})
+
+	source := &Target{}
+	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
+		FieldTag:  "cfg",
+		MatchName: mapx.SnakeCaseMatchName,
+	})
+	assert.NoError(t, err)
+
+	err = ms.Write(values)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "exact", source.Value)
+}
+
+func TestMapStructIO_WriteWithPrefix(t *testing.T) {
+	type Config struct {
+		Foo string `cfg:"Foo"`
+		Bar bool   `cfg:"Bar"`
+	}
+
+	type Target struct {
+		Id     uint   `cfg:"Id"`
+		Config Config `cfg:"Config,prefix=config_"`
+	}
+
+	values := mapx.NewMapX(map[string]any{
+		"id":         1,
+		"config_foo": "hello",
+		"config_bar": true,
+	})
+
+	source := &Target{}
+	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
+		FieldTag:  "cfg",
+		MatchName: mapx.SnakeCaseMatchName,
+	})
+	assert.NoError(t, err)
+
+	err = ms.Write(values)
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint(1), source.Id)
+	assert.Equal(t, "hello", source.Config.Foo)
+	assert.True(t, source.Config.Bar)
+}
+
+func TestMapStructIO_WriteWithPrefix_EmptyNested(t *testing.T) {
+	type Config struct {
+		Foo string `cfg:"Foo"`
+	}
+
+	type Target struct {
+		Id     uint   `cfg:"Id"`
+		Config Config `cfg:"Config,prefix=config_"`
+	}
+
+	values := mapx.NewMapX(map[string]any{
+		"Id": 1,
+		// No config_ prefixed keys
+	})
+
+	source := &Target{}
+	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
+		FieldTag: "cfg",
+	})
+	assert.NoError(t, err)
+
+	err = ms.Write(values)
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint(1), source.Id)
+	assert.Equal(t, "", source.Config.Foo) // Zero value
+}
+
+func TestMapStructIO_WriteWithPrefix_MatchNameApplied(t *testing.T) {
+	type Config struct {
+		SomeValue string `cfg:"SomeValue"`
+	}
+
+	type Target struct {
+		Config Config `cfg:"Config,prefix=config_"`
+	}
+
+	values := mapx.NewMapX(map[string]any{
+		"config_some_value": "test",
+	})
+
+	source := &Target{}
+	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
+		FieldTag:  "cfg",
+		MatchName: mapx.SnakeCaseMatchName,
+	})
+	assert.NoError(t, err)
+
+	err = ms.Write(values)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "test", source.Config.SomeValue)
+}
+
+func TestMapStructDurationCaster_Pointer(t *testing.T) {
+	type Target struct {
+		Timeout  *time.Duration `cfg:"timeout"`
+		Interval *time.Duration `cfg:"interval"`
+		Delay    *time.Duration `cfg:"delay"`
+	}
+
+	values := mapx.NewMapX(map[string]any{
+		"timeout":  "5m",
+		"interval": "",
+		// delay not present
+	})
+
+	source := &Target{}
+	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
+		FieldTag: "cfg",
+		Casters: []mapx.MapStructCaster{
+			mapx.MapStructDurationCaster,
+		},
+	})
+	assert.NoError(t, err)
+
+	err = ms.Write(values)
+	assert.NoError(t, err)
+
+	assert.NotNil(t, source.Timeout)
+	assert.Equal(t, 5*time.Minute, *source.Timeout)
+	assert.Nil(t, source.Interval)
+	assert.Nil(t, source.Delay)
+}
+
+func TestMapStructDurationCaster_Pointer_NonString(t *testing.T) {
+	type Target struct {
+		Timeout *time.Duration `cfg:"timeout"`
+	}
+
+	duration := 10 * time.Second
+	values := mapx.NewMapX(map[string]any{
+		"timeout": duration,
+	})
+
+	source := &Target{}
+	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
+		FieldTag: "cfg",
+		Casters: []mapx.MapStructCaster{
+			mapx.MapStructDurationCaster,
+		},
+	})
+	assert.NoError(t, err)
+
+	err = ms.Write(values)
+	assert.NoError(t, err)
+
+	assert.NotNil(t, source.Timeout)
+	assert.Equal(t, duration, *source.Timeout)
+}
+
+func TestMapStructTimeCaster_Pointer(t *testing.T) {
+	type Target struct {
+		CreatedAt *time.Time `cfg:"created_at"`
+		UpdatedAt *time.Time `cfg:"updated_at"`
+		DeletedAt *time.Time `cfg:"deleted_at"`
+	}
+
+	values := mapx.NewMapX(map[string]any{
+		"created_at": "2023-01-01T12:00:00Z",
+		"updated_at": "",
+		// deleted_at not present
+	})
+
+	source := &Target{}
+	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
+		FieldTag: "cfg",
+		Casters: []mapx.MapStructCaster{
+			mapx.MapStructTimeCaster,
+		},
+	})
+	assert.NoError(t, err)
+
+	err = ms.Write(values)
+	assert.NoError(t, err)
+
+	assert.NotNil(t, source.CreatedAt)
+	assert.Equal(t, time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC), *source.CreatedAt)
+	assert.Nil(t, source.UpdatedAt)
+	assert.Nil(t, source.DeletedAt)
+}
+
+func TestMapStructTimeCaster_Pointer_NonString(t *testing.T) {
+	type Target struct {
+		CreatedAt *time.Time `cfg:"created_at"`
+	}
+
+	now := time.Now().Truncate(time.Second)
+	values := mapx.NewMapX(map[string]any{
+		"created_at": now,
+	})
+
+	source := &Target{}
+	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
+		FieldTag: "cfg",
+		Casters: []mapx.MapStructCaster{
+			mapx.MapStructTimeCaster,
+		},
+	})
+	assert.NoError(t, err)
+
+	err = ms.Write(values)
+	assert.NoError(t, err)
+
+	assert.NotNil(t, source.CreatedAt)
+	assert.Equal(t, now.Unix(), source.CreatedAt.Unix())
+}

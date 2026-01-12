@@ -52,20 +52,37 @@ func NewSubscriberCallbackFactory(
 	}
 }
 
-func (s *SubscriberCallback) GetModel(attributes map[string]string) any {
-	var err error
-	var spec *ModelSpecification
-	var transformer ModelTransformer
+// NewSubscriberCallbackWithInterfaces creates a SubscriberCallback for testing purposes
+func NewSubscriberCallbackWithInterfaces(
+	logger log.Logger,
+	core SubscriberCore,
+	sourceModel SubscriberModel,
+) *SubscriberCallback {
+	defaultMetrics := getSubscriberCallbackDefaultMetrics(core.GetModelIds())
+	metricWriter := metric.NewWriter(defaultMetrics...)
 
-	if spec, err = getModelSpecification(attributes); err != nil {
-		return nil
+	return &SubscriberCallback{
+		logger:           logger,
+		metric:           metricWriter,
+		core:             core,
+		sourceModel:      sourceModel,
+		persistGraceTime: 0,
+	}
+}
+
+func (s *SubscriberCallback) GetModel(attributes map[string]string) (any, error) {
+	spec, err := getModelSpecification(attributes)
+	if err != nil {
+		return nil, fmt.Errorf("can not read model specifications from the message attributes: %w", err)
 	}
 
-	if transformer, err = s.core.GetTransformer(spec); err != nil {
-		return nil
+	// Validate that the model and version exist
+	transformer, err := s.core.GetTransformer(spec)
+	if err != nil {
+		return nil, err
 	}
 
-	return transformer.getInput()
+	return transformer.getInput(), nil
 }
 
 func (s *SubscriberCallback) GetSchemaSettings() (*stream.SchemaSettings, error) {
@@ -101,7 +118,9 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 	}
 
 	defer func() {
-		s.writeMetric(ctx, err, spec)
+		if err != nil {
+			s.writeMetric(ctx, MetricNameFailure, spec)
+		}
 	}()
 
 	logger := s.logger.WithFields(log.Fields{
@@ -111,6 +130,7 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 	})
 
 	if transformer, err = s.core.GetTransformer(spec); err != nil {
+		// This should not happen if GetModel was called first, but handle it for safety
 		return false, err
 	}
 
@@ -158,16 +178,12 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 		model.GetId(),
 	)
 
+	s.writeMetric(ctx, MetricNameSuccess, spec)
+
 	return true, nil
 }
 
-func (s *SubscriberCallback) writeMetric(ctx context.Context, err error, spec *ModelSpecification) {
-	metricName := MetricNameSuccess
-
-	if err != nil {
-		metricName = MetricNameFailure
-	}
-
+func (s *SubscriberCallback) writeMetric(ctx context.Context, metricName string, spec *ModelSpecification) {
 	s.metric.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),

@@ -96,11 +96,11 @@ func (c *subscriberCore) GetTransformer(spec *ModelSpecification) (ModelTransfor
 	var ok bool
 
 	if _, ok = c.transformers[spec.ModelId]; !ok {
-		return nil, fmt.Errorf("there is no transformer for modelId %s", spec.ModelId)
+		return nil, NewUnknownModelError(spec.ModelId)
 	}
 
 	if _, ok = c.transformers[spec.ModelId][spec.Version]; !ok {
-		return nil, fmt.Errorf("there is no transformer for modelId %s and version %d", spec.ModelId, spec.Version)
+		return nil, NewUnknownModelVersionError(spec.ModelId, spec.Version)
 	}
 
 	return c.transformers[spec.ModelId][spec.Version], nil

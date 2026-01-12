@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ettle/strcase"
 	"github.com/spf13/cast"
 )
 
@@ -13,20 +14,73 @@ type MapStructDecoder func(targetType reflect.Type, val any) (any, error)
 
 type MapStructCaster func(targetType reflect.Type, value any) (any, error)
 
-func MapStructDurationCaster(targetType reflect.Type, value any) (any, error) {
-	if targetType != reflect.TypeOf(time.Duration(0)) {
-		return nil, nil
-	}
-
-	return cast.ToDurationE(value)
+// SnakeCaseMatchName matches snake_case map keys to PascalCase/camelCase field names.
+// The comparison is case-insensitive after converting the map key to PascalCase.
+//
+// Examples:
+//   - "user_id" matches "UserId", "userId", "UserID"
+//   - "created_at" matches "CreatedAt"
+//   - "api_token" matches "ApiToken"
+func SnakeCaseMatchName(mapKey, fieldName string) bool {
+	return strings.EqualFold(strcase.ToPascal(mapKey), fieldName)
 }
 
+// MapStructTimeCaster casts string values to time.Time or *time.Time based on target type.
+// For *time.Time: empty strings result in a nil pointer.
+// For both: non-empty strings are parsed using cast.ToTimeE.
 func MapStructTimeCaster(targetType reflect.Type, value any) (any, error) {
-	if targetType != reflect.TypeOf(time.Time{}) {
+	timeType := reflect.TypeOf(time.Time{})
+	timePtrType := reflect.TypeOf((*time.Time)(nil))
+
+	switch targetType {
+	case timePtrType:
+		// Handle empty string -> nil pointer
+		if str, ok := value.(string); ok && str == "" {
+			return (*time.Time)(nil), nil
+		}
+
+		t, err := cast.ToTimeE(value)
+		if err != nil {
+			return nil, err
+		}
+
+		return &t, nil
+
+	case timeType:
+		return cast.ToTimeE(value)
+
+	default:
 		return nil, nil
 	}
+}
 
-	return cast.ToTimeE(value)
+// MapStructDurationCaster casts values to time.Duration or *time.Duration based on target type.
+// For *time.Duration: empty strings result in a nil pointer.
+// For both: non-empty strings are parsed using cast.ToDurationE.
+func MapStructDurationCaster(targetType reflect.Type, value any) (any, error) {
+	durationType := reflect.TypeOf(time.Duration(0))
+	durationPtrType := reflect.TypeOf((*time.Duration)(nil))
+
+	switch targetType {
+	case durationPtrType:
+		// Handle empty string -> nil pointer
+		if str, ok := value.(string); ok && str == "" {
+			return (*time.Duration)(nil), nil
+		}
+
+		d, err := cast.ToDurationE(value)
+		if err != nil {
+			return nil, err
+		}
+
+		return &d, nil
+
+	case durationType:
+		return cast.ToDurationE(value)
+
+	default:
+		return nil, nil
+	}
 }
 
 var mapStructSliceCasters = map[reflect.Kind]MapStructCaster{

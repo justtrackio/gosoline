@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/reqctx"
 	"github.com/justtrackio/gosoline/pkg/smpl"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -201,7 +203,31 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 	var model any
 	var attributes map[string]string
 
-	if model = c.callback.GetModel(msg.Attributes); model == nil {
+	if model, err = c.callback.GetModel(msg.Attributes); err != nil {
+		c.metricWriter.Write(ctx, metric.Data{
+			&metric.Datum{
+				MetricName: metricNameConsumerUnknownModelError,
+				Dimensions: map[string]string{
+					"Consumer": c.name,
+				},
+				Value: 1.0,
+			},
+		})
+
+		// Check if this error is ignorable based on consumer settings
+		var ignorableErr IgnorableGetModelError
+		if errors.As(err, &ignorableErr) && ignorableErr.IsIgnorableWithSettings(c.settings.IgnoreOnGetModelError) {
+			c.logger.Info(ctx, "ignoring message due to ignorable GetModel error: %s", err.Error())
+
+			return true
+		}
+
+		c.handleError(ctx, err, "an error occurred during the consume operation")
+
+		return false
+	}
+
+	if model == nil {
 		err := fmt.Errorf("can not get model for message attributes %v", msg.Attributes)
 		c.handleError(ctx, err, "an error occurred during the consume operation")
 

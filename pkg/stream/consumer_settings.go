@@ -15,15 +15,27 @@ const (
 )
 
 type ConsumerSettings struct {
-	Input                string                     `cfg:"input" default:"consumer" validate:"required"`
-	RunnerCount          int                        `cfg:"runner_count" default:"1" validate:"min=1"`
-	Encoding             EncodingType               `cfg:"encoding" default:"application/json"`
-	IdleTimeout          time.Duration              `cfg:"idle_timeout" default:"10s"`
-	AcknowledgeGraceTime time.Duration              `cfg:"acknowledge_grace_time" default:"10s"`
-	ConsumeGraceTime     time.Duration              `cfg:"consume_grace_time" default:"10s"`
-	Retry                ConsumerRetrySettings      `cfg:"retry"`
-	Healthcheck          health.HealthCheckSettings `cfg:"healthcheck"`
-	AggregateMessageMode string                     `cfg:"aggregate_message_mode" default:"atMostOnce" validate:"oneof=atLeastOnce atMostOnce"`
+	Input                 string                        `cfg:"input" default:"consumer" validate:"required"`
+	RunnerCount           int                           `cfg:"runner_count" default:"1" validate:"min=1"`
+	Encoding              EncodingType                  `cfg:"encoding" default:"application/json"`
+	IdleTimeout           time.Duration                 `cfg:"idle_timeout" default:"10s"`
+	AcknowledgeGraceTime  time.Duration                 `cfg:"acknowledge_grace_time" default:"10s"`
+	ConsumeGraceTime      time.Duration                 `cfg:"consume_grace_time" default:"10s"`
+	Retry                 ConsumerRetrySettings         `cfg:"retry"`
+	Healthcheck           health.HealthCheckSettings    `cfg:"healthcheck"`
+	AggregateMessageMode  string                        `cfg:"aggregate_message_mode" default:"atMostOnce" validate:"oneof=atLeastOnce atMostOnce"`
+	IgnoreOnGetModelError IgnoreOnGetModelErrorSettings `cfg:"ignore_on_get_model_error"`
+}
+
+// IgnoreOnGetModelErrorSettings configures which GetModel errors should result in the message being ignored
+// (acknowledged without processing) rather than being treated as an error.
+type IgnoreOnGetModelErrorSettings struct {
+	// UnknownModel indicates whether to ignore messages when the model is unknown.
+	// When true, messages with unknown model IDs will be acknowledged and skipped.
+	UnknownModel bool `cfg:"unknown_model" default:"false"`
+	// UnknownVersion indicates whether to ignore messages when the version is unknown.
+	// When true, messages with unknown versions for known models will be acknowledged and skipped.
+	UnknownVersion bool `cfg:"unknown_version" default:"false"`
 }
 
 type ConsumerRetrySettings struct {

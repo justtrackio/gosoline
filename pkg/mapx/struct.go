@@ -26,6 +26,7 @@ type StructTag struct {
 	Name     string
 	NoCast   bool
 	NoDecode bool
+	Prefix   string
 }
 
 func (k StructKey) String() string {
@@ -33,10 +34,12 @@ func (k StructKey) String() string {
 }
 
 type StructSettings struct {
-	FieldTag   string
-	DefaultTag string
-	Casters    []MapStructCaster
-	Decoders   []MapStructDecoder
+	FieldTag           string
+	DefaultTag         string
+	Casters            []MapStructCaster
+	Decoders           []MapStructDecoder
+	MatchName          func(mapKey, fieldName string) bool
+	DefaultToFieldName bool
 }
 
 type Struct struct {
@@ -93,7 +96,7 @@ func (s *Struct) doKeys(parent string, target any) []StructKey {
 			continue
 		}
 
-		if tag, ok = s.readTag(targetField.Tag); !ok {
+		if tag, ok = s.readTag(targetField.Tag, targetField.Name); !ok {
 			continue
 		}
 
@@ -167,7 +170,7 @@ func (s *Struct) doReadZeroAndDefaultValues(target any) (zeros *MapX, defaults *
 			continue
 		}
 
-		if tag, ok = s.readTag(targetField.Tag); !ok {
+		if tag, ok = s.readTag(targetField.Tag, targetField.Name); !ok {
 			continue
 		}
 
@@ -410,7 +413,7 @@ func (s *Struct) doReadStruct(path string, mapValues *MapX, target any) error {
 		}
 
 		// skip fields without tag
-		if tag, ok = s.readTag(fieldType.Tag); !ok {
+		if tag, ok = s.readTag(fieldType.Tag, fieldType.Name); !ok {
 			continue
 		}
 
@@ -463,6 +466,78 @@ func (s *Struct) Write(values *MapX) error {
 	return s.doWrite(s.target, values)
 }
 
+// findMatchingKey finds a key in sourceValues that matches tagName.
+// Uses exact match first (fast path), then MatchName function if configured.
+func (s *Struct) findMatchingKey(sourceValues *MapX, tagName string) string {
+	// Fast path: exact match
+	if sourceValues.Has(tagName) {
+		return tagName
+	}
+
+	// No custom matcher configured
+	if s.settings.MatchName == nil {
+		return ""
+	}
+
+	// Slow path: try custom matching against all keys
+	for _, key := range sourceValues.Keys() {
+		if s.settings.MatchName(key, tagName) {
+			return key
+		}
+	}
+
+	return ""
+}
+
+// extractPrefixedValues extracts keys with the given prefix into a new MapX.
+// The prefix is stripped from keys. Returns nil for empty results.
+func (s *Struct) extractPrefixedValues(sourceValues *MapX, prefix string) *MapX {
+	result := NewMapX()
+
+	for _, key := range sourceValues.Keys() {
+		if strings.HasPrefix(key, prefix) {
+			strippedKey := strings.TrimPrefix(key, prefix)
+			result.Set(strippedKey, sourceValues.Get(key).Data())
+		}
+	}
+
+	// Clean up: return nil for empty maps
+	if len(result.Keys()) == 0 {
+		return nil
+	}
+
+	return result
+}
+
+// doWritePrefixedStruct handles struct fields with prefix= tag option.
+func (s *Struct) doWritePrefixedStruct(tag *StructTag, targetValue reflect.Value, sourceValues *MapX) error {
+	prefixedValues := s.extractPrefixedValues(sourceValues, tag.Prefix)
+	if prefixedValues == nil {
+		return nil // No matching prefixed keys found
+	}
+
+	// Handle pointer to struct
+	if targetValue.Kind() == reflect.Ptr {
+		if targetValue.IsNil() {
+			targetValue.Set(reflect.New(targetValue.Type().Elem()))
+		}
+		targetValue = targetValue.Elem()
+	}
+
+	element := reflect.New(targetValue.Type())
+	element.Elem().Set(targetValue)
+	elementInterface := element.Interface()
+
+	if err := s.doWrite(elementInterface, prefixedValues); err != nil {
+		return fmt.Errorf("can not write prefixed struct field %s: %w", tag.Name, err)
+	}
+
+	indirect := reflect.Indirect(element)
+	targetValue.Set(indirect)
+
+	return nil
+}
+
 func (s *Struct) doWrite(target any, sourceValues *MapX) error {
 	st := reflect.TypeOf(target)
 	sv := reflect.ValueOf(target)
@@ -498,15 +573,32 @@ func (s *Struct) doWrite(target any, sourceValues *MapX) error {
 			continue
 		}
 
-		if tag, ok = s.readTag(targetField.Tag); !ok {
+		if tag, ok = s.readTag(targetField.Tag, targetField.Name); !ok {
 			continue
 		}
 
-		if !sourceValues.Has(tag.Name) {
+		// Handle prefix option for struct fields
+		if tag.Prefix != "" {
+			targetKind := targetValue.Kind()
+			isStruct := targetKind == reflect.Struct && targetValue.Type() != reflect.TypeOf(time.Time{})
+			isPtrToStruct := targetKind == reflect.Ptr && targetValue.Type().Elem().Kind() == reflect.Struct
+
+			if isStruct || isPtrToStruct {
+				if err := s.doWritePrefixedStruct(tag, targetValue, sourceValues); err != nil {
+					return err
+				}
+
+				continue
+			}
+		}
+
+		// Use findMatchingKey instead of direct Has() check
+		matchedKey := s.findMatchingKey(sourceValues, tag.Name)
+		if matchedKey == "" {
 			continue
 		}
 
-		if err := s.doWriteValue(tag, sourceValues, targetValue); err != nil {
+		if err := s.doWriteValue(tag, matchedKey, sourceValues, targetValue); err != nil {
 			return err
 		}
 	}
@@ -514,16 +606,32 @@ func (s *Struct) doWrite(target any, sourceValues *MapX) error {
 	return nil
 }
 
-func (s *Struct) doWriteValue(tag *StructTag, sourceValues *MapX, targetValue reflect.Value) (err error) {
-	sourceValue := sourceValues.Get(tag.Name).Data()
+func (s *Struct) doWriteValue(tag *StructTag, matchedKey string, sourceValues *MapX, targetValue reflect.Value) (err error) {
+	sourceValue := sourceValues.Get(matchedKey).Data()
 
+	// For pointer types, try casters first with the original pointer type
+	// This allows casters like MapStructTimeCaster to handle *time.Time directly
 	if targetValue.Type().Kind() == reflect.Ptr {
+		// Try to cast/decode with the pointer type first
+		castedValue, castErr := s.decodeAndCastValue(tag, targetValue.Type(), sourceValue)
+		if castErr == nil && castedValue != nil {
+			targetValue.Set(reflect.ValueOf(castedValue))
+
+			return nil
+		}
+
+		// If cast failed or returned nil, fall through to standard pointer handling
+		// but only if sourceValue is not nil (nil means keep zero value)
+		if sourceValue == nil {
+			return nil
+		}
+
 		targetValue.Set(reflect.New(targetValue.Type().Elem()))
 		targetValue = targetValue.Elem()
 	}
 
 	if targetValue.Kind() == reflect.Map {
-		if err := s.doWriteMap(tag, targetValue, sourceValues); err != nil {
+		if err := s.doWriteMap(tag, matchedKey, targetValue, sourceValues); err != nil {
 			return err
 		}
 
@@ -531,7 +639,7 @@ func (s *Struct) doWriteValue(tag *StructTag, sourceValues *MapX, targetValue re
 	}
 
 	if targetValue.Kind() == reflect.Slice {
-		if err := s.doWriteSlice(tag, targetValue, sourceValues); err != nil {
+		if err := s.doWriteSlice(tag, matchedKey, targetValue, sourceValues); err != nil {
 			return err
 		}
 
@@ -539,7 +647,7 @@ func (s *Struct) doWriteValue(tag *StructTag, sourceValues *MapX, targetValue re
 	}
 
 	if targetValue.Kind() == reflect.Struct && targetValue.Type() != reflect.TypeOf(time.Time{}) {
-		if err := s.doWriteStruct(tag.Name, targetValue, sourceValues); err != nil {
+		if err := s.doWriteStruct(tag.Name, matchedKey, targetValue, sourceValues); err != nil {
 			return err
 		}
 
@@ -569,12 +677,12 @@ func (s *Struct) doWriteAnonymous(cfg string, targetValue reflect.Value, sourceV
 	return nil
 }
 
-func (s *Struct) doWriteMap(tag *StructTag, targetValue reflect.Value, sourceMap *MapX) error {
+func (s *Struct) doWriteMap(tag *StructTag, matchedKey string, targetValue reflect.Value, sourceMap *MapX) error {
 	var err error
 	var elementValue reflect.Value
 	var elementMap *MapX
 	var finalValue any
-	sourceData := sourceMap.Get(tag.Name).Data()
+	sourceData := sourceMap.Get(matchedKey).Data()
 
 	sourceValue := reflect.ValueOf(sourceData)
 	targetType := targetValue.Type()
@@ -633,13 +741,13 @@ func (s *Struct) doWriteMap(tag *StructTag, targetValue reflect.Value, sourceMap
 	return nil
 }
 
-func (s *Struct) doWriteSlice(tag *StructTag, targetValue reflect.Value, sourceValues *MapX) error {
+func (s *Struct) doWriteSlice(tag *StructTag, matchedKey string, targetValue reflect.Value, sourceValues *MapX) error {
 	var err error
 	var finalValue any
 	var interfaceSlice []any
 	targetSliceElementType := targetValue.Type().Elem()
 
-	sourceValue := sourceValues.Get(tag.Name).Data()
+	sourceValue := sourceValues.Get(matchedKey).Data()
 
 	if interfaceSlice, err = s.trySlice(sourceValue); err != nil {
 		return fmt.Errorf("value for field %s has to be castable to []any but is of type %T: %w", tag.Name, sourceValue, err)
@@ -670,10 +778,10 @@ func (s *Struct) doWriteSlice(tag *StructTag, targetValue reflect.Value, sourceV
 	return nil
 }
 
-func (s *Struct) doWriteStruct(cfg string, targetValue reflect.Value, sourceValues *MapX) error {
-	elementValues, err := sourceValues.Get(cfg).Map()
+func (s *Struct) doWriteStruct(cfg string, matchedKey string, targetValue reflect.Value, sourceValues *MapX) error {
+	elementValues, err := sourceValues.Get(matchedKey).Map()
 	if err != nil {
-		return fmt.Errorf("value for field %s has to be a map but instead is %T", cfg, sourceValues.Get(cfg).Data())
+		return fmt.Errorf("value for field %s has to be a map but instead is %T", cfg, sourceValues.Get(matchedKey).Data())
 	}
 
 	element := reflect.New(targetValue.Type())
@@ -862,11 +970,17 @@ func (s *Struct) trySlice(value any) ([]any, error) {
 	return slice, nil
 }
 
-func (s *Struct) readTag(sourceTag reflect.StructTag) (*StructTag, bool) {
+const optionPrefixKey = "prefix="
+
+func (s *Struct) readTag(sourceTag reflect.StructTag, fieldName string) (*StructTag, bool) {
 	var ok bool
 	var val string
 
 	if val, ok = sourceTag.Lookup(s.settings.FieldTag); !ok {
+		// If no tag and DefaultToFieldName is enabled, use field name as tag name
+		if s.settings.DefaultToFieldName && fieldName != "" {
+			return &StructTag{Name: fieldName}, true
+		}
 		return nil, ok
 	}
 
@@ -882,10 +996,20 @@ func (s *Struct) readTag(sourceTag reflect.StructTag) (*StructTag, bool) {
 	}
 
 	options := parts[1:]
-	options = funk.Map(options, strings.ToLower)
 
-	tag.NoCast = funk.Contains(options, optionNoCast)
-	tag.NoDecode = funk.Contains(options, optionNoDecode)
+	for _, opt := range options {
+		optLower := strings.ToLower(opt)
+
+		switch {
+		case optLower == optionNoCast:
+			tag.NoCast = true
+		case optLower == optionNoDecode:
+			tag.NoDecode = true
+		case strings.HasPrefix(optLower, optionPrefixKey):
+			// Extract prefix value, preserving its original case
+			tag.Prefix = opt[len(optionPrefixKey):]
+		}
+	}
 
 	return tag, true
 }
