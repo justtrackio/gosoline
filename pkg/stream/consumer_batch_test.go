@@ -124,9 +124,7 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 		Once()
 
 	s.callback.EXPECT().GetModel(mock.AnythingOfType("map[string]string")).
-		Return(func(_ map[string]string) any {
-			return mdl.Box("")
-		}).
+		Return(mdl.Box(""), nil).
 		Times(3)
 
 	s.callback.EXPECT().Run(matcher.Context).
@@ -173,9 +171,7 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 		Once()
 
 	s.callback.EXPECT().GetModel(mock.AnythingOfType("map[string]string")).
-		Return(func(_ map[string]string) any {
-			return mdl.Box("")
-		}).
+		Return(mdl.Box(""), nil).
 		Times(5)
 
 	s.callback.EXPECT().Run(matcher.Context).
@@ -284,7 +280,7 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 	s.callback.
 		EXPECT().
 		GetModel(mock.AnythingOfType("map[string]string")).
-		Return(mdl.Box("")).
+		Return(mdl.Box(""), nil).
 		Twice()
 
 	err = s.batchConsumer.Run(s.kernelCtx)

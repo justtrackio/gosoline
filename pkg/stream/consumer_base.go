@@ -22,14 +22,15 @@ import (
 )
 
 const (
-	metricNameConsumerDuration       = "Duration"
-	metricNameConsumerError          = "Error"
-	metricNameConsumerProcessedCount = "ProcessedCount"
-	metricNameConsumerRetryGetCount  = "RetryGetCount"
-	metricNameConsumerRetryPutCount  = "RetryPutCount"
-	dataSourceInput                  = "input"
-	dataSourceRetry                  = "retry"
-	metadataKeyConsumers             = "stream.consumers"
+	metricNameConsumerDuration          = "Duration"
+	metricNameConsumerError             = "Error"
+	metricNameConsumerProcessedCount    = "ProcessedCount"
+	metricNameConsumerRetryGetCount     = "RetryGetCount"
+	metricNameConsumerRetryPutCount     = "RetryPutCount"
+	metricNameConsumerUnknownModelError = "UnknownModelError"
+	dataSourceInput                     = "input"
+	dataSourceRetry                     = "retry"
+	metadataKeyConsumers                = "stream.consumers"
 )
 
 type ConsumerMetadata struct {
@@ -54,7 +55,16 @@ type SchemaSettingsAwareCallback interface {
 }
 
 type BaseConsumerCallback interface {
-	GetModel(attributes map[string]string) any
+	GetModel(attributes map[string]string) (any, error)
+}
+
+// IgnorableGetModelError is an interface that can be implemented by errors returned from GetModel
+// to indicate whether the error is ignorable (i.e., the message should be acknowledged without processing).
+type IgnorableGetModelError interface {
+	error
+	// IsIgnorableWithSettings returns true if this error should result in the message being ignored
+	// based on the given settings.
+	IsIgnorableWithSettings(settings IgnoreOnGetModelErrorSettings) bool
 }
 
 type consumerData struct {
@@ -539,6 +549,15 @@ func getConsumerDefaultMetrics(name string) metric.Data {
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerRetryGetCount,
+			Dimensions: map[string]string{
+				"Consumer": name,
+			},
+			Unit:  metric.UnitCount,
+			Value: 0.0,
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameConsumerUnknownModelError,
 			Dimensions: map[string]string{
 				"Consumer": name,
 			},

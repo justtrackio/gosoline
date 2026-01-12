@@ -150,9 +150,7 @@ func (s *ConsumerTestSuite) TestGetModelNil() {
 		}).
 		Return(nil).
 		Once()
-	s.callback.EXPECT().GetModel(mock.AnythingOfType("map[string]string")).Return(func(_ map[string]string) any {
-		return nil
-	}).Once()
+	s.callback.EXPECT().GetModel(mock.AnythingOfType("map[string]string")).Return(nil, nil).Once()
 	s.callback.EXPECT().Run(matcher.Context).Return(nil).Once()
 
 	err := s.consumer.Run(s.kernelCtx)
@@ -194,9 +192,7 @@ func (s *ConsumerTestSuite) TestRun() {
 
 	s.callback.EXPECT().
 		GetModel(mock.AnythingOfType("map[string]string")).
-		Return(func(_ map[string]string) any {
-			return mdl.Box("")
-		}).
+		Return(mdl.Box(""), nil).
 		Times(3)
 
 	s.callback.EXPECT().Run(matcher.Context).Return(nil).Once()
@@ -278,9 +274,7 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 		Twice()
 	s.callback.EXPECT().
 		GetModel(mock.AnythingOfType("map[string]string")).
-		Return(func(_ map[string]string) any {
-			return mdl.Box("")
-		}).
+		Return(mdl.Box(""), nil).
 		Twice()
 
 	retryMsg := &stream.Message{
@@ -361,7 +355,7 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 	expectedModelAttributes1 := map[string]string{"attr1": "a", "encoding": "application/json"}
 	s.callback.EXPECT().
 		GetModel(expectedModelAttributes1).
-		Return(mdl.Box("")).
+		Return(mdl.Box(""), nil).
 		Once()
 
 	expectedAttributes2 := map[string]string{
@@ -384,7 +378,7 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 	expectedModelAttributes2 := map[string]string{"attr1": "b", "encoding": "application/json"}
 	s.callback.EXPECT().
 		GetModel(expectedModelAttributes2).
-		Return(mdl.Box("")).
+		Return(mdl.Box(""), nil).
 		Once()
 
 	err = s.consumer.Run(s.kernelCtx)
@@ -452,9 +446,7 @@ func (s *ConsumerTestSuite) TestRunWithRetry() {
 
 	s.callback.EXPECT().
 		GetModel(mock.AnythingOfType("map[string]string")).
-		Return(func(_ map[string]string) any {
-			return mdl.Box("")
-		}).
+		Return(mdl.Box(""), nil).
 		Twice()
 
 	s.callback.EXPECT().Run(matcher.Context).Return(nil)

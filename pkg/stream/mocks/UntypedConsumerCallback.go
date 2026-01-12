@@ -80,7 +80,7 @@ func (_c *UntypedConsumerCallback_Consume_Call) RunAndReturn(run func(context.Co
 }
 
 // GetModel provides a mock function with given fields: attributes
-func (_m *UntypedConsumerCallback) GetModel(attributes map[string]string) interface{} {
+func (_m *UntypedConsumerCallback) GetModel(attributes map[string]string) (interface{}, error) {
 	ret := _m.Called(attributes)
 
 	if len(ret) == 0 {
@@ -88,6 +88,10 @@ func (_m *UntypedConsumerCallback) GetModel(attributes map[string]string) interf
 	}
 
 	var r0 interface{}
+	var r1 error
+	if rf, ok := ret.Get(0).(func(map[string]string) (interface{}, error)); ok {
+		return rf(attributes)
+	}
 	if rf, ok := ret.Get(0).(func(map[string]string) interface{}); ok {
 		r0 = rf(attributes)
 	} else {
@@ -96,7 +100,13 @@ func (_m *UntypedConsumerCallback) GetModel(attributes map[string]string) interf
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(map[string]string) error); ok {
+		r1 = rf(attributes)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // UntypedConsumerCallback_GetModel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetModel'
@@ -117,12 +127,12 @@ func (_c *UntypedConsumerCallback_GetModel_Call) Run(run func(attributes map[str
 	return _c
 }
 
-func (_c *UntypedConsumerCallback_GetModel_Call) Return(_a0 interface{}) *UntypedConsumerCallback_GetModel_Call {
-	_c.Call.Return(_a0)
+func (_c *UntypedConsumerCallback_GetModel_Call) Return(_a0 interface{}, _a1 error) *UntypedConsumerCallback_GetModel_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *UntypedConsumerCallback_GetModel_Call) RunAndReturn(run func(map[string]string) interface{}) *UntypedConsumerCallback_GetModel_Call {
+func (_c *UntypedConsumerCallback_GetModel_Call) RunAndReturn(run func(map[string]string) (interface{}, error)) *UntypedConsumerCallback_GetModel_Call {
 	_c.Call.Return(run)
 	return _c
 }

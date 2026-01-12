@@ -26,7 +26,7 @@ func (m ModelDb) GetId() any {
 // TypedTransformer and convert it to a ModelTransformer using NewGenericTransformer, EraseTransformerFactoryTypes, or EraseTransformerTypes.
 type ModelTransformer interface {
 	getInput() any
-	GetModel() any
+	GetModel() (any, error)
 	transform(ctx context.Context, inp any) (out Model, err error)
 	getSchemaSettings() (*stream.SchemaSettings, error)
 }
@@ -48,8 +48,8 @@ func (u untypedTransformer[I, M]) getInput() any {
 	return new(I)
 }
 
-func (u untypedTransformer[I, M]) GetModel() any {
-	return new(M)
+func (u untypedTransformer[I, M]) GetModel() (any, error) {
+	return new(M), nil
 }
 
 func (u untypedTransformer[I, M]) getSchemaSettings() (*stream.SchemaSettings, error) {
