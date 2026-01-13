@@ -8,6 +8,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
+// SentryHub abstracts the Sentry SDK's Hub, allowing for testing and decoupling.
+//
 //go:generate go run github.com/vektra/mockery/v2 --name SentryHub
 type SentryHub interface {
 	ConfigureScope(f func(scope *sentry.Scope))
@@ -16,6 +18,7 @@ type SentryHub interface {
 	Flush(timeout time.Duration) bool
 }
 
+// SentryHubSettings configuration for establishing a connection to Sentry.
 type SentryHubSettings struct {
 	Dsn         string
 	Environment string
@@ -24,6 +27,7 @@ type SentryHubSettings struct {
 	AppGroup    string
 }
 
+// NewSentryHub creates a new SentryHub using configuration from the "app_id" settings.
 func NewSentryHub(config cfg.Config) (SentryHub, error) {
 	var appId cfg.AppId
 	if err := appId.PadFromConfig(config); err != nil {
@@ -40,6 +44,8 @@ func NewSentryHub(config cfg.Config) (SentryHub, error) {
 	return NewSentryHubWithSettings(settings)
 }
 
+// NewSentryHubWithSettings creates a new SentryHub with the provided settings.
+// It initializes the Sentry client and configures the scope with application tags.
 func NewSentryHubWithSettings(settings *SentryHubSettings) (SentryHub, error) {
 	options := sentry.ClientOptions{
 		Dsn:         settings.Dsn,

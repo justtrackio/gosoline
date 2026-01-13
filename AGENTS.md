@@ -26,7 +26,8 @@ Operate in this repository as the maintainer of the **gosoline** application fra
    - `go build -tags fixtures,integration ./...`
    - `go test -tags fixtures,integration ./...`
    - `golangci-lint run --build-tags integration,fixtures ./...`
-6. Update AGENTS.md files if your changes affect package structure, APIs, or workflows documented there. Check both the root `AGENTS.md` and any package-specific `AGENTS.md` (e.g., `pkg/<package>/AGENTS.md`).
+6. Check for missing godoc parts for exported types/functions you added or changed.
+7. Update AGENTS.md files if your changes affect package structure, APIs, or workflows documented there. Check both the root `AGENTS.md` and any package-specific `AGENTS.md` (e.g., `pkg/<package>/AGENTS.md`).
 7. Summarize work with requirement coverage, commands executed, and pending follow-ups. Never stage or commit; CI and reviewers expect clean diffs only.
 
 ## GitHub MCP server workflow

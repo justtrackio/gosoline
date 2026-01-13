@@ -5,23 +5,35 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/smpl/smplctx"
 )
 
 const (
+	// LevelTrace is the lowest priority (most verbose) log level.
 	LevelTrace = "trace"
+	// LevelDebug indicates information useful for developers.
 	LevelDebug = "debug"
-	LevelInfo  = "info"
-	LevelWarn  = "warn"
+	// LevelInfo is the default level for operational logs.
+	LevelInfo = "info"
+	// LevelWarn indicates recoverable issues.
+	LevelWarn = "warn"
+	// LevelError indicates failures requiring attention.
 	LevelError = "error"
-	LevelNone  = "none"
+	// LevelNone disables logging.
+	LevelNone = "none"
 
+	// PriorityTrace is the numeric priority for trace logs (0).
 	PriorityTrace = 0
+	// PriorityDebug is the numeric priority for debug logs (1).
 	PriorityDebug = 1
-	PriorityInfo  = 2
-	PriorityWarn  = 3
+	// PriorityInfo is the numeric priority for info logs (2).
+	PriorityInfo = 2
+	// PriorityWarn is the numeric priority for warn logs (3).
+	PriorityWarn = 3
+	// PriorityError is the numeric priority for error logs (4).
 	PriorityError = 4
 	// PriorityNone is used to indicate that no logging should be done.
 	// Value is set to the maximum int value to ensure that it is always greater than any other priority.
@@ -46,24 +58,32 @@ var levelPriorities = map[string]int{
 	LevelNone:  PriorityNone,
 }
 
+// LevelName returns the string representation of a log level priority (e.g., 2 -> "info").
 func LevelName(level int) string {
 	return levelNames[level]
 }
 
+// LevelPriority returns the numeric priority for a given log level name (e.g., "info" -> 2).
+// It returns false if the level name is unknown.
 func LevelPriority(level string) (int, bool) {
 	priority, ok := levelPriorities[level]
 
 	return priority, ok
 }
 
+// Data holds the structured context for a log entry, including channel, fields, and context-derived fields.
 type Data struct {
 	Channel       string
 	ContextFields map[string]any
 	Fields        map[string]any
 }
 
+// Fields is a map of key-value pairs to add structured data to a log entry.
 type Fields map[string]any
 
+// Logger is the main interface for logging. It supports standard log levels (Debug, Info, Warn, Error)
+// and methods to create derived loggers with specific channels or fields.
+//
 //go:generate go run github.com/vektra/mockery/v2 --name Logger
 type Logger interface {
 	Debug(ctx context.Context, format string, args ...any)
@@ -75,15 +95,18 @@ type Logger interface {
 	WithFields(Fields) Logger
 }
 
+// GosoLogger extends the Logger interface with the ability to apply functional options after creation.
 type GosoLogger interface {
 	Logger
 	Option(opt ...Option) error
 }
 
+// LoggerSettings holds the configuration for the main logger, specifically its handlers.
 type LoggerSettings struct {
 	Handlers map[string]HandlerSettings `cfg:"handlers"`
 }
 
+// HandlerSettings defines the configuration for a single log handler (e.g., its type like "iowriter" or "sentry").
 type HandlerSettings struct {
 	Type string `cfg:"type"`
 }
@@ -91,17 +114,19 @@ type HandlerSettings struct {
 var _ Logger = &gosoLogger{}
 
 type gosoLogger struct {
-	clock        clock.Clock
-	data         Data
-	ctxResolvers []ContextFieldsResolverFunction
-	handlers     []Handler
-	isSampled    bool
+	clock           clock.Clock
+	data            Data
+	ctxResolvers    []ContextFieldsResolverFunction
+	handlers        []Handler
+	samplingEnabled bool
 }
 
+// NewLogger creates a new logger with a real clock and no handlers.
 func NewLogger() *gosoLogger {
 	return NewLoggerWithInterfaces(clock.NewRealClock(), []Handler{})
 }
 
+// NewLoggerWithInterfaces creates a new logger with the provided clock and handlers.
 func NewLoggerWithInterfaces(clock clock.Clock, handlers []Handler) *gosoLogger {
 	return &gosoLogger{
 		clock: clock,
@@ -110,8 +135,9 @@ func NewLoggerWithInterfaces(clock clock.Clock, handlers []Handler) *gosoLogger 
 			ContextFields: make(map[string]any),
 			Fields:        make(map[string]any),
 		},
-		ctxResolvers: nil,
-		handlers:     handlers,
+		ctxResolvers:    nil,
+		handlers:        handlers,
+		samplingEnabled: false,
 	}
 }
 
@@ -160,45 +186,65 @@ func (l *gosoLogger) WithFields(fields Fields) Logger {
 
 func (l *gosoLogger) copy() *gosoLogger {
 	return &gosoLogger{
-		clock:        l.clock,
-		data:         l.data,
-		ctxResolvers: l.ctxResolvers,
-		handlers:     l.handlers,
+		clock:           l.clock,
+		data:            l.data,
+		ctxResolvers:    l.ctxResolvers,
+		handlers:        l.handlers,
+		samplingEnabled: l.samplingEnabled,
 	}
 }
 
 func (l *gosoLogger) log(ctx context.Context, level int, msg string, args []any, loggedErr error) {
 	timestamp := l.clock.Now()
 
-	addedContext := false
 	data := &Data{
 		Channel:       l.data.Channel,
 		ContextFields: make(map[string]any),
 		Fields:        l.data.Fields,
 	}
 
-	if l.isSampled && !smplctx.IsSampled(ctx) {
-		return
-	} else if l.isSampled {
-		data.ContextFields["is_sampled"] = true
+	for _, r := range l.ctxResolvers {
+		newContextFields := r(ctx)
+		data.ContextFields = mergeFields(data.ContextFields, newContextFields)
 	}
 
+	if l.samplingEnabled && !smplctx.IsSampled(ctx) {
+		l.executeFingersCrossed(ctx, timestamp, level, msg, args, loggedErr, data)
+
+		return
+	}
+
+	l.executeHandlers(ctx, timestamp, level, msg, args, loggedErr, data)
+}
+
+func (l *gosoLogger) executeFingersCrossed(ctx context.Context, timestamp time.Time, level int, msg string, args []any, loggedErr error, data *Data) {
+	scope := getFingersCrossedScope(ctx)
+
+	if scope == nil && level >= PriorityError {
+		l.executeHandlers(ctx, timestamp, level, msg, args, loggedErr, data)
+
+		return
+	}
+
+	if scope == nil {
+		return
+	}
+
+	appendToFingersCrossedScope(ctx, l, timestamp, level, msg, args, loggedErr, data)
+
+	if scope.flushed || level >= PriorityError {
+		scope.flush()
+	}
+}
+
+func (l *gosoLogger) executeHandlers(ctx context.Context, timestamp time.Time, level int, msg string, args []any, loggedErr error, data *Data) {
 	for _, handler := range l.handlers {
-		if ok, err := l.shouldLog(ctx, l.data.Channel, level, handler); err != nil {
+		if ok, err := l.shouldLog(l.data.Channel, level, handler); err != nil {
 			l.err(err)
 
 			continue
 		} else if !ok {
 			continue
-		}
-
-		if !addedContext && ctx != nil {
-			for _, r := range l.ctxResolvers {
-				newContextFields := r(ctx)
-				data.ContextFields = mergeFields(data.ContextFields, newContextFields)
-			}
-
-			addedContext = true
 		}
 
 		if handlerErr := handler.Log(ctx, timestamp, level, msg, args, loggedErr, *data); handlerErr != nil {
@@ -207,7 +253,7 @@ func (l *gosoLogger) log(ctx context.Context, level int, msg string, args []any,
 	}
 }
 
-func (l *gosoLogger) shouldLog(ctx context.Context, current string, level int, h Handler) (bool, error) {
+func (l *gosoLogger) shouldLog(current string, level int, h Handler) (bool, error) {
 	if channelLevel, err := h.ChannelLevel(current); err != nil {
 		return false, fmt.Errorf("can not get channel level: %w", err)
 	} else if channelLevel != nil {

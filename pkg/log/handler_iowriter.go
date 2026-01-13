@@ -14,6 +14,7 @@ func init() {
 	AddHandlerFactory("iowriter", handlerIoWriterFactory)
 }
 
+// HandlerIoWriterSettings configures the "iowriter" handler, which writes logs to an io.Writer (e.g., stdout or file).
 type HandlerIoWriterSettings struct {
 	Level           string `cfg:"level" default:"info"`
 	Formatter       string `cfg:"formatter" default:"console"`
@@ -21,6 +22,7 @@ type HandlerIoWriterSettings struct {
 	Writer          string `cfg:"writer" default:"stdout"`
 }
 
+// ChannelSetting configures the log level for a specific channel.
 type ChannelSetting struct {
 	Level string `cfg:"level"`
 }
@@ -82,6 +84,7 @@ func NewHandlerIoWriter(config cfg.Config, levelPriority int, formatter Formatte
 	}
 }
 
+// ChannelLevel returns the specific log level configured for a given channel, or an error if the channel settings are invalid.
 func (h *handlerIoWriter) ChannelLevel(name string) (level *int, err error) {
 	h.lck.RLock()
 	cached, ok := h.channels[name]
@@ -122,10 +125,12 @@ func (h *handlerIoWriter) ChannelLevel(name string) (level *int, err error) {
 	return &priority, nil
 }
 
+// Level returns the default log level priority for this handler.
 func (h *handlerIoWriter) Level() int {
 	return h.level
 }
 
+// Log writes a log entry to the configured io.Writer, formatted according to the handler's settings.
 func (h *handlerIoWriter) Log(_ context.Context, timestamp time.Time, level int, msg string, args []any, logErr error, data Data) error {
 	var err error
 	var bytes []byte

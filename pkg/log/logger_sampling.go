@@ -8,6 +8,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
+// SamplingLogger is a logger wrapper that rate-limits logs.
+// Identical messages are suppressed if they occur within the configured interval.
 type SamplingLogger struct {
 	Logger
 	clock    clock.Clock
@@ -21,6 +23,7 @@ func NewSamplingLogger(logger Logger, interval time.Duration) Logger {
 	return NewSamplingLoggerWithInterfaces(logger, testClock, interval)
 }
 
+// NewSamplingLoggerWithInterfaces creates a new SamplingLogger with the given logger, clock, and interval.
 func NewSamplingLoggerWithInterfaces(logger Logger, clock clock.Clock, interval time.Duration) *SamplingLogger {
 	return &SamplingLogger{
 		Logger:   logger,
@@ -39,18 +42,21 @@ func (l *SamplingLogger) copy(logger Logger) *SamplingLogger {
 	}
 }
 
+// WithChannel returns a new sampling logger derived from the current one, but with a different channel.
 func (l *SamplingLogger) WithChannel(channel string) Logger {
 	logger := l.Logger.WithChannel(channel)
 
 	return l.copy(logger)
 }
 
+// WithFields returns a new sampling logger with additional structured fields.
 func (l *SamplingLogger) WithFields(fields Fields) Logger {
 	logger := l.Logger.WithFields(fields)
 
 	return l.copy(logger)
 }
 
+// Debug logs a debug message if it passes sampling.
 func (l *SamplingLogger) Debug(ctx context.Context, msg string, args ...any) {
 	if !l.shouldLog(msg) {
 		return
@@ -59,6 +65,7 @@ func (l *SamplingLogger) Debug(ctx context.Context, msg string, args ...any) {
 	l.Logger.Debug(ctx, msg, args...)
 }
 
+// Error logs an error message if it passes sampling.
 func (l *SamplingLogger) Error(ctx context.Context, msg string, args ...any) {
 	if !l.shouldLog(msg) {
 		return
@@ -67,6 +74,7 @@ func (l *SamplingLogger) Error(ctx context.Context, msg string, args ...any) {
 	l.Logger.Error(ctx, msg, args...)
 }
 
+// Info logs an info message if it passes sampling.
 func (l *SamplingLogger) Info(ctx context.Context, msg string, args ...any) {
 	if !l.shouldLog(msg) {
 		return
@@ -75,6 +83,7 @@ func (l *SamplingLogger) Info(ctx context.Context, msg string, args ...any) {
 	l.Logger.Info(ctx, msg, args...)
 }
 
+// Warn logs a warning message if it passes sampling.
 func (l *SamplingLogger) Warn(ctx context.Context, msg string, args ...any) {
 	if !l.shouldLog(msg) {
 		return

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 3
+sidebar_position: 6
 title: Implement a log handler
 ---
 
@@ -62,7 +62,7 @@ type MyCustomHandler struct {
 
 This handler struct stores the log `channel`. To use your handler, you must implement the required methods of the [`Handler`](/reference/package-log#handler) interface.
 
-### Implement the `Channels` method
+### Implement the `ChannelLevel` method
 
 Create a function which returns the log level for a given channel name:
 

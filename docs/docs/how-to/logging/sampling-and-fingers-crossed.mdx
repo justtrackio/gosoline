@@ -1,0 +1,132 @@
+---
+sidebar_position: 4
+title: Sampling & fingers-crossed
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import ManualExample from "!!raw-loader!./src/sampling-fingers-crossed/main.go";
+
+Gosoline supports log sampling and "fingers-crossed" logging to help you manage log volume without losing critical debug information when errors occur.
+
+## What is fingers-crossed logging?
+
+Fingers-crossed logging is a strategy where logs are **buffered** for a request instead of being written immediately.
+
+- If the request completes successfully, the buffered logs (usually verbose debug/info logs) are discarded.
+- If an **error** occurs (or the request fails), the entire buffer is flushed, preserving the full history of what led to the failure.
+
+This allows you to run with high-verbosity logging (like `debug` level) in production for sampled traffic or failed requests, while keeping log costs low for successful, non-sampled traffic.
+
+## How it works
+
+The logic depends on two conditions:
+
+1. **Logger Sampling is Enabled**: The logger must be configured with sampling enabled.
+2. **Context is Not Sampled**: The request context must have a sampling decision of `false`.
+
+| Sampling Decision | Logger Behavior |
+|-------------------|-----------------|
+| `Sampled: true`   | **Standard**: Logs are written immediately. |
+| `Sampled: false`  | **Fingers-crossed**: Logs are buffered in the context scope. They flush only on error. |
+
+## Enable sampling
+
+### Configuration
+
+You can enable sampling in your application configuration. You also need to configure a sampling strategy (decider) so the system knows which requests to sample.
+
+```yaml
+# Sampling decision configuration.
+#
+# The sampling decider reads `sampling.enabled` and `sampling.strategies`.
+# If sampling is enabled, the decider stores the final decision in the context.
+#
+# Available built-in strategies:
+# - "tracing": uses the trace sampling flag from the context
+# - "always": always sample
+# - "never": never sample
+sampling:
+  enabled: true
+  strategies:
+    - tracing
+```
+
+Logger sampling itself is enabled via application option `app.WithLoggerSamplingEnabled(true)` (see next section).
+
+### Application Options
+
+When setting up your application, ensure you enable the logger sampling option:
+
+```go
+app.Run(
+    // ...
+    app.WithLoggerSamplingEnabled(true),
+)
+```
+
+## Usage in HTTP Services
+
+The HTTP server provides a `SamplingMiddleware` that integrates automatically with the sampling decider and the logger.
+
+### Decision flow
+
+For each incoming request, gosoline makes a sampling decision early in the request lifecycle.
+
+- It first ensures there is a place to buffer logs (the fingers-crossed scope).
+- Then it checks your sampling configuration to decide whether this request is **sampled** or **not sampled**.
+- The decision is attached to the request context so every log call during request handling can use it.
+
+### What gets flushed (and when)
+
+- **Sampled request**: logs are written immediately.
+- **Not sampled request**: logs are buffered and only become visible when the request fails.
+- For HTTP, "fails" means the response status code is **>= 400**, which causes gosoline to flush the buffered logs at the end of the request.
+
+This means you can keep successful, not-sampled requests quiet, but still get full context for failed requests.
+
+## Usage in Stream Consumers
+
+Stream consumers use the same idea, but apply it to message processing.
+
+### Decision flow
+
+For each message:
+
+- Gosoline ensures there is a fingers-crossed scope, so logs can be buffered.
+- It applies your sampling configuration to decide whether logs for this message should be written immediately or buffered.
+
+### What gets flushed (and when)
+
+Because consumers do not have an HTTP response status, the "fail" signal is usually an error log:
+
+- **Sampled message**: logs are written immediately.
+- **Not sampled message**: logs are buffered and flush when you log an error (or if you flush manually via `log.FlushFingersCrossedScope(ctx)`).
+
+## Manual Usage
+
+If you are writing a custom worker, CLI tool, or background process, you can use the fingers-crossed features manually.
+
+<CodeBlock showLineNumbers language="go" title="main.go">{ManualExample}</CodeBlock>
+
+### Key API Methods
+
+- **`log.WithSamplingEnabled(true)`**: Enables the sampling logic on the logger.
+- **`log.WithFingersCrossedScope(ctx)`**: Wraps the context with a buffer for fingers-crossed logging.
+- **`log.FlushFingersCrossedScope(ctx)`**: Manually flushes any buffered logs in the current scope.
+
+## Troubleshooting
+
+### "I don't see any logs"
+
+- **Did you add a scope?**
+  If sampling is enabled on the logger, and the context is *not* sampled, the logger expects a fingers-crossed scope to buffer into. If you didn't call `log.WithFingersCrossedScope(ctx)`, the logs may be dropped because there is nowhere to buffer them.
+
+- **Is the context sampled?**
+  If `smplctx.IsSampled(ctx)` is true (which is the default for empty contexts), logs write immediately. You won't see buffering behavior.
+
+### "Why did it flush?"
+
+The buffer flushes when:
+1. You log a message with level `Error` or higher.
+2. You manually call `log.FlushFingersCrossedScope(ctx)`.
+3. (In HTTP) The response status code is >= 400.

@@ -3,6 +3,7 @@ package smpl
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -86,7 +87,7 @@ func (d *defaultDecider) Decide(ctx context.Context, overwriteStrategies ...Stra
 	var err error
 	var isApplied, isSampled bool
 
-	strategies := slices.Concat(d.strategies, overwriteStrategies)
+	strategies := slices.Concat(overwriteStrategies, d.strategies)
 	finalIsSampled := true
 
 	for _, strategy := range strategies {

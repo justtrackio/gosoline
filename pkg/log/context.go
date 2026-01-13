@@ -21,6 +21,7 @@ type (
 
 const contextFieldsKey key = 0
 
+// ContextFieldsResolverFunction is a strategy for extracting logging fields from a context.Context.
 type ContextFieldsResolverFunction func(ctx context.Context) map[string]any
 
 func newContext(ctx context.Context, localFields fields, globalFields fields) context.Context {

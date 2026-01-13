@@ -10,6 +10,8 @@ func init() {
 	cfg.AddPostProcessor(8, "gosoline.log.handler_main", MainLoggerConfigPostProcessor)
 }
 
+// MainLoggerConfigPostProcessor ensures a "main" logger handler is configured.
+// If not explicitly defined, it defaults to an "iowriter" handler.
 func MainLoggerConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	if config.IsSet("log.handlers.main.type") {
 		return false, nil
