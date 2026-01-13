@@ -11,6 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/reqctx"
+	"github.com/justtrackio/gosoline/pkg/smpl"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
@@ -32,6 +33,7 @@ type Consumer struct {
 	*baseConsumer
 	callback         UntypedConsumerCallback
 	healthCheckTimer clock.HealthCheckTimer
+	samplingDecider  smpl.Decider
 }
 
 var _ kernel.FullModule = &Consumer{}
@@ -43,6 +45,8 @@ func NewUntypedConsumer(name string, callbackFactory UntypedConsumerCallbackFact
 		var err error
 		var callback UntypedConsumerCallback
 		var baseConsumer *baseConsumer
+		var healthCheckTimer clock.HealthCheckTimer
+		var samplingDecider smpl.Decider
 
 		if callback, err = callbackFactory(ctx, config, loggerCallback); err != nil {
 			return nil, fmt.Errorf("can not initiate callback for consumer %s: %w", name, err)
@@ -52,20 +56,24 @@ func NewUntypedConsumer(name string, callbackFactory UntypedConsumerCallbackFact
 			return nil, fmt.Errorf("can not initiate base consumer: %w", err)
 		}
 
-		healthCheckTimer, err := clock.NewHealthCheckTimer(baseConsumer.settings.Healthcheck.Timeout)
-		if err != nil {
+		if healthCheckTimer, err = clock.NewHealthCheckTimer(baseConsumer.settings.Healthcheck.Timeout); err != nil {
 			return nil, fmt.Errorf("failed to create healthcheck timer: %w", err)
 		}
 
-		return NewUntypedConsumerWithInterfaces(baseConsumer, callback, healthCheckTimer), nil
+		if samplingDecider, err = smpl.ProvideDecider(ctx, config); err != nil {
+			return nil, fmt.Errorf("could not initialize sampling decider: %w", err)
+		}
+
+		return NewUntypedConsumerWithInterfaces(baseConsumer, callback, healthCheckTimer, samplingDecider), nil
 	}
 }
 
-func NewUntypedConsumerWithInterfaces(base *baseConsumer, callback UntypedConsumerCallback, healthCheckTimer clock.HealthCheckTimer) *Consumer {
+func NewUntypedConsumerWithInterfaces(base *baseConsumer, callback UntypedConsumerCallback, healthCheckTimer clock.HealthCheckTimer, samplingDecider smpl.Decider) *Consumer {
 	consumer := &Consumer{
 		baseConsumer:     base,
 		callback:         callback,
 		healthCheckTimer: healthCheckTimer,
+		samplingDecider:  samplingDecider,
 	}
 
 	return consumer
@@ -203,6 +211,12 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 		c.handleError(ctx, err, "an error occurred during the consume operation")
 
 		return false
+	}
+
+	if smplCtx, _, err := c.samplingDecider.Decide(ctx); err != nil {
+		c.logger.Warn(ctx, "could not decide on sampling: %s", err)
+	} else {
+		ctx = smplCtx
 	}
 
 	var messageId string

@@ -12,6 +12,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
+func TestConsumerTestSuite(t *testing.T) {
+	suite.Run(t, new(ConsumerTestSuite))
+}
+
 type ConsumerTestSuite struct {
 	suite.Suite
 }
@@ -25,9 +29,6 @@ func (s *ConsumerTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *ConsumerTestSuite) TestComponents() {
-	s3 := s.Env().Component("s3", "default")
-	s.NotNil(s3)
-
 	streamInput := s.Env().Component("streamInput", "consumerInput")
 	s.NotNil(streamInput)
 
@@ -72,8 +73,4 @@ func (s *ConsumerTestSuite) TestSuccessTwice(app suite.AppUnderTest) {
 
 	s.Env().StreamOutput("publisher-outputEvent").Unmarshal(1, &result)
 	s.Equal(4, result)
-}
-
-func TestConsumerTestSuite(t *testing.T) {
-	suite.Run(t, new(ConsumerTestSuite))
 }

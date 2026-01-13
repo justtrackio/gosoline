@@ -346,6 +346,14 @@ func WithLoggerHandlersFromConfig(app *App) {
 	})
 }
 
+func WithLoggerIsSampled(isSampled bool) Option {
+	return func(app *App) {
+		app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+			return logger.Option(log.WithIsSampled(isSampled))
+		})
+	}
+}
+
 func WithLoggerMetricHandler(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		metricHandler := metric.NewLoggerHandler()

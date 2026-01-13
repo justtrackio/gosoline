@@ -53,6 +53,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithLoggerContextFieldsMessageEncoder,
 		WithLoggerContextFieldsResolver(log.ContextFieldsResolver),
 		WithLoggerHandlersFromConfig,
+		WithLoggerIsSampled(true),
 		WithLoggerMetricHandler,
 		WithLoggerSentryHandler(log.SentryContextConfigProvider, log.SentryContextEcsMetadataProvider),
 		WithMetrics,

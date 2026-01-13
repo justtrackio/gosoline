@@ -14,6 +14,8 @@ import (
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
+	"github.com/justtrackio/gosoline/pkg/smpl"
+	smplMocks "github.com/justtrackio/gosoline/pkg/smpl/mocks"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/stream/health"
 	"github.com/justtrackio/gosoline/pkg/stream/mocks"
@@ -107,6 +109,11 @@ func (s *ConsumerTestSuite) SetupTest() {
 
 	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), settings.Healthcheck.Timeout)
 
+	samplingDecider := smplMocks.NewDecider(s.T())
+	samplingDecider.EXPECT().Decide(matcher.Context).RunAndReturn(func(ctx context.Context, strategy ...smpl.Strategy) (context.Context, bool, error) {
+		return ctx, false, nil
+	}).Maybe()
+
 	baseConsumer := stream.NewBaseConsumerWithInterfaces(
 		s.uuidGen,
 		logger,
@@ -121,7 +128,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 		"test",
 		cfg.AppId{},
 	)
-	s.consumer = stream.NewUntypedConsumerWithInterfaces(baseConsumer, s.callback, healthCheckTimer)
+	s.consumer = stream.NewUntypedConsumerWithInterfaces(baseConsumer, s.callback, healthCheckTimer, samplingDecider)
 }
 
 func (s *ConsumerTestSuite) TestGetModelNil() {

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/smpl/smplctx"
 )
 
 const (
@@ -94,6 +95,7 @@ type gosoLogger struct {
 	data         Data
 	ctxResolvers []ContextFieldsResolverFunction
 	handlers     []Handler
+	isSampled    bool
 }
 
 func NewLogger() *gosoLogger {
@@ -175,8 +177,14 @@ func (l *gosoLogger) log(ctx context.Context, level int, msg string, args []any,
 		Fields:        l.data.Fields,
 	}
 
+	if l.isSampled && !smplctx.IsSampled(ctx) {
+		return
+	} else if l.isSampled {
+		data.ContextFields["is_sampled"] = true
+	}
+
 	for _, handler := range l.handlers {
-		if ok, err := l.shouldLog(l.data.Channel, level, handler); err != nil {
+		if ok, err := l.shouldLog(ctx, l.data.Channel, level, handler); err != nil {
 			l.err(err)
 
 			continue
@@ -199,7 +207,7 @@ func (l *gosoLogger) log(ctx context.Context, level int, msg string, args []any,
 	}
 }
 
-func (l *gosoLogger) shouldLog(current string, level int, h Handler) (bool, error) {
+func (l *gosoLogger) shouldLog(ctx context.Context, current string, level int, h Handler) (bool, error) {
 	if channelLevel, err := h.ChannelLevel(current); err != nil {
 		return false, fmt.Errorf("can not get channel level: %w", err)
 	} else if channelLevel != nil {

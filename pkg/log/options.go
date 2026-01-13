@@ -25,3 +25,11 @@ func WithHandlers(handler ...Handler) Option {
 		return nil
 	}
 }
+
+func WithIsSampled(isSampled bool) Option {
+	return func(logger *gosoLogger) error {
+		logger.isSampled = isSampled
+
+		return nil
+	}
+}
