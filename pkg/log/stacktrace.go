@@ -6,8 +6,12 @@ import (
 	"strings"
 )
 
+// StackTraceProvider is a function type for generating a stack trace string,
+// allowing for injection of mock providers in tests.
 type StackTraceProvider func(depthSkip int) string
 
+// GetMockedStackTrace returns a fixed string "mocked trace".
+// It is intended for use in tests where a predictable stack trace is required.
 func GetMockedStackTrace(depthSkip int) string {
 	return "mocked trace"
 }

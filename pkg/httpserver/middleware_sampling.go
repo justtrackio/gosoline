@@ -19,15 +19,14 @@ func SamplingMiddleware(ctx context.Context, config cfg.Config, logger log.Logge
 	}
 
 	return func(ginCtx *gin.Context) {
-		ctx = ginCtx.Request.Context()
+		reqCtx := ginCtx.Request.Context()
 
-		if smplCtx, _, err := decider.Decide(ctx); err != nil {
-			logger.Warn(ctx, "could not decide on sampling: %s", err)
+		if smplCtx, _, err := decider.Decide(reqCtx); err != nil {
+			logger.Warn(reqCtx, "could not decide on sampling: %s", err)
 		} else {
 			ginCtx.Request = ginCtx.Request.WithContext(smplCtx)
 		}
 
-		ginCtx.Request = ginCtx.Request.WithContext(ctx)
 		ginCtx.Next()
 	}, nil
 }

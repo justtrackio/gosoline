@@ -33,22 +33,23 @@ func NewLoggingMiddlewareWithInterfaces(logger log.Logger, settings LoggingSetti
 	return func(ginCtx *gin.Context) {
 		start := clock.Now()
 
-		ctx := log.InitContext(ginCtx.Request.Context())
-		ctx = reqctx.New(ctx)
+		reqCtx := log.WithFingersCrossedScope(ginCtx.Request.Context())
+		reqCtx = log.InitContext(reqCtx)
+		reqCtx = reqctx.New(reqCtx)
 
 		if requestId := ginCtx.Request.Header.Get("X-Request-Id"); requestId != "" {
-			ctx = log.MutateGlobalContextFields(ctx, map[string]any{
+			reqCtx = log.MutateGlobalContextFields(reqCtx, map[string]any{
 				"request_id": requestId,
 			})
 		}
 
 		if sessionId := ginCtx.Request.Header.Get("X-Session-Id"); sessionId != "" {
-			ctx = log.MutateGlobalContextFields(ctx, map[string]any{
+			reqCtx = log.MutateGlobalContextFields(reqCtx, map[string]any{
 				"session_id": sessionId,
 			})
 		}
 
-		ginCtx.Request = ginCtx.Request.WithContext(ctx)
+		ginCtx.Request = ginCtx.Request.WithContext(reqCtx)
 
 		lp := newLogCall(logger, settings)
 		lp.prepare(ginCtx)
@@ -58,6 +59,11 @@ func NewLoggingMiddlewareWithInterfaces(logger log.Logger, settings LoggingSetti
 		requestTimeSeconds := clock.Since(start).Seconds()
 
 		lp.finalize(ginCtx, requestTimeSeconds)
+
+		// If the request failed, ensure we flush buffered (not-sampled) logs.
+		if ginCtx.Writer.Status() >= http.StatusBadRequest {
+			log.FlushFingersCrossedScope(reqCtx)
+		}
 	}
 }
 

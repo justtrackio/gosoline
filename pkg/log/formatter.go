@@ -9,6 +9,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 )
 
+// Formatter is a function that formats a log entry into a byte slice.
+// It receives metadata (timestamp, level, channel) and the log payload (message, args, error, fields).
 type Formatter func(timestamp string, level int, format string, args []any, err error, data Data) ([]byte, error)
 
 var formatters = map[string]Formatter{
@@ -17,6 +19,7 @@ var formatters = map[string]Formatter{
 	"json":    FormatterJson,
 }
 
+// FormatterConsole formats a log entry for console output, using colors for different parts of the log message.
 func FormatterConsole(timestamp string, level int, format string, args []any, err error, data Data) ([]byte, error) {
 	fieldString := getFieldsAsString(data.Fields)
 	contextString := getFieldsAsString(data.ContextFields)
@@ -44,6 +47,7 @@ func FormatterConsole(timestamp string, level int, format string, args []any, er
 	return append(serialized, '\n'), nil
 }
 
+// FormatterSimple formats a log entry as a simple text string without color codes.
 func FormatterSimple(timestamp string, level int, format string, args []any, err error, data Data) ([]byte, error) {
 	fieldString := getFieldsAsString(data.Fields)
 	contextString := getFieldsAsString(data.ContextFields)
@@ -82,6 +86,7 @@ type formatterJsonStruct struct {
 	Context   map[string]any `json:"context"`
 }
 
+// FormatterJson formats a log entry as a JSON object, suitable for structured logging systems.
 func FormatterJson(timestamp string, level int, format string, args []any, err error, data Data) ([]byte, error) {
 	msg := fmt.Sprintf(format, args...)
 

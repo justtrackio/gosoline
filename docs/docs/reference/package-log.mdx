@@ -6,19 +6,19 @@ title: Package log
 
 The gosoline logger is based upon a simple interface that uses handlers internally to enable fully customizable log handling.
 
-## Function
+## Functions
 
 ### [NewLogger()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/logger.go#L91)
 
 #### Usage
 
 ```go
-logger := log.NewLoggerWithInterfaces(myClock, []log.Handler{handler1, handler2})
+logger := log.NewLogger()
 ```
 
 #### Description
 
-Create a logger with with no handlers and a real time clock. This provides an extended interface, including the `Option(opt ...Option) error` function to change the behaviour of the logger.
+Create a logger with no handlers and a real time clock. This provides an extended interface, including the `Option(opt ...Option) error` function to change the behaviour of the logger.
 
 ### [NewLoggerWithInterfaces()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/logger.go#L95)
 
@@ -147,7 +147,7 @@ print(localFields["field"])
 ### [Debug()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/logger.go#L119)
 
 ```go
-logger.Debug("Message")
+logger.Debug(ctx, "Message")
 ```
 
 #### Description
@@ -171,7 +171,7 @@ logger.Info(ctx, "Message")
 <summary>Warn()</summary>
 
 ```go
-logger.Warn("Message")
+logger.Warn(ctx, "Message")
 ```
 
 </details>
@@ -181,7 +181,7 @@ logger.Warn("Message")
 <summary>Error()</summary>
 
 ```go
-logger.Error("Message")
+logger.Error(ctx, "Message")
 ```
 
 </details>
@@ -239,7 +239,7 @@ Adds additional handlers to the logger.
 type Handler interface {
 	ChannelLevel(name string) (level *int, err error)
 	Level() int
-	Log(timestamp time.Time, level int, msg string, args []any, err error, data Data) error
+	Log(ctx context.Context, timestamp time.Time, level int, msg string, args []any, err error, data Data) error
 }
 ```
 

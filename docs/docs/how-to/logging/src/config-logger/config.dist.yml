@@ -13,7 +13,7 @@ log:
             channels:
                 metrics:
                     level: error
-                formatter:
+                http:
                     level: error
             formatter: console
             level: info

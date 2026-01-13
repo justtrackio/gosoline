@@ -346,10 +346,10 @@ func WithLoggerHandlersFromConfig(app *App) {
 	})
 }
 
-func WithLoggerIsSampled(isSampled bool) Option {
+func WithLoggerSamplingEnabled(enabled bool) Option {
 	return func(app *App) {
 		app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
-			return logger.Option(log.WithIsSampled(isSampled))
+			return logger.Option(log.WithSamplingEnabled(enabled))
 		})
 	}
 }

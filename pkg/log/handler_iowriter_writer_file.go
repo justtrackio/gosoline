@@ -25,6 +25,8 @@ func ioWriterFileFactory(config cfg.Config, configKey string) (io.Writer, error)
 	return NewIoWriterFile(settings.Path)
 }
 
+// NewIoWriterFile creates a new io.Writer that appends to a file at the specified path.
+// It opens the file with O_APPEND|O_WRONLY|O_CREATE flags and 0600 permissions.
 func NewIoWriterFile(path string) (io.Writer, error) {
 	var err error
 	var file *os.File

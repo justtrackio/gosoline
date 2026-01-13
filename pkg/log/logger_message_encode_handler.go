@@ -11,25 +11,31 @@ import (
 
 const MessageAttributeLoggerContext = "logger:context"
 
+// MessageWithLoggingFieldsEncoder encodes context fields into message attributes during message production
+// and decodes them back into the context during message consumption, enabling context propagation across boundaries.
 type MessageWithLoggingFieldsEncoder struct {
 	logger Logger
 }
 
+// NewMessageWithLoggingFieldsEncoder creates a new MessageWithLoggingFieldsEncoder.
+// It uses a SamplingLogger to prevent flooding logs with warnings if context fields cannot be encoded.
 func NewMessageWithLoggingFieldsEncoder(_ cfg.Config, logger Logger) *MessageWithLoggingFieldsEncoder {
 	logger = NewSamplingLogger(logger, time.Minute)
 
 	return NewMessageWithLoggingFieldsEncoderWithInterfaces(logger)
 }
 
+// NewMessageWithLoggingFieldsEncoderWithInterfaces creates a new MessageWithLoggingFieldsEncoder with a specific logger.
 func NewMessageWithLoggingFieldsEncoderWithInterfaces(logger Logger) *MessageWithLoggingFieldsEncoder {
 	return &MessageWithLoggingFieldsEncoder{
 		logger: logger,
 	}
 }
 
+// Encode extracts global context fields, serializes them to JSON, and adds them to message attributes.
+// This allows fields to travel with the message.
 func (m MessageWithLoggingFieldsEncoder) Encode(ctx context.Context, _ any, attributes map[string]string) (context.Context, map[string]string, error) {
 	fields := GlobalContextFieldsResolver(ctx)
-
 	if len(fields) == 0 {
 		return ctx, attributes, nil
 	}
@@ -41,7 +47,6 @@ func (m MessageWithLoggingFieldsEncoder) Encode(ctx context.Context, _ any, attr
 
 			continue
 		}
-
 		stringAble[k] = v
 	}
 
@@ -57,9 +62,9 @@ func (m MessageWithLoggingFieldsEncoder) Encode(ctx context.Context, _ any, attr
 	return ctx, attributes, nil
 }
 
+// Decode retrieves context fields from message attributes, deserializes them, and appends them to the context.
 func (m MessageWithLoggingFieldsEncoder) Decode(ctx context.Context, _ any, attributes map[string]string) (context.Context, map[string]string, error) {
 	var ok bool
-
 	if _, ok = attributes[MessageAttributeLoggerContext]; !ok {
 		return ctx, attributes, nil
 	}

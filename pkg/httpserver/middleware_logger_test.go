@@ -1,7 +1,6 @@
 package httpserver_test
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -47,18 +46,6 @@ func (s *loggingMiddlewareTestSuite) TestSuccess() {
 	ginCtx := buildRequest()
 
 	s.logger.EXPECT().Info(matcher.Context, "%s %s %s", "GET", "path", "HTTP/1.1")
-
-	s.handler(ginCtx)
-}
-
-func (s *loggingMiddlewareTestSuite) TestRequestCanceledError() {
-	ginCtx := buildRequest()
-
-	err := ginCtx.Error(context.Canceled)
-
-	s.Require().Error(err)
-
-	s.logger.EXPECT().Info(matcher.Context, "%s %s %s - request canceled: %s", "GET", "path", "HTTP/1.1", context.Canceled.Error())
 
 	s.handler(ginCtx)
 }

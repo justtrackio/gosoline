@@ -11,6 +11,7 @@ import (
 
 const ecsMetadataFileEnv = "ECS_CONTAINER_METADATA_FILE"
 
+// EcsMetadata represents the container metadata provided by AWS ECS environment.
 type EcsMetadata map[string]any
 
 var (
@@ -18,6 +19,9 @@ var (
 	ecsMetadata EcsMetadata
 )
 
+// ReadEcsMetadata attempts to read and parse the ECS container metadata file.
+// It waits until the metadata status is "READY" before returning the metadata.
+// The path to the metadata file is determined by the ECS_CONTAINER_METADATA_FILE environment variable.
 func ReadEcsMetadata() (EcsMetadata, error) {
 	ecsLck.Lock()
 	defer ecsLck.Unlock()

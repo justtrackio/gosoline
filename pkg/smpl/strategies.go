@@ -18,6 +18,10 @@ var availableStrategies = map[string]Strategy{
 	"never":   DecideByNever,
 }
 
+func AddStrategy(name string, strategy Strategy) {
+	availableStrategies[name] = strategy
+}
+
 // DecideByTracing makes a sampling decision based on the tracing information in the context.
 // It applies if a trace is present.
 func DecideByTracing(ctx context.Context) (isApplied bool, isSampled bool, err error) {

@@ -174,6 +174,7 @@ func (c *Consumer) startTracingContext(ctx context.Context) (context.Context, tr
 	ctx, span := c.tracer.StartSpanFromContext(ctx, c.id)
 
 	ctx = log.InitContext(ctx)
+	ctx = log.WithFingersCrossedScope(ctx)
 	ctx = reqctx.New(ctx)
 
 	return ctx, span

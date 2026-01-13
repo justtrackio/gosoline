@@ -13,7 +13,7 @@ func main() {
 	ctx := context.Background()
 	// 2
 	logHandler := log.NewHandlerIoWriter(
-		cfg.New(), log.PriorityInfo, log.FormatterConsole, "main", "", os.Stdout,
+		cfg.New(), log.PriorityInfo, log.FormatterConsole, "main", "15:04:05.000", os.Stdout,
 	)
 
 	// 3
