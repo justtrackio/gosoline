@@ -84,6 +84,15 @@ func (lc *logCall) prepare(ginCtx *gin.Context) {
 	lc.fields["request_user_agent"] = req.UserAgent()
 	lc.fields["scheme"] = req.URL.Scheme
 
+	headers := make(map[string]string)
+	for _, key := range lc.settings.RequestHeaders {
+		headers[key] = req.Header.Get(key)
+	}
+
+	if len(headers) > 0 {
+		lc.fields["request_headers"] = headers
+	}
+
 	if !lc.settings.RequestBody {
 		return
 	}

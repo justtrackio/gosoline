@@ -69,6 +69,7 @@ func NewWithSettings(ctx context.Context, name string, definer Definer, settings
 			tracingInstrumentor            tracing.Instrumentor
 			definitions                    *Definitions
 			definitionList                 []Definition
+			samplingMiddleware             gin.HandlerFunc
 			compressionMiddlewares         []gin.HandlerFunc
 			healthChecker                  kernel.HealthChecker
 			connectionLifeCycleInterceptor gin.HandlerFunc
@@ -76,6 +77,10 @@ func NewWithSettings(ctx context.Context, name string, definer Definer, settings
 
 		if tracingInstrumentor, err = tracing.ProvideInstrumentor(ctx, config, logger); err != nil {
 			return nil, fmt.Errorf("can not create tracingInstrumentor: %w", err)
+		}
+
+		if samplingMiddleware, err = SamplingMiddleware(ctx, config, logger); err != nil {
+			return nil, fmt.Errorf("could not create sampling middleware: %w", err)
 		}
 
 		metricMiddleware, setupMetricMiddleware := NewMetricMiddleware(name)
@@ -90,6 +95,7 @@ func NewWithSettings(ctx context.Context, name string, definer Definer, settings
 
 		router := gin.New()
 		router.UseRawPath = settings.Router.UseRawPath
+		router.Use(samplingMiddleware)
 		router.Use(metricMiddleware)
 		router.Use(LoggingMiddleware(logger, settings.Logging))
 		router.Use(compressionMiddlewares...)

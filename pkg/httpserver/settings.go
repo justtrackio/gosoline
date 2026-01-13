@@ -27,8 +27,9 @@ type (
 	}
 
 	LoggingSettings struct {
-		RequestBody       bool `cfg:"request_body"`
-		RequestBodyBase64 bool `cfg:"request_body_base64"`
+		RequestBody       bool     `cfg:"request_body"`
+		RequestBodyBase64 bool     `cfg:"request_body_base64"`
+		RequestHeaders    []string `cfg:"request_headers"`
 	}
 
 	ProfilingSettings struct {
