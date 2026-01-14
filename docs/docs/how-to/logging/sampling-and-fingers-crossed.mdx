@@ -45,22 +45,25 @@ You can enable sampling in your application configuration. You also need to conf
 # - "tracing": uses the trace sampling flag from the context
 # - "always": always sample
 # - "never": never sample
+# - "probabilistic": samples a small percentage of requests and guarantees at least one sampled decision per time window
 sampling:
   enabled: true
   strategies:
     - tracing
 ```
 
-Logger sampling itself is enabled via application option `app.WithLoggerSamplingEnabled(true)` (see next section).
+Logger sampling itself is enabled via application option `app.WithSampling` (see next section).
 
 ### Application Options
 
-When setting up your application, ensure you enable the logger sampling option:
+When setting up your application, ensure you enable the sampling option.
+
+This enables sampling on the logger and also propagates the sampling decision across stream messages via the message attribute `sampled`.
 
 ```go
 app.Run(
     // ...
-    app.WithLoggerSamplingEnabled(true),
+    app.WithSampling,
 )
 ```
 
@@ -73,7 +76,9 @@ The HTTP server provides a `SamplingMiddleware` that integrates automatically wi
 For each incoming request, gosoline makes a sampling decision early in the request lifecycle.
 
 - It first ensures there is a place to buffer logs (the fingers-crossed scope).
-- Then it checks your sampling configuration to decide whether this request is **sampled** or **not sampled**.
+- If the request includes the `X-Goso-Sampled` header, it is used first as an override.
+  - Values are parsed using `strconv.ParseBool` (e.g. `true`/`false`, `1`/`0`).
+  - If the header is missing, the configured strategies decide.
 - The decision is attached to the request context so every log call during request handling can use it.
 
 ### What gets flushed (and when)
@@ -88,12 +93,16 @@ This means you can keep successful, not-sampled requests quiet, but still get fu
 
 Stream consumers use the same idea, but apply it to message processing.
 
+When publishing messages, gosoline can attach the sampling decision to message attributes (attribute `sampled`). Consumers can then restore the decision from the message and use it for fingers-crossed logging.
+
 ### Decision flow
 
 For each message:
 
 - Gosoline ensures there is a fingers-crossed scope, so logs can be buffered.
-- It applies your sampling configuration to decide whether logs for this message should be written immediately or buffered.
+- If the incoming message contains the attribute `sampled`, gosoline parses it (via `strconv.ParseBool`) and attaches the decision to the context.
+  - This propagated decision takes precedence over any locally configured sampling strategies.
+- If no `sampled` attribute is present, gosoline falls back to your configured sampling decider (`sampling.enabled` / `sampling.strategies`) to make the decision.
 
 ### What gets flushed (and when)
 
@@ -110,7 +119,7 @@ If you are writing a custom worker, CLI tool, or background process, you can use
 
 ### Key API Methods
 
-- **`log.WithSamplingEnabled(true)`**: Enables the sampling logic on the logger.
+- **`app.WithSampling`**: Enables the sampling logic on the logger.
 - **`log.WithFingersCrossedScope(ctx)`**: Wraps the context with a buffer for fingers-crossed logging.
 - **`log.FlushFingersCrossedScope(ctx)`**: Manually flushes any buffered logs in the current scope.
 

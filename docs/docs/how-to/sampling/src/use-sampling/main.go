@@ -16,12 +16,14 @@ func init() {
 	// Register a custom sampling strategy that can be referenced in config.
 	//
 	// This is process-global and should be done before application startup, before a decider is created.
-	smpl.AddStrategy("force-by-context", func(ctx context.Context) (applied bool, sampled bool, err error) {
-		if v, ok := ctx.Value(ctxKey("force_sample")).(bool); ok {
-			return true, v, nil
-		}
+	smpl.AddStrategy("force-by-context", func(ctx context.Context, config cfg.Config) (smpl.Strategy, error) {
+		return func(ctx context.Context) (applied bool, sampled bool, err error) {
+			if v, ok := ctx.Value(ctxKey("force_sample")).(bool); ok {
+				return true, v, nil
+			}
 
-		return false, false, nil
+			return false, false, nil
+		}, nil
 	})
 }
 
@@ -54,7 +56,14 @@ func main() {
 
 	// Per-call overrides: additional strategies run before the configured strategies.
 	// This allows you to force sampling behaviour for specific code paths.
-	ctx, sampled, err = decider.Decide(ctx, smpl.DecideByAlways)
+	alwaysStrategy, err := smpl.DecideByAlways(ctx, config)
+	if err != nil {
+		logger.Error(ctx, "can not build override strategy: %w", err)
+
+		return
+	}
+
+	ctx, sampled, err = decider.Decide(ctx, alwaysStrategy)
 	if err != nil {
 		logger.Error(ctx, "can not decide with override: %w", err)
 

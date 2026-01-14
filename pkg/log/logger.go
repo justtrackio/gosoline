@@ -208,7 +208,17 @@ func (l *gosoLogger) log(ctx context.Context, level int, msg string, args []any,
 		data.ContextFields = mergeFields(data.ContextFields, newContextFields)
 	}
 
-	if l.samplingEnabled && !smplctx.IsSampled(ctx) {
+	if !l.samplingEnabled || !smplctx.HasSampling(ctx) {
+		l.executeHandlers(ctx, timestamp, level, msg, args, loggedErr, data)
+
+		return
+	}
+
+	sampled := smplctx.IsSampled(ctx)
+	data.ContextFields["sampled"] = sampled
+
+	// if log got not sampled, execute it the fingers-crossed handler
+	if !sampled {
 		l.executeFingersCrossed(ctx, timestamp, level, msg, args, loggedErr, data)
 
 		return
@@ -232,7 +242,7 @@ func (l *gosoLogger) executeFingersCrossed(ctx context.Context, timestamp time.T
 
 	appendToFingersCrossedScope(ctx, l, timestamp, level, msg, args, loggedErr, data)
 
-	if scope.flushed || level >= PriorityError {
+	if scope.shouldFlush(level) {
 		scope.flush()
 	}
 }

@@ -40,6 +40,10 @@ sampling:
 - `sampling.enabled`: if set to `false`, the decider behaves as if everything is sampled.
 - `sampling.strategies`: list of strategy names in priority order. The first strategy that applies wins.
 
+:::info
+When sampling is enabled and a new decision is made, gosoline emits a metric `sampling_decision` (count) with dimension `sampled=true|false`.
+:::
+
 ### Built-in strategies
 
 Gosoline ships with a few strategies you can reference by name:
@@ -47,6 +51,27 @@ Gosoline ships with a few strategies you can reference by name:
 - `tracing`: if a trace is present in the context, use its sampling flag.
 - `always`: always sample.
 - `never`: never sample.
+- `probabilistic`: guarantees at least one sampled decision per time window and additionally samples a small percentage of extra traffic.
+
+#### Probabilistic settings
+
+The `probabilistic` strategy reads its settings from `sampling.settings.probabilistic`:
+
+```yaml
+sampling:
+  enabled: true
+  strategies:
+    - probabilistic
+  settings:
+    probabilistic:
+      interval: 1s
+      fixed_sample_count: 1
+      extra_rate_percentage: 5
+```
+
+- `interval`: time window for the per-interval guarantee.
+- `fixed_sample_count`: number of guaranteed `sampled=true` decisions per interval.
+- `extra_rate_percentage`: probability (0–100) for sampling additional calls within the same interval.
 
 ## Make a decision
 
@@ -68,10 +93,22 @@ Additional strategies are applied **before** the configured ones. This is useful
 
 For example:
 
-- Force sampling for a specific operation: `decider.Decide(ctx, smpl.DecideByAlways)`
-- Force not-sampled behavior: `decider.Decide(ctx, smpl.DecideByNever)`
+- Force sampling for a specific operation:
+  
+  ```go
+  always, _ := smpl.DecideByAlways(ctx, config)
+  ctx, sampled, err := decider.Decide(ctx, always)
+  ```
+- Force not-sampled behavior:
+  
+  ```go
+  never, _ := smpl.DecideByNever(ctx, config)
+  ctx, sampled, err := decider.Decide(ctx, never)
+  ```
 
 If your additional strategy can not decide, return `applied=false` so the configured strategies can decide.
+
+A common example is HTTP request sampling: you can derive a strategy from the incoming request and pass it as an additional strategy (so it takes precedence over config). Gosoline's HTTP server middleware does this using the `X-Goso-Sampled` header.
 
 ## Register a custom strategy for config
 
@@ -83,9 +120,11 @@ If you want to make a strategy configurable (usable via `sampling.strategies`), 
 Example pattern:
 
 ```go
-smpl.AddStrategy("my-strategy", func(ctx context.Context) (applied bool, sampled bool, err error) {
-	// Decide on certain contexts, otherwise abstain.
-	return false, false, nil
+smpl.AddStrategy("my-strategy", func(ctx context.Context, config cfg.Config) (smpl.Strategy, error) {
+	return func(ctx context.Context) (applied bool, sampled bool, err error) {
+		// Decide on certain contexts, otherwise abstain.
+		return false, false, nil
+	}, nil
 })
 ```
 

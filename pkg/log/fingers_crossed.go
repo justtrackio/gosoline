@@ -42,10 +42,18 @@ func (s *fingersCrossedScope) flush() {
 	}
 
 	for _, entry := range s.buffer {
+		entry.data.ContextFields["fingers_crossed_flushed"] = true
 		s.logger.executeHandlers(entry.ctx, entry.timestamp, entry.level, entry.msg, entry.args, entry.err, entry.data)
 	}
 
 	s.buffer = nil
+}
+
+func (s *fingersCrossedScope) shouldFlush(level int) bool {
+	s.lck.Lock()
+	defer s.lck.Unlock()
+
+	return s.flushed || level >= PriorityError
 }
 
 // WithFingersCrossedScope creates a new context with a "fingers-crossed" logging scope.
