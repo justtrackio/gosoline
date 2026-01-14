@@ -11,10 +11,10 @@ type (
 	// Strategy is a function that determines if sampling should occur based on the context.
 	// It returns isApplied (true if the strategy made a decision), isSampled (the decision), and an error.
 	Strategy        func(ctx context.Context) (isApplied bool, isSampled bool, err error)
-	StragegyFactory func(ctx context.Context, config cfg.Config) (Strategy, error)
+	StrategyFactory func(ctx context.Context, config cfg.Config) (Strategy, error)
 )
 
-var availableStrategies = map[string]StragegyFactory{
+var availableStrategies = map[string]StrategyFactory{
 	"tracing":       DecideByTracing,
 	"always":        DecideByAlways,
 	"never":         DecideByNever,
@@ -22,7 +22,7 @@ var availableStrategies = map[string]StragegyFactory{
 }
 
 // AddStrategy adds a new named strategy factory to the available strategies.
-func AddStrategy(name string, strategy StragegyFactory) {
+func AddStrategy(name string, strategy StrategyFactory) {
 	availableStrategies[name] = strategy
 }
 

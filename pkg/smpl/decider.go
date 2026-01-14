@@ -50,7 +50,7 @@ func NewDecider(ctx context.Context, config cfg.Config) (Decider, error) {
 	}
 
 	var ok bool
-	var factory StragegyFactory
+	var factory StrategyFactory
 	var strategy Strategy
 	var strategies []Strategy
 	var err error
