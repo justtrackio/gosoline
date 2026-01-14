@@ -16,6 +16,16 @@ func WithSampling(ctx context.Context, sampling Sampling) context.Context {
 	return context.WithValue(ctx, contextSamplingKey, sampling)
 }
 
+func HasSampling(ctx context.Context) bool {
+	if ctx == nil {
+		return false
+	}
+
+	_, ok := ctx.Value(contextSamplingKey).(Sampling)
+
+	return ok
+}
+
 // GetSampling retrieves the sampling decision from the context.
 // If no sampling decision is found or the context is nil, it returns a decision with Sampled=true.
 func GetSampling(ctx context.Context) Sampling {

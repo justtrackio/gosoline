@@ -21,7 +21,7 @@ func SamplingMiddleware(ctx context.Context, config cfg.Config, logger log.Logge
 	return func(ginCtx *gin.Context) {
 		reqCtx := ginCtx.Request.Context()
 
-		if smplCtx, _, err := decider.Decide(reqCtx); err != nil {
+		if smplCtx, _, err := decider.Decide(reqCtx, smpl.DecideByHttpHeader(ginCtx.Request)); err != nil {
 			logger.Warn(reqCtx, "could not decide on sampling: %s", err)
 		} else {
 			ginCtx.Request = ginCtx.Request.WithContext(smplCtx)

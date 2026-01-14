@@ -54,9 +54,9 @@ func (s *FingersCrossedSuite) TestFlushOnError() {
 	lines := getLogLines(s.buf)
 	s.Len(lines, 3)
 
-	s.JSONEq(`{"channel":"main","context":{},"fields":{},"level":2,"level_name":"info","message":"a","timestamp":"1984-04-04T00:00:00Z"}`, lines[0])
-	s.JSONEq(`{"channel":"main","context":{},"fields":{},"level":3,"level_name":"warn","message":"b","timestamp":"1984-04-04T00:01:00Z"}`, lines[1])
-	s.JSONEq(`{"channel":"main","context":{},"err":"boom","fields":{},"level":4,"level_name":"error","message":"boom","timestamp":"1984-04-04T00:02:00Z"}`, lines[2])
+	s.JSONEq(`{"channel":"main","context":{"fingers_crossed_flushed":true,"sampled":false},"fields":{},"level":2,"level_name":"info","message":"a","timestamp":"1984-04-04T00:00:00Z"}`, lines[0])
+	s.JSONEq(`{"channel":"main","context":{"fingers_crossed_flushed":true,"sampled":false},"fields":{},"level":3,"level_name":"warn","message":"b","timestamp":"1984-04-04T00:01:00Z"}`, lines[1])
+	s.JSONEq(`{"channel":"main","context":{"fingers_crossed_flushed":true,"sampled":false},"err":"boom","fields":{},"level":4,"level_name":"error","message":"boom","timestamp":"1984-04-04T00:02:00Z"}`, lines[2])
 }
 
 func (s *FingersCrossedSuite) TestManualFlush() {
@@ -73,8 +73,8 @@ func (s *FingersCrossedSuite) TestManualFlush() {
 
 	lines := getLogLines(s.buf)
 	s.Len(lines, 2)
-	s.JSONEq(`{"channel":"main","context":{},"fields":{},"level":2,"level_name":"info","message":"a","timestamp":"1984-04-04T00:00:00Z"}`, lines[0])
-	s.JSONEq(`{"channel":"main","context":{},"fields":{},"level":2,"level_name":"info","message":"b","timestamp":"1984-04-04T00:01:00Z"}`, lines[1])
+	s.JSONEq(`{"channel":"main","context":{"fingers_crossed_flushed":true,"sampled":false},"fields":{},"level":2,"level_name":"info","message":"a","timestamp":"1984-04-04T00:00:00Z"}`, lines[0])
+	s.JSONEq(`{"channel":"main","context":{"fingers_crossed_flushed":true,"sampled":false},"fields":{},"level":2,"level_name":"info","message":"b","timestamp":"1984-04-04T00:01:00Z"}`, lines[1])
 
 	// ensure no-op on context without scope
 	log.FlushFingersCrossedScope(s.T().Context())
@@ -97,7 +97,7 @@ func (s *FingersCrossedSuite) TestAfterFlushWritesImmediately() {
 
 	lines := getLogLines(s.buf)
 	s.Len(lines, 2)
-	s.JSONEq(`{"channel":"main","context":{},"fields":{},"level":2,"level_name":"info","message":"b","timestamp":"1984-04-04T00:01:00Z"}`, lines[1])
+	s.JSONEq(`{"channel":"main","context":{"fingers_crossed_flushed":true,"sampled":false},"fields":{},"level":2,"level_name":"info","message":"b","timestamp":"1984-04-04T00:01:00Z"}`, lines[1])
 }
 
 func (s *FingersCrossedSuite) TestWithoutScopeDropsNonError() {
@@ -111,7 +111,7 @@ func (s *FingersCrossedSuite) TestWithoutScopeDropsNonError() {
 
 	lines := getLogLines(s.buf)
 	s.Len(lines, 1)
-	s.JSONEq(`{"channel":"main","context":{},"err":"boom","fields":{},"level":4,"level_name":"error","message":"boom","timestamp":"1984-04-04T00:01:00Z"}`, lines[0])
+	s.JSONEq(`{"channel":"main","context":{"sampled":false},"err":"boom","fields":{},"level":4,"level_name":"error","message":"boom","timestamp":"1984-04-04T00:01:00Z"}`, lines[0])
 }
 
 func TestFingersCrossedSuite(t *testing.T) {
