@@ -57,7 +57,10 @@ func (s *DeciderTestSuite) TestDecide_Disabled() {
 		Enabled: false,
 	}
 	// Strategies shouldn't matter if disabled
-	decider := smpl.NewDeciderWithInterfaces([]smpl.Strategy{smpl.DecideByNever}, settings)
+	neverStrategy, err := smpl.DecideByNever(context.Background(), nil)
+	s.Require().NoError(err)
+
+	decider := smpl.NewDeciderWithInterfaces([]smpl.Strategy{neverStrategy}, settings)
 
 	originalCtx := context.Background()
 	newCtx, sampled, err := decider.Decide(originalCtx)
@@ -71,7 +74,10 @@ func (s *DeciderTestSuite) TestDecide_Disabled() {
 func (s *DeciderTestSuite) TestDecide_AdditionalStrategiesPrecedence() {
 	settings := &smpl.Settings{Enabled: true}
 	// Configured strategy says "Always" (Sampled=true)
-	decider := smpl.NewDeciderWithInterfaces([]smpl.Strategy{smpl.DecideByAlways}, settings)
+	alwaysStrategy, err := smpl.DecideByAlways(context.Background(), nil)
+	s.Require().NoError(err)
+
+	decider := smpl.NewDeciderWithInterfaces([]smpl.Strategy{alwaysStrategy}, settings)
 
 	// Additional strategy says "Never" (Sampled=false)
 	additional := func(ctx context.Context) (bool, bool, error) {
