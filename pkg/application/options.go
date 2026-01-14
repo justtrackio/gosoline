@@ -21,6 +21,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/metric/calculator"
 	"github.com/justtrackio/gosoline/pkg/share"
+	"github.com/justtrackio/gosoline/pkg/smpl"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/pkg/errors"
@@ -346,14 +347,6 @@ func WithLoggerHandlersFromConfig(app *App) {
 	})
 }
 
-func WithLoggerSamplingEnabled(enabled bool) Option {
-	return func(app *App) {
-		app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
-			return logger.Option(log.WithSamplingEnabled(enabled))
-		})
-	}
-}
-
 func WithLoggerMetricHandler(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		metricHandler := metric.NewLoggerHandler()
@@ -402,6 +395,20 @@ func WithProfiling(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
 		return kernelPkg.WithModuleMultiFactory(httpserver.ProfilingModuleFactory)
 	})
+}
+
+func WithSamplingEnabled(enabled bool) Option {
+	return func(app *App) {
+		app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+			return logger.Option(log.WithSamplingEnabled(enabled))
+		})
+
+		app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
+			stream.AddDefaultEncodeHandler(smpl.NewMessageWithSamplingEncoder())
+
+			return nil
+		})
+	}
 }
 
 func WithTaskRunner(app *App) {

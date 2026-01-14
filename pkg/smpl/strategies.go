@@ -21,10 +21,13 @@ var availableStrategies = map[string]StragegyFactory{
 	"probabilistic": DecideByProbabilistic,
 }
 
+// AddStrategy adds a new named strategy factory to the available strategies.
 func AddStrategy(name string, strategy StragegyFactory) {
 	availableStrategies[name] = strategy
 }
 
+// DecideByTracing creates a strategy that delegates to the tracing context.
+// If a trace exists in the context, its sampling decision is used.
 func DecideByTracing(ctx context.Context, config cfg.Config) (Strategy, error) {
 	return func(ctx context.Context) (isApplied bool, isSampled bool, err error) {
 		trace := tracing.GetTraceFromContext(ctx)
@@ -37,12 +40,14 @@ func DecideByTracing(ctx context.Context, config cfg.Config) (Strategy, error) {
 	}, nil
 }
 
+// DecideByAlways creates a strategy that always samples.
 func DecideByAlways(ctx context.Context, config cfg.Config) (Strategy, error) {
 	return func(ctx context.Context) (isApplied bool, isSampled bool, err error) {
 		return true, true, nil
 	}, nil
 }
 
+// DecideByNever creates a strategy that never samples.
 func DecideByNever(ctx context.Context, config cfg.Config) (Strategy, error) {
 	return func(ctx context.Context) (isApplied bool, isSampled bool, err error) {
 		return true, false, nil
