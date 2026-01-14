@@ -48,18 +48,26 @@ func NewDecider(ctx context.Context, config cfg.Config) (Decider, error) {
 	}
 
 	var ok bool
+	var factory StragegyFactory
 	var strategy Strategy
 	var strategies []Strategy
+	var err error
 
-	for _, strategyName := range settings.Strategies {
-		if strategy, ok = availableStrategies[strategyName]; !ok {
-			return nil, fmt.Errorf("unknown strategy %q", strategyName)
-		}
-		strategies = append(strategies, strategy)
+	selectedStrategies := slices.Clone(settings.Strategies)
+	if len(selectedStrategies) == 0 {
+		selectedStrategies = append(selectedStrategies, "always")
 	}
 
-	if len(strategies) == 0 {
-		strategies = append(strategies, DecideByAlways)
+	for _, strategyName := range selectedStrategies {
+		if factory, ok = availableStrategies[strategyName]; !ok {
+			return nil, fmt.Errorf("unknown strategy %q", strategyName)
+		}
+
+		if strategy, err = factory(ctx, config); err != nil {
+			return nil, fmt.Errorf("failed to create strategy %q: %w", strategyName, err)
+		}
+
+		strategies = append(strategies, strategy)
 	}
 
 	return NewDeciderWithInterfaces(strategies, settings), nil
