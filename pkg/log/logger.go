@@ -232,7 +232,7 @@ func (l *gosoLogger) executeFingersCrossed(ctx context.Context, timestamp time.T
 
 	appendToFingersCrossedScope(ctx, l, timestamp, level, msg, args, loggedErr, data)
 
-	if scope.flushed || level >= PriorityError {
+	if scope.shouldFlush(level) {
 		scope.flush()
 	}
 }

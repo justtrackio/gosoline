@@ -48,6 +48,13 @@ func (s *fingersCrossedScope) flush() {
 	s.buffer = nil
 }
 
+func (s *fingersCrossedScope) shouldFlush(level int) bool {
+	s.lck.Lock()
+	defer s.lck.Unlock()
+
+	return s.flushed || level >= PriorityError
+}
+
 // WithFingersCrossedScope creates a new context with a "fingers-crossed" logging scope.
 // In this scope, logs are buffered and not immediately written. They are only flushed to the configured handlers
 // if an error level log occurs within the scope (see Logger.log implementation) or if FlushFingersCrossedScope is called manually.
