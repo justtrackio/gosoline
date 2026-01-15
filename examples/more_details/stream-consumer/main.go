@@ -6,5 +6,8 @@ import (
 )
 
 func main() {
-	application.RunConsumer(consumer.NewConsumer())
+	application.RunConsumer(consumer.NewConsumer(),
+		application.WithConfigFile("config.dist.yml", "yml"),
+		application.WithProducerDaemon,
+	)
 }

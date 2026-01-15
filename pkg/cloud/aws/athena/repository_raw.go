@@ -89,9 +89,6 @@ func CheckInternalAthenaError(_ any, err error) exec.ErrorType {
 
 func IsInternalAthenaError(err error) bool {
 	errStr := err.Error()
-	if strings.Contains(errStr, "Amazon Athena experienced an internal error while executing this query. Please try submitting the query again") {
-		return true
-	}
 
-	return false
+	return strings.Contains(errStr, "Amazon Athena experienced an internal error while executing this query. Please try submitting the query again")
 }

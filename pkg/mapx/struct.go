@@ -263,9 +263,71 @@ func (s *Struct) doReadMap(path string, mapValues *MapX, mp any) error {
 		return s.doReadMapOfSlice(path, mapValues, mapValue)
 	case reflect.Struct:
 		return s.doReadMapOfStruct(path, mapValues, mapValue)
+	case reflect.String:
+		return s.doReadMapOfValue(path, mapValues, mapValue)
+	case reflect.Interface:
+		return s.doReadMapOfInterface(path, mapValues, mapValue)
 	default:
 		return fmt.Errorf("MSI fields or a map of structs are allowed only for path %s", path)
 	}
+}
+
+func (s *Struct) doReadMapOfValue(path string, mapValues *MapX, mapValue reflect.Value) error {
+	for _, key := range mapValue.MapKeys() {
+		if key.Kind() != reflect.String {
+			return fmt.Errorf("only string values are allowed as map keys for path %s", path)
+		}
+
+		element := mapValue.MapIndex(key).Interface()
+		elementPath := fmt.Sprintf("%s.%s", path, key.String())
+
+		mapValues.Set(elementPath, element)
+	}
+
+	return nil
+}
+
+func (s *Struct) doReadMapOfInterface(path string, mapValues *MapX, mapValue reflect.Value) error {
+	for _, key := range mapValue.MapKeys() {
+		if key.Kind() != reflect.String {
+			return fmt.Errorf("only string values are allowed as map keys for path %s", path)
+		}
+
+		element := mapValue.MapIndex(key)
+		elementPath := fmt.Sprintf("%s.%s", path, key.String())
+
+		// Unwrap the interface to get the concrete value
+		concrete := element
+		for concrete.Kind() == reflect.Interface {
+			concrete = concrete.Elem()
+		}
+
+		if !concrete.IsValid() {
+			// nil interface value
+			mapValues.Set(elementPath, nil)
+
+			continue
+		}
+
+		switch concrete.Kind() {
+		case reflect.Map:
+			if err := s.doReadMap(elementPath, mapValues, concrete.Interface()); err != nil {
+				return fmt.Errorf("can not read path value %s: %w", elementPath, err)
+			}
+		case reflect.Slice:
+			if err := s.doReadSlice(elementPath, mapValues, concrete); err != nil {
+				return fmt.Errorf("can not read path value %s: %w", elementPath, err)
+			}
+		case reflect.Struct:
+			if err := s.doReadStruct(elementPath, mapValues, concrete.Interface()); err != nil {
+				return fmt.Errorf("can not read path value %s: %w", elementPath, err)
+			}
+		default:
+			mapValues.Set(elementPath, concrete.Interface())
+		}
+	}
+
+	return nil
 }
 
 func (s *Struct) doReadMapOfMap(path string, mapValues *MapX, mapValue reflect.Value) error {
@@ -545,62 +607,70 @@ func (s *Struct) doWrite(target any, sourceValues *MapX) error {
 	st = st.Elem()
 	sv = sv.Elem()
 
-	var tag *StructTag
-	var ok bool
-
 	for i := 0; i < st.NumField(); i++ {
 		targetField := st.Field(i)
 		targetValue := sv.Field(i)
 
-		// skip unexported fields
-		if targetField.PkgPath != "" {
-			continue
+		if err := s.doWriteField(targetField, targetValue, sourceValues); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Struct) doWriteField(targetField reflect.StructField, targetValue reflect.Value, sourceValues *MapX) error {
+	var tag *StructTag
+	var ok bool
+
+	// skip unexported fields
+	if targetField.PkgPath != "" {
+		return nil
+	}
+
+	if !targetValue.IsValid() {
+		return fmt.Errorf("field %s is invalid", targetField.Name)
+	}
+
+	if !targetValue.CanSet() {
+		return fmt.Errorf("field %s is not addressable", targetField.Name)
+	}
+
+	if targetField.Anonymous {
+		if err := s.doWriteAnonymous(targetField.Name, targetValue, sourceValues); err != nil {
+			return err
 		}
 
-		if !targetValue.IsValid() {
-			return fmt.Errorf("field %s is invalid", targetField.Name)
-		}
+		return nil
+	}
 
-		if !targetValue.CanSet() {
-			return fmt.Errorf("field %s is not addressable", targetField.Name)
-		}
+	if tag, ok = s.readTag(targetField.Tag, targetField.Name); !ok {
+		return nil
+	}
 
-		if targetField.Anonymous {
-			if err := s.doWriteAnonymous(targetField.Name, targetValue, sourceValues); err != nil {
+	// Handle prefix option for struct fields
+	if tag.Prefix != "" {
+		targetKind := targetValue.Kind()
+		isStruct := targetKind == reflect.Struct && targetValue.Type() != reflect.TypeOf(time.Time{})
+		isPtrToStruct := targetKind == reflect.Ptr && targetValue.Type().Elem().Kind() == reflect.Struct
+
+		if isStruct || isPtrToStruct {
+			if err := s.doWritePrefixedStruct(tag, targetValue, sourceValues); err != nil {
 				return err
 			}
 
-			continue
+			return nil
 		}
+	}
 
-		if tag, ok = s.readTag(targetField.Tag, targetField.Name); !ok {
-			continue
-		}
+	// Use findMatchingKey instead of direct Has() check
+	matchedKey := s.findMatchingKey(sourceValues, tag.Name)
+	if matchedKey == "" {
+		return nil
+	}
 
-		// Handle prefix option for struct fields
-		if tag.Prefix != "" {
-			targetKind := targetValue.Kind()
-			isStruct := targetKind == reflect.Struct && targetValue.Type() != reflect.TypeOf(time.Time{})
-			isPtrToStruct := targetKind == reflect.Ptr && targetValue.Type().Elem().Kind() == reflect.Struct
-
-			if isStruct || isPtrToStruct {
-				if err := s.doWritePrefixedStruct(tag, targetValue, sourceValues); err != nil {
-					return err
-				}
-
-				continue
-			}
-		}
-
-		// Use findMatchingKey instead of direct Has() check
-		matchedKey := s.findMatchingKey(sourceValues, tag.Name)
-		if matchedKey == "" {
-			continue
-		}
-
-		if err := s.doWriteValue(tag, matchedKey, sourceValues, targetValue); err != nil {
-			return err
-		}
+	if err := s.doWriteValue(tag, matchedKey, sourceValues, targetValue); err != nil {
+		return err
 	}
 
 	return nil
@@ -814,7 +884,7 @@ func (s *Struct) decodeAndCastValue(tag *StructTag, targetType reflect.Type, sou
 	if !tag.NoDecode {
 		for _, decoder := range s.decoders {
 			if sourceValue, err = decoder(targetType, sourceValue); err != nil {
-				return nil, fmt.Errorf("can not decode value %v", sourceValue)
+				return nil, fmt.Errorf("can not decode value \"%v\": %w", sourceValue, err)
 			}
 		}
 	}
@@ -981,6 +1051,7 @@ func (s *Struct) readTag(sourceTag reflect.StructTag, fieldName string) (*Struct
 		if s.settings.DefaultToFieldName && fieldName != "" {
 			return &StructTag{Name: fieldName}, true
 		}
+
 		return nil, ok
 	}
 

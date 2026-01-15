@@ -37,12 +37,12 @@
 
 ## Config keys
 ```yaml
-log.main.level: info
-log.main.handlers:
-  - type: iowriter
-    level: info
-    channels: ["*"]
-log.main.sentry.dsn: ""  # optional
+log.level: info                  # global default level
+log.handlers.main.type: iowriter # auto-configured by postprocessor if not set
+log.handlers.main.level: info
+log.handlers.main.channels: ["*"]
+log.handlers.sentry.type: sentry # optional
+log.handlers.sentry.dsn: ""
 ```
 
 ## Related packages
@@ -51,5 +51,5 @@ log.main.sentry.dsn: ""  # optional
 
 ## Tips
 - Avoid global loggers; expose factories via DI modules.
-- Document new config options under `log.main.*` and keep defaults safe for production.
+- Document new config options under `log.handlers.<name>.*` and keep defaults safe for production.
 - When adding new handler dependencies, update root `go.mod` carefully to avoid bloat.

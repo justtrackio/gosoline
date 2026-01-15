@@ -47,7 +47,6 @@ func TestRealTimer(t *testing.T) {
 		select {
 		case <-stdTimer.C:
 			// the timer with 1ms should trigger before the timer with 1h, so this is correct
-			break
 		case <-timer.Chan():
 			assert.Fail(t, "timer should not have triggered that fast")
 

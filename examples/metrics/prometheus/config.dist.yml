@@ -1,9 +1,10 @@
-env: dev
-
-app_project: gosoline
-app_family: metrics
-app_group: grp
-app_name: prometheus
+app:
+  env: dev
+  name: prometheus
+  tags:
+    project: gosoline
+    family: metrics
+    group: grp
 
 httpserver:
   default:

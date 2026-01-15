@@ -2,26 +2,25 @@ package sns
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
 type TopicNameSettingsAware interface {
-	GetAppId() cfg.AppId
+	GetIdentity() cfg.Identity
 	GetClientName() string
 	GetTopicId() string
 }
 
 type TopicNameSettings struct {
-	AppId      cfg.AppId
+	Identity   cfg.Identity
 	ClientName string
 	TopicId    string
 }
 
-func (s TopicNameSettings) GetAppId() cfg.AppId {
-	return s.AppId
+func (s TopicNameSettings) GetIdentity() cfg.Identity {
+	return s.Identity
 }
 
 func (s TopicNameSettings) GetClientName() string {
@@ -33,7 +32,8 @@ func (s TopicNameSettings) GetTopicId() string {
 }
 
 type TopicNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{topicId}"`
+	TopicPattern   string `cfg:"topic_pattern,nodecode" default:"{app.namespace}-{topicId}"`
+	TopicDelimiter string `cfg:"topic_delimiter" default:"-"`
 }
 
 func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (string, error) {
@@ -42,26 +42,23 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 	}
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("sns", topicSettings.GetClientName()))
-	defaultPatternKey := fmt.Sprintf("%s.naming.pattern", aws.GetClientConfigKey("sns", "default"))
+	defaultPatternKey := fmt.Sprintf("%s.naming.topic_pattern", aws.GetClientConfigKey("sns", "default"))
+
 	namingSettings := &TopicNamingSettings{}
-	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "pattern")); err != nil {
+	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "topic_pattern")); err != nil {
 		return "", fmt.Errorf("failed to unmarshal sns naming settings for %s: %w", namingKey, err)
 	}
 
-	name := namingSettings.Pattern
-	appId := topicSettings.GetAppId()
-	values := map[string]string{
-		"project": appId.Project,
-		"env":     appId.Environment,
-		"family":  appId.Family,
-		"group":   appId.Group,
-		"app":     appId.Application,
-		"topicId": topicSettings.GetTopicId(),
+	identity := topicSettings.GetIdentity()
+	if err := identity.PadFromConfig(config); err != nil {
+		return "", fmt.Errorf("failed to pad app identity from config: %w", err)
 	}
 
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		name = strings.ReplaceAll(name, templ, val)
+	name, err := identity.Format(namingSettings.TopicPattern, namingSettings.TopicDelimiter, map[string]string{
+		"topicId": topicSettings.GetTopicId(),
+	})
+	if err != nil {
+		return "", fmt.Errorf("sns topic naming failed: %w", err)
 	}
 
 	return name, nil

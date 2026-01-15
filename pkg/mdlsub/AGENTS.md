@@ -41,6 +41,6 @@ mdlsub.subscribers.mymodel.output.type: ddb
 - `pkg/mdl` - ModelId for naming
 
 ## Tips
-- Rely on `mdl.ModelId` and `cfg.AppId` for naming; never duplicate logic locally.
+- Rely on `mdl.ModelId` and `cfg.Identity` for naming; never duplicate logic locally.
 - Keep transformers stateless and idempotent to simplify retries.
 - Update fixture helpers when adding outputs so integration suites can preload state.

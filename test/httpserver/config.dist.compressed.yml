@@ -1,9 +1,10 @@
-env: test
-
-app_project: gosoline
-app_family: test
-app_group: grp
-app_name: compression-test
+app:
+  env: test
+  name: compression-test
+  tags:
+    project: gosoline
+    family: test
+    group: grp
 
 httpserver:
   default:

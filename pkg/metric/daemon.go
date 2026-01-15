@@ -61,7 +61,7 @@ func metricWriterAggrKey(typ string) string {
 }
 
 func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-	settings, err := getMetricSettings(config)
+	settings, err := GetMetricSettings(config)
 	if err != nil {
 		return nil, fmt.Errorf("could not get metric settings: %w", err)
 	}

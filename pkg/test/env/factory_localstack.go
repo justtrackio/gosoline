@@ -7,7 +7,6 @@ import (
 
 	toxiproxy "github.com/Shopify/toxiproxy/v2/client"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -139,15 +138,10 @@ func (f *localstackFactory) healthCheck(settings any) ComponentHealthCheck {
 
 func (f *localstackFactory) Component(config cfg.Config, logger log.Logger, containers map[string]*Container, settings any) (Component, error) {
 	var err error
-	var ddbNamingSettings *ddb.TableNamingSettings
 	var proxy *toxiproxy.Proxy
 
 	s := settings.(*localstackSettings)
 	endpoint := containers["main"].bindings["main"].getAddress()
-
-	if ddbNamingSettings, err = ddb.GetTableNamingSettings(config, s.Name); err != nil {
-		return nil, fmt.Errorf("can not get table naming settings for ddb component: %w", err)
-	}
 
 	if s.ToxiproxyEnabled {
 		toxiproxyClient := f.toxiproxyFactory.client(containers["toxiproxy"])
@@ -168,12 +162,11 @@ func (f *localstackFactory) Component(config cfg.Config, logger log.Logger, cont
 	}
 
 	component := &localstackComponent{
-		config:            config,
-		logger:            logger,
-		endpointAddress:   endpoint,
-		region:            s.Region,
-		ddbNamingSettings: ddbNamingSettings,
-		toxiproxy:         proxy,
+		config:          config,
+		logger:          logger,
+		endpointAddress: endpoint,
+		region:          s.Region,
+		toxiproxy:       proxy,
 	}
 
 	return component, nil

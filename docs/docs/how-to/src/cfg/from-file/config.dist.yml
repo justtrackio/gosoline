@@ -1,8 +1,0 @@
-port: 80
-host: example.com
-
-struct_example:
-  port: 80
-  host: example.com
-  timeout: 5s
-  threshold: 100

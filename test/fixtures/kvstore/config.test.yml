@@ -1,9 +1,14 @@
-env: test
+app:
+  env: test
+  name: app
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+  tags:
+    project: prj
+    family: fam
+    group: grp
+  model_id:
+    domain_pattern: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
 
-app_project: prj
-app_family: fam
-app_group: grp
-app_name: app
 
 kvstore:
   test_store:
@@ -24,3 +29,4 @@ fixtures:
 redis:
   default:
     dialer: tcp
+

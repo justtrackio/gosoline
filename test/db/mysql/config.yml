@@ -1,9 +1,10 @@
-env: test
-
-app_project: justtrack
-app_family: gosoline
-app_group: db
-app_name: mysql
+app:
+  env: test
+  name: mysql
+  tags:
+    project: justtrack
+    family: gosoline
+    group: db
 
 db:
   default:

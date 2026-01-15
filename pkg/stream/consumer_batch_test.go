@@ -88,7 +88,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 		s.callback,
 		settings,
 		"test",
-		cfg.AppId{},
+		cfg.Identity{},
 	)
 	s.batchConsumer = stream.NewUntypedBatchConsumerWithInterfaces(baseConsumer, s.callback, ticker, batchSettings)
 }

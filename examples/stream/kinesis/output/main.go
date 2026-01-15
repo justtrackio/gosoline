@@ -19,7 +19,10 @@ import (
 )
 
 func main() {
-	application.RunModule("producer", newOutputModule)
+	application.RunModule("producer", newOutputModule,
+		application.WithConfigFile("config.dist.yml", "yml"),
+		application.WithProducerDaemon,
+	)
 }
 
 type ExampleRecord struct {

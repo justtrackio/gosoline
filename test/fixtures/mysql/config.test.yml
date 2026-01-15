@@ -1,8 +1,12 @@
-env: test
-app_project: gosoline
-app_family: integration-test
-app_group: grp
-app_name: fixture-loader
+app:
+  env: test
+  name: fixture-loader
+  tags:
+    project: gosoline
+    family: integration-test
+    group: grp
+  model_id:
+    domain_pattern: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
 
 db:
   default:

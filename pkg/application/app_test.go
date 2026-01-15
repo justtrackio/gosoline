@@ -40,6 +40,7 @@ func TestDefaultConfigParser(t *testing.T) {
 	t.Setenv("TEST_SETTINGS_STRUCT_FIELD", "value")
 
 	runTestApp(t, func() {
+		config := application.WithConfigFile("config.dist.yml", "yml")
 		exitCodeHandler := application.WithKernelExitHandler(func(code int) {})
 		moduleOption := application.WithModuleFactory("test", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return testModule{
@@ -47,7 +48,7 @@ func TestDefaultConfigParser(t *testing.T) {
 			}, nil
 		})
 
-		app := application.Default(exitCodeHandler, moduleOption)
+		app := application.Default(config, exitCodeHandler, moduleOption)
 		app.Run()
 	})
 }

@@ -41,12 +41,14 @@ func ProvideOtelTraceProvider(ctx context.Context, config cfg.Config, logger log
 }
 
 func newOtelTraceProvider(ctx context.Context, config cfg.Config, logger log.Logger) (trace.TracerProvider, error) {
-	appId := cfg.AppId{}
-	appId.PadFromConfig(config)
-
 	settings := &OtelSettings{}
 	if err := config.UnmarshalKey("tracing.otel", settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal otel tracing settings: %w", err)
+	}
+
+	serviceName, err := resolveAppId(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to format service name: %w", err)
 	}
 
 	otelExporterFactory, ok := otelTraceExporters[settings.Exporter]
@@ -67,7 +69,7 @@ func newOtelTraceProvider(ctx context.Context, config cfg.Config, logger log.Log
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceName(fmt.Sprintf("%s-%s-%s-%s-%s", appId.Project, appId.Environment, appId.Family, appId.Group, appId.Application)),
+			semconv.ServiceName(serviceName),
 		)),
 		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(settings.SamplingRatio))),
 		sdktrace.WithRawSpanLimits(sdktrace.SpanLimits{

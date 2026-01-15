@@ -72,7 +72,9 @@ func RunTestCaseApplication(t *testing.T, _ TestingSuite, suiteConf *SuiteConfig
 	appOptions = append(appOptions, suiteConf.appOptions...)
 	appOptions = append(appOptions, []application.Option{
 		application.WithConfigMap(map[string]any{
-			"env": "test",
+			"app": map[string]any{
+				"env": "test",
+			},
 		}),
 		application.WithProducerDaemon,
 		application.WithKernelExitHandler(func(code int) {

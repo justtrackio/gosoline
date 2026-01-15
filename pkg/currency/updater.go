@@ -185,46 +185,14 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 
 	datesToUpdate := generateDateRange(*updateFromDate, s.clock.Now())
 
-	// Fetch historical rates from all providers
-	providerResults := make([]map[time.Time][]Rate, len(s.providers))
-	for i, provider := range s.providers {
-		result, err := provider.FetchHistoricalRates(ctx, datesToUpdate)
-		if err != nil {
-			s.logger.Error(ctx, "error fetching historical rates from provider %s: %w", provider.Name(), err)
+	providerResults := s.fetchHistoricalProviderResults(ctx, datesToUpdate)
 
-			continue
-		}
-
-		providerResults[i] = result
-	}
-
-	// Gather all results, provider by provider, day by day
-	// Higher priority providers are preferred over lower priority ones
-	dayCurrencyRates := make(map[time.Time]map[string]float64)
-	for _, date := range datesToUpdate {
-		dayCurrencyRates[date] = make(map[string]float64)
-
-		for _, providerResult := range providerResults {
-			if dayRates, ok := providerResult[date]; ok {
-				for _, rate := range dayRates {
-					if _, exists := dayCurrencyRates[date][rate.Currency]; !exists {
-						dayCurrencyRates[date][rate.Currency] = rate.Rate
-					}
-				}
-			}
-		}
-	}
+	dayCurrencyRates := mergeProviderResults(datesToUpdate, providerResults)
 
 	fillHistoricalGaps(dayCurrencyRates)
 
 	// Preparing data for storing in kvstore
-	keyValues := make(map[string]float64)
-	for _, d := range datesToUpdate {
-		for currency, rate := range dayCurrencyRates[d] {
-			key := historicalRateKey(d, currency)
-			keyValues[key] = rate
-		}
-	}
+	keyValues := buildHistoricalKeyValues(datesToUpdate, dayCurrencyRates)
 
 	s.logger.Info(ctx, "updating %d historical exchange rates", len(keyValues))
 
@@ -242,6 +210,55 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 	s.logger.Info(ctx, "stored %d day-currency combinations of historical exchange rates", len(keyValues))
 
 	return nil
+}
+
+func (s *updaterService) fetchHistoricalProviderResults(ctx context.Context, datesToUpdate []time.Time) []map[time.Time][]Rate {
+	providerResults := make([]map[time.Time][]Rate, len(s.providers))
+	for i, provider := range s.providers {
+		result, err := provider.FetchHistoricalRates(ctx, datesToUpdate)
+		if err != nil {
+			s.logger.Error(ctx, "error fetching historical rates from provider %s: %w", provider.Name(), err)
+
+			continue
+		}
+
+		providerResults[i] = result
+	}
+
+	return providerResults
+}
+
+// mergeProviderResults gathers all results, provider by provider, day by day.
+// Higher priority providers are preferred over lower priority ones.
+func mergeProviderResults(datesToUpdate []time.Time, providerResults []map[time.Time][]Rate) map[time.Time]map[string]float64 {
+	dayCurrencyRates := make(map[time.Time]map[string]float64)
+	for _, date := range datesToUpdate {
+		dayCurrencyRates[date] = make(map[string]float64)
+
+		for _, providerResult := range providerResults {
+			if dayRates, ok := providerResult[date]; ok {
+				for _, rate := range dayRates {
+					if _, exists := dayCurrencyRates[date][rate.Currency]; !exists {
+						dayCurrencyRates[date][rate.Currency] = rate.Rate
+					}
+				}
+			}
+		}
+	}
+
+	return dayCurrencyRates
+}
+
+func buildHistoricalKeyValues(datesToUpdate []time.Time, dayCurrencyRates map[time.Time]map[string]float64) map[string]float64 {
+	keyValues := make(map[string]float64)
+	for _, d := range datesToUpdate {
+		for currency, rate := range dayCurrencyRates[d] {
+			key := historicalRateKey(d, currency)
+			keyValues[key] = rate
+		}
+	}
+
+	return keyValues
 }
 
 func initProviders(ctx context.Context, config cfg.Config, logger log.Logger, httpClient http.Client) ([]Provider, error) {

@@ -38,19 +38,13 @@ func DynamoDbKvStoreFixtureSetFactory[T any](modelId *mdl.ModelId, data fixtures
 }
 
 func NewDynamoDbKvStoreFixtureWriter[T any](ctx context.Context, config cfg.Config, logger log.Logger, modelId *mdl.ModelId) (fixtures.FixtureWriter, error) {
-	kvStoreSettings := &Settings{
-		AppId: cfg.AppId{
-			Project:     modelId.Project,
-			Environment: modelId.Environment,
-			Family:      modelId.Family,
-			Group:       modelId.Group,
-			Application: modelId.Application,
-		},
-		Name: modelId.Name,
+	if err := modelId.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad model id from config: %w", err)
 	}
 
-	kvstoreModel := *modelId
-	kvstoreModel.Name = DdbBaseName(kvStoreSettings)
+	kvStoreSettings := &Settings{
+		ModelId: *modelId,
+	}
 
 	var err error
 	var store KvStore[T]

@@ -6,8 +6,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/aws/aws-xray-sdk-go/xray"
-	"github.com/aws/aws-xray-sdk-go/xraylog"
+	"github.com/aws/aws-xray-sdk-go/v2/xray"
+	"github.com/aws/aws-xray-sdk-go/v2/xraylog"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 

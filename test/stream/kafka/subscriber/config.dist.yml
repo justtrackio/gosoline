@@ -1,9 +1,13 @@
-env: test
-
-app_project: justtrack
-app_family: gosoline
-app_group: kafka
-app_name: subscriber
+app:
+  env: test
+  name: subscriber
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+  tags:
+    project: justtrack
+    family: gosoline
+    group: kafka
+  model_id:
+    domain_pattern: "{app.tags.project}.{app.tags.family}.{app.tags.group}"
 
 cloud:
   aws:
@@ -15,7 +19,7 @@ mdlsub:
     testModel:
       input: kafka
       output: ddb
-      source: { group: source-group, name: testEvent }
+      source: { tags: { group: source-group }, name: testEvent }
 
 stream:
   input:
@@ -27,7 +31,9 @@ stream:
   output:
     testEvent:
       type: kafka
-      group: source-group
+      identity:
+        tags:
+          group: source-group
       topic_id: testEvent
       in_memory_override: false
 

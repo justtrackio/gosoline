@@ -131,10 +131,6 @@ func newKinesisInputFromConfig(ctx context.Context, config cfg.Config, logger lo
 }
 
 type redisInputConfiguration struct {
-	Project     string                     `cfg:"project"`
-	Family      string                     `cfg:"family"`
-	Group       string                     `cfg:"group"`
-	Application string                     `cfg:"application"`
 	ServerName  string                     `cfg:"server_name" default:"default" validate:"min=1"`
 	Key         string                     `cfg:"key" validate:"required,min=1"`
 	WaitTime    time.Duration              `cfg:"wait_time" default:"3s"`
@@ -150,12 +146,6 @@ func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.
 	}
 
 	settings := &RedisListInputSettings{
-		AppId: cfg.AppId{
-			Project:     configuration.Project,
-			Family:      configuration.Family,
-			Group:       configuration.Group,
-			Application: configuration.Application,
-		},
 		ServerName:         configuration.ServerName,
 		Key:                configuration.Key,
 		WaitTime:           configuration.WaitTime,
@@ -166,20 +156,16 @@ func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.
 }
 
 type SnsInputTargetConfiguration struct {
-	Family      string            `cfg:"family"`
-	Group       string            `cfg:"group" validate:"required"`
-	Application string            `cfg:"application" validate:"required"`
-	TopicId     string            `cfg:"topic_id" validate:"required"`
-	Attributes  map[string]string `cfg:"attributes"`
-	ClientName  string            `cfg:"client_name" default:"default"`
+	Identity   cfg.Identity      `cfg:"identity"`
+	TopicId    string            `cfg:"topic_id" validate:"required"`
+	Attributes map[string]string `cfg:"attributes"`
+	ClientName string            `cfg:"client_name" default:"default"`
 }
 
 type SnsInputConfiguration struct {
 	Type                string                        `cfg:"type" default:"sns"`
 	ConsumerId          string                        `cfg:"id" validate:"required"`
-	Family              string                        `cfg:"family" default:""`
-	Group               string                        `cfg:"group" default:""`
-	Application         string                        `cfg:"application" default:""`
+	Identity            cfg.Identity                  `cfg:"identity"`
 	Targets             []SnsInputTargetConfiguration `cfg:"targets" validate:"min=1"`
 	MaxNumberOfMessages int32                         `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
 	WaitTime            int32                         `cfg:"wait_time" default:"3" validate:"min=1"`
@@ -199,11 +185,7 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 	}
 
 	settings := &SnsInputSettings{
-		AppId: cfg.AppId{
-			Family:      configuration.Family,
-			Group:       configuration.Group,
-			Application: configuration.Application,
-		},
+		Identity:            configuration.Identity,
 		QueueId:             configuration.ConsumerId,
 		MaxNumberOfMessages: configuration.MaxNumberOfMessages,
 		WaitTime:            configuration.WaitTime,
@@ -214,21 +196,9 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 		Healthcheck:         configuration.Healthcheck,
 	}
 
-	if err := settings.PadFromConfig(config); err != nil {
-		return nil, nil, fmt.Errorf("failed to pad sns input settings from config: %w", err)
-	}
-
 	targets := make([]SnsInputTarget, len(configuration.Targets))
 	for i, t := range configuration.Targets {
-		targetAppId := cfg.AppId{
-			Family:      t.Family,
-			Group:       t.Group,
-			Application: t.Application,
-		}
-
-		if err := targetAppId.PadFromConfig(config); err != nil {
-			return nil, nil, fmt.Errorf("failed to pad target app id from config: %w", err)
-		}
+		targetIdentity := t.Identity
 
 		clientName := t.ClientName
 		if clientName == "" {
@@ -236,7 +206,7 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 		}
 
 		targets[i] = SnsInputTarget{
-			AppId:      targetAppId,
+			Identity:   targetIdentity,
 			TopicId:    t.TopicId,
 			Attributes: t.Attributes,
 			ClientName: clientName,
@@ -256,9 +226,7 @@ func newSnsInputFromConfig(ctx context.Context, config cfg.Config, logger log.Lo
 }
 
 type sqsInputConfiguration struct {
-	Family              string                     `cfg:"target_family"`
-	Group               string                     `cfg:"target_group"`
-	Application         string                     `cfg:"target_application"`
+	TargetIdentity      cfg.Identity               `cfg:"target_identity"`
 	QueueId             string                     `cfg:"target_queue_id" validate:"min=1"`
 	MaxNumberOfMessages int32                      `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
 	WaitTime            int32                      `cfg:"wait_time" default:"3" validate:"min=1"`
@@ -280,11 +248,7 @@ func readSqsInputSettings(config cfg.Config, name string) (*SqsInputSettings, er
 	}
 
 	settings := &SqsInputSettings{
-		AppId: cfg.AppId{
-			Family:      configuration.Family,
-			Group:       configuration.Group,
-			Application: configuration.Application,
-		},
+		Identity:            configuration.TargetIdentity,
 		QueueId:             configuration.QueueId,
 		MaxNumberOfMessages: configuration.MaxNumberOfMessages,
 		WaitTime:            configuration.WaitTime,
@@ -295,10 +259,6 @@ func readSqsInputSettings(config cfg.Config, name string) (*SqsInputSettings, er
 		ClientName:          configuration.ClientName,
 		Healthcheck:         configuration.Healthcheck,
 		Unmarshaller:        configuration.Unmarshaller,
-	}
-
-	if err := settings.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("failed to pad sqs input settings from config: %w", err)
 	}
 
 	return settings, nil

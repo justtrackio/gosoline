@@ -6,14 +6,14 @@
 - Bridges configuration (`cfg`) and lifecycle management (`kernel`).
 
 ## Key files
-- `app.go` - core application struct and global Run entrypoint.
+- `app.go` - core application struct, `Default()` and `New()` factory functions.
 - `options.go` - functional options for adding modules, health checks, and shared components.
+- `runners.go` - `Run()` entrypoint and helpers for wiring background runners/modules.
 - `metadata_server.go` - HTTP server exposing build info and module metadata.
-- `runners.go` - helpers for wiring background runners/modules.
 
 ## Common tasks
 - Add or adjust default modules: extend `appOptions` in `options.go` and ensure new dependencies are registered before `kernel.Run`.
-- Customize metadata output: update `metadata_server.go` and extend the struct returned by `buildMetadata`.
+- Customize metadata output: update `metadata_server.go` to expose additional metadata from `appctx.Metadata`.
 - Provide new module factories: expose them via `WithModuleFactory` and document required config keys.
 
 ## Testing
@@ -22,11 +22,13 @@
 
 ## Required config keys
 ```yaml
-env: dev                    # Environment name
-app_project: myproject      # Project identifier
-app_family: myfamily        # Family grouping
-app_group: mygroup          # Group within family
-app_name: myapp             # Application name
+app:
+  env: dev                    # Environment name (required)
+  name: myapp                 # Application name (required)
+  tags:                       # Tags for resource naming
+    project: myproject        # Project identifier
+    family: myfamily          # Family grouping
+    group: mygroup            # Group within family
 ```
 
 ## Related packages

@@ -6,7 +6,7 @@
 
 ## Key files
 - `server.go`, `definition.go` - server lifecycle and handler registration structures.
-- `middleware_*.go` - logging, metrics, recovery, auth.
+- `middleware_*.go` - logging, metrics, recovery, sampling.
 - `handler.go`, `handler_static.go`, `response.go` - base handlers and response helpers.
 - `auth/`, `crud/`, `sql/` - optional submodules for auth flows and generic CRUD endpoints.
 
@@ -39,7 +39,7 @@ httpserver.default.port: 8088
 httpserver.default.mode: release  # or debug
 httpserver.default.timeout.read: 60s
 httpserver.default.timeout.write: 60s
-httpserver.default.compress: true
+httpserver.default.compression.level: default
 ```
 
 ## Related packages
@@ -50,4 +50,4 @@ httpserver.default.compress: true
 ## Tips
 - Keep handler signatures context-aware (always accept `context.Context`).
 - When adding protobuf/JSON helpers, ensure you regenerate `handler_test.proto` outputs.
-- Document new configuration knobs under `httpserver.server.*` in the global AGENT.
+- Document new configuration knobs under `httpserver.<name>.*` in the global AGENT.

@@ -1,8 +1,0 @@
-{
-  "label": "HTTP Server",
-  "position": 1,
-  "link": {
-    "type": "generated-index",
-    "description": "With these tutorials, you'll write your API services with gosoline:"
-  }
-}

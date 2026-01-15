@@ -81,7 +81,10 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, se
 	if settings.ModelId.Name == "" {
 		settings.ModelId.Name = getTypeName(settings.Main.Model)
 	}
-	settings.ModelId.PadFromConfig(config)
+
+	if err = settings.ModelId.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("could not pad modelId from config: %w", err)
+	}
 
 	if metadataFactory, err = NewMetadataFactory(config, settings); err != nil {
 		return nil, fmt.Errorf("could not create metadata factory for ddb service: %w", err)

@@ -108,9 +108,9 @@ func NewBaseConsumer(
 ) (*baseConsumer, error) {
 	uuidGen := uuid.New()
 	logger = logger.WithChannel(fmt.Sprintf("consumer-%s", name))
-	appId, err := cfg.GetAppIdFromConfig(config)
+	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
-		return nil, fmt.Errorf("can not get app id from config: %w", err)
+		return nil, fmt.Errorf("can not get app identity from config: %w", err)
 	}
 
 	settings, err := ReadConsumerSettings(config, name)
@@ -190,7 +190,7 @@ func NewBaseConsumer(
 		consumerCallback,
 		settings,
 		name,
-		appId,
+		identity,
 	), nil
 }
 
@@ -206,11 +206,11 @@ func NewBaseConsumerWithInterfaces(
 	consumerCallback any,
 	settings ConsumerSettings,
 	name string,
-	appId cfg.AppId,
+	identity cfg.Identity,
 ) *baseConsumer {
 	return &baseConsumer{
 		name:                name,
-		id:                  fmt.Sprintf("consumer-%s-%s-%s-%s", appId.Family, appId.Group, appId.Application, name),
+		id:                  fmt.Sprintf("consumer-%s", name),
 		clock:               clock.Provider,
 		uuidGen:             uuidGen,
 		logger:              logger,

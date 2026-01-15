@@ -9,7 +9,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/reslife"
 )
 
 type App struct {
@@ -39,29 +38,12 @@ func (a *App) addSetupOption(opt SetupOption) {
 func Default(options ...Option) kernel.Kernel {
 	defaults := []Option{
 		WithConfigDebug,
-		WithHttpHealthCheck,
-		// use an indirection for the default error handler. Otherwise, changes
-		// to the default are not reflected in the config error handler
-		WithConfigFile("./config.dist.yml", "yml"),
-		WithConfigFileFlag,
 		WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
 		WithConfigSanitizers(cfg.TimeSanitizer),
-		WithMetadataServer,
-		WithMetricsCalculatorModule,
-		WithLoggerGroupTag,
-		WithLoggerApplicationTag,
+		WithLoggerApplicationName,
 		WithLoggerContextFieldsMessageEncoder,
 		WithLoggerContextFieldsResolver(log.ContextFieldsResolver),
 		WithLoggerHandlersFromConfig,
-		WithLoggerMetricHandler,
-		WithLoggerSentryHandler(log.SentryContextConfigProvider, log.SentryContextEcsMetadataProvider),
-		WithMetrics,
-		WithProducerDaemon,
-		WithTaskRunner,
-		WithProfiling,
-		WithTracing,
-		WithUTCClock(true),
-		WithMiddlewareFactory(reslife.LifeCycleManagerMiddleware, kernel.PositionBeginning),
 	}
 
 	options = append(defaults, options...)
@@ -74,7 +56,12 @@ func New(options ...Option) kernel.Kernel {
 	var ker kernel.Kernel
 
 	ctx := appctx.WithContainer(context.Background())
-	config := cfg.New()
+	config := cfg.New(map[string]any{
+		"app": map[string]any{
+			"env":  "dev",
+			"name": "gosoline",
+		},
+	})
 	logger := log.NewLogger()
 
 	if ker, err = NewWithInterfaces(ctx, config, logger, options...); err != nil {

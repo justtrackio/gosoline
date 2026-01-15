@@ -23,8 +23,7 @@ var moduleFactory = func(ctx context.Context, config cfg.Config, logger log.Logg
 }
 
 func main() {
-	app := application.New(
+	application.Run(
 		application.WithModuleFactory("hello", moduleFactory),
 	)
-	app.Run()
 }

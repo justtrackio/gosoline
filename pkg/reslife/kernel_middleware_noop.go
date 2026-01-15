@@ -13,9 +13,9 @@ import (
 
 func LifeCycleManagerMiddleware(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Middleware, error) {
 	logger = logger.WithChannel("lifecycle-manager")
-	env, err := config.GetString("env")
+	env, err := config.GetString("app.env")
 	if err != nil {
-		return nil, fmt.Errorf("could not get env: %w", err)
+		return nil, fmt.Errorf("could not get app.env: %w", err)
 	}
 
 	var manager *LifeCycleManager
