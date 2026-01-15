@@ -1,0 +1,34 @@
+env: dev
+
+app_project: project
+app_family: family
+app_group: grp
+app_name: name
+
+httpserver:
+  default:
+    port: 8088
+    mode: debug
+    timeout:
+      read: 5s
+      write: 5s
+      idle: 5s
+
+log:
+  handlers:
+    main:
+      type: iowriter
+      level: debug
+      formatter: console
+      timestamp_format: "15:04:05.000"
+
+sampling:
+  enabled: true
+  strategies:
+    - tracing
+    - probabilistic
+  settings:
+    probabilistic:
+      interval: 1s
+      fixed_sample_count: 1
+      extra_rate_percentage: 5
