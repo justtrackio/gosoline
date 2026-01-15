@@ -51,7 +51,7 @@ func RegisterCustomUnit(unit types.StandardUnit, standardUnit types.StandardUnit
 	}
 }
 
-func resolveCustomUnit(unit types.StandardUnit, values []float64) (types.StandardUnit, float64) {
+func resolveCustomUnit(unit types.StandardUnit, values []float64) (resolvedUnit types.StandardUnit, resolvedValue float64) {
 	if customMetric, ok := customUnits[unit]; ok {
 		return customMetric.Unit, customMetric.Reducer(values)
 	}

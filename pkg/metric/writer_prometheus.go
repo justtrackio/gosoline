@@ -24,7 +24,10 @@ func init() {
 	RegisterWriterFactory(WriterTypePrometheus, ProvidePrometheusWriter)
 }
 
-var _ Writer = &prometheusWriter{}
+var (
+	_            Writer = &prometheusWriter{}
+	promReplacer        = strings.NewReplacer("-", "_")
+)
 
 type (
 	prometheusMetricProcessor func(metric prometheus.Collector)
@@ -64,19 +67,26 @@ func ProvidePrometheusWriter(ctx context.Context, config cfg.Config, logger log.
 // The prometheus writer writes metrics provided to it to the go prometheus client library.
 // Metrics with Kind "total" are dropped before writing them.
 func NewPrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
-	promSettings := &PrometheusSettings{}
-	if err := getMetricWriterSettings(config, WriterTypePrometheus, promSettings); err != nil {
+	var err error
+	var settings *PrometheusSettings
+	var identity cfg.Identity
+	var namespace string
+	var registry *prometheus.Registry
+
+	if settings, err = getMetricWriterSettings[PrometheusSettings](config, WriterTypePrometheus); err != nil {
 		return nil, fmt.Errorf("could not get prometheus writer settings: %w", err)
 	}
 
-	appId, err := cfg.GetAppIdFromConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("could not get app id from config: %w", err)
+	if identity, err = cfg.GetAppIdentity(config); err != nil {
+		return nil, fmt.Errorf("could not get app identity from config: %w", err)
 	}
-	namespace := promNSNamingStrategy(appId)
 
-	registry, err := ProvideRegistry(ctx, prometheusDefaultRegistry)
-	if err != nil {
+	if namespace, err = identity.Format(settings.Naming.NamespacePattern, settings.Naming.NamespaceDelimiter); err != nil {
+		return nil, fmt.Errorf("could not format prometheus namespace: %w", err)
+	}
+	namespace = promReplacer.Replace(namespace)
+
+	if registry, err = ProvideRegistry(ctx, prometheusDefaultRegistry); err != nil {
 		return nil, err
 	}
 
@@ -84,8 +94,8 @@ func NewPrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logg
 		logger,
 		registry,
 		namespace,
-		promSettings.MetricLimit,
-		promSettings.WriteGraceTime,
+		settings.MetricLimit,
+		settings.WriteGraceTime,
 	), nil
 }
 
@@ -160,7 +170,7 @@ func (w *prometheusWriter) writeMetricFromDatum(ctx context.Context, datum *Datu
 
 	if strings.Contains(datum.MetricName, "-") {
 		w.logger.Error(ctx, "metric name %s is invalid, as it contains a - characters, gracefully replacing with an _ character", datum.MetricName)
-		datum.MetricName = replacer.Replace(datum.MetricName)
+		datum.MetricName = promReplacer.Replace(datum.MetricName)
 	}
 
 	switch w.getEffectiveKind(datum) {

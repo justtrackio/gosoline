@@ -34,13 +34,13 @@ func NewMysqlOrmFixtureWriter(ctx context.Context, config cfg.Config, logger log
 		return nil, fmt.Errorf("can not pad model id from config: %w", err)
 	}
 
-	appId, err := cfg.GetAppIdFromConfig(config)
+	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
-		return nil, fmt.Errorf("can not get app id from config: %w", err)
+		return nil, fmt.Errorf("can not get app identity from config: %w", err)
 	}
 
 	repoSettings := Settings{
-		AppId:      appId,
+		Identity:   identity,
 		Metadata:   *metadata,
 		ClientName: "default",
 	}

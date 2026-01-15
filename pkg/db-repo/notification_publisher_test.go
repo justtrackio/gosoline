@@ -36,12 +36,15 @@ func Test_Publish_Notifier(t *testing.T) {
 	publisher.EXPECT().Publish(t.Context(), "CREATE", 1, input).Return(nil).Once()
 
 	modelId := mdl.ModelId{
-		Project:     "testProject",
-		Name:        "myTest",
-		Application: "testApp",
-		Family:      "testFamily",
-		Group:       "grp",
-		Environment: "test",
+		Name: "myTest",
+		Env:  "test",
+		App:  "testApp",
+		Tags: map[string]string{
+			"project": "testProject",
+			"family":  "testFamily",
+			"group":   "grp",
+		},
+		DomainPattern: "{app.tags.project}.{app.tags.family}.{app.tags.group}",
 	}
 
 	notifier, err := db_repo.NewPublisherNotifier(

@@ -36,7 +36,7 @@ var (
 )
 
 type Settings struct {
-	cfg.AppId
+	cfg.Identity
 	Metadata   Metadata
 	ClientName string
 }
@@ -88,6 +88,10 @@ func New(ctx context.Context, config cfg.Config, logger log.Logger, settings Set
 		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
 	clk := clock.Provider
 
+	if err := settings.Metadata.ModelId.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("can not pad model id from config: %w", err)
+	}
+
 	return NewWithInterfaces(logger, tracer, orm, clk, settings.Metadata), nil
 }
 
@@ -97,7 +101,7 @@ func NewWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("can not create tracer: %w", err)
 	}
 
-	orm, err := NewOrmWithDbSettings(ctx, config, logger, repoSettings.ClientName, dbSettings, repoSettings.Application)
+	orm, err := NewOrmWithDbSettings(ctx, config, logger, repoSettings.ClientName, dbSettings, repoSettings.Name)
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
@@ -108,6 +112,10 @@ func NewWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger
 		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
 
 	clk := clock.Provider
+
+	if err := repoSettings.Metadata.ModelId.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("can not pad model id from config: %w", err)
+	}
 
 	return NewWithInterfaces(logger, tracer, orm, clk, repoSettings.Metadata), nil
 }

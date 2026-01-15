@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/aws/aws-xray-sdk-go/strategy/ctxmissing"
-	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
-	"github.com/aws/aws-xray-sdk-go/xray"
+	"github.com/aws/aws-xray-sdk-go/v2/strategy/ctxmissing"
+	"github.com/aws/aws-xray-sdk-go/v2/strategy/sampling"
+	"github.com/aws/aws-xray-sdk-go/v2/xray"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -23,10 +23,16 @@ const (
 )
 
 type XrayTracerSettings struct {
-	AddressType                 string                `cfg:"addr_type" default:"local" validate:"required"`
-	AddressValue                string                `cfg:"add_value" default:""`
-	Sampling                    SamplingConfiguration `cfg:"sampling"`
-	StreamingMaxSubsegmentCount int                   `cfg:"streaming_max_subsegment_count" default:"20"`
+	AddressType                 string                      `cfg:"addr_type" default:"local" validate:"required"`
+	AddressValue                string                      `cfg:"add_value" default:""`
+	Naming                      XrayTracerSrvNamingSettings `cfg:"srv_naming"`
+	Sampling                    SamplingConfiguration       `cfg:"sampling"`
+	StreamingMaxSubsegmentCount int                         `cfg:"streaming_max_subsegment_count" default:"20"`
+}
+
+type XrayTracerSrvNamingSettings struct {
+	Pattern   string `cfg:"pattern,nodecode" default:"xray.{app.namespace}"`
+	Delimiter string `cfg:"delimiter" default:"."`
 }
 
 type XRaySettings struct {
@@ -37,19 +43,30 @@ type XRaySettings struct {
 }
 
 type awsTracer struct {
-	cfg.AppId
+	cfg.Identity
+	appId string
 }
 
 func NewAwsTracer(_ context.Context, config cfg.Config, logger log.Logger) (Tracer, error) {
-	appId := cfg.AppId{}
-	appId.PadFromConfig(config)
+	identity, err := cfg.GetAppIdentity(config)
+	if err != nil {
+		return nil, fmt.Errorf("could not get app identity from config: %w", err)
+	}
 
 	settings := &XrayTracerSettings{}
 	if err := config.UnmarshalKey("tracing.xray", settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal xray tracer settings: %w", err)
 	}
 
-	addr := lookupAddr(appId, settings)
+	appId, err := resolveAppId(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to format app id: %w", err)
+	}
+
+	addr, err := lookupAddr(config, identity, settings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup address: %w", err)
+	}
 	ctxMissingStrategy := NewContextMissingWarningLogStrategy(logger)
 
 	samplingStrategy, err := getSamplingStrategy(&settings.Sampling)
@@ -64,10 +81,10 @@ func NewAwsTracer(_ context.Context, config cfg.Config, logger log.Logger) (Trac
 		StreamingMaxSubsegmentCount: settings.StreamingMaxSubsegmentCount,
 	}
 
-	return NewAwsTracerWithInterfaces(logger, appId, xRaySettings)
+	return NewAwsTracerWithInterfaces(logger, identity, xRaySettings, appId)
 }
 
-func NewAwsTracerWithInterfaces(logger log.Logger, appId cfg.AppId, settings *XRaySettings) (*awsTracer, error) {
+func NewAwsTracerWithInterfaces(logger log.Logger, identity cfg.Identity, settings *XRaySettings, appId string) (*awsTracer, error) {
 	if settings.StreamingMaxSubsegmentCount == 0 {
 		settings.StreamingMaxSubsegmentCount = xrayDefaultMaxSubsegmentCount
 	}
@@ -91,7 +108,8 @@ func NewAwsTracerWithInterfaces(logger log.Logger, appId cfg.AppId, settings *XR
 	setGlobalXRayLogger(logger)
 
 	return &awsTracer{
-		AppId: appId,
+		Identity: identity,
+		appId:    appId,
 	}, nil
 }
 
@@ -103,16 +121,16 @@ func (t *awsTracer) StartSubSpan(ctx context.Context, name string) (context.Cont
 		return ctx, disabledSpan()
 	}
 
-	return newSpan(ctxWithSegment, segment, t.AppId)
+	return newSpan(ctxWithSegment, segment, t.Identity, t.appId)
 }
 
 func (t *awsTracer) StartSpan(name string) (context.Context, Span) {
-	return newRootSpan(context.Background(), name, t.AppId)
+	return newRootSpan(context.Background(), name, t.Identity, t.appId)
 }
 
 func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (context.Context, Span) {
 	parentSpan := GetSpanFromContext(ctx)
-	ctx, transaction := newRootSpan(ctx, name, t.AppId)
+	ctx, transaction := newRootSpan(ctx, name, t.Identity, t.appId)
 
 	if parentSpan != nil {
 		parentTrace := parentSpan.GetTrace()
@@ -136,27 +154,36 @@ func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (cont
 	return ctx, transaction
 }
 
-func lookupAddr(appId cfg.AppId, settings *XrayTracerSettings) string {
+func lookupAddr(config cfg.Config, identity cfg.Identity, settings *XrayTracerSettings) (string, error) {
 	addressValue := settings.AddressValue
 
-	if settings.AddressType == dnsSrv {
-		if addressValue == "" {
-			addressValue = fmt.Sprintf("xray.%v.%v", appId.Environment, appId.Family)
-		}
-
-		_, srvs, err := net.LookupSRV("", "", addressValue)
-		if err != nil {
-			panic(err)
-		}
-
-		for _, srv := range srvs {
-			addressValue = fmt.Sprintf("%v:%v", srv.Target, srv.Port)
-
-			break
-		}
+	if settings.AddressType != dnsSrv {
+		return addressValue, nil
 	}
 
-	return addressValue
+	var err error
+	var srvName string
+	var srvs []*net.SRV
+
+	if addressValue == "" {
+		if srvName, err = identity.Format(settings.Naming.Pattern, settings.Naming.Delimiter); err != nil {
+			return "", fmt.Errorf("failed to format srv name: %w", err)
+		}
+
+		addressValue = srvName
+	}
+
+	if _, srvs, err = net.LookupSRV("", "", addressValue); err != nil {
+		return "", fmt.Errorf("failed to lookup srv records for %s: %w", addressValue, err)
+	}
+
+	for _, srv := range srvs {
+		addressValue = fmt.Sprintf("%v:%v", srv.Target, srv.Port)
+
+		break
+	}
+
+	return addressValue, nil
 }
 
 func getSamplingStrategy(samplingConfiguration *SamplingConfiguration) (sampling.Strategy, error) {

@@ -39,6 +39,7 @@ type PrometheusSettings struct {
 	MetricLimit    int64                    `cfg:"metric_limit" default:"10000"`
 	Api            PrometheusServerSettings `cfg:"api"`
 	WriteGraceTime time.Duration            `cfg:"write_grace_time" default:"10s"`
+	Naming         PrometheusNamingSettings `cfg:"naming"`
 }
 
 type PrometheusServerSettings struct {
@@ -46,6 +47,11 @@ type PrometheusServerSettings struct {
 	Port    int             `cfg:"port" default:"8092"`
 	Path    string          `cfg:"path" default:"/metrics"`
 	Timeout TimeoutSettings `cfg:"timeout"`
+}
+
+type PrometheusNamingSettings struct {
+	NamespacePattern   string `cfg:"namespace_pattern,nodecode" default:"{app.namespace}-{app.name}" validate:"required"`
+	NamespaceDelimiter string `cfg:"namespace_delimiter" default:"_"`
 }
 
 type metricsServer struct {
@@ -58,13 +64,15 @@ type metricsServer struct {
 }
 
 func NewPrometheusMetricsServerModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-	promSettings := &PrometheusSettings{}
-	if err := getMetricWriterSettings(config, WriterTypePrometheus, promSettings); err != nil {
+	var err error
+	var promSettings *PrometheusSettings
+	var settings *Settings
+
+	if promSettings, err = getMetricWriterSettings[PrometheusSettings](config, WriterTypePrometheus); err != nil {
 		return nil, fmt.Errorf("could not get prometheus writer settings: %w", err)
 	}
 
-	settings, err := getMetricSettings(config)
-	if err != nil {
+	if settings, err = GetMetricSettings(config); err != nil {
 		return nil, fmt.Errorf("could not get metric settings: %w", err)
 	}
 

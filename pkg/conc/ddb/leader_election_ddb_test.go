@@ -30,7 +30,7 @@ func (s *DdbLeaderElectionTestCase) SetupTest() {
 	var err error
 	s.election, err = concDdb.NewDdbLeaderElectionWithInterfaces(s.logger, s.clock, s.repository, &concDdb.DdbLeaderElectionSettings{
 		Naming: concDdb.TableNamingSettings{
-			Pattern: "gosoline-leader-election",
+			TablePattern: "gosoline-leader-election",
 		},
 		GroupId:       "test",
 		LeaseDuration: time.Minute,

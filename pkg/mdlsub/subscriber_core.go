@@ -59,7 +59,6 @@ func (c *subscriberCore) GetLatestModelIdVersion(modelId mdl.ModelId) (int, erro
 	var versioned VersionedModelTransformers
 
 	str := modelId.String()
-
 	if versioned, ok = c.transformers[str]; !ok {
 		return 0, fmt.Errorf("failed to find model transformer for model id %s", str)
 	}
@@ -107,11 +106,12 @@ func (c *subscriberCore) GetTransformer(spec *ModelSpecification) (ModelTransfor
 }
 
 func (c *subscriberCore) GetTransformersForModel(modelId mdl.ModelId) (VersionedModelTransformers, error) {
-	if _, ok := c.transformers[modelId.String()]; !ok {
-		return nil, fmt.Errorf("there is no transformer for modelId %s", modelId.String())
+	modelIdString := modelId.String()
+	if _, ok := c.transformers[modelIdString]; !ok {
+		return nil, fmt.Errorf("there is no transformer for modelId %s", modelIdString)
 	}
 
-	return c.transformers[modelId.String()], nil
+	return c.transformers[modelIdString], nil
 }
 
 func (c *subscriberCore) Persist(ctx context.Context, spec *ModelSpecification, model Model) error {

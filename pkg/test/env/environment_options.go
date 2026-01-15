@@ -22,6 +22,14 @@ func WithComponent(settings ComponentBaseSettingsAware) Option {
 	}
 }
 
+func WithConfigBytes(bytes []byte, format string) Option {
+	return func(env *Environment) {
+		env.addConfigOption(func(config cfg.GosoConf) error {
+			return config.Option(cfg.WithConfigBytes(bytes, format))
+		})
+	}
+}
+
 func WithConfigFile(file string) Option {
 	return func(env *Environment) {
 		env.addConfigOption(func(config cfg.GosoConf) error {

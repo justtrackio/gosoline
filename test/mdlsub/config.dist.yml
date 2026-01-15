@@ -1,9 +1,13 @@
-env: test
-
-app_project: justtrack
-app_family: gosoline
-app_group: mdlsub
-app_name: subscriber
+app:
+  env: test
+  name: subscriber
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+  tags:
+    project: justtrack
+    family: gosoline
+    group: mdlsub
+  model_id:
+    domain_pattern: "{app.tags.project}.{app.tags.family}.{app.tags.group}"
 
 cloud:
   aws:
@@ -22,7 +26,7 @@ mdlsub:
   subscribers:
     testModel:
       output: ddb
-      source: { group: management }
+      source: { tags: { group: management } }
 
 test:
   components:

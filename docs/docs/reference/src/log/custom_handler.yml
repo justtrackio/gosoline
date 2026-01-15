@@ -1,5 +1,0 @@
-log:
-  handlers:
-    main:
-      type: my-custom-handler
-      channel: important

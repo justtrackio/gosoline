@@ -12,7 +12,7 @@ type TestModel struct {
 	MyNameWithAttr string `json:"myNameWithAttr,omitempty" ddb:"global=hash"`
 	MyNamePlain    string `json:",omitempty" ddb:"key=range"`
 	MyIgnoredField int64  `json:"-"`
-	DashField      int    `json:"-," ddb:"global=range"`
+	DashField      int    `json:"-," ddb:"global=range"` //nolint:staticcheck // intentional: tests handling of json field named "-"
 	DefaultField   uint   `ddb:"global=range"`
 }
 

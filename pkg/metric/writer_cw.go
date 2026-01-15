@@ -3,7 +3,6 @@ package metric
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -43,7 +42,8 @@ type (
 	}
 
 	CloudwatchNamingSettings struct {
-		Pattern string `cfg:"pattern,nodecode" default:"{project}/{env}/{family}/{group}-{app}"`
+		NamespacePattern   string `cfg:"namespace_pattern,nodecode" default:"{app.namespace}-{app.name}"`
+		NamespaceDelimiter string `cfg:"namespace_delimiter" default:"/"`
 	}
 
 	cwWriterCtxKey string
@@ -68,8 +68,10 @@ func ProvideCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.
 func NewCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	testClock := clock.NewRealClock()
 
-	cwSettings := &CloudWatchSettings{}
-	if err := getMetricWriterSettings(config, WriterTypeCloudwatch, cwSettings); err != nil {
+	var err error
+	var cwSettings *CloudWatchSettings
+
+	if cwSettings, err = getMetricWriterSettings[CloudWatchSettings](config, WriterTypeCloudwatch); err != nil {
 		return nil, fmt.Errorf("failed to get cloudwatch settings: %w", err)
 	}
 
@@ -215,29 +217,21 @@ func (w *cloudwatchWriter) buildMetricData(ctx context.Context, batch Data) ([]t
 }
 
 func GetCloudWatchNamespace(config cfg.Config) (string, error) {
-	appId, err := cfg.GetAppIdFromConfig(config)
-	if err != nil {
-		return "", fmt.Errorf("failed to get app id from config: %w", err)
+	var err error
+	var identity cfg.Identity
+	var cloudwatchSettings *CloudWatchSettings
+	var namespace string
+
+	if identity, err = cfg.GetAppIdentity(config); err != nil {
+		return "", fmt.Errorf("failed to get app identity from config: %w", err)
 	}
 
-	values := map[string]string{
-		"project": appId.Project,
-		"env":     appId.Environment,
-		"family":  appId.Family,
-		"group":   appId.Group,
-		"app":     appId.Application,
-	}
-
-	cloudwatchSettings := &CloudWatchSettings{}
-	if err := getMetricWriterSettings(config, WriterTypeCloudwatch, cloudwatchSettings); err != nil {
+	if cloudwatchSettings, err = getMetricWriterSettings[CloudWatchSettings](config, WriterTypeCloudwatch); err != nil {
 		return "", fmt.Errorf("failed to get cloudwatch settings: %w", err)
 	}
 
-	namespace := cloudwatchSettings.Naming.Pattern
-
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		namespace = strings.ReplaceAll(namespace, templ, val)
+	if namespace, err = identity.Format(cloudwatchSettings.Naming.NamespacePattern, cloudwatchSettings.Naming.NamespaceDelimiter); err != nil {
+		return "", fmt.Errorf("failed to format cloudwatch namespace: %w", err)
 	}
 
 	return namespace, nil

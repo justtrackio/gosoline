@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 const (
@@ -18,15 +19,8 @@ const (
 	TypeRedis    = "redis"
 )
 
-type DdbSettings struct {
-	ClientName string `cfg:"client_name" default:"default"`
-}
-
 type ChainConfiguration struct {
-	Project             string                `cfg:"project"`
-	Family              string                `cfg:"family"`
-	Group               string                `cfg:"group"`
-	Application         string                `cfg:"application"`
+	ModelId             mdl.ModelId           `cfg:"model_id"`
 	Type                string                `cfg:"type" default:"chain" validate:"eq=chain"`
 	Elements            []string              `cfg:"elements" validate:"min=1"`
 	Ddb                 DdbSettings           `cfg:"ddb"`
@@ -48,7 +42,8 @@ type InMemoryConfiguration struct {
 }
 
 type RedisConfiguration struct {
-	DB int `cfg:"db" default:"0"`
+	DB         int    `cfg:"db" default:"0"`
+	KeyPattern string `cfg:"key_pattern,nodecode" default:"{app.namespace}-kvstore-{store}-{key}"`
 }
 
 type kvStoreAppCtxKey string
@@ -87,15 +82,13 @@ func newKvStoreChainFromConfig[T any](ctx context.Context, config cfg.Config, lo
 		return nil, fmt.Errorf("failed to unmarshal kvstore configuration for %s: %w", name, err)
 	}
 
+	// Set the ModelId.Name to the kvstore name
+	modelId := configuration.ModelId
+	modelId.Name = name
+
 	store, err := NewChainKvStore[T](ctx, config, logger, configuration.MissingCacheEnabled, &Settings{
-		AppId: cfg.AppId{
-			Project:     configuration.Project,
-			Family:      configuration.Family,
-			Group:       configuration.Group,
-			Application: configuration.Application,
-		},
+		ModelId:        modelId,
 		DdbSettings:    configuration.Ddb,
-		Name:           name,
 		Ttl:            configuration.Ttl,
 		BatchSize:      configuration.BatchSize,
 		MetricsEnabled: configuration.MetricsEnabled,
@@ -106,6 +99,9 @@ func newKvStoreChainFromConfig[T any](ctx context.Context, config cfg.Config, lo
 			DeleteBuffer:   configuration.InMemory.DeleteBuffer,
 			PromoteBuffer:  configuration.InMemory.PromoteBuffer,
 			GetsPerPromote: configuration.InMemory.GetsPerPromote,
+		},
+		RedisSettings: RedisSettings{
+			KeyPrefixPattern: configuration.Redis.KeyPattern,
 		},
 	})
 	if err != nil {

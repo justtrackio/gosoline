@@ -3,7 +3,7 @@ package tracing
 import (
 	"context"
 
-	"github.com/aws/aws-xray-sdk-go/xray"
+	"github.com/aws/aws-xray-sdk-go/v2/xray"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
@@ -26,10 +26,10 @@ func (t awsRootSpan) Finish() {
 	t.cancel()
 }
 
-func newRootSpan(ctx context.Context, name string, app cfg.AppId) (context.Context, *awsRootSpan) {
+func newRootSpan(ctx context.Context, name string, identity cfg.Identity, appId string) (context.Context, *awsRootSpan) {
 	ctx, cancel := context.WithCancel(ctx)
 	ctx, seg := xray.BeginSegment(ctx, name)
-	ctx, span := newSpan(ctx, seg, app)
+	ctx, span := newSpan(ctx, seg, identity, appId)
 
 	transaction := &awsRootSpan{
 		span,
@@ -37,13 +37,4 @@ func newRootSpan(ctx context.Context, name string, app cfg.AppId) (context.Conte
 	}
 
 	return ctx, transaction
-}
-
-func disabledRootSpan() *awsRootSpan {
-	return &awsRootSpan{
-		&awsSpan{
-			enabled: false,
-		},
-		nil,
-	}
 }

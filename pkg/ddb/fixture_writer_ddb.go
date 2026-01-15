@@ -28,6 +28,10 @@ func DynamoDbFixtureSetFactory[T any](settings *Settings, data fixtures.NamedFix
 }
 
 func NewDynamoDbFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, options ...DdbWriterOption) (fixtures.FixtureWriter, error) {
+	if err := settings.ModelId.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad model id from config: %w", err)
+	}
+
 	ddbSettings := &Settings{
 		ModelId: settings.ModelId,
 		Main: MainSettings{

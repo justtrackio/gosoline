@@ -116,6 +116,77 @@ func (_c *Config_AllSettings_Call) RunAndReturn(run func() map[string]interface{
 	return _c
 }
 
+// FormatString provides a mock function with given fields: pattern, args
+func (_m *Config) FormatString(pattern string, args ...map[string]string) (string, error) {
+	_va := make([]interface{}, len(args))
+	for _i := range args {
+		_va[_i] = args[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, pattern)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FormatString")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...map[string]string) (string, error)); ok {
+		return rf(pattern, args...)
+	}
+	if rf, ok := ret.Get(0).(func(string, ...map[string]string) string); ok {
+		r0 = rf(pattern, args...)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, ...map[string]string) error); ok {
+		r1 = rf(pattern, args...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Config_FormatString_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FormatString'
+type Config_FormatString_Call struct {
+	*mock.Call
+}
+
+// FormatString is a helper method to define mock.On call
+//   - pattern string
+//   - args ...map[string]string
+func (_e *Config_Expecter) FormatString(pattern interface{}, args ...interface{}) *Config_FormatString_Call {
+	return &Config_FormatString_Call{Call: _e.mock.On("FormatString",
+		append([]interface{}{pattern}, args...)...)}
+}
+
+func (_c *Config_FormatString_Call) Run(run func(pattern string, args ...map[string]string)) *Config_FormatString_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]map[string]string, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(map[string]string)
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Config_FormatString_Call) Return(_a0 string, _a1 error) *Config_FormatString_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Config_FormatString_Call) RunAndReturn(run func(string, ...map[string]string) (string, error)) *Config_FormatString_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Get provides a mock function with given fields: key, optionalDefault
 func (_m *Config) Get(key string, optionalDefault ...interface{}) (interface{}, error) {
 	var _ca []interface{}

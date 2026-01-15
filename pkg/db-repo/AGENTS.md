@@ -8,12 +8,12 @@
 ## Key files
 - `model.go`, `metadata.go` - describe model shape and table metadata.
 - `repository.go`, `operation_repository_db.go` - core repository implementation.
-- `change_history_*` - audit log support and middleware wiring.
 - `notification_*` - publish DB changes to stream outputs.
+- `orm.go`, `orm_client.go` - ORM integration layer.
+- `metric_repo.go` - metrics-instrumented repository wrapper.
 
 ## Common tasks
 - Add repository features: extend `Repository` interface + implementation, then update mocks under `mocks/`.
-- Modify change history: adjust manager/middleware and ensure tests under `change_history*_test.go` cover regression.
 - Integrate new notification targets: modify `notification_publisher.go` and document required config keys (`db_repo.notification`).
 
 ## Testing

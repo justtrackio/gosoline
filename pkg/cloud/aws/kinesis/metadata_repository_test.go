@@ -31,7 +31,7 @@ type metadataRepositoryTestSuite struct {
 	checkpointNamespace string
 	repo                *ddbMocks.Repository
 	settings            kinesis.Settings
-	appId               cfg.AppId
+	identity            cfg.Identity
 	clock               clock.FakeClock
 	metadataRepository  kinesis.MetadataRepository
 }
@@ -45,9 +45,9 @@ func (s *metadataRepositoryTestSuite) SetupTest() {
 	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.stream = "testStream"
 	s.clientId = kinesis.ClientId(uuid.New().NewV4())
-	s.clientNamespace = string("client:gosoline-test-metadata-repository-test-suite:" + s.stream)
+	s.clientNamespace = string("client:gosoline-test-metadata-repository:testStream")
 	s.shardId = kinesis.ShardId(uuid.New().NewV4())
-	s.checkpointNamespace = string("checkpoint:gosoline-test-metadata-repository-test-suite:" + s.stream)
+	s.checkpointNamespace = string("checkpoint:gosoline-test-metadata-repository:testStream")
 	s.repo = ddbMocks.NewRepository(s.T())
 	s.settings = kinesis.Settings{
 		DiscoverFrequency:        time.Minute * 10,
@@ -55,15 +55,16 @@ func (s *metadataRepositoryTestSuite) SetupTest() {
 		PersistFrequency:         time.Second * 10,
 		ClientExpirationPeriods:  5,
 	}
-	s.appId = cfg.AppId{
-		Project:     "gosoline",
-		Environment: "test",
-		Family:      "metadata-repository",
-		Application: "test-suite",
+	s.identity = cfg.Identity{
+		Name: "test-suite",
+		Env:  "test",
+		Tags: cfg.Tags{
+			"project": "gosoline",
+			"family":  "metadata-repository",
+		},
 	}
 	s.clock = clock.NewFakeClock()
-
-	s.metadataRepository = kinesis.NewMetadataRepositoryWithInterfaces(s.logger, s.stream, s.clientId, s.repo, s.settings, s.appId, s.clock)
+	s.metadataRepository = kinesis.NewMetadataRepositoryWithInterfaces(s.logger, s.stream, s.clientId, s.repo, s.settings, "gosoline-test-metadata-repository", s.clock)
 }
 
 func (s *metadataRepositoryTestSuite) TestRegisterClient_PutItemError() {
