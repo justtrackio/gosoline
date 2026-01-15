@@ -1,6 +1,6 @@
 ---
 slug: sampling-fingers-crossed-logging
-title: "Sampling + Fingers-Crossed Logging in Go: Less Noise, More Debuggability"
+title: "Log Sampling in Go: Less Noise, More Debuggability"
 authors: [jaka]
 tags: [logging, sampling, observability]
 ---
