@@ -1,0 +1,106 @@
+name: Deploy PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - main
+
+defaults:
+  run:
+    working-directory: docs
+
+jobs:
+  deploy-preview:
+    # Only run for PRs from the same repository (skip forks for security/permission reasons)
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: '**/yarn.lock'
+
+      - name: Install dependencies
+        if: github.event.action != 'closed'
+        run: yarn install --frozen-lockfile
+
+      - name: Build Preview
+        if: github.event.action != 'closed'
+        env:
+          DOCS_BASE_URL: /gosoline/pr-${{ github.event.number }}/
+        run: yarn build
+
+      - name: Deploy Preview to gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.number }}
+          ACTION: ${{ github.event.action }}
+        run: |
+          # Configure git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+          TARGET_DIR="../gh-pages-preview"
+          
+          # Try to clone the gh-pages branch
+          if git clone --branch gh-pages --single-branch "$REPO_URL" "$TARGET_DIR"; then
+            echo "Successfully cloned gh-pages branch."
+            cd "$TARGET_DIR"
+          else
+            echo "gh-pages branch not found. Creating a new one."
+            mkdir -p "$TARGET_DIR"
+            cd "$TARGET_DIR"
+            git init
+            git remote add origin "$REPO_URL"
+            git checkout --orphan gh-pages
+            git commit --allow-empty -m "Initial gh-pages commit"
+          fi
+          
+          PREVIEW_DIR="pr-${PR_NUMBER}"
+          
+          if [ "$ACTION" == "closed" ]; then
+            echo "PR closed. Removing preview directory: $PREVIEW_DIR"
+            if [ -d "$PREVIEW_DIR" ]; then
+              rm -rf "$PREVIEW_DIR"
+              git add .
+              git commit -m "Remove preview for PR #${PR_NUMBER}"
+              git push origin gh-pages
+            else
+              echo "Preview directory does not exist, nothing to remove."
+            fi
+          else
+            echo "Deploying preview to directory: $PREVIEW_DIR"
+            
+            # Clean existing preview dir if it exists
+            rm -rf "$PREVIEW_DIR"
+            mkdir -p "$PREVIEW_DIR"
+            
+            # Copy build output
+            cp -r $GITHUB_WORKSPACE/docs/build/* "$PREVIEW_DIR"
+            
+            git add .
+            git commit -m "Deploy preview for PR #${PR_NUMBER}" || echo "No changes to commit"
+            git push origin gh-pages
+          fi
+
+      - name: Comment on PR
+        if: github.event.action != 'closed'
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          message: |
+            :rocket: **Docs Preview Deployed!**
+            
+            View the preview here: https://justtrackio.github.io/gosoline/pr-${{ github.event.number }}/
+          comment_tag: docs_preview
+          mode: recreate
+
+permissions:
+  contents: write
+  pull-requests: write

@@ -28,7 +28,7 @@ Operate in this repository as the maintainer of the **gosoline** application fra
    - `golangci-lint run --build-tags integration,fixtures ./...`
 6. Check for missing godoc parts for exported types/functions you added or changed.
 7. Update AGENTS.md files if your changes affect package structure, APIs, or workflows documented there. Check both the root `AGENTS.md` and any package-specific `AGENTS.md` (e.g., `pkg/<package>/AGENTS.md`).
-7. Summarize work with requirement coverage, commands executed, and pending follow-ups. Never stage or commit; CI and reviewers expect clean diffs only.
+8. Summarize work with requirement coverage, commands executed, and pending follow-ups. Never stage or commit; CI and reviewers expect clean diffs only.
 
 ## GitHub MCP server workflow
 - **Repository:** `justtrackio/gosoline`. Pass owner `justtrackio` and name `gosoline` to GitHub MCP tools.
