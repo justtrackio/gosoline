@@ -48,7 +48,13 @@ const config = {
           editUrl:
             'https://github.com/justtrackio/gosoline/tree/main/docs/',
         },
-        blog: false,
+        blog: {
+          routeBasePath: '/blog',
+          showReadingTime: true,
+          blogTitle: 'Gosoline Blog',
+          blogDescription: 'Articles and announcements from the gosoline project',
+          editUrl: 'https://github.com/justtrackio/gosoline/tree/main/docs/',
+        },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
         },
@@ -72,6 +78,11 @@ const config = {
             sidebarId: 'docSidebar',
             position: 'left',
             label: 'Docs',
+          },
+          {
+            to: '/blog',
+            label: 'Blog',
+            position: 'left',
           },
           {
             href: 'https://github.com/justtrackio/gosoline',
@@ -106,6 +117,10 @@ const config = {
               {
                 label: 'Reference',
                 to: '/category/reference',
+              },
+              {
+                label: 'Blog',
+                to: '/blog',
               },
             ],
           },

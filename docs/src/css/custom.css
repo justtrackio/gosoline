@@ -34,3 +34,8 @@
   flex-direction: column;
   justify-content: space-between;
 }
+
+/* Make blog posts a bit wider without affecting docs pages. */
+.blog-wrapper .container {
+  max-width: 1600px;
+}
