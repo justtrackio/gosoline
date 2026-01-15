@@ -13,7 +13,8 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { useColorMode } from '@docusaurus/theme-common'
 
 export function PrimaryUseCases() {
-    const { isDarkTheme } = useColorMode();
+    const { colorMode } = useColorMode();
+    const isDarkTheme = colorMode === 'dark';
 
     const darkTheme = createTheme({
       palette: {

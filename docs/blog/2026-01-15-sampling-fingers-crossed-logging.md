@@ -7,6 +7,8 @@ tags: [logging, sampling, observability]
 
 High-traffic services have a logging problem: the more successful traffic you handle, the more you pay to store and query logs that rarely matter. But if you turn logging down, you lose the context you need when something *does* break.
 
+{/* truncate */}
+
 ## Why traditional log sampling isn’t enough
 
 Many production setups already try to reduce cost by doing *log pipeline sampling* in tools like Fluentd/Fluent Bit, Logstash, or the logging backend itself.
