@@ -29,7 +29,8 @@ type Settings struct {
 	Connection string `cfg:"connection" default:"default"`
 
 	TopicId string `cfg:"topic_id" validate:"required"`
-	GroupId string `cfg:"group_id" validate:"required"`
+	// GroupId is an optional identifier that can be used as part of the consumer group naming pattern
+	GroupId string `cfg:"group_id"`
 
 	StartOffset StartOffset `cfg:"start_offset" default:"last"               validate:"oneof=first last"`
 	Balancers   []Balancer  `cfg:"balancers"    default:"cooperative-sticky" validate:"dive,oneof=cooperative-sticky sticky round-robin range"`
