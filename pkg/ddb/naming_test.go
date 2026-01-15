@@ -25,12 +25,14 @@ func (s *TableNameTestSuite) SetupTest() {
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = &ddb.Settings{
 		ModelId: mdl.ModelId{
-			Project:     "justtrack",
-			Environment: "test",
-			Family:      "gosoline",
-			Group:       "group",
-			Application: "producer",
-			Name:        "event",
+			Name: "event",
+			Env:  "test",
+			App:  "producer",
+			Tags: map[string]string{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "group",
+			},
 		},
 		ClientName: "default",
 	}
@@ -52,7 +54,11 @@ func (s *TableNameTestSuite) setupConfigEnv(settings map[string]string) {
 }
 
 func (s *TableNameTestSuite) TestDefault() {
-	name, err := ddb.TableName(s.config, s.settings)
+	s.setupConfig(map[string]any{
+		"app.namespace": "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
+	})
+
+	name, err := ddb.GetTableName(s.config, s.settings)
 	if err != nil {
 		s.FailNow("there should be no error on getting the table name", err)
 	}
@@ -62,10 +68,10 @@ func (s *TableNameTestSuite) TestDefault() {
 
 func (s *TableNameTestSuite) TestDefaultWithPattern() {
 	s.setupConfig(map[string]any{
-		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app}-{modelId}",
+		"cloud.aws.dynamodb.clients.default.naming.table_pattern": "{app.name}-{name}",
 	})
 
-	name, err := ddb.TableName(s.config, s.settings)
+	name, err := ddb.GetTableName(s.config, s.settings)
 	if err != nil {
 		s.FailNow("there should be no error on getting the table name", err)
 	}
@@ -76,10 +82,10 @@ func (s *TableNameTestSuite) TestDefaultWithPattern() {
 func (s *TableNameTestSuite) TestSpecificClientWithPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.dynamodb.clients.specific.naming.pattern": "{app}-{modelId}",
+		"cloud.aws.dynamodb.clients.specific.naming.table_pattern": "{app.name}-{name}",
 	})
 
-	name, err := ddb.TableName(s.config, s.settings)
+	name, err := ddb.GetTableName(s.config, s.settings)
 	if err != nil {
 		s.FailNow("there should be no error on getting the table name", err)
 	}
@@ -89,24 +95,24 @@ func (s *TableNameTestSuite) TestSpecificClientWithPattern() {
 
 func (s *TableNameTestSuite) TestPatternFromTableSettings() {
 	s.settings.TableNamingSettings = ddb.TableNamingSettings{
-		Pattern: "this-is-an-fqn-overwrite",
+		TablePattern: "this-is-an-fqn-overwrite-event",
 	}
 
-	name, err := ddb.TableName(s.config, s.settings)
+	name, err := ddb.GetTableName(s.config, s.settings)
 	if err != nil {
 		s.FailNow("there should be no error on getting the table name", err)
 	}
 
-	s.Equal("this-is-an-fqn-overwrite", name)
+	s.Equal("this-is-an-fqn-overwrite-event", name)
 }
 
 func (s *TableNameTestSuite) TestSpecificClientWithFallbackPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app}-{modelId}",
+		"cloud.aws.dynamodb.clients.default.naming.table_pattern": "{app.name}-{name}",
 	})
 
-	name, err := ddb.TableName(s.config, s.settings)
+	name, err := ddb.GetTableName(s.config, s.settings)
 	if err != nil {
 		s.FailNow("there should be no error on getting the table name", err)
 	}
@@ -117,10 +123,10 @@ func (s *TableNameTestSuite) TestSpecificClientWithFallbackPattern() {
 func (s *TableNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
 	s.settings.ClientName = "specific"
 	s.setupConfigEnv(map[string]string{
-		"CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_PATTERN": "!nodecode {app}-{modelId}",
+		"CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_TABLE_PATTERN": "!nodecode {app.name}-{name}",
 	})
 
-	name, err := ddb.TableName(s.config, s.settings)
+	name, err := ddb.GetTableName(s.config, s.settings)
 	if err != nil {
 		s.FailNow("there should be no error on getting the table name", err)
 	}

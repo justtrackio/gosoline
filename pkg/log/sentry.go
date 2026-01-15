@@ -20,25 +20,30 @@ type SentryHub interface {
 
 // SentryHubSettings configuration for establishing a connection to Sentry.
 type SentryHubSettings struct {
-	Dsn         string
-	Environment string
-	AppFamily   string
-	AppName     string
-	AppGroup    string
+	Dsn          string
+	Environment  string
+	AppName      string
+	AppNamespace string
 }
 
 // NewSentryHub creates a new SentryHub using configuration from the "app_id" settings.
 func NewSentryHub(config cfg.Config) (SentryHub, error) {
-	var appId cfg.AppId
-	if err := appId.PadFromConfig(config); err != nil {
+	var err error
+	var identity cfg.Identity
+	var namespace string
+
+	if identity, err = cfg.GetAppIdentity(config); err != nil {
 		return nil, fmt.Errorf("failed to pad from config: %w", err)
 	}
 
+	if namespace, err = identity.FormatNamespace("."); err != nil {
+		return nil, fmt.Errorf("failed to format namespace: %w", err)
+	}
+
 	settings := &SentryHubSettings{
-		Environment: appId.Environment,
-		AppFamily:   appId.Family,
-		AppName:     appId.Application,
-		AppGroup:    appId.Group,
+		Environment:  identity.Env,
+		AppName:      identity.Name,
+		AppNamespace: namespace,
 	}
 
 	return NewSentryHubWithSettings(settings)
@@ -63,9 +68,8 @@ func NewSentryHubWithSettings(settings *SentryHubSettings) (SentryHub, error) {
 	hub := sentry.NewHub(client, scope)
 	hub.ConfigureScope(func(scope *sentry.Scope) {
 		scope.SetTags(map[string]string{
-			"family":      settings.AppFamily,
 			"application": settings.AppName,
-			"group":       settings.AppGroup,
+			"namespace":   settings.AppNamespace,
 		})
 	})
 

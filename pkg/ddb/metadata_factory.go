@@ -17,7 +17,7 @@ type MetadataFactory struct {
 }
 
 func NewMetadataFactory(config cfg.Config, settings *Settings) (*MetadataFactory, error) {
-	tableName, err := TableName(config, settings)
+	tableName, err := GetTableName(config, settings)
 	if err != nil {
 		return nil, fmt.Errorf("can not get table name for settings %s: %w", settings.ModelId.String(), err)
 	}
@@ -261,58 +261,68 @@ func readAttributesFromType(t reflect.Type, attributes Attributes) error {
 		}
 
 		if field.Anonymous && field.Type.Kind() == reflect.Struct {
-			err := readAttributesFromType(field.Type, attributes)
-			if err != nil {
+			if err := readAttributesFromType(field.Type, attributes); err != nil {
 				return err
 			}
 		}
 
-		tag, ok := field.Tag.Lookup("ddb")
-
-		if !ok {
-			continue
-		}
-
-		tag = strings.TrimSpace(tag)
-
-		if tag == "" {
-			return fmt.Errorf("the ddb tag for field %s is empty", field.Name)
-		}
-
-		attributeNamePtr, _, err := getAttributeName(field)
-		if err != nil {
+		if err := processFieldAttribute(field, attributes); err != nil {
 			return err
 		}
+	}
 
-		if attributeNamePtr == nil {
-			return fmt.Errorf("the json tag for field %s specifies the field should be dropped, but the field is required by ddb", field.Name)
+	return nil
+}
+
+func processFieldAttribute(field reflect.StructField, attributes Attributes) error {
+	tag, ok := field.Tag.Lookup("ddb")
+	if !ok {
+		return nil
+	}
+
+	tag = strings.TrimSpace(tag)
+
+	if tag == "" {
+		return fmt.Errorf("the ddb tag for field %s is empty", field.Name)
+	}
+
+	attributeNamePtr, _, err := getAttributeName(field)
+	if err != nil {
+		return err
+	}
+
+	if attributeNamePtr == nil {
+		return fmt.Errorf("the json tag for field %s specifies the field should be dropped, but the field is required by ddb", field.Name)
+	}
+
+	attributeName := *attributeNamePtr
+
+	attributes[attributeName] = &Attribute{
+		FieldName:     field.Name,
+		AttributeName: attributeName,
+		Tags:          make(map[string]string),
+		Type:          getAttributeType(field),
+	}
+
+	return parseDdbTagParts(tag, field.Name, attributes[attributeName])
+}
+
+func parseDdbTagParts(tag string, fieldName string, attr *Attribute) error {
+	parts := strings.Split(tag, ",")
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		kv := strings.Split(part, "=")
+
+		if len(kv) != 2 {
+			return fmt.Errorf("the parts of a ddb tag should have the format x=y on field %s", fieldName)
 		}
 
-		attributeName := *attributeNamePtr
+		key := strings.TrimSpace(kv[0])
+		key = strings.ToLower(key)
+		value := strings.TrimSpace(kv[1])
+		value = strings.ToLower(value)
 
-		attributes[attributeName] = &Attribute{
-			FieldName:     field.Name,
-			AttributeName: attributeName,
-			Tags:          make(map[string]string),
-			Type:          getAttributeType(field),
-		}
-
-		parts := strings.Split(tag, ",")
-		for _, part := range parts {
-			part = strings.TrimSpace(part)
-			kv := strings.Split(part, "=")
-
-			if len(kv) != 2 {
-				return fmt.Errorf("the parts of a ddb tag should have the format x=y on field %s", field.Name)
-			}
-
-			key := strings.TrimSpace(kv[0])
-			key = strings.ToLower(key)
-			value := strings.TrimSpace(kv[1])
-			value = strings.ToLower(value)
-
-			attributes[attributeName].Tags[key] = value
-		}
+		attr.Tags[key] = value
 	}
 
 	return nil

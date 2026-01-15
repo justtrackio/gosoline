@@ -267,9 +267,71 @@ func (s *Struct) doReadMap(path string, mapValues *MapX, mp any) error {
 		return s.doReadMapOfSlice(path, mapValues, mapValue)
 	case reflect.Struct:
 		return s.doReadMapOfStruct(path, mapValues, mapValue)
+	case reflect.String:
+		return s.doReadMapOfValue(path, mapValues, mapValue)
+	case reflect.Interface:
+		return s.doReadMapOfInterface(path, mapValues, mapValue)
 	default:
 		return fmt.Errorf("MSI fields or a map of structs are allowed only for path %s", path)
 	}
+}
+
+func (s *Struct) doReadMapOfValue(path string, mapValues *MapX, mapValue reflect.Value) error {
+	for _, key := range mapValue.MapKeys() {
+		if key.Kind() != reflect.String {
+			return fmt.Errorf("only string values are allowed as map keys for path %s", path)
+		}
+
+		element := mapValue.MapIndex(key).Interface()
+		elementPath := fmt.Sprintf("%s.%s", path, key.String())
+
+		mapValues.Set(elementPath, element)
+	}
+
+	return nil
+}
+
+func (s *Struct) doReadMapOfInterface(path string, mapValues *MapX, mapValue reflect.Value) error {
+	for _, key := range mapValue.MapKeys() {
+		if key.Kind() != reflect.String {
+			return fmt.Errorf("only string values are allowed as map keys for path %s", path)
+		}
+
+		element := mapValue.MapIndex(key)
+		elementPath := fmt.Sprintf("%s.%s", path, key.String())
+
+		// Unwrap the interface to get the concrete value
+		concrete := element
+		for concrete.Kind() == reflect.Interface {
+			concrete = concrete.Elem()
+		}
+
+		if !concrete.IsValid() {
+			// nil interface value
+			mapValues.Set(elementPath, nil)
+
+			continue
+		}
+
+		switch concrete.Kind() {
+		case reflect.Map:
+			if err := s.doReadMap(elementPath, mapValues, concrete.Interface()); err != nil {
+				return fmt.Errorf("can not read path value %s: %w", elementPath, err)
+			}
+		case reflect.Slice:
+			if err := s.doReadSlice(elementPath, mapValues, concrete); err != nil {
+				return fmt.Errorf("can not read path value %s: %w", elementPath, err)
+			}
+		case reflect.Struct:
+			if err := s.doReadStruct(elementPath, mapValues, concrete.Interface()); err != nil {
+				return fmt.Errorf("can not read path value %s: %w", elementPath, err)
+			}
+		default:
+			mapValues.Set(elementPath, concrete.Interface())
+		}
+	}
+
+	return nil
 }
 
 func (s *Struct) doReadMapOfMap(path string, mapValues *MapX, mapValue reflect.Value) error {
@@ -821,7 +883,7 @@ func (s *Struct) decodeAndCastValue(tag *StructTag, targetType reflect.Type, sou
 	if !tag.NoDecode {
 		for _, decoder := range s.decoders {
 			if sourceValue, err = decoder(targetType, sourceValue); err != nil {
-				return nil, fmt.Errorf("can not decode value %v", sourceValue)
+				return nil, fmt.Errorf("can not decode value \"%v\": %w", sourceValue, err)
 			}
 		}
 	}

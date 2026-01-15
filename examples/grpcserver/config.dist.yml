@@ -1,8 +1,10 @@
-env: dev
-app_project: project
-app_family: family
-app_group: grp
-app_name: grpc_server
+app:
+  env: dev
+  name: grpc_server
+  tags:
+    project: project
+    family: family
+    group: grp
 
 # grpcserver module configuration
 grpc_server:

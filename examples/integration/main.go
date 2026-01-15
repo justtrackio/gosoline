@@ -43,7 +43,7 @@ var ddbSettings = &ddb.Settings{
 }
 
 var repoSettings = db_repo.Settings{
-	AppId: cfg.AppId{},
+	Identity: cfg.Identity{},
 	Metadata: db_repo.Metadata{
 		TableName: "items",
 	},

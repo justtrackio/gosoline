@@ -28,11 +28,15 @@ func (s *WriterBlobTestSuite) SetupTest() {
 	s.logger = log.NewLogger()
 	s.config = cfg.New()
 	err := s.config.Option(cfg.WithConfigMap(map[string]any{
-		"app_project": "justtrack",
-		"app_family":  "gosoline",
-		"app_group":   "grp",
-		"app_name":    "uploader",
-		"env":         "test",
+		"app": map[string]any{
+			"env":  "test",
+			"name": "uploader",
+			"tags": map[string]any{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "grp",
+			},
+		},
 		"blob": map[string]any{
 			"test": map[string]any{},
 		},

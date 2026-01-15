@@ -8,7 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
@@ -132,7 +132,9 @@ func (r *batchRunner) executeRead(ctx context.Context) {
 			out, err := r.client.GetObject(ctx, input)
 
 			if err != nil {
-				if awsErr, ok := err.(awserr.RequestFailure); ok && awsErr.StatusCode() == 404 {
+				var noSuchKey *types.NoSuchKey
+				var notFound *types.NotFound
+				if errors.As(err, &noSuchKey) || errors.As(err, &notFound) {
 					exists = false
 					err = nil
 				}

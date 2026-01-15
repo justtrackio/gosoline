@@ -22,10 +22,10 @@ const (
 )
 
 type PublisherSettings struct {
-	mdl.ModelId
-	Producer   string `cfg:"producer" validate:"required_without=OutputType"`
-	OutputType string `cfg:"output_type" validate:"required_without=Producer"`
-	Shared     bool   `cfg:"shared"`
+	ModelId    mdl.ModelId `cfg:"model_id"`
+	Producer   string      `cfg:"producer" validate:"required_without=OutputType"`
+	OutputType string      `cfg:"output_type" validate:"required_without=Producer"`
+	Shared     bool        `cfg:"shared"`
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Publisher
@@ -57,6 +57,10 @@ func NewPublisherWithSettings(ctx context.Context, config cfg.Config, logger log
 		return nil, fmt.Errorf("can not create producer %s: %w", settings.Producer, err)
 	}
 
+	if err := settings.ModelId.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("can not pad model id from config for publisher %s: %w", settings.ModelId.Name, err)
+	}
+
 	return NewPublisherWithInterfaces(logger, producer, settings), nil
 }
 
@@ -75,7 +79,7 @@ func (p *publisher) PublishBatch(ctx context.Context, typ string, version int, v
 	attributes = append(attributes, customAttributes...)
 
 	if err := p.producer.Write(ctx, values, attributes...); err != nil {
-		return fmt.Errorf("can not publish %s with publisher %s: %w", p.settings.String(), p.settings.Name, err)
+		return fmt.Errorf("can not publish %s with publisher %s: %w", p.settings.ModelId.String(), p.settings.ModelId.Name, err)
 	}
 
 	return nil
@@ -88,7 +92,7 @@ func (p *publisher) Publish(ctx context.Context, typ string, version int, value 
 	attributes = append(attributes, customAttributes...)
 
 	if err := p.producer.WriteOne(ctx, value, attributes...); err != nil {
-		return fmt.Errorf("can not publish %s with publisher %s: %w", p.settings.String(), p.settings.Name, err)
+		return fmt.Errorf("can not publish %s with publisher %s: %w", p.settings.ModelId.String(), p.settings.ModelId.Name, err)
 	}
 
 	return nil

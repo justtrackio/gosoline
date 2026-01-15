@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/conc/ddb"
@@ -30,7 +31,13 @@ func (s *DdbLockTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *DdbLockTestSuite) SetupTest() (err error) {
+	identity, err := cfg.GetAppIdentity(s.Env().Config())
+	if err != nil {
+		return fmt.Errorf("failed to get app identity: %w", err)
+	}
+
 	s.provider, err = ddb.NewDdbLockProvider(s.Env().Context(), s.Env().Config(), s.Env().Logger(), conc.DistributedLockSettings{
+		Identity: identity,
 		Backoff: exec.BackoffSettings{
 			MaxAttempts:    0,
 			MaxElapsedTime: 0,

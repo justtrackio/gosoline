@@ -1,9 +1,10 @@
-env: dev
-
-app_project: gosoline
-app_family: example
-app_group: grp
-app_name: stream-kinesis-output
+app:
+  env: dev
+  name: stream-kinesis-output
+  tags:
+    project: gosoline
+    family: example
+    group: grp
 
 stream:
   output:

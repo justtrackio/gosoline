@@ -9,8 +9,8 @@ import (
 )
 
 type EcsSettings struct {
-	Cluster string `cfg:"cluster" default:"{app_project}-{env}-{app_family}"`
-	Service string `cfg:"service" default:"{app_group}-{app_name}"`
+	Cluster string `cfg:"cluster" default:"{app.env}"`
+	Service string `cfg:"service" default:"{app.name}"`
 }
 
 type DynamoDbSettings struct {
@@ -18,15 +18,12 @@ type DynamoDbSettings struct {
 }
 
 type DynamoDbNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{modelId}"`
+	TablePattern   string `cfg:"table_pattern,nodecode" default:"{app.env}-metric-calculator-leaders"`
+	TableDelimiter string `cfg:"table_delimiter" default:"-"`
 }
 
 type CloudWatchSettings struct {
 	Client string `cfg:"client"`
-}
-
-type CloudWatchNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}/{env}/{family}/{group}-{app}"`
 }
 
 type CalculatorSettings struct {

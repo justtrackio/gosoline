@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -22,42 +21,21 @@ var dialers = map[string]Dialer{
 
 type (
 	Dialer           func(logger log.Logger, settings *Settings) func(context.Context, string, string) (net.Conn, error)
-	SrvNamingFactory func(appId cfg.AppId, name string) string
+	SrvNamingFactory func(identity cfg.Identity, name string) string
 )
 
 func dialerSrv(logger log.Logger, settings *Settings) func(ctx context.Context, network, addr string) (net.Conn, error) {
 	return func(ctx context.Context, _ string, _ string) (net.Conn, error) {
-		address := settings.Address
-
-		if address == "" {
-			values := map[string]string{
-				"project": settings.Project,
-				"env":     settings.Environment,
-				"family":  settings.Family,
-				"group":   settings.Group,
-				"app":     settings.Application,
-				"name":    settings.Name,
-			}
-
-			address = settings.Naming.Pattern
-			for key, val := range values {
-				templ := fmt.Sprintf("{%s}", key)
-				address = strings.ReplaceAll(address, templ, val)
-			}
-
-			logger.Debug(ctx, "no address provided for redis %s: using %s", settings.Name, address)
-		}
-
-		_, srvs, err := net.LookupSRV("", "", address)
+		_, srvs, err := net.LookupSRV("", "", settings.Address)
 		if err != nil {
-			return nil, fmt.Errorf("can't lookup srv query for address %s: %w", address, err)
+			return nil, fmt.Errorf("can't lookup srv query for address %s: %w", settings.Address, err)
 		}
 
 		if len(srvs) != 1 {
 			return nil, fmt.Errorf("redis instance count mismatch. there should be exactly one redis instance, found: %v", len(srvs))
 		}
 
-		address = fmt.Sprintf("%v:%v", srvs[0].Target, srvs[0].Port)
+		address := fmt.Sprintf("%v:%v", srvs[0].Target, srvs[0].Port)
 		logger.Debug(ctx, "using address %s for redis %s", address, settings.Name)
 
 		var d net.Dialer

@@ -78,11 +78,13 @@ func (s *kinsumerTestSuite) SetupTest() {
 	s.remainingForCancel = 0
 
 	settings := gosoKinesis.Settings{
-		AppId: cfg.AppId{
-			Project:     "gosoline",
-			Environment: "test",
-			Family:      "unitTest",
-			Application: "kinesisTest",
+		Identity: cfg.Identity{
+			Name: "kinesisTest",
+			Env:  "test",
+			Tags: cfg.Tags{
+				"project": "gosoline",
+				"family":  "unitTest",
+			},
 		},
 		StreamName:        "testData",
 		DiscoverFrequency: time.Second * 15,

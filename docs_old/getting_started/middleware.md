@@ -1,3 +1,0 @@
-# Gosoline middleware
-
-TODO

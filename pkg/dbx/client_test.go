@@ -158,6 +158,7 @@ func (s *ClientTestSuite) TestSelect() {
 
 	s.sqlMock.
 		ExpectQuery("SELECT `id`, `name`, `enabled` FROM test_table WHERE id = ?").
+		WithArgs(1).
 		WillReturnRows(goSqlMock.NewRows([]string{"id", "name"}).AddRow(testEntity.Id, testEntity.Name))
 
 	_, err := s.client.Select().Where(dbx.Eq{"id": 1}).Exec(s.T().Context())

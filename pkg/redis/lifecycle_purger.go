@@ -21,7 +21,7 @@ func NewLifeCyclePurger(ctx context.Context, config cfg.Config, logger log.Logge
 		return nil, fmt.Errorf("failed to read redis settings for name %q in NewLifeCyclePurger: %w", name, err)
 	}
 
-	if client, err = NewClientWithSettings(ctx, logger, settings); err != nil {
+	if client, err = NewClientWithSettings(ctx, config, logger, settings); err != nil {
 		return nil, fmt.Errorf("can not connect to database: %w", err)
 	}
 

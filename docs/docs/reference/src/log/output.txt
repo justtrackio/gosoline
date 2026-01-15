@@ -1,1 +1,0 @@
-10:57:12.933 main    info    got an event with value 42                          application: gateway

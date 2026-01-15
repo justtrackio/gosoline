@@ -9,7 +9,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
@@ -42,16 +41,13 @@ func NewDdbKvStore[T any](ctx context.Context, config cfg.Config, logger log.Log
 
 	name := DdbBaseName(settings)
 
+	// Create a ModelId for the DDB table with the kvstore name
+	modelId := settings.ModelId
+	modelId.Name = name
+
 	repository, err := ddb.NewRepository(ctx, config, logger, &ddb.Settings{
 		ClientName: settings.DdbSettings.ClientName,
-		ModelId: mdl.ModelId{
-			Project:     settings.Project,
-			Environment: settings.Environment,
-			Family:      settings.Family,
-			Group:       settings.Group,
-			Application: settings.Application,
-			Name:        name,
-		},
+		ModelId:    modelId,
 		Main: ddb.MainSettings{
 			Model:              DdbItem{},
 			ReadCapacityUnits:  5,

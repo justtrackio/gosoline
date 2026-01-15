@@ -11,7 +11,9 @@ import (
 )
 
 func main() {
-	application.RunConsumer(newConsumer)
+	application.RunConsumer(newConsumer,
+		application.WithConfigFile("config.dist.yml", "yml"),
+	)
 }
 
 type consumerCallback struct {

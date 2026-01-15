@@ -13,7 +13,7 @@ type Settings struct {
 	Writers  []string      `cfg:"writers"`
 }
 
-func getMetricSettings(config cfg.Config) (*Settings, error) {
+func GetMetricSettings(config cfg.Config) (*Settings, error) {
 	settings := &Settings{}
 	if err := config.UnmarshalKey("metric", settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal metric settings: %w", err)
@@ -22,11 +22,13 @@ func getMetricSettings(config cfg.Config) (*Settings, error) {
 	return settings, nil
 }
 
-func getMetricWriterSettings(config cfg.Config, key string, settings any) error {
+func getMetricWriterSettings[T any](config cfg.Config, key string) (*T, error) {
 	key = fmt.Sprintf("metric.writer_settings.%s", key)
+	settings := new(T)
+
 	if err := config.UnmarshalKey(key, settings); err != nil {
-		return fmt.Errorf("failed to unmarshal metric writer settings for key '%s': %w", key, err)
+		return nil, fmt.Errorf("failed to unmarshal metric writer settings for key '%s': %w", key, err)
 	}
 
-	return nil
+	return settings, nil
 }
