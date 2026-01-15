@@ -1,9 +1,12 @@
-env: dev
+app:
+  env: dev
+  name: sqlx
+  tags:
+    project: justtrack
+    family: gosoline
+    group: fixtures
 
-app_project: justtrack
-app_family: gosoline
-app_group: fixtures
-app_name: sqlx
+qlx
 
 db:
   default:

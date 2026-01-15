@@ -184,12 +184,14 @@ func buildTestableRedisStore[T any](t *testing.T) (context.Context, kvstore.KvSt
 	client := redisMocks.NewClient(t)
 
 	store := kvstore.NewRedisKvStoreWithInterfaces[T](client, &kvstore.Settings{
-		AppId: cfg.AppId{
-			Project:     "justtrack",
-			Environment: "env",
-			Family:      "gosoline",
-			Group:       "grp",
-			Application: "app",
+		AppIdentity: cfg.AppIdentity{
+			Name: "app",
+			Env:  "env",
+			Tags: cfg.AppTags{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "grp",
+			},
 		},
 		Name:           "test",
 		BatchSize:      100,
@@ -204,12 +206,14 @@ func buildTestableRedisStoreWithTTL[T any](t *testing.T) (context.Context, kvsto
 	client := redisMocks.NewClient(t)
 
 	store := kvstore.NewRedisKvStoreWithInterfaces[T](client, &kvstore.Settings{
-		AppId: cfg.AppId{
-			Project:     "justtrack",
-			Environment: "test",
-			Family:      "gosoline",
-			Group:       "grp",
-			Application: "kvstore",
+		AppIdentity: cfg.AppIdentity{
+			Name: "kvstore",
+			Env:  "test",
+			Tags: cfg.AppTags{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "grp",
+			},
 		},
 		Name:           "test",
 		BatchSize:      100,

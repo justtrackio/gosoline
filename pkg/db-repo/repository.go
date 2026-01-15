@@ -36,7 +36,7 @@ var (
 )
 
 type Settings struct {
-	cfg.AppId
+	cfg.AppIdentity
 	Metadata   Metadata
 	ClientName string
 }
@@ -97,7 +97,7 @@ func NewWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("can not create tracer: %w", err)
 	}
 
-	orm, err := NewOrmWithDbSettings(ctx, config, logger, repoSettings.ClientName, dbSettings, repoSettings.Application)
+	orm, err := NewOrmWithDbSettings(ctx, config, logger, repoSettings.ClientName, dbSettings, repoSettings.Name)
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}

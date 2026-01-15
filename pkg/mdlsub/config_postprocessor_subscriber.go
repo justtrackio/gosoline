@@ -97,10 +97,15 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 	inputSettings.ConsumerId = consumerId
 	inputSettings.Targets = []stream.SnsInputTargetConfiguration{
 		{
-			Family:      subscriberSettings.SourceModel.Family,
-			Group:       subscriberSettings.SourceModel.Group,
-			Application: subscriberSettings.SourceModel.Application,
-			TopicId:     topicId,
+			Identity: cfg.AppIdentity{
+				Name: subscriberSettings.SourceModel.Application,
+				Tags: cfg.AppTags{
+					"project": subscriberSettings.SourceModel.Project,
+					"family":  subscriberSettings.SourceModel.Family,
+					"group":   subscriberSettings.SourceModel.Group,
+				},
+			},
+			TopicId: topicId,
 		},
 	}
 
@@ -120,10 +125,12 @@ func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, s
 		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
 	}
 
-	inputSettings.Project = subscriberSettings.SourceModel.Project
-	inputSettings.Family = subscriberSettings.SourceModel.Family
-	inputSettings.Group = subscriberSettings.SourceModel.Group
-	inputSettings.Application = subscriberSettings.SourceModel.Application
+	inputSettings.Tags = cfg.AppTags{
+		"project": subscriberSettings.SourceModel.Project,
+		"family":  subscriberSettings.SourceModel.Family,
+		"group":   subscriberSettings.SourceModel.Group,
+	}
+	inputSettings.Name = subscriberSettings.SourceModel.Application
 	inputSettings.GroupId = topicId
 	inputSettings.TopicId = topicId
 
@@ -143,10 +150,12 @@ func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string,
 		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
 	}
 
-	inputSettings.Project = subscriberSettings.SourceModel.Project
-	inputSettings.Family = subscriberSettings.SourceModel.Family
-	inputSettings.Group = subscriberSettings.SourceModel.Group
-	inputSettings.Application = subscriberSettings.SourceModel.Application
+	inputSettings.Tags = cfg.AppTags{
+		"project": subscriberSettings.SourceModel.Project,
+		"family":  subscriberSettings.SourceModel.Family,
+		"group":   subscriberSettings.SourceModel.Group,
+	}
+	inputSettings.Name = subscriberSettings.SourceModel.Application
 	inputSettings.StreamName = streamName
 
 	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting)

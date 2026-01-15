@@ -59,11 +59,11 @@ func NewElasticsearchWriter(_ context.Context, config cfg.Config, logger log.Log
 
 	testClock := clock.NewRealClock()
 
-	appId, err := cfg.GetAppIdFromConfig(config)
+	identity, err := cfg.GetAppIdentityFromConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("can not get app id from config: %w", err)
+		return nil, fmt.Errorf("can not get app identity from config: %w", err)
 	}
-	namespace := fmt.Sprintf("%s/%s/%s/%s-%s", appId.Project, appId.Environment, appId.Family, appId.Group, appId.Application)
+	namespace := fmt.Sprintf("%s/%s/%s/%s-%s", identity.Tags.Get("project"), identity.Env, identity.Tags.Get("family"), identity.Tags.Get("group"), identity.Name)
 
 	return NewElasticsearchWriterWithInterfaces(logger, client, testClock, namespace, esSettings.WriteGraceTime), nil
 }

@@ -277,12 +277,13 @@ func buildTestableDdbStore[T any](t *testing.T) (context.Context, kvstore.KvStor
 	repository := ddbMocks.NewRepository(t)
 
 	store := kvstore.NewDdbKvStoreWithInterfaces[T](repository, &kvstore.Settings{
-		AppId: cfg.AppId{
-			Project:     "applike",
-			Environment: "test",
-			Family:      "gosoline",
-			Group:       "grp",
-			Application: "kvstore",
+		AppIdentity: cfg.AppIdentity{
+			Name: "kvstore",
+			Tags: cfg.AppTags{
+				"project": "applike",
+				"family":  "gosoline",
+				"group":   "grp",
+			},
 		},
 		Name:      "test",
 		BatchSize: 100,

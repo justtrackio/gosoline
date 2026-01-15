@@ -12,7 +12,7 @@ import (
 )
 
 type Settings struct {
-	cfg.AppId
+	cfg.AppIdentity
 	InMemorySettings
 	DdbSettings    DdbSettings
 	Name           string

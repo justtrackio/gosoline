@@ -21,11 +21,15 @@ type UrlBuilderTestSuite struct {
 func (s *UrlBuilderTestSuite) SetupTest() {
 	s.config = cfg.New()
 	err := s.config.Option(cfg.WithConfigMap(map[string]any{
-		"app_project": "justtrack",
-		"app_family":  "gosoline",
-		"app_group":   "grp",
-		"app_name":    "uploader",
-		"env":         "test",
+		"app": map[string]any{
+			"env":  "test",
+			"name": "uploader",
+			"tags": map[string]any{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "grp",
+			},
+		},
 	}))
 
 	s.NoError(err, "there should be no error on config create")

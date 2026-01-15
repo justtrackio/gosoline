@@ -8,45 +8,53 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetAppIdFromConfig(t *testing.T) {
+func TestGetAppIdentityFromConfig_WithMocks(t *testing.T) {
 	config := cfgMocks.NewConfig(t)
-	config.EXPECT().GetString("app_project").Return("prj", nil)
-	config.EXPECT().GetString("app_family").Return("fam", nil)
-	config.EXPECT().GetString("app_group").Return("grp", nil)
-	config.EXPECT().GetString("app_name").Return("name", nil)
-	config.EXPECT().GetString("env").Return("test", nil)
+	config.EXPECT().GetString("app.name").Return("name", nil)
+	config.EXPECT().GetString("app.env").Return("test", nil)
+	config.EXPECT().GetStringMapString("app.tags", map[string]string{}).Return(map[string]string{
+		"project": "prj",
+		"family":  "fam",
+		"group":   "grp",
+	}, nil)
 
-	appId, err := cfg.GetAppIdFromConfig(config)
+	identity, err := cfg.GetAppIdentityFromConfig(config)
 	assert.NoError(t, err)
 
-	assert.Equal(t, cfg.AppId{
-		Project:     "prj",
-		Environment: "test",
-		Family:      "fam",
-		Group:       "grp",
-		Application: "name",
-	}, appId)
+	assert.Equal(t, cfg.AppIdentity{
+		Name: "name",
+		Env:  "test",
+		Tags: cfg.AppTags{
+			"project": "prj",
+			"family":  "fam",
+			"group":   "grp",
+		},
+	}, identity)
 }
 
-func TestAppId_PadFromConfig(t *testing.T) {
+func TestAppIdentity_PadFromConfig_WithMocks(t *testing.T) {
 	config := cfgMocks.NewConfig(t)
-	config.EXPECT().GetString("app_project").Return("prj", nil)
-	config.EXPECT().GetString("app_family").Return("fam", nil)
-	config.EXPECT().GetString("app_group").Return("grp", nil)
-	config.EXPECT().GetString("app_name").Return("name", nil)
-	config.EXPECT().GetString("env").Return("test", nil)
+	config.EXPECT().GetString("app.name").Return("name", nil)
+	config.EXPECT().GetString("app.env").Return("test", nil)
+	config.EXPECT().GetStringMapString("app.tags", map[string]string{}).Return(map[string]string{
+		"project": "prj",
+		"family":  "fam",
+		"group":   "grp",
+	}, nil)
 
-	appId := cfg.AppId{}
-	err := appId.PadFromConfig(config)
+	identity := cfg.AppIdentity{}
+	err := identity.PadFromConfig(config)
 	assert.NoError(t, err)
 
-	assert.Equal(t, cfg.AppId{
-		Project:     "prj",
-		Environment: "test",
-		Family:      "fam",
-		Group:       "grp",
-		Application: "name",
-	}, appId)
+	assert.Equal(t, cfg.AppIdentity{
+		Name: "name",
+		Env:  "test",
+		Tags: cfg.AppTags{
+			"project": "prj",
+			"family":  "fam",
+			"group":   "grp",
+		},
+	}, identity)
 
 	config.AssertExpectations(t)
 }

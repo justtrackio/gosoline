@@ -115,10 +115,14 @@ func handlePublisherOutputTypeKafka(config cfg.Config, publisherSettings *Publis
 		return nil, fmt.Errorf("can not unmarshal kafka output settings for publisher %s: %w", publisherSettings.Name, err)
 	}
 
-	outputSettings.Project = publisherSettings.Project
-	outputSettings.Family = publisherSettings.Family
-	outputSettings.Group = publisherSettings.Group
-	outputSettings.Application = publisherSettings.Application
+	outputSettings.Identity = cfg.AppIdentity{
+		Name: publisherSettings.Application,
+		Tags: cfg.AppTags{
+			"project": publisherSettings.Project,
+			"family":  publisherSettings.Family,
+			"group":   publisherSettings.Group,
+		},
+	}
 	outputSettings.TopicId = publisherSettings.Name
 	outputSettings.Tracing.Enabled = false
 
@@ -140,10 +144,14 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 		return nil, fmt.Errorf("can not unmarshal kinesis output settings for publisher %s: %w", publisherSettings.Name, err)
 	}
 
-	outputSettings.Project = publisherSettings.Project
-	outputSettings.Family = publisherSettings.Family
-	outputSettings.Group = publisherSettings.Group
-	outputSettings.Application = publisherSettings.Application
+	outputSettings.Identity = cfg.AppIdentity{
+		Name: publisherSettings.Application,
+		Tags: cfg.AppTags{
+			"project": publisherSettings.Project,
+			"family":  publisherSettings.Family,
+			"group":   publisherSettings.Group,
+		},
+	}
 	outputSettings.ClientName = clientName
 	outputSettings.StreamName = publisherSettings.Name
 	outputSettings.Tracing.Enabled = false
@@ -157,10 +165,14 @@ func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *Publishe
 		return nil, fmt.Errorf("can not unmarshal sns output settings for publisher %s: %w", publisherSettings.Name, err)
 	}
 
-	outputSettings.Project = publisherSettings.Project
-	outputSettings.Family = publisherSettings.Family
-	outputSettings.Group = publisherSettings.Group
-	outputSettings.Application = publisherSettings.Application
+	outputSettings.Identity = cfg.AppIdentity{
+		Name: publisherSettings.Application,
+		Tags: cfg.AppTags{
+			"project": publisherSettings.Project,
+			"family":  publisherSettings.Family,
+			"group":   publisherSettings.Group,
+		},
+	}
 	outputSettings.TopicId = publisherSettings.Name
 	outputSettings.ClientName = clientName
 
@@ -177,10 +189,14 @@ func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *Publishe
 		return nil, fmt.Errorf("can not unmarshal sqs output settings for publisher %s: %w", publisherSettings.Name, err)
 	}
 
-	outputSettings.Project = publisherSettings.Project
-	outputSettings.Family = publisherSettings.Family
-	outputSettings.Group = publisherSettings.Group
-	outputSettings.Application = publisherSettings.Application
+	outputSettings.Identity = cfg.AppIdentity{
+		Name: publisherSettings.Application,
+		Tags: cfg.AppTags{
+			"project": publisherSettings.Project,
+			"family":  publisherSettings.Family,
+			"group":   publisherSettings.Group,
+		},
+	}
 	outputSettings.QueueId = publisherSettings.Name
 	outputSettings.ClientName = clientName
 

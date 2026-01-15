@@ -53,8 +53,15 @@ type Pipeliner interface {
 	baseRedis.Pipeliner
 }
 
-func GetFullyQualifiedKey(appId cfg.AppId, key string) string {
-	return fmt.Sprintf("%s-%s-%s-%s-%s-%s", appId.Project, appId.Environment, appId.Family, appId.Group, appId.Application, key)
+func GetFullyQualifiedKey(identity cfg.AppIdentity, key string) string {
+	return fmt.Sprintf("%s-%s-%s-%s-%s-%s",
+		identity.Tags.Get("project"),
+		identity.Env,
+		identity.Tags.Get("family"),
+		identity.Tags.Get("group"),
+		identity.Name,
+		key,
+	)
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Client

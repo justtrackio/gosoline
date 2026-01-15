@@ -44,11 +44,11 @@ func NewDdbLockProvider(
 ) (conc.DistributedLockProvider, error) {
 	ddbSettings := &ddb.Settings{
 		ModelId: mdl.ModelId{
-			Project:     settings.Project,
-			Environment: settings.Environment,
-			Family:      settings.Family,
-			Group:       settings.Group,
-			Application: settings.Application,
+			Project:     settings.Tags.Get("project"),
+			Environment: settings.Env,
+			Family:      settings.Tags.Get("family"),
+			Group:       settings.Tags.Get("group"),
+			Application: settings.Name,
 			Name:        "locks",
 		},
 		Main: ddb.MainSettings{

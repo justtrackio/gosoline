@@ -39,12 +39,14 @@ func DynamoDbKvStoreFixtureSetFactory[T any](modelId *mdl.ModelId, data fixtures
 
 func NewDynamoDbKvStoreFixtureWriter[T any](ctx context.Context, config cfg.Config, logger log.Logger, modelId *mdl.ModelId) (fixtures.FixtureWriter, error) {
 	kvStoreSettings := &Settings{
-		AppId: cfg.AppId{
-			Project:     modelId.Project,
-			Environment: modelId.Environment,
-			Family:      modelId.Family,
-			Group:       modelId.Group,
-			Application: modelId.Application,
+		AppIdentity: cfg.AppIdentity{
+			Name: modelId.Application,
+			Env:  modelId.Environment,
+			Tags: cfg.AppTags{
+				"project": modelId.Project,
+				"family":  modelId.Family,
+				"group":   modelId.Group,
+			},
 		},
 		Name: modelId.Name,
 	}

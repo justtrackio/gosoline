@@ -10,7 +10,7 @@ import (
 )
 
 type MigrationSettings struct {
-	Application    string `cfg:"application" default:"{app_name}"`
+	Application    string `cfg:"application" default:"{app.name}"`
 	Enabled        bool   `cfg:"enabled" default:"false"`
 	Reset          bool   `cfg:"reset" default:"false"`
 	Path           string `cfg:"path"`

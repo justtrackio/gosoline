@@ -26,10 +26,10 @@ func (t awsRootSpan) Finish() {
 	t.cancel()
 }
 
-func newRootSpan(ctx context.Context, name string, app cfg.AppId) (context.Context, *awsRootSpan) {
+func newRootSpan(ctx context.Context, name string, identity cfg.AppIdentity) (context.Context, *awsRootSpan) {
 	ctx, cancel := context.WithCancel(ctx)
 	ctx, seg := xray.BeginSegment(ctx, name)
-	ctx, span := newSpan(ctx, seg, app)
+	ctx, span := newSpan(ctx, seg, identity)
 
 	transaction := &awsRootSpan{
 		span,

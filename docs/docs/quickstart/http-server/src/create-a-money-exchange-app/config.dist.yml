@@ -1,9 +1,12 @@
-env: dev
+app:
+  env: dev
+  name: exchange
+  tags:
+    project: gosoline
+    family: example
+    group: money
 
-app_project: gosoline
-app_family: example
-app_group: money
-app_name: exchange
+xchange
 
 httpserver:
   default:

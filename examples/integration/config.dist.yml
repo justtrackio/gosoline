@@ -1,9 +1,11 @@
-env: test
+app:
+  env: test
+  name: app
+  tags:
+    project: gosoline
+    family: gosoline
+    group: grp
 
-app_project: gosoline
-app_family: gosoline
-app_group: grp
-app_name: app
 
 db:
   default:
@@ -22,3 +24,4 @@ db:
       enabled: true
       table_prefixed: false
       path: ./migrations
+

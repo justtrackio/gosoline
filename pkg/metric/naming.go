@@ -7,14 +7,14 @@ import (
 )
 
 func init() {
-	WithPromNSNamingStrategy(func(modelId cfg.AppId) string {
-		return replacer.Replace(modelId.String())
+	WithPromNSNamingStrategy(func(identity cfg.AppIdentity) string {
+		return replacer.Replace(identity.String())
 	})
 }
 
 var replacer = strings.NewReplacer("-", "_")
 
-type NamingFactory func(modelId cfg.AppId) string
+type NamingFactory func(identity cfg.AppIdentity) string
 
 var promNSNamingStrategy NamingFactory
 

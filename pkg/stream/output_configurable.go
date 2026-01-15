@@ -111,13 +111,10 @@ func newInMemoryOutputFromConfig(_ context.Context, _ cfg.Config, _ log.Logger, 
 
 type KafkaOutputConfiguration struct {
 	BaseOutputConfiguration
-	Type        string `cfg:"type" default:"kafka"`
-	Project     string `cfg:"project"`
-	Family      string `cfg:"family"`
-	Group       string `cfg:"group"`
-	Application string `cfg:"application"`
-	TopicId     string `cfg:"topic_id"`
-	Connection  string `cfg:"connection" default:"default"`
+	Type       string          `cfg:"type" default:"kafka"`
+	Identity   cfg.AppIdentity `cfg:"identity"`
+	TopicId    string          `cfg:"topic_id"`
+	Connection string          `cfg:"connection" default:"default"`
 
 	// LingerTimeout is the max time the producer will wait for new records before flushing the current batch.
 	// When set to 0s, batches will be sent out as fast as possible (or when the size limits are reached with enough back pressure).
@@ -134,6 +131,10 @@ func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log
 	configuration := &KafkaOutputConfiguration{}
 	if err := config.UnmarshalKey(key, configuration); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal kafka output settings for key %q in newKafkaOutputFromConfig: %w", key, err)
+	}
+
+	if err := configuration.Identity.PadFromConfig(config); err != nil {
+		return nil, nil, fmt.Errorf("failed to pad kafka output identity from config: %w", err)
 	}
 
 	producerSettings, err := readProducerSettings(config, name)
@@ -174,12 +175,7 @@ func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log
 	}
 
 	output, err := NewKafkaOutput(ctx, config, logger, &kafkaProducer.Settings{
-		AppId: cfg.AppId{
-			Project:     configuration.Project,
-			Family:      configuration.Family,
-			Group:       configuration.Group,
-			Application: configuration.Application,
-		},
+		AppIdentity:    configuration.Identity,
 		Connection:     configuration.Connection,
 		TopicId:        configuration.TopicId,
 		Compression:    compression,
@@ -197,13 +193,10 @@ func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log
 
 type KinesisOutputConfiguration struct {
 	BaseOutputConfiguration
-	Type        string `cfg:"type" default:"kinesis"`
-	Project     string `cfg:"project"`
-	Family      string `cfg:"family"`
-	Group       string `cfg:"group"`
-	Application string `cfg:"application"`
-	ClientName  string `cfg:"client_name" default:"default"`
-	StreamName  string `cfg:"stream_name"`
+	Type       string          `cfg:"type" default:"kinesis"`
+	Identity   cfg.AppIdentity `cfg:"identity"`
+	ClientName string          `cfg:"client_name" default:"default"`
+	StreamName string          `cfg:"stream_name"`
 }
 
 func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
@@ -211,6 +204,10 @@ func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger l
 	configuration := &KinesisOutputConfiguration{}
 	if err := config.UnmarshalKey(key, configuration); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal kinesis output settings for key %q in newKinesisOutputFromConfig: %w", key, err)
+	}
+
+	if err := configuration.Identity.PadFromConfig(config); err != nil {
+		return nil, nil, fmt.Errorf("failed to pad kinesis output identity from config: %w", err)
 	}
 
 	outputCapabilities := &OutputCapabilities{
@@ -223,14 +220,9 @@ func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger l
 	}
 
 	output, err := NewKinesisOutput(ctx, config, logger, &KinesisOutputSettings{
-		AppId: cfg.AppId{
-			Project:     configuration.Project,
-			Family:      configuration.Family,
-			Group:       configuration.Group,
-			Application: configuration.Application,
-		},
-		ClientName: configuration.ClientName,
-		StreamName: configuration.StreamName,
+		AppIdentity: configuration.Identity,
+		ClientName:  configuration.ClientName,
+		StreamName:  configuration.StreamName,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("can not create kinesis output %s: %w", name, err)
@@ -240,13 +232,10 @@ func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger l
 }
 
 type redisListOutputConfiguration struct {
-	Project     string `cfg:"project"`
-	Family      string `cfg:"family"`
-	Group       string `cfg:"group"`
-	Application string `cfg:"application"`
-	ServerName  string `cfg:"server_name" default:"default" validate:"required,min=1"`
-	Key         string `cfg:"key" validate:"required,min=1"`
-	BatchSize   int    `cfg:"batch_size" default:"100"`
+	Identity   cfg.AppIdentity `cfg:"identity"`
+	ServerName string          `cfg:"server_name" default:"default" validate:"required,min=1"`
+	Key        string          `cfg:"key" validate:"required,min=1"`
+	BatchSize  int             `cfg:"batch_size" default:"100"`
 }
 
 func newRedisListOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
@@ -257,16 +246,15 @@ func newRedisListOutputFromConfig(ctx context.Context, config cfg.Config, logger
 		return nil, nil, fmt.Errorf("failed to unmarshal redis list output settings for key %q in newRedisListOutputFromConfig: %w", key, err)
 	}
 
+	if err := configuration.Identity.PadFromConfig(config); err != nil {
+		return nil, nil, fmt.Errorf("failed to pad redis list output identity from config: %w", err)
+	}
+
 	output, err := NewRedisListOutput(ctx, config, logger, &RedisListOutputSettings{
-		AppId: cfg.AppId{
-			Project:     configuration.Project,
-			Family:      configuration.Family,
-			Group:       configuration.Group,
-			Application: configuration.Application,
-		},
-		ServerName: configuration.ServerName,
-		Key:        configuration.Key,
-		BatchSize:  configuration.BatchSize,
+		AppIdentity: configuration.Identity,
+		ServerName:  configuration.ServerName,
+		Key:         configuration.Key,
+		BatchSize:   configuration.BatchSize,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("can not create redis output %s: %w", name, err)
@@ -277,13 +265,10 @@ func newRedisListOutputFromConfig(ctx context.Context, config cfg.Config, logger
 
 type SnsOutputConfiguration struct {
 	BaseOutputConfiguration
-	Type        string `cfg:"type" default:"sns"`
-	Project     string `cfg:"project"`
-	Family      string `cfg:"family"`
-	Group       string `cfg:"group"`
-	Application string `cfg:"application"`
-	TopicId     string `cfg:"topic_id" validate:"required"`
-	ClientName  string `cfg:"client_name" default:"default"`
+	Type       string          `cfg:"type" default:"sns"`
+	Identity   cfg.AppIdentity `cfg:"identity"`
+	TopicId    string          `cfg:"topic_id" validate:"required"`
+	ClientName string          `cfg:"client_name" default:"default"`
 }
 
 func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
@@ -291,6 +276,10 @@ func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 	configuration := SnsOutputConfiguration{}
 	if err := config.UnmarshalKey(key, &configuration); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal sns output settings for key %q in newSnsOutputFromConfig: %w", key, err)
+	}
+
+	if err := configuration.Identity.PadFromConfig(config); err != nil {
+		return nil, nil, fmt.Errorf("failed to pad sns output identity from config: %w", err)
 	}
 
 	outputCapabilities := &OutputCapabilities{
@@ -303,14 +292,9 @@ func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 	}
 
 	output, err := NewSnsOutput(ctx, config, logger, &SnsOutputSettings{
-		AppId: cfg.AppId{
-			Project:     configuration.Project,
-			Family:      configuration.Family,
-			Group:       configuration.Group,
-			Application: configuration.Application,
-		},
-		TopicId:    configuration.TopicId,
-		ClientName: configuration.ClientName,
+		AppIdentity: configuration.Identity,
+		TopicId:     configuration.TopicId,
+		ClientName:  configuration.ClientName,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("can not create sns output %s: %w", name, err)
@@ -322,10 +306,7 @@ func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 type SqsOutputConfiguration struct {
 	BaseOutputConfiguration
 	Type              string            `cfg:"type" default:"sqs"`
-	Project           string            `cfg:"project"`
-	Family            string            `cfg:"family"`
-	Group             string            `cfg:"group"`
-	Application       string            `cfg:"application"`
+	Identity          cfg.AppIdentity   `cfg:"identity"`
 	QueueId           string            `cfg:"queue_id" validate:"required"`
 	VisibilityTimeout int               `cfg:"visibility_timeout" default:"30" validate:"gt=0"`
 	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
@@ -340,6 +321,10 @@ func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 		return nil, nil, fmt.Errorf("failed to unmarshal sqs output settings for key %q in newSqsOutputFromConfig: %w", key, err)
 	}
 
+	if err := configuration.Identity.PadFromConfig(config); err != nil {
+		return nil, nil, fmt.Errorf("failed to pad sqs output identity from config: %w", err)
+	}
+
 	outputCapabilities := &OutputCapabilities{
 		IsPartitionedOutput:               false,
 		ProvidesCompression:               false,
@@ -350,12 +335,7 @@ func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 	}
 
 	output, err := NewSqsOutput(ctx, config, logger, &SqsOutputSettings{
-		AppId: cfg.AppId{
-			Project:     configuration.Project,
-			Family:      configuration.Family,
-			Group:       configuration.Group,
-			Application: configuration.Application,
-		},
+		AppIdentity:       configuration.Identity,
 		QueueId:           configuration.QueueId,
 		VisibilityTimeout: configuration.VisibilityTimeout,
 		RedrivePolicy:     configuration.RedrivePolicy,

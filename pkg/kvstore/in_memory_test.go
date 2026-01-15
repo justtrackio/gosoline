@@ -22,16 +22,16 @@ type InMemoryKvStoreTestSuite struct {
 
 func (s *InMemoryKvStoreTestSuite) SetupTest() {
 	s.floatStore = kvstore.NewInMemoryKvStoreWithInterfaces[float64](&kvstore.Settings{
-		AppId:     cfg.AppId{},
-		Name:      "",
-		Ttl:       time.Hour,
-		BatchSize: 100,
+		AppIdentity: cfg.AppIdentity{},
+		Name:        "",
+		Ttl:         time.Hour,
+		BatchSize:   100,
 	})
 	s.itemStore = kvstore.NewInMemoryKvStoreWithInterfaces[item](&kvstore.Settings{
-		AppId:     cfg.AppId{},
-		Name:      "",
-		Ttl:       time.Hour,
-		BatchSize: 100,
+		AppIdentity: cfg.AppIdentity{},
+		Name:        "",
+		Ttl:         time.Hour,
+		BatchSize:   100,
 	})
 }
 

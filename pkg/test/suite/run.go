@@ -79,6 +79,15 @@ func suiteConfApplyOptions(suite TestingSuite, extraOptions []Option) *SuiteConf
 	options := []Option{
 		WithClockProvider(clock.NewFakeClock()),
 		WithConfigMap(map[string]any{
+			"app": map[string]any{
+				"env":  "test",
+				"name": "test",
+				"tags": map[string]any{
+					"project": "justtrack",
+					"family":  "gosoline",
+					"group":   "test",
+				},
+			},
 			"cloud.aws.default.ec2.metadata.available": false,
 		}),
 	}
@@ -149,7 +158,9 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteCon
 	}
 	envOptions = append(envOptions, suiteConf.envOptions...)
 	envOptions = append(envOptions, env.WithConfigMap(map[string]any{
-		"env":              "test",
+		"app": map[string]any{
+			"env": "test",
+		},
 		"fixtures.enabled": true,
 		"resource_lifecycles": map[string]any{
 			"purge": map[string]any{

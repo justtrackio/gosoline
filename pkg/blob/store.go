@@ -66,7 +66,7 @@ type (
 )
 
 type Settings struct {
-	cfg.AppId
+	cfg.AppIdentity
 	Bucket     string `cfg:"bucket"`
 	Region     string `cfg:"region"`
 	ClientName string `cfg:"client_name" default:"default"`
@@ -395,7 +395,7 @@ func ReadStoreSettings(config cfg.Config, name string) (*Settings, error) {
 	}
 
 	if settings.Bucket == "" {
-		settings.Bucket = fmt.Sprintf("%s-%s-%s", settings.Project, settings.Environment, settings.Family)
+		settings.Bucket = fmt.Sprintf("%s-%s-%s", settings.Tags.Get("project"), settings.Env, settings.Tags.Get("family"))
 	}
 
 	if settings.Region == "" {

@@ -463,12 +463,13 @@ func buildTestableChainStore[T any](t *testing.T, missingCacheEnabled bool) (
 	element1 = kvStoreMocks.NewKvStore[T](t)
 
 	settings := &kvstore.Settings{
-		AppId: cfg.AppId{
-			Project:     "applike",
-			Environment: "test",
-			Family:      "gosoline",
-			Group:       "grp",
-			Application: "kvstore",
+		AppIdentity: cfg.AppIdentity{
+			Name: "kvstore",
+			Tags: cfg.AppTags{
+				"project": "applike",
+				"family":  "gosoline",
+				"group":   "grp",
+			},
 		},
 		Name:      "test",
 		BatchSize: 100,

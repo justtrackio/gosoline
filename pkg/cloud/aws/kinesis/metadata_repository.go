@@ -101,7 +101,7 @@ type metadataRepository struct {
 	stream            Stream
 	clientId          ClientId
 	repo              ddb.Repository
-	appId             cfg.AppId
+	appIdentity       cfg.AppIdentity
 	clientTimeout     time.Duration
 	checkpointTimeout time.Duration
 	releaseDelay      time.Duration
@@ -140,14 +140,14 @@ func NewMetadataRepository(
 		return nil, fmt.Errorf("can not create ddb repository: %w", err)
 	}
 
-	// we need the app id from the application we are running at, not the app id from the settings as this is the same
+	// we need the app identity from the application we are running at, not the app id from the settings as this is the same
 	// for different kinsumers of the same stream!
-	appId := cfg.AppId{}
-	if err = appId.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("can not pad app id from config: %w", err)
+	appIdentity, err := cfg.GetAppIdentityFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("can not get app identity from config: %w", err)
 	}
 
-	return NewMetadataRepositoryWithInterfaces(logger, stream, clientId, repo, settings, appId, clock.Provider), nil
+	return NewMetadataRepositoryWithInterfaces(logger, stream, clientId, repo, settings, appIdentity, clock.Provider), nil
 }
 
 func NewMetadataRepositoryWithInterfaces(
@@ -156,7 +156,7 @@ func NewMetadataRepositoryWithInterfaces(
 	clientId ClientId,
 	repo ddb.Repository,
 	settings Settings,
-	appId cfg.AppId,
+	appIdentity cfg.AppIdentity,
 	clock clock.Clock,
 ) MetadataRepository {
 	clientTimeout := settings.DiscoverFrequency * time.Duration(settings.ClientExpirationPeriods)
@@ -174,7 +174,7 @@ func NewMetadataRepositoryWithInterfaces(
 		stream:            stream,
 		clientId:          clientId,
 		repo:              repo,
-		appId:             appId,
+		appIdentity:       appIdentity,
 		clientTimeout:     clientTimeout,
 		checkpointTimeout: checkpointTimeout,
 		releaseDelay:      settings.ReleaseDelay,
@@ -387,9 +387,9 @@ func (m *metadataRepository) handleExistingRecord(
 }
 
 func (m *metadataRepository) getClientNamespace() string {
-	return fmt.Sprintf("client:%s:%s", m.appId.String(), m.stream)
+	return fmt.Sprintf("client:%s:%s", m.appIdentity.String(), m.stream)
 }
 
 func (m *metadataRepository) getCheckpointNamespace() string {
-	return fmt.Sprintf("checkpoint:%s:%s", m.appId.String(), m.stream)
+	return fmt.Sprintf("checkpoint:%s:%s", m.appIdentity.String(), m.stream)
 }

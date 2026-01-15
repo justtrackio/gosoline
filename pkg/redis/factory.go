@@ -11,11 +11,11 @@ import (
 )
 
 type Naming struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{name}.{group}.redis.{env}.{family}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}"`
 }
 
 type Settings struct {
-	cfg.AppId
+	cfg.AppIdentity
 	DB              int    `cfg:"db" default:"0"`
 	Name            string `cfg:"name"`
 	Dialer          string `cfg:"dialer" default:"tcp"`
@@ -64,6 +64,10 @@ func ReadSettings(config cfg.Config, name string) (*Settings, error) {
 
 	if settings.Name == "" {
 		settings.Name = name
+	}
+
+	if err = settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad app identity from config for redis %q: %w", key, err)
 	}
 
 	return settings, nil

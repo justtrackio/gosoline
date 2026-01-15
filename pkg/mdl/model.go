@@ -1,20 +1,32 @@
 package mdl
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
 
+// ConfigProvider is an interface for reading config values.
+// It is implemented by cfg.Config.
 type ConfigProvider interface {
 	GetString(key string, optionalDefault ...string) (string, error)
 }
 
+// ModelId represents the identity of a model, extending the application
+// identity with a model name.
+//
+// The struct tag defaults use the macro placeholders:
+//   - {app.name} for application name
+//   - {app.tags.project} for project
+//   - {app.tags.family} for family
+//   - {app.tags.group} for group
+//   - {app.env} for environment
 type ModelId struct {
-	Project     string `cfg:"project" default:"{app_project}"`
-	Environment string `cfg:"environment" default:"{env}"`
-	Family      string `cfg:"family" default:"{app_family}"`
-	Group       string `cfg:"group" default:"{app_group}"`
-	Application string `cfg:"application" default:"{app_name}"`
+	Project     string `cfg:"project" default:"{app.tags.project}"`
+	Environment string `cfg:"environment" default:"{app.env}"`
+	Family      string `cfg:"family" default:"{app.tags.family}"`
+	Group       string `cfg:"group" default:"{app.tags.group}"`
+	Application string `cfg:"application" default:"{app.name}"`
 	Name        string `cfg:"name"`
 }
 
@@ -22,40 +34,59 @@ func (m *ModelId) String() string {
 	return fmt.Sprintf("%s.%s.%s.%s", m.Project, m.Family, m.Group, m.Name)
 }
 
+// PadFromConfig fills in empty fields of ModelId from config.
+//
+// This method requires the following config keys if the corresponding
+// ModelId fields are empty:
+//   - app.tags.project
+//   - app.tags.family
+//   - app.tags.group
+//   - app.name
+//   - app.env
+//
+// This method is useful when you have a partially populated ModelId
+// (e.g., from struct tag defaults) and want to fill remaining fields.
 func (m *ModelId) PadFromConfig(config ConfigProvider) error {
-	var err error
+	var errs []error
 
 	if m.Project == "" {
-		if m.Project, err = config.GetString("app_project"); err != nil {
-			return fmt.Errorf("could not get app_project: %w", err)
-		}
+		m.Project, errs = padStringFieldFromConfig(config, "app.tags.project", errs)
 	}
 
 	if m.Environment == "" {
-		if m.Environment, err = config.GetString("env"); err != nil {
-			return fmt.Errorf("could not get env: %w", err)
-		}
+		m.Environment, errs = padStringFieldFromConfig(config, "app.env", errs)
 	}
 
 	if m.Family == "" {
-		if m.Family, err = config.GetString("app_family"); err != nil {
-			return fmt.Errorf("could not get app_family: %w", err)
-		}
+		m.Family, errs = padStringFieldFromConfig(config, "app.tags.family", errs)
 	}
 
 	if m.Group == "" {
-		if m.Group, err = config.GetString("app_group"); err != nil {
-			return fmt.Errorf("could not get app_group: %w", err)
-		}
+		m.Group, errs = padStringFieldFromConfig(config, "app.tags.group", errs)
 	}
 
 	if m.Application == "" {
-		if m.Application, err = config.GetString("app_name"); err != nil {
-			return fmt.Errorf("could not get app_name: %w", err)
-		}
+		m.Application, errs = padStringFieldFromConfig(config, "app.name", errs)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("could not pad ModelId from config: %w", errors.Join(errs...))
 	}
 
 	return nil
+}
+
+// padStringFieldFromConfig reads a required string field from config and appends errors if needed.
+func padStringFieldFromConfig(config ConfigProvider, key string, errs []error) (string, []error) {
+	value, err := config.GetString(key)
+	switch {
+	case err != nil:
+		errs = append(errs, fmt.Errorf("%s: %w", key, err))
+	case value == "":
+		errs = append(errs, fmt.Errorf("%s: value is empty", key))
+	}
+
+	return value, errs
 }
 
 func ModelIdFromString(str string) (ModelId, error) {

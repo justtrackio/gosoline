@@ -37,19 +37,21 @@ type XRaySettings struct {
 }
 
 type awsTracer struct {
-	cfg.AppId
+	cfg.AppIdentity
 }
 
 func NewAwsTracer(_ context.Context, config cfg.Config, logger log.Logger) (Tracer, error) {
-	appId := cfg.AppId{}
-	appId.PadFromConfig(config)
+	identity, err := cfg.GetAppIdentityFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("could not get app identity from config: %w", err)
+	}
 
 	settings := &XrayTracerSettings{}
 	if err := config.UnmarshalKey("tracing.xray", settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal xray tracer settings: %w", err)
 	}
 
-	addr := lookupAddr(appId, settings)
+	addr := lookupAddr(identity, settings)
 	ctxMissingStrategy := NewContextMissingWarningLogStrategy(logger)
 
 	samplingStrategy, err := getSamplingStrategy(&settings.Sampling)
@@ -64,10 +66,10 @@ func NewAwsTracer(_ context.Context, config cfg.Config, logger log.Logger) (Trac
 		StreamingMaxSubsegmentCount: settings.StreamingMaxSubsegmentCount,
 	}
 
-	return NewAwsTracerWithInterfaces(logger, appId, xRaySettings)
+	return NewAwsTracerWithInterfaces(logger, identity, xRaySettings)
 }
 
-func NewAwsTracerWithInterfaces(logger log.Logger, appId cfg.AppId, settings *XRaySettings) (*awsTracer, error) {
+func NewAwsTracerWithInterfaces(logger log.Logger, identity cfg.AppIdentity, settings *XRaySettings) (*awsTracer, error) {
 	if settings.StreamingMaxSubsegmentCount == 0 {
 		settings.StreamingMaxSubsegmentCount = xrayDefaultMaxSubsegmentCount
 	}
@@ -91,7 +93,7 @@ func NewAwsTracerWithInterfaces(logger log.Logger, appId cfg.AppId, settings *XR
 	setGlobalXRayLogger(logger)
 
 	return &awsTracer{
-		AppId: appId,
+		AppIdentity: identity,
 	}, nil
 }
 
@@ -103,16 +105,16 @@ func (t *awsTracer) StartSubSpan(ctx context.Context, name string) (context.Cont
 		return ctx, disabledSpan()
 	}
 
-	return newSpan(ctxWithSegment, segment, t.AppId)
+	return newSpan(ctxWithSegment, segment, t.AppIdentity)
 }
 
 func (t *awsTracer) StartSpan(name string) (context.Context, Span) {
-	return newRootSpan(context.Background(), name, t.AppId)
+	return newRootSpan(context.Background(), name, t.AppIdentity)
 }
 
 func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (context.Context, Span) {
 	parentSpan := GetSpanFromContext(ctx)
-	ctx, transaction := newRootSpan(ctx, name, t.AppId)
+	ctx, transaction := newRootSpan(ctx, name, t.AppIdentity)
 
 	if parentSpan != nil {
 		parentTrace := parentSpan.GetTrace()
@@ -136,12 +138,12 @@ func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (cont
 	return ctx, transaction
 }
 
-func lookupAddr(appId cfg.AppId, settings *XrayTracerSettings) string {
+func lookupAddr(identity cfg.AppIdentity, settings *XrayTracerSettings) string {
 	addressValue := settings.AddressValue
 
 	if settings.AddressType == dnsSrv {
 		if addressValue == "" {
-			addressValue = fmt.Sprintf("xray.%v.%v", appId.Environment, appId.Family)
+			addressValue = fmt.Sprintf("xray.%v.%v", identity.Env, identity.Tags.Get("family"))
 		}
 
 		_, srvs, err := net.LookupSRV("", "", addressValue)

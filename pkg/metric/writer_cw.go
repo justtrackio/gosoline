@@ -3,7 +3,6 @@ package metric
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -43,7 +42,7 @@ type (
 	}
 
 	CloudwatchNamingSettings struct {
-		Pattern string `cfg:"pattern,nodecode" default:"{project}/{env}/{family}/{group}-{app}"`
+		Pattern string `cfg:"pattern,nodecode" default:"{app.tags.project}/{app.env}/{app.tags.family}/{app.tags.group}-{app.name}"`
 	}
 
 	cwWriterCtxKey string
@@ -215,17 +214,9 @@ func (w *cloudwatchWriter) buildMetricData(ctx context.Context, batch Data) ([]t
 }
 
 func GetCloudWatchNamespace(config cfg.Config) (string, error) {
-	appId, err := cfg.GetAppIdFromConfig(config)
+	identity, err := cfg.GetAppIdentityFromConfig(config)
 	if err != nil {
-		return "", fmt.Errorf("failed to get app id from config: %w", err)
-	}
-
-	values := map[string]string{
-		"project": appId.Project,
-		"env":     appId.Environment,
-		"family":  appId.Family,
-		"group":   appId.Group,
-		"app":     appId.Application,
+		return "", fmt.Errorf("failed to get app identity from config: %w", err)
 	}
 
 	cloudwatchSettings := &CloudWatchSettings{}
@@ -233,11 +224,12 @@ func GetCloudWatchNamespace(config cfg.Config) (string, error) {
 		return "", fmt.Errorf("failed to get cloudwatch settings: %w", err)
 	}
 
-	namespace := cloudwatchSettings.Naming.Pattern
+	// Use NamingTemplate for strict placeholder validation and pattern-driven tag requirements
+	tmpl := cfg.NewNamingTemplate(cloudwatchSettings.Naming.Pattern)
 
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		namespace = strings.ReplaceAll(namespace, templ, val)
+	namespace, err := tmpl.ValidateAndExpand(identity)
+	if err != nil {
+		return "", fmt.Errorf("cloudwatch namespace naming failed: %w", err)
 	}
 
 	return namespace, nil

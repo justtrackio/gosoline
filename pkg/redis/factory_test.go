@@ -21,11 +21,15 @@ func (s *FactoryTestSuite) SetupTest() {
 
 func (s *FactoryTestSuite) initConfig(settings map[string]any) {
 	appIdConfig := cfg.WithConfigMap(map[string]any{
-		"app_project": "gosoline",
-		"app_family":  "fam",
-		"app_group":   "grp",
-		"app_name":    "redis",
-		"env":         "env",
+		"app": map[string]any{
+			"env":  "env",
+			"name": "redis",
+			"tags": map[string]any{
+				"project": "gosoline",
+				"family":  "fam",
+				"group":   "grp",
+			},
+		},
 	})
 
 	if err := s.config.Option(cfg.WithConfigMap(settings), appIdConfig); err != nil {
@@ -40,16 +44,18 @@ func (s *FactoryTestSuite) TestDefault() {
 	s.NoError(err, "there should be no error reading the settings")
 
 	expected := &redis.Settings{
-		AppId: cfg.AppId{
-			Project:     "gosoline",
-			Environment: "env",
-			Family:      "fam",
-			Group:       "grp",
-			Application: "redis",
+		AppIdentity: cfg.AppIdentity{
+			Name: "redis",
+			Env:  "env",
+			Tags: cfg.AppTags{
+				"project": "gosoline",
+				"family":  "fam",
+				"group":   "grp",
+			},
 		},
 		Name: "default",
 		Naming: redis.Naming{
-			Pattern: "{name}.{group}.redis.{env}.{family}",
+			Pattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}",
 		},
 		Dialer:  "tcp",
 		Address: "127.0.0.1:6379",
@@ -81,16 +87,18 @@ func (s *FactoryTestSuite) TestDedicated() {
 	s.NoError(err, "there should be no error reading the settings")
 
 	expected := &redis.Settings{
-		AppId: cfg.AppId{
-			Project:     "gosoline",
-			Environment: "env",
-			Family:      "fam",
-			Group:       "grp",
-			Application: "redis",
+		AppIdentity: cfg.AppIdentity{
+			Name: "redis",
+			Env:  "env",
+			Tags: cfg.AppTags{
+				"project": "gosoline",
+				"family":  "fam",
+				"group":   "grp",
+			},
 		},
 		Name: "dedicated",
 		Naming: redis.Naming{
-			Pattern: "{name}.{group}.redis.{env}.{family}",
+			Pattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}",
 		},
 		Dialer:  "srv",
 		Address: "dedicated.address",
@@ -124,16 +132,18 @@ func (s *FactoryTestSuite) TestWithDefaults() {
 	s.NoError(err, "there should be no error reading the settings")
 
 	expected := &redis.Settings{
-		AppId: cfg.AppId{
-			Project:     "gosoline",
-			Environment: "env",
-			Family:      "fam",
-			Group:       "grp",
-			Application: "redis",
+		AppIdentity: cfg.AppIdentity{
+			Name: "redis",
+			Env:  "env",
+			Tags: cfg.AppTags{
+				"project": "gosoline",
+				"family":  "fam",
+				"group":   "grp",
+			},
 		},
 		Name: "partial",
 		Naming: redis.Naming{
-			Pattern: "{name}.{group}.redis.{env}.{family}",
+			Pattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}",
 		},
 		Dialer:  "srv",
 		Address: "partial.address",
