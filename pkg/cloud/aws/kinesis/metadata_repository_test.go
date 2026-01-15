@@ -31,7 +31,7 @@ type metadataRepositoryTestSuite struct {
 	checkpointNamespace string
 	repo                *ddbMocks.Repository
 	settings            kinesis.Settings
-	appId               cfg.AppId
+	appIdentity         cfg.AppIdentity
 	clock               clock.FakeClock
 	metadataRepository  kinesis.MetadataRepository
 }
@@ -55,15 +55,17 @@ func (s *metadataRepositoryTestSuite) SetupTest() {
 		PersistFrequency:         time.Second * 10,
 		ClientExpirationPeriods:  5,
 	}
-	s.appId = cfg.AppId{
-		Project:     "gosoline",
-		Environment: "test",
-		Family:      "metadata-repository",
-		Application: "test-suite",
+	s.appIdentity = cfg.AppIdentity{
+		Name: "test-suite",
+		Env:  "test",
+		Tags: cfg.AppTags{
+			"project": "gosoline",
+			"family":  "metadata-repository",
+		},
 	}
 	s.clock = clock.NewFakeClock()
 
-	s.metadataRepository = kinesis.NewMetadataRepositoryWithInterfaces(s.logger, s.stream, s.clientId, s.repo, s.settings, s.appId, s.clock)
+	s.metadataRepository = kinesis.NewMetadataRepositoryWithInterfaces(s.logger, s.stream, s.clientId, s.repo, s.settings, s.appIdentity, s.clock)
 }
 
 func (s *metadataRepositoryTestSuite) TestRegisterClient_PutItemError() {

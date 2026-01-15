@@ -1,8 +1,11 @@
-env: dev
-app_project: gosoline
-app_family: how-to
-app_group: grp
-app_name: consumer
+app:
+  env: dev
+  name: consumer
+  tags:
+    project: gosoline
+    family: how-to
+    group: grp
+onsumer
 
 stream:
   input:

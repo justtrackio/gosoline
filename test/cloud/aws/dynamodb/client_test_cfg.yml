@@ -1,9 +1,11 @@
-env: test
+app:
+  env: test
+  name: app
+  tags:
+    project: prj
+    family: fam
+    group: grp
 
-app_project: prj
-app_family: fam
-app_group: grp
-app_name: app
 
 cloud:
   aws:
@@ -22,9 +24,9 @@ cloud:
             max_attempts: 0
             max_elapsed_time: 100ms
 
-
 test:
   components:
     localstack:
       default:
         toxiproxy_enabled: true
+

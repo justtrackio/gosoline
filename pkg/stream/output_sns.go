@@ -10,13 +10,13 @@ import (
 )
 
 type SnsOutputSettings struct {
-	cfg.AppId
+	cfg.AppIdentity
 	TopicId    string
 	ClientName string
 }
 
-func (s SnsOutputSettings) GetAppId() cfg.AppId {
-	return s.AppId
+func (s SnsOutputSettings) GetAppIdentity() cfg.AppIdentity {
+	return s.AppIdentity
 }
 
 func (s SnsOutputSettings) GetClientName() string {

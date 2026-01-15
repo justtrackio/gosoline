@@ -1,84 +1,183 @@
 package cfg
 
 import (
+	"errors"
+	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/funk"
 )
 
-type AppId struct {
-	Project     string `cfg:"project" default:"{app_project}" json:"project"`
-	Environment string `cfg:"environment" default:"{env}" json:"environment"`
-	Family      string `cfg:"family" default:"{app_family}" json:"family"`
-	Group       string `cfg:"group" default:"{app_group}" json:"group"`
-	Application string `cfg:"application" default:"{app_name}" json:"application"`
+// AppIdentity represents the resolved application identity.
+// It is used throughout gosoline for resource naming and identification.
+//
+// Unlike the old AppId type, AppIdentity uses dynamic tags rather than
+// fixed fields for project/family/group. This allows arbitrary tags
+// while still supporting the common naming patterns.
+//
+// Configuration structure:
+//
+//	app:
+//	  env: production    # required globally
+//	  name: myapp        # required
+//	  tags:              # optional globally, but some subsystems require specific tags
+//	    project: ...
+//	    family: ...
+//	    group: ...
+//	    custom: ...      # any additional tags
+type AppIdentity struct {
+	Name string  `json:"name"`
+	Env  string  `json:"env"`
+	Tags AppTags `json:"tags"`
 }
 
-func GetAppIdFromConfig(config Config) (AppId, error) {
-	var err error
-	appId := AppId{}
-
-	if appId.Project, err = config.GetString("app_project"); err != nil {
-		return appId, err
+// GetAppIdentityFromConfig reads the application identity from config.
+//
+// This function requires:
+//   - "app.name" to be present and non-empty
+//   - "app.env" to be present and non-empty
+//
+// Tags are optional at this level. Subsystems that require specific tags
+// (e.g., project, family, group for naming) should call RequireTags().
+func GetAppIdentityFromConfig(config Config) (AppIdentity, error) {
+	// app.name is required
+	name, err := config.GetString("app.name")
+	if err != nil {
+		return AppIdentity{}, fmt.Errorf("app.name: %w", err)
 	}
 
-	if appId.Environment, err = config.GetString("env"); err != nil {
-		return appId, err
+	if strings.TrimSpace(name) == "" {
+		return AppIdentity{}, errors.New("app.name: value is empty")
 	}
 
-	if appId.Family, err = config.GetString("app_family"); err != nil {
-		return appId, err
+	// app.env is required
+	env, err := config.GetString("app.env")
+	if err != nil {
+		return AppIdentity{}, fmt.Errorf("app.env: %w", err)
 	}
 
-	if appId.Group, err = config.GetString("app_group"); err != nil {
-		return appId, err
+	if strings.TrimSpace(env) == "" {
+		return AppIdentity{}, errors.New("app.env: value is empty")
 	}
 
-	if appId.Application, err = config.GetString("app_name"); err != nil {
-		return appId, err
+	// Tags are optional
+	tags, err := config.GetStringMapString("app.tags", map[string]string{})
+	if err != nil {
+		return AppIdentity{}, fmt.Errorf("app.tags: %w", err)
 	}
 
-	return appId, nil
+	return AppIdentity{
+		Name: name,
+		Env:  env,
+		Tags: tags,
+	}, nil
 }
 
-func (i *AppId) PadFromConfig(config Config) error {
-	var err error
+// PadFromConfig fills in empty fields of AppIdentity from config.
+//
+// Behavior:
+//   - If Name is empty, fills from app.name
+//   - If Env is empty, fills from app.env (required, will error if missing/empty)
+//   - If Tags is nil or empty, fills from app.tags
+//   - Existing tag keys are NOT overwritten; only missing keys are added
+//
+// This method is useful when you have a partially populated AppIdentity
+// (e.g., from struct tag defaults) and want to fill remaining fields.
+func (i *AppIdentity) PadFromConfig(config Config) error {
+	// Name and Env fields are needed from config
+	needsName := i.Name == ""
+	needsEnv := i.Env == ""
 
-	if i.Project == "" {
-		if i.Project, err = config.GetString("app_project"); err != nil {
-			return err
+	if needsName {
+		name, err := config.GetString("app.name")
+		if err != nil {
+			return fmt.Errorf("app.name: %w", err)
 		}
+
+		if strings.TrimSpace(name) == "" {
+			return errors.New("app.name: value is empty")
+		}
+
+		i.Name = name
 	}
 
-	if i.Environment == "" {
-		if i.Environment, err = config.GetString("env"); err != nil {
-			return err
+	if needsEnv {
+		env, err := config.GetString("app.env")
+		if err != nil {
+			return fmt.Errorf("app.env: %w", err)
 		}
+
+		if strings.TrimSpace(env) == "" {
+			return errors.New("app.env: value is empty")
+		}
+
+		i.Env = env
 	}
 
-	if i.Family == "" {
-		if i.Family, err = config.GetString("app_family"); err != nil {
-			return err
-		}
+	// Merge tags: keep existing, add missing from config
+	tags, err := config.GetStringMapString("app.tags", map[string]string{})
+	if err != nil {
+		return fmt.Errorf("app.tags: %w", err)
 	}
 
-	if i.Group == "" {
-		if i.Group, err = config.GetString("app_group"); err != nil {
-			return err
-		}
+	if i.Tags == nil {
+		i.Tags = make(AppTags)
 	}
 
-	if i.Application == "" {
-		if i.Application, err = config.GetString("app_name"); err != nil {
-			return err
+	for key, value := range tags {
+		if _, exists := i.Tags[key]; !exists {
+			i.Tags[key] = value
 		}
 	}
 
 	return nil
 }
 
-func (i *AppId) String() string {
-	elements := []string{i.Project, i.Environment, i.Family, i.Group, i.Application}
+// RequireTags validates that the specified tag keys are present and non-empty.
+// Whitespace-only values are treated as missing.
+//
+// This method should be called by subsystems that require specific tags
+// for naming or identification purposes. For example, kafka topic naming
+// might call identity.RequireTags("project", "family", "group").
+//
+// Returns an error listing all missing tags in sorted order, e.g.:
+//
+//	"missing required tags: family, project"
+func (i *AppIdentity) RequireTags(keys ...string) error {
+	var missing []string
+
+	for _, key := range keys {
+		value := strings.TrimSpace(i.Tags.Get(key))
+		if value == "" {
+			missing = append(missing, key)
+		}
+	}
+
+	if len(missing) > 0 {
+		slices.Sort(missing)
+
+		return fmt.Errorf("missing required tags: %s", strings.Join(missing, ", "))
+	}
+
+	return nil
+}
+
+// String returns a canonical string representation of the identity.
+// It joins non-empty components in the order: project, env, family, group, name.
+// Empty components are skipped.
+//
+// Examples:
+//   - Full: "myproject-production-myfamily-mygroup-myapp"
+//   - Partial: "production-myapp" (if only env and name are set)
+func (i *AppIdentity) String() string {
+	elements := []string{
+		i.Tags.Get("project"),
+		i.Env,
+		i.Tags.Get("family"),
+		i.Tags.Get("group"),
+		i.Name,
+	}
 	elements = funk.Filter(elements, func(element string) bool {
 		return element != ""
 	})

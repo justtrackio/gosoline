@@ -37,11 +37,11 @@ func NewMetricStoreWithInterfaces[T any](store KvStore[T], settings *Settings) K
 
 	storeName := fmt.Sprintf("%T", store)
 	model := (&mdl.ModelId{
-		Project:     settings.Project,
-		Environment: settings.Environment,
-		Family:      settings.Family,
-		Group:       settings.Group,
-		Application: settings.Application,
+		Project:     settings.Tags.Get("project"),
+		Environment: settings.Env,
+		Family:      settings.Tags.Get("family"),
+		Group:       settings.Tags.Get("group"),
+		Application: settings.Name,
 		Name:        settings.Name,
 	}).String()
 	defaults := getDefaultMetrics(model, storeName)

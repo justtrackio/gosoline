@@ -2,7 +2,7 @@
 
 ## Scope
 - DynamoDB integration layer: metadata modeling, repository abstraction, builders, and fixtures.
-- Aligns naming/macros with `cfg.AppId` and `mdl.ModelId` to ensure realm consistency.
+- Table naming uses `mdl.ModelId` with its own macro system (NOT `cfg.NamingTemplate`).
 - Provides lifecycle helpers and purgers for test environments.
 
 ## Key files
@@ -26,9 +26,16 @@ Table names are generated via `ModelId.ReplaceMacros(pattern)`. Default pattern:
 ddb.default.naming.pattern: "{project}-{env}-{family}-{group}-{modelId}"
 ```
 
-Available macros:
-- `{project}`, `{env}`, `{family}`, `{group}`, `{app}` - from AppId
-- `{modelId}` - model's string representation
+**Note:** DynamoDB uses `ModelId`-based macros, NOT `cfg.NamingTemplate` macros. The placeholders are different:
+
+| ModelId Macro | Description |
+|---------------|-------------|
+| `{project}` | Project from ModelId |
+| `{env}` | Environment from ModelId |
+| `{family}` | Family from ModelId |
+| `{group}` | Group from ModelId |
+| `{app}` | App from ModelId |
+| `{modelId}` | Model's string representation |
 
 ## Common config keys
 ```yaml
@@ -45,3 +52,4 @@ ddb.default.naming.pattern: "{project}-{env}-{family}-{group}-{modelId}"
 - Keep request builders composable—avoid hard-coding table names; always take `Metadata` or `ModelId` input.
 - Fixture writers (`fixture_writer_ddb*.go`) must stay in sync with metadata parsing.
 - Update `.mockery.yml` when adding new interfaces so DynamoDB service mocks stay current.
+- DynamoDB naming is intentionally separate from `cfg.NamingTemplate` to support model-specific identifiers.

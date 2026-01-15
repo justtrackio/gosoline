@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -22,7 +21,7 @@ var dialers = map[string]Dialer{
 
 type (
 	Dialer           func(logger log.Logger, settings *Settings) func(context.Context, string, string) (net.Conn, error)
-	SrvNamingFactory func(appId cfg.AppId, name string) string
+	SrvNamingFactory func(identity cfg.AppIdentity, name string) string
 )
 
 func dialerSrv(logger log.Logger, settings *Settings) func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -30,19 +29,15 @@ func dialerSrv(logger log.Logger, settings *Settings) func(ctx context.Context, 
 		address := settings.Address
 
 		if address == "" {
-			values := map[string]string{
-				"project": settings.Project,
-				"env":     settings.Environment,
-				"family":  settings.Family,
-				"group":   settings.Group,
-				"app":     settings.Application,
-				"name":    settings.Name,
-			}
+			// Use NamingTemplate for strict placeholder validation
+			// "name" is a redis-specific placeholder for the redis client name
+			tmpl := cfg.NewNamingTemplate(settings.Naming.Pattern, "name")
+			tmpl.WithResourceValue("name", settings.Name)
 
-			address = settings.Naming.Pattern
-			for key, val := range values {
-				templ := fmt.Sprintf("{%s}", key)
-				address = strings.ReplaceAll(address, templ, val)
+			var err error
+			address, err = tmpl.ValidateAndExpand(settings.AppIdentity)
+			if err != nil {
+				return nil, fmt.Errorf("redis srv naming failed: %w", err)
 			}
 
 			logger.Debug(ctx, "no address provided for redis %s: using %s", settings.Name, address)

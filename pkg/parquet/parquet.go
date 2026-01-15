@@ -35,14 +35,14 @@ type ReaderSettings struct {
 	Recorder       FileRecorder
 }
 
-type S3BucketNamingStrategy func(appId cfg.AppId) string
+type S3BucketNamingStrategy func(identity cfg.AppIdentity) string
 
 func WithS3BucketNamingStrategy(strategy S3BucketNamingStrategy) {
 	s3BucketNamingStrategy = strategy
 }
 
-var s3BucketNamingStrategy = func(appId cfg.AppId) string {
-	return fmt.Sprintf("%s-%s-%s", appId.Project, appId.Environment, appId.Family)
+var s3BucketNamingStrategy = func(identity cfg.AppIdentity) string {
+	return fmt.Sprintf("%s-%s-%s", identity.Tags.Get("project"), identity.Env, identity.Tags.Get("family"))
 }
 
 func dtSeparated(modelId mdl.ModelId, datetime time.Time) string {

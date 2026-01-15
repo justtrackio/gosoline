@@ -120,11 +120,15 @@ func TestModuleExample(t *testing.T) {
 		application.WithModuleFactory("status", status.NewModule(status.ProvideManager())),
 		application.WithModuleFactory("main", NewTestModule),
 		application.WithConfigMap(map[string]any{
-			"env":         "test",
-			"app_project": "justtrack",
-			"app_family":  "fam",
-			"app_group":   "grp",
-			"app_name":    "name",
+			"app": map[string]any{
+				"env":  "test",
+				"name": "name",
+				"tags": map[string]any{
+					"project": "justtrack",
+					"family":  "fam",
+					"group":   "grp",
+				},
+			},
 		}),
 	)
 	app.Run()

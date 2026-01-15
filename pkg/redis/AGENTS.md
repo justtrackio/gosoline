@@ -3,9 +3,11 @@
 ## Scope
 - Provides Redis client factory, lifecycle hooks, fixtures, and helper exec functions used by cache/stream modules.
 - Wraps go-redis with gosoline config, logging, and metrics.
+- Address naming uses `cfg.NamingTemplate` with AppIdentity macros.
 
 ## Key files
 - `factory.go`, `client.go` - construct clients from config and expose helper interfaces.
+- `dialer.go` - resolves Redis addresses using naming patterns.
 - `lifecycle.go`, `lifecycle_purger.go` - ensure clean startup/shutdown per module/test.
 - `fixture_writer_redis.go` - integrates fixtures package for deterministic test data.
 
@@ -27,6 +29,19 @@ redis.default.dialer.timeout: 5s
 redis.default.dialer.read_timeout: 3s
 redis.default.dialer.write_timeout: 3s
 ```
+
+## Naming pattern
+Redis address naming uses `cfg.NamingTemplate` with AppIdentity macros:
+```yaml
+redis.default.naming.pattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}"
+```
+
+| Placeholder | Description |
+|-------------|-------------|
+| `{name}` | Redis client name (resource-specific) |
+| `{app.env}` | Environment |
+| `{app.tags.family}` | Family tag |
+| `{app.tags.group}` | Group tag |
 
 ## Client modes
 | Mode | Use case |

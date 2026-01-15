@@ -1,8 +1,11 @@
-env: dev
-app_project: gosoline
-app_family: get-started
-app_group: grp
-app_name: hello-world
+app:
+  env: dev
+  name: hello-world
+  tags:
+    project: gosoline
+    family: get-started
+    group: grp
+ello-world
 
 // highlight-start
 log:

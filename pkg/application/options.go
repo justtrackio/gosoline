@@ -24,7 +24,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/smpl"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/tracing"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -278,34 +277,26 @@ func WithKinsumerAutoscaleModule(kinsumerInputName string) Option {
 
 func WithLoggerGroupTag(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
-		if !config.IsSet("app_group") {
-			return errors.New("can not get application group from config to set it on logger")
-		}
-
-		appGroup, err := config.GetString("app_group")
+		identity, err := cfg.GetAppIdentityFromConfig(config)
 		if err != nil {
-			return fmt.Errorf("could not get app_group: %w", err)
+			return fmt.Errorf("can not get app identity to set group on logger: %w", err)
 		}
 
 		return logger.Option(log.WithFields(map[string]any{
-			"group": appGroup,
+			"group": identity.Tags.Get("group"),
 		}))
 	})
 }
 
 func WithLoggerApplicationTag(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
-		if !config.IsSet("app_name") {
-			return errors.New("can not get application name from config to set it on logger")
-		}
-
-		appName, err := config.GetString("app_name")
+		identity, err := cfg.GetAppIdentityFromConfig(config)
 		if err != nil {
-			return fmt.Errorf("could not get app_name: %w", err)
+			return fmt.Errorf("can not get app identity to set application on logger: %w", err)
 		}
 
 		return logger.Option(log.WithFields(map[string]any{
-			"application": appName,
+			"application": identity.Name,
 		}))
 	})
 }

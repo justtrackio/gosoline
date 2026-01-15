@@ -20,7 +20,7 @@ const (
 )
 
 type RedisListInputSettings struct {
-	cfg.AppId
+	cfg.AppIdentity
 	ServerName         string
 	Key                string
 	WaitTime           time.Duration
@@ -51,7 +51,7 @@ func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 
-	defaultMetrics := getRedisListInputDefaultMetrics(settings.AppId, settings.Key)
+	defaultMetrics := getRedisListInputDefaultMetrics(settings.AppIdentity, settings.Key)
 	mw := metric.NewWriter(defaultMetrics...)
 
 	healthCheckTimer, err := clock.NewHealthCheckTimer(settings.HealthcheckTimeout)
@@ -69,7 +69,7 @@ func NewRedisListInputWithInterfaces(
 	settings *RedisListInputSettings,
 	healthCheckTimer clock.HealthCheckTimer,
 ) Input {
-	fullyQualifiedKey := redis.GetFullyQualifiedKey(settings.AppId, settings.Key)
+	fullyQualifiedKey := redis.GetFullyQualifiedKey(settings.AppIdentity, settings.Key)
 
 	return &redisListInput{
 		logger:            logger,
@@ -178,8 +178,8 @@ func (i *redisListInput) writeListReadMetric(ctx context.Context) {
 	i.mw.Write(ctx, data)
 }
 
-func getRedisListInputDefaultMetrics(appId cfg.AppId, key string) metric.Data {
-	fullyQualifiedKey := redis.GetFullyQualifiedKey(appId, key)
+func getRedisListInputDefaultMetrics(appIdentity cfg.AppIdentity, key string) metric.Data {
+	fullyQualifiedKey := redis.GetFullyQualifiedKey(appIdentity, key)
 
 	return metric.Data{
 		{

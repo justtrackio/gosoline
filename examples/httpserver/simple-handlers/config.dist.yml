@@ -1,9 +1,12 @@
-env: dev
+app:
+  env: dev
+  name: name
+  tags:
+    project: project
+    family: family
+    group: grp
 
-app_project: project
-app_family: family
-app_group: grp
-app_name: name
+ame
 
 httpserver:
   default:

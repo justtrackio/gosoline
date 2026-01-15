@@ -20,7 +20,7 @@ var (
 )
 
 type SqsInputSettings struct {
-	cfg.AppId
+	cfg.AppIdentity
 	QueueId             string                     `cfg:"queue_id"`
 	MaxNumberOfMessages int32                      `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
 	WaitTime            int32                      `cfg:"wait_time"`
@@ -33,8 +33,8 @@ type SqsInputSettings struct {
 	Healthcheck         health.HealthCheckSettings `cfg:"healthcheck"`
 }
 
-func (s SqsInputSettings) GetAppId() cfg.AppId {
-	return s.AppId
+func (s SqsInputSettings) GetAppIdentity() cfg.AppIdentity {
+	return s.AppIdentity
 }
 
 func (s SqsInputSettings) GetClientName() string {
@@ -269,7 +269,7 @@ func (i *sqsInput) AckBatch(ctx context.Context, msgs []*Message, acks []bool) e
 
 func (i *sqsInput) GetRetryHandler() (Input, RetryHandler) {
 	retryHandler := NewManualSqsRetryHandler(i.logger, i.queue, &SqsOutputSettings{
-		AppId:             i.settings.AppId,
+		AppIdentity:       i.settings.AppIdentity,
 		ClientName:        i.settings.ClientName,
 		Fifo:              i.settings.Fifo,
 		QueueId:           i.settings.QueueId,

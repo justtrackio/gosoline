@@ -46,7 +46,7 @@ type SettingsInitialPosition struct {
 }
 
 type Settings struct {
-	cfg.AppId
+	cfg.AppIdentity
 	// Name of the kinesis client to use
 	ClientName string `cfg:"client_name" default:"default"`
 	// Name of the kinsumer
@@ -77,8 +77,8 @@ type Settings struct {
 	Healthcheck health.HealthCheckSettings `cfg:"healthcheck"`
 }
 
-func (s Settings) GetAppId() cfg.AppId {
-	return s.AppId
+func (s Settings) GetAppIdentity() cfg.AppIdentity {
+	return s.AppIdentity
 }
 
 func (s Settings) GetClientName() string {

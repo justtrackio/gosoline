@@ -44,7 +44,9 @@ type s3Writer struct {
 }
 
 func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *WriterSettings) (Writer, error) {
-	settings.ModelId.PadFromConfig(config)
+	if err := settings.ModelId.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("could not pad modelId from config: %w", err)
+	}
 
 	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, settings.ClientName)
 	if err != nil {
@@ -184,12 +186,14 @@ func (w *s3Writer) parseItems(items any) (schema string, converted []string, err
 }
 
 func (w *s3Writer) getBucketName() string {
-	return s3BucketNamingStrategy(cfg.AppId{
-		Project:     w.modelId.Project,
-		Environment: w.modelId.Environment,
-		Family:      w.modelId.Family,
-		Group:       w.modelId.Group,
-		Application: w.modelId.Application,
+	return s3BucketNamingStrategy(cfg.AppIdentity{
+		Name: w.modelId.Application,
+		Env:  w.modelId.Environment,
+		Tags: cfg.AppTags{
+			"project": w.modelId.Project,
+			"family":  w.modelId.Family,
+			"group":   w.modelId.Group,
+		},
 	})
 }
 

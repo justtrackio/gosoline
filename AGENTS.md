@@ -111,28 +111,60 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 
 Gosoline uses a macro system for consistent resource naming across AWS services and data stores.
 
-### AppId macros (cfg package)
-Used in queue/topic/stream names via `cfg.AppId.ReplaceMacros(pattern)`:
-- `{project}` - app_project config value
-- `{env}` - environment
-- `{family}` - app_family
-- `{group}` - app_group
-- `{app}` - app_name
+### AppIdentity macros (cfg package)
+Used in queue/topic/stream/namespace names via `cfg.NamingTemplate`:
+- `{app.env}` - environment from `app.env` config
+- `{app.name}` - application name from `app.name` config
+- `{app.tags.<key>}` - any tag value (fully dynamic)
+
+Tags are fully dynamic - common examples include `project`, `family`, `group`, but any tag key is supported (e.g., `{app.tags.region}`, `{app.tags.team}`, `{app.tags.costCenter}`).
+
+### Resource-specific placeholders
+Each service adds its own resource identifiers:
+- SQS: `{queueId}`
+- SNS: `{topicId}`
+- Kinesis: `{streamName}`
+- Kafka: `{topicId}`, `{groupId}`
+- Redis: `{name}` (redis client name)
 
 ### ModelId macros (mdl package)
 Used in DynamoDB table names via `mdl.ModelId.ReplaceMacros(pattern)`:
-- All AppId macros above, plus:
-- `{modelId}` - the model's string representation (`project.family.group.name`)
+- `{project}`, `{env}`, `{family}`, `{group}`, `{app}` - from ModelId fields
+- `{modelId}` - the model's name
 
-### Service-specific macros
-- SQS/SNS: `{queueId}`, `{topicId}`
-- Kinesis: `{streamName}`
-- DynamoDB: `{modelId}`
+Note: DynamoDB table naming uses ModelId-based macros (legacy style), not AppIdentity macros.
 
-### Example config
+### Example configs
 ```yaml
-cloud.aws.sqs.clients.default.naming.pattern: "{project}-{env}-{family}-{group}-{app}-{queueId}"
+# SQS queue naming
+cloud.aws.sqs.clients.default.naming.pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{queueId}"
+
+# SNS topic naming
+cloud.aws.sns.clients.default.naming.pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}"
+
+# Kinesis stream naming
+cloud.aws.kinesis.clients.default.naming.pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{streamName}"
+
+# Kafka topic naming
+kafka.naming.topic_pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}"
+
+# CloudWatch namespace
+metric.writer.cloudwatch.naming.pattern: "{app.tags.project}/{app.env}/{app.tags.family}/{app.tags.group}-{app.name}"
 ```
+
+### Strict placeholder validation
+Unknown placeholders in naming patterns return an error. Allowed placeholders are:
+- Fixed identity: `{app.env}`, `{app.name}`
+- Dynamic tags: any `{app.tags.<key>}` where `<key>` is non-empty
+- Resource-specific: as registered by each service (e.g., `{queueId}`, `{topicId}`)
+
+This prevents typos like `{app.tag.project}` (missing 's') or old-style `{project}` from silently failing.
+
+### Pattern-driven tag requirements
+Tags are only required if the naming pattern uses them. For example:
+- Pattern `{app.env}-{queueId}` does NOT require any tags
+- Pattern `{app.tags.project}-{app.env}-{queueId}` requires only the `project` tag
+- Pattern `{app.tags.region}-{app.tags.team}-{app.env}` requires `region` and `team` tags
 
 ## Conventions & testing patterns
 - File naming: `snake_case.go`

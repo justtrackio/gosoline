@@ -17,29 +17,31 @@ func init() {
 }
 
 type awsInstrumentor struct {
-	cfg.AppId
+	cfg.AppIdentity
 }
 
 func NewAwsInstrumentor(_ context.Context, config cfg.Config, _ log.Logger) (Instrumentor, error) {
-	appId := cfg.AppId{}
-	appId.PadFromConfig(config)
+	identity, err := cfg.GetAppIdentityFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("could not get app identity from config: %w", err)
+	}
 
-	return NewAwsInstrumentorWithAppId(appId), nil
+	return NewAwsInstrumentorWithInterfaces(identity), nil
 }
 
-func NewAwsInstrumentorWithAppId(appId cfg.AppId) *awsInstrumentor {
+func NewAwsInstrumentorWithInterfaces(identity cfg.AppIdentity) *awsInstrumentor {
 	return &awsInstrumentor{
-		AppId: appId,
+		AppIdentity: identity,
 	}
 }
 
 func (t *awsInstrumentor) HttpHandler(h http.Handler) http.Handler {
-	name := fmt.Sprintf("%s-%s-%s-%s-%s", t.Project, t.Environment, t.Family, t.Group, t.Application)
+	name := fmt.Sprintf("%s-%s-%s-%s-%s", t.Tags.Get("project"), t.Env, t.Tags.Get("family"), t.Tags.Get("group"), t.Name)
 	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		seg := xray.GetSegment(ctx)
 
-		ctx, _ = newSpan(ctx, seg, t.AppId)
+		ctx, _ = newSpan(ctx, seg, t.AppIdentity)
 		r = r.WithContext(ctx)
 
 		h.ServeHTTP(w, r)

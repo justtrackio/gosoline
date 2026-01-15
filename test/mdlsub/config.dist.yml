@@ -1,9 +1,10 @@
-env: test
-
-app_project: justtrack
-app_family: gosoline
-app_group: mdlsub
-app_name: subscriber
+app:
+  env: test
+  name: subscriber
+  tags:
+    project: justtrack
+    family: gosoline
+    group: mdlsub
 
 cloud:
   aws:

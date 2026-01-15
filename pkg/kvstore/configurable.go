@@ -88,11 +88,13 @@ func newKvStoreChainFromConfig[T any](ctx context.Context, config cfg.Config, lo
 	}
 
 	store, err := NewChainKvStore[T](ctx, config, logger, configuration.MissingCacheEnabled, &Settings{
-		AppId: cfg.AppId{
-			Project:     configuration.Project,
-			Family:      configuration.Family,
-			Group:       configuration.Group,
-			Application: configuration.Application,
+		AppIdentity: cfg.AppIdentity{
+			Name: configuration.Application,
+			Tags: cfg.AppTags{
+				"project": configuration.Project,
+				"family":  configuration.Family,
+				"group":   configuration.Group,
+			},
 		},
 		DdbSettings:    configuration.Ddb,
 		Name:           name,

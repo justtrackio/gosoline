@@ -16,7 +16,7 @@ const (
 )
 
 type RedisListOutputSettings struct {
-	cfg.AppId
+	cfg.AppIdentity
 	ServerName string
 	Key        string
 	BatchSize  int
@@ -42,14 +42,14 @@ func NewRedisListOutput(ctx context.Context, config cfg.Config, logger log.Logge
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 
-	defaultMetrics := getRedisListOutputDefaultMetrics(settings.AppId, settings.Key)
+	defaultMetrics := getRedisListOutputDefaultMetrics(settings.AppIdentity, settings.Key)
 	mw := metric.NewWriter(defaultMetrics...)
 
 	return NewRedisListOutputWithInterfaces(logger, mw, client, settings), nil
 }
 
 func NewRedisListOutputWithInterfaces(logger log.Logger, mw metric.Writer, client redis.Client, settings *RedisListOutputSettings) Output {
-	fullyQualifiedKey := redis.GetFullyQualifiedKey(settings.AppId, settings.Key)
+	fullyQualifiedKey := redis.GetFullyQualifiedKey(settings.AppIdentity, settings.Key)
 
 	return &redisListOutput{
 		logger:            logger,
@@ -98,8 +98,8 @@ func (o *redisListOutput) writeListWriteMetric(ctx context.Context, length int) 
 	o.metricWriter.Write(ctx, data)
 }
 
-func getRedisListOutputDefaultMetrics(appId cfg.AppId, key string) metric.Data {
-	fullyQualifiedKey := redis.GetFullyQualifiedKey(appId, key)
+func getRedisListOutputDefaultMetrics(appIdentity cfg.AppIdentity, key string) metric.Data {
+	fullyQualifiedKey := redis.GetFullyQualifiedKey(appIdentity, key)
 
 	return metric.Data{
 		{

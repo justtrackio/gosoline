@@ -1,5 +1,8 @@
-env: dev
-app_project: gosoline
-app_family: example
-app_group: grp
-app_name: application
+app:
+  env: dev
+  name: application
+  tags:
+    project: gosoline
+    family: example
+    group: grp
+

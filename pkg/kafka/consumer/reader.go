@@ -25,7 +25,7 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 		return nil, fmt.Errorf("failed to pad app id from config: %w", err)
 	}
 
-	topicName, err := kafka.BuildFullTopicName(config, settings.AppId, settings.TopicId)
+	topicName, err := kafka.BuildFullTopicName(config, settings.AppIdentity, settings.TopicId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build full kafka topic name: %w", err)
 	}

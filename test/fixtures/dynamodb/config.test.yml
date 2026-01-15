@@ -1,11 +1,14 @@
-env: test
+app:
+  env: test
+  name: app
+  tags:
+    project: prj
+    family: fam
+    group: grp
 
-app_project: prj
-app_family: fam
-app_group: grp
-app_name: app
 
 test:
   components:
     localstack:
       default:
+

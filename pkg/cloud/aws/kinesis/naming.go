@@ -2,20 +2,19 @@ package kinesis
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
 type StreamNameSettingsAware interface {
-	GetAppId() cfg.AppId
+	GetAppIdentity() cfg.AppIdentity
 	GetClientName() string
 	GetStreamName() string
 }
 
 type StreamNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{streamName}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{streamName}"`
 }
 
 func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream, error) {
@@ -30,21 +29,15 @@ func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream,
 		return "", fmt.Errorf("failed to unmarshal kinesis naming settings for %s: %w", namingKey, err)
 	}
 
-	appId := settings.GetAppId()
-	name := namingSettings.Pattern
+	identity := settings.GetAppIdentity()
 
-	values := map[string]string{
-		"project":    appId.Project,
-		"env":        appId.Environment,
-		"family":     appId.Family,
-		"group":      appId.Group,
-		"app":        appId.Application,
-		"streamName": settings.GetStreamName(),
-	}
+	// Use NamingTemplate for strict placeholder validation and pattern-driven tag requirements
+	tmpl := cfg.NewNamingTemplate(namingSettings.Pattern, "streamName")
+	tmpl.WithResourceValue("streamName", settings.GetStreamName())
 
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		name = strings.ReplaceAll(name, templ, val)
+	name, err := tmpl.ValidateAndExpand(identity)
+	if err != nil {
+		return "", fmt.Errorf("kinesis stream naming failed: %w", err)
 	}
 
 	return Stream(name), nil

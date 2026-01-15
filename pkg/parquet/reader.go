@@ -376,11 +376,13 @@ func (r *s3Reader) decodeTimeMillisHook() any {
 }
 
 func (r *s3Reader) getBucketName() string {
-	return s3BucketNamingStrategy(cfg.AppId{
-		Project:     r.modelId.Project,
-		Environment: r.modelId.Environment,
-		Family:      r.modelId.Family,
-		Group:       r.modelId.Group,
-		Application: r.modelId.Application,
+	return s3BucketNamingStrategy(cfg.AppIdentity{
+		Name: r.modelId.Application,
+		Env:  r.modelId.Environment,
+		Tags: cfg.AppTags{
+			"project": r.modelId.Project,
+			"family":  r.modelId.Family,
+			"group":   r.modelId.Group,
+		},
 	})
 }

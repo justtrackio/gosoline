@@ -1,9 +1,12 @@
-env: dev
+app:
+  env: dev
+  name: stream-kinesis-consumer
+  tags:
+    project: gosoline
+    family: example
+    group: grp
 
-app_project: gosoline
-app_family: example
-app_group: grp
-app_name: stream-kinesis-consumer
+tream-kinesis-consumer
 
 stream:
   consumer:
