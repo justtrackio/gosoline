@@ -2,14 +2,13 @@ package ddb
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
 type TableNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{modelId}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{modelId}"`
 }
 
 func TableName(config cfg.Config, settings *Settings) (string, error) {
@@ -18,7 +17,12 @@ func TableName(config cfg.Config, settings *Settings) (string, error) {
 		return "", fmt.Errorf("failed to get table naming settings for client %s: %w", settings.ClientName, err)
 	}
 
-	return GetTableNameWithSettings(settings, namingSettings), nil
+	// Pad the ModelId from config to fill in missing values like Env, App, and Tags
+	if err := settings.ModelId.PadFromConfig(config); err != nil {
+		return "", fmt.Errorf("failed to pad ModelId from config: %w", err)
+	}
+
+	return GetTableNameWithSettings(settings, namingSettings)
 }
 
 func GetTableNamingSettings(config cfg.Config, clientName string) (*TableNamingSettings, error) {
@@ -36,26 +40,24 @@ func GetTableNamingSettings(config cfg.Config, clientName string) (*TableNamingS
 	return namingSettings, nil
 }
 
-func GetTableNameWithSettings(tableSettings *Settings, namingSettings *TableNamingSettings) string {
-	tableName := namingSettings.Pattern
+// GetTableNameWithSettings formats the table name using the ModelId and naming pattern.
+// The pattern supports the same placeholders as ModelId.Format:
+//   - {modelId} - the model's Name
+//   - {app.env} - the Env field
+//   - {app.name} - the App field
+//   - {app.tags.<key>} - any tag from the Tags map
+func GetTableNameWithSettings(tableSettings *Settings, namingSettings *TableNamingSettings) (string, error) {
+	pattern := namingSettings.Pattern
 
 	if tableSettings.TableNamingSettings.Pattern != "" {
-		tableName = tableSettings.TableNamingSettings.Pattern
+		pattern = tableSettings.TableNamingSettings.Pattern
 	}
 
-	values := map[string]string{
-		"project": tableSettings.ModelId.Project,
-		"env":     tableSettings.ModelId.Environment,
-		"family":  tableSettings.ModelId.Family,
-		"group":   tableSettings.ModelId.Group,
-		"app":     tableSettings.ModelId.Application,
-		"modelId": tableSettings.ModelId.Name,
+	// Use ModelId.Format to expand the pattern
+	tableName, err := tableSettings.ModelId.Format(pattern)
+	if err != nil {
+		return "", fmt.Errorf("failed to format table name with pattern %q: %w", pattern, err)
 	}
 
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		tableName = strings.ReplaceAll(tableName, templ, val)
-	}
-
-	return tableName
+	return tableName, nil
 }

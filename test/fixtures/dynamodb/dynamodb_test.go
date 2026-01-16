@@ -112,22 +112,26 @@ type Person struct {
 }
 
 var kvStoreSettings = &mdl.ModelId{
-	Project:     "gosoline",
-	Environment: "test",
-	Family:      "integration-test",
-	Group:       "grp",
-	Application: "test-application",
-	Name:        "testModel",
+	Name: "testModel",
+	Env:  "test",
+	App:  "test-application",
+	Tags: map[string]string{
+		"project": "gosoline",
+		"family":  "integration-test",
+		"group":   "grp",
+	},
 }
 
 var ddbSettings = &ddb.Settings{
 	ModelId: mdl.ModelId{
-		Project:     "gosoline",
-		Environment: "test",
-		Family:      "integration-test",
-		Group:       "grp",
-		Application: "test-application",
-		Name:        "testModel",
+		Name: "testModel",
+		Env:  "test",
+		App:  "test-application",
+		Tags: map[string]string{
+			"project": "gosoline",
+			"family":  "integration-test",
+			"group":   "grp",
+		},
 	},
 	Main: ddb.MainSettings{
 		Model: Person{},

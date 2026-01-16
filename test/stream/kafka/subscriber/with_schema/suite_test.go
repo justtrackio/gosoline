@@ -62,11 +62,13 @@ func (s *testSuite) SetupTest() (err error) {
 
 	s.repo, err = s.Env().Localstack("default").DdbRepository(&ddb.Settings{
 		ModelId: mdl.ModelId{
-			Project:     "justtrack",
-			Environment: "test",
-			Family:      "gosoline",
-			Group:       "kafka",
-			Name:        "testModel",
+			Name: "testModel",
+			Env:  "test",
+			Tags: map[string]string{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "kafka",
+			},
 		},
 		Main: ddb.MainSettings{
 			Model: subscriber.TestModel{},
@@ -85,11 +87,13 @@ func (s *testSuite) TestSuccess(app suite.AppUnderTest) {
 	}
 
 	err := s.producer.WriteOne(s.T().Context(), event, mdlsub.CreateMessageAttributes(mdl.ModelId{
-		Project:     "justtrack",
-		Environment: "test",
-		Family:      "gosoline",
-		Group:       "source-group",
-		Name:        "testEvent",
+		Name: "testEvent",
+		Env:  "test",
+		Tags: map[string]string{
+			"project": "justtrack",
+			"family":  "gosoline",
+			"group":   "source-group",
+		},
 	}, mdlsub.TypeCreate, 0))
 	s.NoError(err)
 

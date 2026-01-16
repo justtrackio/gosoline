@@ -124,8 +124,10 @@ func NewMetadataRepository(
 	ddbSettings := &ddb.Settings{
 		ClientName: settings.ClientName,
 		ModelId: mdl.ModelId{
-			Group: "kinsumer",
-			Name:  "metadata",
+			Name: "metadata",
+			Tags: map[string]string{
+				"group": "kinsumer",
+			},
 		},
 		Main: ddb.MainSettings{
 			Model: &FullRecord{},

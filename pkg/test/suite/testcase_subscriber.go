@@ -114,7 +114,7 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (TestCaseRun
 				assert.FailNow(t, "invalid source model for subscription", "the test case for the subscription of %s has an invalid source model: %v", tc.GetName(), err)
 			}
 
-			inputName := mdlsub.GetSubscriberFQN(tc.GetName(), sourceModel)
+			inputName := mdlsub.GetSubscriberFQN(suite.Env().Config(), tc.GetName(), sourceModel)
 			suite.Env().StreamInput(inputName).PublishAndStop(tc.GetInput(), attrs)
 
 			app.WaitDone()

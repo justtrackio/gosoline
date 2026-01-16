@@ -45,12 +45,14 @@ func NewDdbKvStore[T any](ctx context.Context, config cfg.Config, logger log.Log
 	repository, err := ddb.NewRepository(ctx, config, logger, &ddb.Settings{
 		ClientName: settings.DdbSettings.ClientName,
 		ModelId: mdl.ModelId{
-			Project:     settings.Tags.Get("project"),
-			Environment: settings.Env,
-			Family:      settings.Tags.Get("family"),
-			Group:       settings.Tags.Get("group"),
-			Application: settings.Name,
-			Name:        name,
+			Name: name,
+			Env:  settings.Env,
+			App:  settings.Name,
+			Tags: map[string]string{
+				"project": settings.Tags.Get("project"),
+				"family":  settings.Tags.Get("family"),
+				"group":   settings.Tags.Get("group"),
+			},
 		},
 		Main: ddb.MainSettings{
 			Model:              DdbItem{},

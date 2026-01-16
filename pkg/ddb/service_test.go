@@ -51,7 +51,12 @@ func TestService_sanitizeSettings(t *testing.T) {
 	config := cfg.New()
 	logger := log.NewLogger()
 
-	settings := &ddb.Settings{}
+	// Use a static pattern since we don't have app identity configured
+	settings := &ddb.Settings{
+		TableNamingSettings: ddb.TableNamingSettings{
+			Pattern: "test-table",
+		},
+	}
 
 	_, err := ddb.NewService(ctx, config, logger, settings)
 	assert.NoError(t, err)
@@ -228,11 +233,13 @@ func TestService_CreateTable(t *testing.T) {
 
 	settings := &ddb.Settings{
 		ModelId: mdl.ModelId{
-			Project:     "applike",
-			Environment: "test",
-			Family:      "gosoline",
-			Application: "ddb",
-			Name:        "myModel",
+			Name: "myModel",
+			Env:  "test",
+			App:  "ddb",
+			Tags: map[string]string{
+				"project": "applike",
+				"family":  "gosoline",
+			},
 		},
 		Main: ddb.MainSettings{
 			Model:              createModel{},

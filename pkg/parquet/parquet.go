@@ -58,7 +58,7 @@ func DefaultS3KeyNamingStrategy(modelId mdl.ModelId, datetime time.Time, prefixC
 	timestamp := datetime.Format("2006-01-02-15-04-05")
 	uuidV4 := uuid.New().NewV4()
 
-	return fmt.Sprintf("%s/%s-%s-%s-%s-%s-%s.parquet", prefix, modelId.Project, modelId.Environment, modelId.Family, modelId.Name, timestamp, uuidV4)
+	return fmt.Sprintf("%s/%s-%s-%s-%s-%s-%s.parquet", prefix, modelId.Tags["project"], modelId.Env, modelId.Tags["family"], modelId.Name, timestamp, uuidV4)
 }
 
 var s3KeyNamingStrategy = DefaultS3KeyNamingStrategy

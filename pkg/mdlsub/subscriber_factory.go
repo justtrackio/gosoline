@@ -37,7 +37,7 @@ func SubscriberFactory(
 	modules := make(map[string]kernel.ModuleFactory)
 
 	for name, subscriberSettings := range settings.Subscribers {
-		subscriberFQN := GetSubscriberFQN(name, subscriberSettings.SourceModel)
+		subscriberFQN := GetSubscriberFQN(config, name, subscriberSettings.SourceModel)
 
 		if _, ok := modules[subscriberFQN]; ok {
 			continue

@@ -25,12 +25,14 @@ func (s *TableNameTestSuite) SetupTest() {
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = &ddb.Settings{
 		ModelId: mdl.ModelId{
-			Project:     "justtrack",
-			Environment: "test",
-			Family:      "gosoline",
-			Group:       "group",
-			Application: "producer",
-			Name:        "event",
+			Name: "event",
+			Env:  "test",
+			App:  "producer",
+			Tags: map[string]string{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "group",
+			},
 		},
 		ClientName: "default",
 	}
@@ -62,7 +64,7 @@ func (s *TableNameTestSuite) TestDefault() {
 
 func (s *TableNameTestSuite) TestDefaultWithPattern() {
 	s.setupConfig(map[string]any{
-		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app}-{modelId}",
+		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app.name}-{modelId}",
 	})
 
 	name, err := ddb.TableName(s.config, s.settings)
@@ -76,7 +78,7 @@ func (s *TableNameTestSuite) TestDefaultWithPattern() {
 func (s *TableNameTestSuite) TestSpecificClientWithPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.dynamodb.clients.specific.naming.pattern": "{app}-{modelId}",
+		"cloud.aws.dynamodb.clients.specific.naming.pattern": "{app.name}-{modelId}",
 	})
 
 	name, err := ddb.TableName(s.config, s.settings)
@@ -103,7 +105,7 @@ func (s *TableNameTestSuite) TestPatternFromTableSettings() {
 func (s *TableNameTestSuite) TestSpecificClientWithFallbackPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app}-{modelId}",
+		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app.name}-{modelId}",
 	})
 
 	name, err := ddb.TableName(s.config, s.settings)
@@ -117,7 +119,7 @@ func (s *TableNameTestSuite) TestSpecificClientWithFallbackPattern() {
 func (s *TableNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
 	s.settings.ClientName = "specific"
 	s.setupConfigEnv(map[string]string{
-		"CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_PATTERN": "!nodecode {app}-{modelId}",
+		"CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_PATTERN": "!nodecode {app.name}-{modelId}",
 	})
 
 	name, err := ddb.TableName(s.config, s.settings)
