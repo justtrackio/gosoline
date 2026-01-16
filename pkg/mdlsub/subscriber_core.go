@@ -11,6 +11,13 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
+// modelIdToLegacyString converts a ModelId to the legacy string format (project.family.group.name)
+// used as map keys for transformers and outputs. This maintains backward compatibility with
+// how map keys are created from SubscriberModel.String().
+func modelIdToLegacyString(modelId mdl.ModelId) string {
+	return fmt.Sprintf("%s.%s.%s.%s", modelId.Tags["project"], modelId.Tags["family"], modelId.Tags["group"], modelId.Name)
+}
+
 //go:generate go run github.com/vektra/mockery/v2 --name SubscriberCore
 type SubscriberCore interface {
 	GetModelIds() []string
@@ -58,7 +65,7 @@ func (c *subscriberCore) GetLatestModelIdVersion(modelId mdl.ModelId) (int, erro
 	var ok bool
 	var versioned VersionedModelTransformers
 
-	str := modelId.String()
+	str := modelIdToLegacyString(modelId)
 
 	if versioned, ok = c.transformers[str]; !ok {
 		return 0, fmt.Errorf("failed to find model transformer for model id %s", str)
@@ -107,11 +114,12 @@ func (c *subscriberCore) GetTransformer(spec *ModelSpecification) (ModelTransfor
 }
 
 func (c *subscriberCore) GetTransformersForModel(modelId mdl.ModelId) (VersionedModelTransformers, error) {
-	if _, ok := c.transformers[modelId.String()]; !ok {
-		return nil, fmt.Errorf("there is no transformer for modelId %s", modelId.String())
+	str := modelIdToLegacyString(modelId)
+	if _, ok := c.transformers[str]; !ok {
+		return nil, fmt.Errorf("there is no transformer for modelId %s", str)
 	}
 
-	return c.transformers[modelId.String()], nil
+	return c.transformers[str], nil
 }
 
 func (c *subscriberCore) Persist(ctx context.Context, spec *ModelSpecification, model Model) error {

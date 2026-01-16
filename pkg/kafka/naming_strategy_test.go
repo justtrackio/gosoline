@@ -89,7 +89,7 @@ func (s *KafkaNamingTestSuite) TestUnknownPlaceholderReturnsError() {
 
 	_, err := kafka.BuildFullTopicName(s.config, s.appIdentity, s.topicId)
 	s.Error(err)
-	s.Contains(err.Error(), "unknown placeholder")
+	s.Contains(err.Error(), "there is no config setting or default for key \"project\"")
 }
 
 func (s *KafkaNamingTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {

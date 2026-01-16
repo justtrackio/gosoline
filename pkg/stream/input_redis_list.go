@@ -51,7 +51,15 @@ func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 
-	defaultMetrics := getRedisListInputDefaultMetrics(settings.AppIdentity, settings.Key)
+	fullyQualifiedKey, err := redis.BuildFullyQualifiedKey(config, settings.AppIdentity, settings.Key)
+	if err != nil {
+		return nil, fmt.Errorf("can not build fully qualified key: %w", err)
+	}
+
+	defaultMetrics, err := getRedisListInputDefaultMetrics(config, settings.AppIdentity, settings.Key)
+	if err != nil {
+		return nil, fmt.Errorf("can not build default metrics: %w", err)
+	}
 	mw := metric.NewWriter(defaultMetrics...)
 
 	healthCheckTimer, err := clock.NewHealthCheckTimer(settings.HealthcheckTimeout)
@@ -59,18 +67,18 @@ func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("failed to create healthcheck timer: %w", err)
 	}
 
-	return NewRedisListInputWithInterfaces(logger, client, mw, settings, healthCheckTimer), nil
+	return NewRedisListInputWithInterfaces(config, logger, client, mw, settings, healthCheckTimer, fullyQualifiedKey), nil
 }
 
 func NewRedisListInputWithInterfaces(
+	config cfg.Config,
 	logger log.Logger,
 	client redis.Client,
 	mw metric.Writer,
 	settings *RedisListInputSettings,
 	healthCheckTimer clock.HealthCheckTimer,
+	fullyQualifiedKey string,
 ) Input {
-	fullyQualifiedKey := redis.GetFullyQualifiedKey(settings.AppIdentity, settings.Key)
-
 	return &redisListInput{
 		logger:            logger,
 		client:            client,
@@ -178,8 +186,11 @@ func (i *redisListInput) writeListReadMetric(ctx context.Context) {
 	i.mw.Write(ctx, data)
 }
 
-func getRedisListInputDefaultMetrics(appIdentity cfg.AppIdentity, key string) metric.Data {
-	fullyQualifiedKey := redis.GetFullyQualifiedKey(appIdentity, key)
+func getRedisListInputDefaultMetrics(config cfg.Config, appIdentity cfg.AppIdentity, key string) (metric.Data, error) {
+	fullyQualifiedKey, err := redis.BuildFullyQualifiedKey(config, appIdentity, key)
+	if err != nil {
+		return nil, fmt.Errorf("can not build fully qualified key for metrics: %w", err)
+	}
 
 	return metric.Data{
 		{
@@ -191,5 +202,5 @@ func getRedisListInputDefaultMetrics(appIdentity cfg.AppIdentity, key string) me
 			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
-	}
+	}, nil
 }

@@ -21,7 +21,7 @@ func RedisKvStoreFixtureSetFactory[T any](modelId *mdl.ModelId, data fixtures.Na
 		var writer fixtures.FixtureWriter
 
 		if writer, err = NewRedisKvStoreFixtureWriter[T](ctx, config, logger, modelId); err != nil {
-			return nil, fmt.Errorf("failed to create redis kvstore fixture writer for %s: %w", modelId.String(), err)
+			return nil, fmt.Errorf("failed to create redis kvstore fixture writer for %s: %w", mdl.DebugModelIdString(*modelId), err)
 		}
 
 		return fixtures.NewSimpleFixtureSet(data, writer, options...), nil

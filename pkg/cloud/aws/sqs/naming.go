@@ -53,13 +53,9 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 		return "", fmt.Errorf("failed to unmarshal sqs naming settings for %s: %w", namingKey, err)
 	}
 
-	identity := queueSettings.GetAppIdentity()
-
-	// Use NamingTemplate for strict placeholder validation and pattern-driven tag requirements
-	tmpl := cfg.NewNamingTemplate(namingSettings.Pattern, "queueId")
-	tmpl.WithResourceValue("queueId", queueSettings.GetQueueId())
-
-	name, err := tmpl.ValidateAndExpand(identity)
+	name, err := config.FormatString(namingSettings.Pattern, queueSettings.GetAppIdentity().ToMap(), map[string]string{
+		"queueId": queueSettings.GetQueueId(),
+	})
 	if err != nil {
 		return "", fmt.Errorf("sqs queue naming failed: %w", err)
 	}

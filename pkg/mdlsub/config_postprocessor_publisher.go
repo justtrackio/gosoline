@@ -57,8 +57,17 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 			return false, fmt.Errorf("can not unmarshal producer settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
 		}
 
+		if err := publisherSettings.ModelId.PadFromConfig(config); err != nil {
+			return false, fmt.Errorf("can not pad model id from config for publisher %s: %w", publisherSettings.ModelId.Name, err)
+		}
+
+		modelIdString, err := publisherSettings.ModelId.Format()
+		if err != nil {
+			return false, fmt.Errorf("can not compute model id string for publisher %s: %w", publisherSettings.ModelId.Name, err)
+		}
+
 		producerSettings.Output = outputName
-		producerSettings.Daemon.MessageAttributes[AttributeModelId] = publisherSettings.ModelId.String()
+		producerSettings.Daemon.MessageAttributes[AttributeModelId] = modelIdString
 
 		var ok bool
 		var outputTypeHandler publisherOutputTypeHandler

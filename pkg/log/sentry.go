@@ -36,9 +36,9 @@ func NewSentryHub(config cfg.Config) (SentryHub, error) {
 
 	settings := &SentryHubSettings{
 		Environment: identity.Env,
-		AppFamily:   identity.Tags.Get("family"),
+		AppFamily:   identity.Tags["family"],
 		AppName:     identity.Name,
-		AppGroup:    identity.Tags.Get("group"),
+		AppGroup:    identity.Tags["group"],
 	}
 
 	return NewSentryHubWithSettings(settings)

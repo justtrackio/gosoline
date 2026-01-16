@@ -817,7 +817,7 @@ func getMocks(t *testing.T, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Re
 		t.Errorf("couldn't find metadata named: %s", whichMetadata)
 	}
 
-	repo := db_repo.NewWithInterfaces(logger, tracer, orm, testClock, metadata)
+	repo := db_repo.NewWithInterfaces(logger, tracer, orm, testClock, metadata, "test-model-id")
 
 	return clientMock, repo
 }
@@ -845,7 +845,7 @@ func getTimedMocks(t *testing.T, time time.Time, whichMetadata string) (goSqlMoc
 		t.Errorf("couldn't find metadata named: %s", whichMetadata)
 	}
 
-	repo := db_repo.NewWithInterfaces(logger, tracer, orm, testClock, metadata)
+	repo := db_repo.NewWithInterfaces(logger, tracer, orm, testClock, metadata, "test-model-id")
 
 	return clientMock, repo
 }

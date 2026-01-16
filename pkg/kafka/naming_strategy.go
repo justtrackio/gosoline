@@ -22,11 +22,9 @@ func BuildFullTopicName(config cfg.Config, identity cfg.AppIdentity, topicId str
 		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' to build kafka topic name: %w", err)
 	}
 
-	// Use NamingTemplate for strict placeholder validation and pattern-driven tag requirements
-	tmpl := cfg.NewNamingTemplate(namingSettings.TopicPattern, "topicId")
-	tmpl.WithResourceValue("topicId", topicId)
-
-	name, err := tmpl.ValidateAndExpand(identity)
+	name, err := config.FormatString(namingSettings.TopicPattern, identity.ToMap(), map[string]string{
+		"topicId": topicId,
+	})
 	if err != nil {
 		return "", fmt.Errorf("kafka topic naming failed: %w", err)
 	}
@@ -45,11 +43,9 @@ func BuildFullConsumerGroupId(config cfg.Config, groupId string) (string, error)
 		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' to build kakfa consumer group id: %w", err)
 	}
 
-	// Use NamingTemplate for strict placeholder validation and pattern-driven tag requirements
-	tmpl := cfg.NewNamingTemplate(namingSettings.GroupPattern, "groupId")
-	tmpl.WithResourceValue("groupId", groupId)
-
-	name, err := tmpl.ValidateAndExpand(identity)
+	name, err := config.FormatString(namingSettings.GroupPattern, identity.ToMap(), map[string]string{
+		"groupId": groupId,
+	})
 	if err != nil {
 		return "", fmt.Errorf("kafka consumer group naming failed: %w", err)
 	}

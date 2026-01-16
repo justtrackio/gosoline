@@ -24,6 +24,14 @@ type SubscriberModel struct {
 	Shared bool `cfg:"shared"`
 }
 
+// String returns a string representation of the SubscriberModel for internal use.
+// This uses the legacy format (project.family.group.name) for backward compatibility
+// with map keys and internal identifiers. For canonical external representation,
+// call PadFromConfig once, then use ModelId.Format().
+func (s SubscriberModel) String() string {
+	return fmt.Sprintf("%s.%s.%s.%s", s.Tags["project"], s.Tags["family"], s.Tags["group"], s.Name)
+}
+
 type SubscriberCallback struct {
 	logger           log.Logger
 	metric           metric.Writer

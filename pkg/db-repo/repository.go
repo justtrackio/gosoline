@@ -66,6 +66,7 @@ type repository struct {
 	orm             *gorm.DB
 	clock           clock.Clock
 	metadata        Metadata
+	modelIdString   string
 	noDeleteRefresh bool
 }
 
@@ -88,7 +89,16 @@ func New(ctx context.Context, config cfg.Config, logger log.Logger, settings Set
 		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
 	clk := clock.Provider
 
-	return NewWithInterfaces(logger, tracer, orm, clk, settings.Metadata), nil
+	if err := settings.Metadata.ModelId.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("can not pad model id from config: %w", err)
+	}
+
+	modelIdString, err := settings.Metadata.ModelId.Format()
+	if err != nil {
+		return nil, fmt.Errorf("can not compute model id string: %w", err)
+	}
+
+	return NewWithInterfaces(logger, tracer, orm, clk, settings.Metadata, modelIdString), nil
 }
 
 func NewWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger, dbSettings *db.Settings, repoSettings Settings) (*repository, error) {
@@ -109,16 +119,26 @@ func NewWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger
 
 	clk := clock.Provider
 
-	return NewWithInterfaces(logger, tracer, orm, clk, repoSettings.Metadata), nil
+	if err := repoSettings.Metadata.ModelId.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("can not pad model id from config: %w", err)
+	}
+
+	modelIdString, err := repoSettings.Metadata.ModelId.Format()
+	if err != nil {
+		return nil, fmt.Errorf("can not compute model id string: %w", err)
+	}
+
+	return NewWithInterfaces(logger, tracer, orm, clk, repoSettings.Metadata, modelIdString), nil
 }
 
-func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, orm *gorm.DB, clock clock.Clock, metadata Metadata) *repository {
+func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, orm *gorm.DB, clock clock.Clock, metadata Metadata, modelIdString string) *repository {
 	return &repository{
-		logger:   logger,
-		tracer:   tracer,
-		orm:      orm,
-		clock:    clock,
-		metadata: metadata,
+		logger:        logger,
+		tracer:        tracer,
+		orm:           orm,
+		clock:         clock,
+		metadata:      metadata,
+		modelIdString: modelIdString,
 	}
 }
 
@@ -461,7 +481,7 @@ func (r *repository) refreshAssociationsDelete(model any, field reflect.StructFi
 }
 
 func (r *repository) GetModelId() string {
-	return r.metadata.ModelId.String()
+	return r.modelIdString
 }
 
 func (r *repository) GetModelName() string {

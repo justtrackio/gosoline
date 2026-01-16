@@ -5,6 +5,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type TableNamingSettings struct {
@@ -53,8 +54,8 @@ func GetTableNameWithSettings(tableSettings *Settings, namingSettings *TableNami
 		pattern = tableSettings.TableNamingSettings.Pattern
 	}
 
-	// Use ModelId.Format to expand the pattern
-	tableName, err := tableSettings.ModelId.Format(pattern)
+	// Use FormatModelIdWithPattern to expand the pattern
+	tableName, err := mdl.FormatModelIdWithPattern(tableSettings.ModelId, pattern)
 	if err != nil {
 		return "", fmt.Errorf("failed to format table name with pattern %q: %w", pattern, err)
 	}

@@ -52,12 +52,14 @@ func TestRedisListOutput_Write_Chunked(t *testing.T) {
 
 func setup(batchSize int, t *testing.T) (context.Context, stream.Output, *redisMocks.Client) {
 	ctx := t.Context()
+	config := cfg.New()
 	loggerMock := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	mw := metricMocks.NewWriter(t)
 	mw.EXPECT().Write(matcher.Context, mock.Anything).Return().Maybe()
 
 	redisMock := redisMocks.NewClient(t)
-	output := stream.NewRedisListOutputWithInterfaces(loggerMock, mw, redisMock, getSettings(batchSize))
+	fullyQualifiedKey := "mcoins-test-fam-grp-app-my-list"
+	output := stream.NewRedisListOutputWithInterfaces(config, loggerMock, mw, redisMock, getSettings(batchSize), fullyQualifiedKey)
 
 	return ctx, output, redisMock
 }

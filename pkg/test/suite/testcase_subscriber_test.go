@@ -33,6 +33,11 @@ func (s *SubscriberTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithLogLevel("debug"),
 		suite.WithConfigMap(map[string]any{
+			"app": map[string]any{
+				"model_id": map[string]any{
+					"pattern": "!nodecode {app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}",
+				},
+			},
 			"cloud": map[string]any{
 				"aws": map[string]any{
 					"defaults": map[string]any{

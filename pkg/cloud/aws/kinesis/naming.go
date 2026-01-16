@@ -29,15 +29,11 @@ func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream,
 		return "", fmt.Errorf("failed to unmarshal kinesis naming settings for %s: %w", namingKey, err)
 	}
 
-	identity := settings.GetAppIdentity()
-
-	// Use NamingTemplate for strict placeholder validation and pattern-driven tag requirements
-	tmpl := cfg.NewNamingTemplate(namingSettings.Pattern, "streamName")
-	tmpl.WithResourceValue("streamName", settings.GetStreamName())
-
-	name, err := tmpl.ValidateAndExpand(identity)
+	name, err := config.FormatString(namingSettings.Pattern, settings.GetAppIdentity().ToMap(), map[string]string{
+		"streamName": settings.GetStreamName(),
+	})
 	if err != nil {
-		return "", fmt.Errorf("kinesis stream naming failed: %w", err)
+		return "", fmt.Errorf("failed to format kinesis naming settings for %s: %w", namingKey, err)
 	}
 
 	return Stream(name), nil

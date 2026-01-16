@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	baseRedis "github.com/go-redis/redis/v8"
@@ -53,15 +54,30 @@ type Pipeliner interface {
 	baseRedis.Pipeliner
 }
 
-func GetFullyQualifiedKey(identity cfg.AppIdentity, key string) string {
-	return fmt.Sprintf("%s-%s-%s-%s-%s-%s",
-		identity.Tags.Get("project"),
-		identity.Env,
-		identity.Tags.Get("family"),
-		identity.Tags.Get("group"),
-		identity.Name,
-		key,
-	)
+// BuildFullyQualifiedKey builds a fully qualified Redis key using the configured naming pattern.
+// The pattern is read from redis.default.naming.key_pattern and supports all AppIdentity placeholders
+// ({app.env}, {app.name}, {app.tags.*}) plus the {key} placeholder for the key name.
+//
+// Example pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}"
+func BuildFullyQualifiedKey(config cfg.Config, identity cfg.AppIdentity, key string) (string, error) {
+	namingSettings := &Naming{}
+	if err := config.UnmarshalKey("redis.default.naming", namingSettings); err != nil {
+		return "", fmt.Errorf("failed to unmarshal redis key naming settings: %w", err)
+	}
+
+	// Validate that the pattern contains {key} placeholder
+	if !strings.Contains(namingSettings.KeyPattern, "{key}") {
+		return "", fmt.Errorf("redis key naming pattern must contain {key} placeholder, got: %q", namingSettings.KeyPattern)
+	}
+
+	fullKey, err := config.FormatString(namingSettings.KeyPattern, identity.ToMap(), map[string]string{
+		"key": key,
+	})
+	if err != nil {
+		return "", fmt.Errorf("redis key naming failed: %w", err)
+	}
+
+	return fullKey, nil
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Client

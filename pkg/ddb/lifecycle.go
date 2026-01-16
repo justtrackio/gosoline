@@ -7,6 +7,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/reslife"
 )
 
@@ -55,7 +56,7 @@ func NewLifecycleManager(settings *Settings, optFns ...gosoDynamodb.ClientOption
 }
 
 func (l *lifecycleManager) GetId() string {
-	return fmt.Sprintf("ddb/%s", l.settings.ModelId.String())
+	return fmt.Sprintf("ddb/%s", mdl.DebugModelIdString(l.settings.ModelId))
 }
 
 func (l *lifecycleManager) Create(ctx context.Context) error {

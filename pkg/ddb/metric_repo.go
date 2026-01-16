@@ -2,27 +2,39 @@ package ddb
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
 type metricRepository struct {
 	Repository
-	metric metric.Writer
+	metric        metric.Writer
+	modelIdString string
 }
 
-func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRepository {
-	defaults := getDefaultMetrics(repo.GetModelId())
+func NewMetricRepository(config cfg.Config, logger log.Logger, repo Repository) (*metricRepository, error) {
+	modelId := repo.GetModelId()
+	if err := modelId.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad model id from config: %w", err)
+	}
+
+	modelIdString, err := modelId.Format()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get canonical model id string: %w", err)
+	}
+
+	defaults := getDefaultMetrics(modelIdString)
 	output := metric.NewWriter(defaults...)
 
 	return &metricRepository{
-		Repository: repo,
-		metric:     output,
-	}
+		Repository:    repo,
+		metric:        output,
+		modelIdString: modelIdString,
+	}, nil
 }
 
 func (r metricRepository) PutItem(ctx context.Context, _ PutItemBuilder, item any) (*PutItemResult, error) {
@@ -35,7 +47,6 @@ func (r metricRepository) PutItem(ctx context.Context, _ PutItemBuilder, item an
 
 func (r metricRepository) writeMetric(ctx context.Context, op string, err error, start time.Time) {
 	latencyNano := time.Since(start)
-	modelId := r.GetModelId()
 	metricName := MetricNameAccessSuccess
 
 	if err != nil {
@@ -48,7 +59,7 @@ func (r metricRepository) writeMetric(ctx context.Context, op string, err error,
 		MetricName: metricName,
 		Dimensions: map[string]string{
 			"Operation": op,
-			"ModelId":   modelId.String(),
+			"ModelId":   r.modelIdString,
 		},
 		Unit:  metric.UnitCount,
 		Value: 1.0,
@@ -61,15 +72,14 @@ func (r metricRepository) writeMetric(ctx context.Context, op string, err error,
 		MetricName: MetricNameAccessLatency,
 		Dimensions: map[string]string{
 			"Operation": op,
-			"ModelId":   modelId.String(),
+			"ModelId":   r.modelIdString,
 		},
 		Unit:  metric.UnitMillisecondsAverage,
 		Value: latencyMillisecond,
 	})
 }
 
-func getDefaultMetrics(mId mdl.ModelId) metric.Data {
-	model := mId.String()
+func getDefaultMetrics(modelIdString string) metric.Data {
 	defaults := make([]*metric.Datum, 0)
 
 	for _, op := range []string{OpSave} {
@@ -79,7 +89,7 @@ func getDefaultMetrics(mId mdl.ModelId) metric.Data {
 				MetricName: name,
 				Dimensions: map[string]string{
 					"Operation": op,
-					"ModelId":   model,
+					"ModelId":   modelIdString,
 				},
 				Unit:  metric.UnitCount,
 				Value: 0.0,
@@ -91,7 +101,7 @@ func getDefaultMetrics(mId mdl.ModelId) metric.Data {
 			MetricName: MetricNameAccessLatency,
 			Dimensions: map[string]string{
 				"Operation": op,
-				"ModelId":   model,
+				"ModelId":   modelIdString,
 			},
 			Unit:  metric.UnitMillisecondsAverage,
 			Value: 0.0,

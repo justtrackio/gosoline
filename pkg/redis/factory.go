@@ -11,7 +11,8 @@ import (
 )
 
 type Naming struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}"`
+	AddressPattern string `cfg:"address_pattern,nodecode" default:"{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}"`
+	KeyPattern     string `cfg:"key_pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}"`
 }
 
 type Settings struct {
@@ -57,17 +58,26 @@ func ReadSettings(config cfg.Config, name string) (*Settings, error) {
 		return nil, fmt.Errorf("failed to unmarshal redis settings for key %q in ReadSettings: %w", key, err)
 	}
 
-	settings.BackoffSettings, err = exec.ReadBackoffSettings(config, key, "redis.default")
-	if err != nil {
-		return nil, fmt.Errorf("failed to read backoff settings for redis %q: %w", key, err)
-	}
-
 	if settings.Name == "" {
 		settings.Name = name
 	}
 
 	if err = settings.PadFromConfig(config); err != nil {
 		return nil, fmt.Errorf("failed to pad app identity from config for redis %q: %w", key, err)
+	}
+
+	if settings.Address == "" {
+		settings.Address, err = config.FormatString(settings.Naming.AddressPattern, settings.ToMap(), map[string]string{
+			"name": settings.Name,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to format address for redis %q: %w", key, err)
+		}
+	}
+
+	settings.BackoffSettings, err = exec.ReadBackoffSettings(config, key, "redis.default")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read backoff settings for redis %q: %w", key, err)
 	}
 
 	return settings, nil

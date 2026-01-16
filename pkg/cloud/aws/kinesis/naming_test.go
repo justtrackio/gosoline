@@ -108,7 +108,7 @@ func (s *GetStreamNameTestSuite) TestUnknownPlaceholderReturnsError() {
 
 	_, err := kinesis.GetStreamName(s.config, s.settings)
 	s.Error(err)
-	s.Contains(err.Error(), "unknown placeholder")
+	s.Contains(err.Error(), "there is no config setting or default for key \"project\"")
 }
 
 func (s *GetStreamNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {

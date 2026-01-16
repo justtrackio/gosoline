@@ -81,11 +81,14 @@ func NewInMemoryKvStoreWithInterfaces[T any](settings *Settings) KvStore[T] {
 
 	baseCache := cache.NewWithConfiguration[T](*cacheConfig, ttl)
 
+	// Use legacy format for in-memory stores since config is not available
+	modelIdString := settings.LegacyMetricModelIdString()
+
 	return NewMetricStoreWithInterfaces[T](&InMemoryKvStore[T]{
 		cache:     baseCache,
 		settings:  settings,
 		cacheSize: cacheSize,
-	}, settings)
+	}, settings, modelIdString)
 }
 
 func (s *InMemoryKvStore[T]) Contains(_ context.Context, key any) (bool, error) {

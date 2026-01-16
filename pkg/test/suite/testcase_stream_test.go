@@ -40,6 +40,11 @@ func (s *ConsumerTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithLogLevel("info"),
 		suite.WithConfigMap(map[string]any{
+			"app": map[string]any{
+				"model_id": map[string]any{
+					"pattern": "!nodecode {app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}",
+				},
+			},
 			"mdlsub": map[string]any{
 				"publishers": map[string]any{
 					"echo": map[string]any{

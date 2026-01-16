@@ -6,10 +6,6 @@ import (
 	"unicode"
 )
 
-// DefaultModelIdPattern is the default pattern for formatting ModelId as a string.
-// It uses the conventional project.family.group.modelId format.
-const DefaultModelIdPattern = "{app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}"
-
 // Placeholder constants for ModelId patterns.
 const (
 	PlaceholderModelId = "modelId"
@@ -17,6 +13,9 @@ const (
 	PlaceholderAppName = "app.name"
 	PlaceholderAppTags = "app.tags."
 )
+
+// ConfigKeyModelIdPattern is the config key for the required model id pattern.
+const ConfigKeyModelIdPattern = "app.model_id.pattern"
 
 // ConfigProvider is an interface for reading config values.
 // It is implemented by cfg.Config.
@@ -30,8 +29,10 @@ type ConfigProvider interface {
 // Unlike the legacy fixed-field ModelId (Project/Family/Group/etc),
 // this version uses a dynamic tags map that can hold any key-value pairs.
 //
-// The canonical string form is determined by a configurable pattern
-// (default: "{app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}").
+// The canonical string form is determined by the app.model_id.pattern config key.
+// Call PadFromConfig() once to populate fields from config (including the pattern),
+// then use Format() to obtain the canonical string representation.
+// Use DebugModelIdString() for logging/debugging purposes.
 type ModelId struct {
 	// Name is the model's name (the {modelId} placeholder)
 	Name string `cfg:"name"`
@@ -41,23 +42,14 @@ type ModelId struct {
 	App string `cfg:"app"`
 	// Tags holds dynamic tag values (for {app.tags.<key>} placeholders)
 	Tags map[string]string `cfg:"tags"`
+
+	// pattern is the formatting pattern read from config during PadFromConfig.
+	// This is private and not serialized; it is set by PadFromConfig.
+	pattern string
 }
 
-// String returns the ModelId formatted using the default pattern.
-// This preserves the conventional "project.family.group.modelId" format
-// while sourcing values from dynamic tags.
-func (m *ModelId) String() string {
-	result, err := m.Format(DefaultModelIdPattern)
-	if err != nil {
-		// For String(), we return a best-effort result even on error
-		// to maintain compatibility with fmt.Stringer expectations
-		return fmt.Sprintf("<invalid:%s>", m.Name)
-	}
-
-	return result
-}
-
-// Format expands placeholders in the given pattern using ModelId values.
+// format expands placeholders in the given pattern using ModelId values.
+// This is an internal method - call PadFromConfig once, then use Format() for public API.
 //
 // Supported placeholders:
 //   - {modelId} - the model's Name
@@ -72,7 +64,7 @@ func (m *ModelId) String() string {
 //   - the pattern contains unknown placeholders
 //   - a required tag is missing (referenced in pattern but not in Tags)
 //   - {app.env} or {app.name} is referenced but the field is empty
-func (m *ModelId) Format(pattern string) (string, error) {
+func (m *ModelId) format(pattern string) (string, error) {
 	if err := validateModelIdPattern(pattern); err != nil {
 		return "", err
 	}
@@ -132,10 +124,15 @@ func (m *ModelId) Format(pattern string) (string, error) {
 //   - app.env -> Env (if empty)
 //   - app.name -> App (if empty)
 //   - app.tags.* -> Tags (merged, existing tags take precedence)
+//   - app.model_id.pattern -> pattern (if empty and available)
 //
-// All fields are optional. If a config key is not found, the corresponding
-// field is left unchanged. This allows patterns to determine what's required
-// (enforced at Format time).
+// The pattern is read if available, enabling Format() to work afterward.
+// If the pattern config key is missing, the pattern field is left empty,
+// and Format() will return an error when called.
+//
+// All identity fields (env, app, tags) are optional. If a config key is not found,
+// the corresponding field is left unchanged. This allows patterns to determine
+// what's required (enforced at format time).
 func (m *ModelId) PadFromConfig(config ConfigProvider) error {
 	if m.Env == "" {
 		env, err := config.GetString("app.env")
@@ -170,16 +167,44 @@ func (m *ModelId) PadFromConfig(config ConfigProvider) error {
 		}
 	}
 
+	// Read and store the pattern if available (enables Format to work)
+	if m.pattern == "" {
+		pattern, err := config.GetString(ConfigKeyModelIdPattern)
+		if err == nil && pattern != "" {
+			if err := validateModelIdPattern(pattern); err != nil {
+				return fmt.Errorf("invalid %s: %w", ConfigKeyModelIdPattern, err)
+			}
+			m.pattern = pattern
+		}
+		// If pattern is not in config, leave it empty - Format() will error when called
+	}
+
 	return nil
 }
 
-// ModelIdFromString parses a string into a ModelId using the default pattern.
-// This is a convenience wrapper around ModelIdFromStringWithPattern.
-func ModelIdFromString(str string) (ModelId, error) {
-	return ModelIdFromStringWithPattern(DefaultModelIdPattern, str)
+// Format returns the canonical string representation of the ModelId.
+//
+// This method requires that the pattern has been set via PadFromConfig.
+// If no pattern is set, Format returns an error.
+//
+// Returns an error if:
+//   - the pattern is not set (call PadFromConfig first)
+//   - the pattern references fields/tags that are missing from the ModelId
+func (m ModelId) Format() (string, error) {
+	if m.pattern == "" {
+		return "", fmt.Errorf("model id pattern is not set; call PadFromConfig first")
+	}
+
+	result, err := m.format(m.pattern)
+	if err != nil {
+		return "", fmt.Errorf("failed to format model id with pattern %q: %w", m.pattern, err)
+	}
+
+	return result, nil
 }
 
-// ModelIdFromStringWithPattern parses a string into a ModelId using the given pattern.
+// modelIdFromStringWithPattern parses a string into a ModelId using the given pattern.
+// This is an internal function - use ParseCanonicalModelId() for public API.
 //
 // The pattern must be "parseable" - consisting only of placeholders separated
 // by a single non-alphanumeric delimiter character. For example:
@@ -188,7 +213,7 @@ func ModelIdFromString(str string) (ModelId, error) {
 //
 // The string is split by the delimiter, and each segment is mapped to the
 // corresponding placeholder in the pattern.
-func ModelIdFromStringWithPattern(pattern, str string) (ModelId, error) {
+func modelIdFromStringWithPattern(pattern, str string) (ModelId, error) {
 	if err := validateModelIdPattern(pattern); err != nil {
 		return ModelId{}, fmt.Errorf("invalid pattern: %w", err)
 	}

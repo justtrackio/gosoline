@@ -2,11 +2,13 @@ package kvstore
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 )
@@ -19,6 +21,33 @@ type Settings struct {
 	Ttl            time.Duration
 	BatchSize      int
 	MetricsEnabled bool
+}
+
+// MetricModelIdString computes the model ID string for kvstore metrics.
+// This uses the canonical model ID pattern from config for consistency with other metrics.
+func (s *Settings) MetricModelIdString(config cfg.Config) (string, error) {
+	modelId := mdl.ModelId{
+		Name: s.Name,
+		Env:  s.Env,
+		App:  s.Name,
+		Tags: map[string]string{
+			"project": s.Tags.Get("project"),
+			"family":  s.Tags.Get("family"),
+			"group":   s.Tags.Get("group"),
+		},
+	}
+
+	if err := modelId.PadFromConfig(config); err != nil {
+		return "", err
+	}
+
+	return modelId.Format()
+}
+
+// LegacyMetricModelIdString returns the model ID string in the legacy format
+// (project.family.group.name) for backward compatibility when config is not available.
+func (s *Settings) LegacyMetricModelIdString() string {
+	return fmt.Sprintf("%s.%s.%s.%s", s.Tags.Get("project"), s.Tags.Get("family"), s.Tags.Get("group"), s.Name)
 }
 
 type InMemorySettings struct {

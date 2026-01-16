@@ -28,12 +28,14 @@ redis.default.database: 0
 redis.default.dialer.timeout: 5s
 redis.default.dialer.read_timeout: 3s
 redis.default.dialer.write_timeout: 3s
+redis.default.naming.address_pattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}"
+redis.default.naming.key_pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}"
 ```
 
-## Naming pattern
+## Address naming pattern
 Redis address naming uses `cfg.NamingTemplate` with AppIdentity macros:
 ```yaml
-redis.default.naming.pattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}"
+redis.default.naming.address_pattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}"
 ```
 
 | Placeholder | Description |
@@ -42,6 +44,51 @@ redis.default.naming.pattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags
 | `{app.env}` | Environment |
 | `{app.tags.family}` | Family tag |
 | `{app.tags.group}` | Group tag |
+
+## Key naming pattern
+Redis key naming uses `cfg.NamingTemplate` with AppIdentity macros to build fully-qualified keys. This allows flexible key namespacing across environments and applications.
+
+### Configuration
+```yaml
+redis.default.naming.key_pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}"
+```
+
+### Supported placeholders
+| Placeholder | Description |
+|-------------|-------------|
+| `{key}` | Application-specific key (required in all patterns) |
+| `{app.env}` | Environment |
+| `{app.name}` | Application name |
+| `{app.tags.*}` | Any dynamic tag (e.g., `{app.tags.project}`, `{app.tags.team}`) |
+
+### Pattern validation rules
+1. The `{key}` placeholder **must** be present in all patterns
+2. Only registered placeholders are allowed (unknown placeholders return an error)
+3. Tags are only required if the pattern references them
+4. Typos like `{app.tag.project}` (missing 's') will be caught at runtime
+
+### Example patterns
+```yaml
+# Default pattern (backward-compatible)
+redis.default.naming.key_pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}"
+
+# Minimal pattern (no tags required)
+redis.default.naming.key_pattern: "{app.env}-{app.name}-{key}"
+
+# Custom tags
+redis.default.naming.key_pattern: "{app.tags.region}-{app.tags.team}-{app.env}-{key}"
+```
+
+### Usage in code
+The `BuildFullyQualifiedKey` function expands patterns:
+
+```go
+fullyQualifiedKey, err := redis.BuildFullyQualifiedKey(config, appIdentity, "my-cache-key")
+if err != nil {
+    return fmt.Errorf("can not build fully qualified key: %w", err)
+}
+// Result: "myproject-prod-myfamily-mygroup-myapp-my-cache-key"
+```
 
 ## Client modes
 | Mode | Use case |
