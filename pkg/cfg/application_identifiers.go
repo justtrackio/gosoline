@@ -3,11 +3,22 @@ package cfg
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/funk"
 )
+
+// AppTags is a map of tag key-value pairs with helper methods.
+type AppTags map[string]string
+
+// Get returns the value for a tag key, or empty string if not present.
+func (t AppTags) Get(key string) string {
+	if t == nil {
+		return ""
+	}
+
+	return t[key]
+}
 
 // AppIdentity represents the resolved application identity.
 // It is used throughout gosoline for resource naming and identification.
@@ -32,6 +43,19 @@ type AppIdentity struct {
 	Tags AppTags `json:"tags"`
 }
 
+func (i AppIdentity) ToMap() map[string]string {
+	mss := map[string]string{
+		"app.name": i.Name,
+		"app.env":  i.Env,
+	}
+
+	for key, value := range i.Tags {
+		mss[fmt.Sprintf("app.tags.%s", key)] = value
+	}
+
+	return mss
+}
+
 // GetAppIdentityFromConfig reads the application identity from config.
 //
 // This function requires:
@@ -41,29 +65,28 @@ type AppIdentity struct {
 // Tags are optional at this level. Subsystems that require specific tags
 // (e.g., project, family, group for naming) should call RequireTags().
 func GetAppIdentityFromConfig(config Config) (AppIdentity, error) {
+	var err error
+	var name, env string
+	var tags map[string]string
+
 	// app.name is required
-	name, err := config.GetString("app.name")
-	if err != nil {
+	if name, err = config.GetString("app.name"); err != nil {
 		return AppIdentity{}, fmt.Errorf("app.name: %w", err)
 	}
-
 	if strings.TrimSpace(name) == "" {
 		return AppIdentity{}, errors.New("app.name: value is empty")
 	}
 
 	// app.env is required
-	env, err := config.GetString("app.env")
-	if err != nil {
+	if env, err = config.GetString("app.env"); err != nil {
 		return AppIdentity{}, fmt.Errorf("app.env: %w", err)
 	}
-
 	if strings.TrimSpace(env) == "" {
 		return AppIdentity{}, errors.New("app.env: value is empty")
 	}
 
 	// Tags are optional
-	tags, err := config.GetStringMapString("app.tags", map[string]string{})
-	if err != nil {
+	if tags, err = config.GetStringMapString("app.tags", map[string]string{}); err != nil {
 		return AppIdentity{}, fmt.Errorf("app.tags: %w", err)
 	}
 
@@ -85,39 +108,32 @@ func GetAppIdentityFromConfig(config Config) (AppIdentity, error) {
 // This method is useful when you have a partially populated AppIdentity
 // (e.g., from struct tag defaults) and want to fill remaining fields.
 func (i *AppIdentity) PadFromConfig(config Config) error {
-	// Name and Env fields are needed from config
-	needsName := i.Name == ""
-	needsEnv := i.Env == ""
+	var err error
+	var tags map[string]string
 
-	if needsName {
-		name, err := config.GetString("app.name")
-		if err != nil {
+	// Name and Env fields are needed from config
+	if i.Name == "" {
+		if i.Name, err = config.GetString("app.name"); err != nil {
 			return fmt.Errorf("app.name: %w", err)
 		}
 
-		if strings.TrimSpace(name) == "" {
+		if strings.TrimSpace(i.Name) == "" {
 			return errors.New("app.name: value is empty")
 		}
-
-		i.Name = name
 	}
 
-	if needsEnv {
-		env, err := config.GetString("app.env")
-		if err != nil {
+	if i.Env == "" {
+		if i.Env, err = config.GetString("app.env"); err != nil {
 			return fmt.Errorf("app.env: %w", err)
 		}
 
-		if strings.TrimSpace(env) == "" {
+		if strings.TrimSpace(i.Env) == "" {
 			return errors.New("app.env: value is empty")
 		}
-
-		i.Env = env
 	}
 
 	// Merge tags: keep existing, add missing from config
-	tags, err := config.GetStringMapString("app.tags", map[string]string{})
-	if err != nil {
+	if tags, err = config.GetStringMapString("app.tags", map[string]string{}); err != nil {
 		return fmt.Errorf("app.tags: %w", err)
 	}
 
@@ -129,35 +145,6 @@ func (i *AppIdentity) PadFromConfig(config Config) error {
 		if _, exists := i.Tags[key]; !exists {
 			i.Tags[key] = value
 		}
-	}
-
-	return nil
-}
-
-// RequireTags validates that the specified tag keys are present and non-empty.
-// Whitespace-only values are treated as missing.
-//
-// This method should be called by subsystems that require specific tags
-// for naming or identification purposes. For example, kafka topic naming
-// might call identity.RequireTags("project", "family", "group").
-//
-// Returns an error listing all missing tags in sorted order, e.g.:
-//
-//	"missing required tags: family, project"
-func (i *AppIdentity) RequireTags(keys ...string) error {
-	var missing []string
-
-	for _, key := range keys {
-		value := strings.TrimSpace(i.Tags.Get(key))
-		if value == "" {
-			missing = append(missing, key)
-		}
-	}
-
-	if len(missing) > 0 {
-		slices.Sort(missing)
-
-		return fmt.Errorf("missing required tags: %s", strings.Join(missing, ", "))
 	}
 
 	return nil

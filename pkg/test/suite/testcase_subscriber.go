@@ -107,7 +107,7 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (TestCaseRun
 			}
 
 			tc := ret[0].Interface().(SubscriberTestCase)
-			attrs := mdlsub.CreateMessageAttributes(tc.GetModelId(), "create", tc.GetVersion())
+			attrs := mdlsub.CreateMessageAttributes(mdl.FormatLegacyModelIdString(tc.GetModelId()), "create", tc.GetVersion())
 
 			sourceModel, err := mdlsub.UnmarshalSubscriberSourceModel(suite.Env().Config(), tc.GetName())
 			if err != nil {
@@ -218,7 +218,7 @@ func assertKvStore(ctx context.Context, t *testing.T, suite TestingSuite, tc kvs
 }
 
 func DbTestCase(testCase DbSubscriberTestCase) (SubscriberTestCase, error) {
-	modelId, err := mdl.ModelIdFromString(testCase.ModelId)
+	modelId, err := mdl.ParseLegacyModelId(testCase.ModelId)
 	if err != nil {
 		return nil, fmt.Errorf("invalid modelId for subscription test case %s: %w", testCase.Name, err)
 	}
@@ -305,11 +305,11 @@ func DdbTestCase(testCase DdbSubscriberTestCase) (SubscriberTestCase, error) {
 	var err error
 	var modelIdSource, modelIdTarget mdl.ModelId
 
-	if modelIdSource, err = mdl.ModelIdFromString(testCase.SourceModelId); err != nil {
+	if modelIdSource, err = mdl.ParseLegacyModelId(testCase.SourceModelId); err != nil {
 		return nil, fmt.Errorf("invalid source modelId for subscription test case %s: %w", testCase.Name, err)
 	}
 
-	if modelIdTarget, err = mdl.ModelIdFromString(testCase.TargetModelId); err != nil {
+	if modelIdTarget, err = mdl.ParseLegacyModelId(testCase.TargetModelId); err != nil {
 		return nil, fmt.Errorf("invalid target modelId for subscription test case %s: %w", testCase.Name, err)
 	}
 
@@ -393,7 +393,7 @@ func (f DdbSubscriberFetcher) ByHashAndRange(hash any, rangeValue any, model any
 }
 
 func KvstoreTestCase(testCase KvstoreSubscriberTestCase) (SubscriberTestCase, error) {
-	modelId, err := mdl.ModelIdFromString(testCase.ModelId)
+	modelId, err := mdl.ParseLegacyModelId(testCase.ModelId)
 	if err != nil {
 		return nil, fmt.Errorf("invalid modelId for subscription test case %s: %w", testCase.Name, err)
 	}

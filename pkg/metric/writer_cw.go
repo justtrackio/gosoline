@@ -214,22 +214,21 @@ func (w *cloudwatchWriter) buildMetricData(ctx context.Context, batch Data) ([]t
 }
 
 func GetCloudWatchNamespace(config cfg.Config) (string, error) {
-	identity, err := cfg.GetAppIdentityFromConfig(config)
-	if err != nil {
+	var err error
+	var identity cfg.AppIdentity
+	var namespace string
+
+	if identity, err = cfg.GetAppIdentityFromConfig(config); err != nil {
 		return "", fmt.Errorf("failed to get app identity from config: %w", err)
 	}
 
 	cloudwatchSettings := &CloudWatchSettings{}
-	if err := getMetricWriterSettings(config, WriterTypeCloudwatch, cloudwatchSettings); err != nil {
+	if err = getMetricWriterSettings(config, WriterTypeCloudwatch, cloudwatchSettings); err != nil {
 		return "", fmt.Errorf("failed to get cloudwatch settings: %w", err)
 	}
 
-	// Use NamingTemplate for strict placeholder validation and pattern-driven tag requirements
-	tmpl := cfg.NewNamingTemplate(cloudwatchSettings.Naming.Pattern)
-
-	namespace, err := tmpl.ValidateAndExpand(identity)
-	if err != nil {
-		return "", fmt.Errorf("cloudwatch namespace naming failed: %w", err)
+	if namespace, err = config.FormatString(cloudwatchSettings.Naming.Pattern, identity.ToMap()); err != nil {
+		return "", fmt.Errorf("failed to format cloudwatch namespace: %w", err)
 	}
 
 	return namespace, nil

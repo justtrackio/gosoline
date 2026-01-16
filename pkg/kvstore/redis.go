@@ -37,14 +37,19 @@ func NewRedisKvStore[T any](ctx context.Context, config cfg.Config, logger log.L
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 
-	return NewRedisKvStoreWithInterfaces[T](client, settings), nil
+	modelIdString, err := settings.MetricModelIdString(config)
+	if err != nil {
+		return nil, fmt.Errorf("can not compute model id string for metrics: %w", err)
+	}
+
+	return NewRedisKvStoreWithInterfaces[T](client, settings, modelIdString), nil
 }
 
-func NewRedisKvStoreWithInterfaces[T any](client redis.Client, settings *Settings) KvStore[T] {
+func NewRedisKvStoreWithInterfaces[T any](client redis.Client, settings *Settings, modelIdString string) KvStore[T] {
 	return NewMetricStoreWithInterfaces[T](&redisKvStore[T]{
 		client:   client,
 		settings: settings,
-	}, settings)
+	}, settings, modelIdString)
 }
 
 func (s *redisKvStore[T]) Contains(ctx context.Context, key any) (bool, error) {

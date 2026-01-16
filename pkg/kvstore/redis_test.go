@@ -196,7 +196,7 @@ func buildTestableRedisStore[T any](t *testing.T) (context.Context, kvstore.KvSt
 		Name:           "test",
 		BatchSize:      100,
 		MetricsEnabled: false,
-	})
+	}, "justtrack.gosoline.grp.test")
 
 	return ctx, store, client
 }
@@ -219,7 +219,7 @@ func buildTestableRedisStoreWithTTL[T any](t *testing.T) (context.Context, kvsto
 		BatchSize:      100,
 		MetricsEnabled: false,
 		Ttl:            time.Second,
-	})
+	}, "justtrack.gosoline.grp.test")
 
 	return ctx, store, client
 }

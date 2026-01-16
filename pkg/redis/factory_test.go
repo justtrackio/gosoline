@@ -55,7 +55,8 @@ func (s *FactoryTestSuite) TestDefault() {
 		},
 		Name: "default",
 		Naming: redis.Naming{
-			Pattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}",
+			AddressPattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}",
+			KeyPattern:     "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}",
 		},
 		Dialer:  "tcp",
 		Address: "127.0.0.1:6379",
@@ -98,7 +99,8 @@ func (s *FactoryTestSuite) TestDedicated() {
 		},
 		Name: "dedicated",
 		Naming: redis.Naming{
-			Pattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}",
+			AddressPattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}",
+			KeyPattern:     "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}",
 		},
 		Dialer:  "srv",
 		Address: "dedicated.address",
@@ -143,7 +145,8 @@ func (s *FactoryTestSuite) TestWithDefaults() {
 		},
 		Name: "partial",
 		Naming: redis.Naming{
-			Pattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}",
+			AddressPattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}",
+			KeyPattern:     "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}",
 		},
 		Dialer:  "srv",
 		Address: "partial.address",
@@ -156,6 +159,31 @@ func (s *FactoryTestSuite) TestWithDefaults() {
 	}
 
 	s.Equal(expected, settings)
+}
+
+func (s *FactoryTestSuite) TestKeyNamingPattern() {
+	// Test that default key naming pattern is set correctly
+	s.initConfig(map[string]any{})
+
+	settings, err := redis.ReadSettings(s.config, "default")
+	s.NoError(err, "there should be no error reading the settings")
+	s.Equal("{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}",
+		settings.Naming.KeyPattern)
+
+	// Test custom key naming pattern
+	s.initConfig(map[string]any{
+		"redis": map[string]any{
+			"default": map[string]any{
+				"naming": map[string]any{
+					"key_pattern": "{app.env}-{app.name}-{key}",
+				},
+			},
+		},
+	})
+
+	settings, err = redis.ReadSettings(s.config, "default")
+	s.NoError(err, "there should be no error reading the settings")
+	s.Equal("{app.env}-{app.name}-{key}", settings.Naming.KeyPattern)
 }
 
 func TestFactoryTestSuite(t *testing.T) {

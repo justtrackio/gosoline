@@ -42,15 +42,21 @@ func NewRedisListOutput(ctx context.Context, config cfg.Config, logger log.Logge
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 
-	defaultMetrics := getRedisListOutputDefaultMetrics(settings.AppIdentity, settings.Key)
+	fullyQualifiedKey, err := redis.BuildFullyQualifiedKey(config, settings.AppIdentity, settings.Key)
+	if err != nil {
+		return nil, fmt.Errorf("can not build fully qualified key: %w", err)
+	}
+
+	defaultMetrics, err := getRedisListOutputDefaultMetrics(config, settings.AppIdentity, settings.Key)
+	if err != nil {
+		return nil, fmt.Errorf("can not build default metrics: %w", err)
+	}
 	mw := metric.NewWriter(defaultMetrics...)
 
-	return NewRedisListOutputWithInterfaces(logger, mw, client, settings), nil
+	return NewRedisListOutputWithInterfaces(config, logger, mw, client, settings, fullyQualifiedKey), nil
 }
 
-func NewRedisListOutputWithInterfaces(logger log.Logger, mw metric.Writer, client redis.Client, settings *RedisListOutputSettings) Output {
-	fullyQualifiedKey := redis.GetFullyQualifiedKey(settings.AppIdentity, settings.Key)
-
+func NewRedisListOutputWithInterfaces(config cfg.Config, logger log.Logger, mw metric.Writer, client redis.Client, settings *RedisListOutputSettings, fullyQualifiedKey string) Output {
 	return &redisListOutput{
 		logger:            logger,
 		metricWriter:      mw,
@@ -98,8 +104,11 @@ func (o *redisListOutput) writeListWriteMetric(ctx context.Context, length int) 
 	o.metricWriter.Write(ctx, data)
 }
 
-func getRedisListOutputDefaultMetrics(appIdentity cfg.AppIdentity, key string) metric.Data {
-	fullyQualifiedKey := redis.GetFullyQualifiedKey(appIdentity, key)
+func getRedisListOutputDefaultMetrics(config cfg.Config, appIdentity cfg.AppIdentity, key string) (metric.Data, error) {
+	fullyQualifiedKey, err := redis.BuildFullyQualifiedKey(config, appIdentity, key)
+	if err != nil {
+		return nil, fmt.Errorf("can not build fully qualified key: %w", err)
+	}
 
 	return metric.Data{
 		{
@@ -111,5 +120,5 @@ func getRedisListOutputDefaultMetrics(appIdentity cfg.AppIdentity, key string) m
 			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
-	}
+	}, nil
 }

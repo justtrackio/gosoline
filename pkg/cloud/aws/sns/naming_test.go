@@ -26,7 +26,7 @@ func (s *GetTopicNameTestSuite) SetupTest() {
 		AppIdentity: cfg.AppIdentity{
 			Name: "producer",
 			Env:  "test",
-			Tags: cfg.AppTags{
+			Tags: map[string]string{
 				"project": "justtrack",
 				"family":  "gosoline",
 				"group":   "group",
@@ -108,7 +108,7 @@ func (s *GetTopicNameTestSuite) TestUnknownPlaceholderReturnsError() {
 
 	_, err := sns.GetTopicName(s.config, s.settings)
 	s.Error(err)
-	s.Contains(err.Error(), "unknown placeholder")
+	s.Contains(err.Error(), "there is no config setting or default for key \"project\"")
 }
 
 func (s *GetTopicNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {

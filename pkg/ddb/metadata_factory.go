@@ -19,7 +19,7 @@ type MetadataFactory struct {
 func NewMetadataFactory(config cfg.Config, settings *Settings) (*MetadataFactory, error) {
 	tableName, err := TableName(config, settings)
 	if err != nil {
-		return nil, fmt.Errorf("can not get table name for settings %s: %w", settings.ModelId.String(), err)
+		return nil, fmt.Errorf("can not get table name for settings %s: %w", mdl.DebugModelIdString(settings.ModelId), err)
 	}
 
 	return NewMetadataFactoryWithInterfaces(settings, tableName), nil

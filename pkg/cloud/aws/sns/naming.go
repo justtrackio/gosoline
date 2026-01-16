@@ -42,21 +42,13 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("sns", topicSettings.GetClientName()))
 	defaultPatternKey := fmt.Sprintf("%s.naming.pattern", aws.GetClientConfigKey("sns", "default"))
+
 	namingSettings := &TopicNamingSettings{}
 	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "pattern")); err != nil {
 		return "", fmt.Errorf("failed to unmarshal sns naming settings for %s: %w", namingKey, err)
 	}
 
-	identity := topicSettings.GetAppIdentity()
-
-	// Use NamingTemplate for strict placeholder validation and pattern-driven tag requirements
-	tmpl := cfg.NewNamingTemplate(namingSettings.Pattern, "topicId")
-	tmpl.WithResourceValue("topicId", topicSettings.GetTopicId())
-
-	name, err := tmpl.ValidateAndExpand(identity)
-	if err != nil {
-		return "", fmt.Errorf("sns topic naming failed: %w", err)
-	}
-
-	return name, nil
+	return config.FormatString(namingSettings.Pattern, topicSettings.GetAppIdentity().ToMap(), map[string]string{
+		"topicId": topicSettings.GetTopicId(),
+	})
 }

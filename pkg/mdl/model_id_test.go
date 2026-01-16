@@ -17,10 +17,10 @@ type ModelIdTestSuite struct {
 }
 
 // =============================================================================
-// String() tests
+// FormatLegacyModelIdString() tests (replacement for String())
 // =============================================================================
 
-func (s *ModelIdTestSuite) TestString_DefaultPattern() {
+func (s *ModelIdTestSuite) TestFormatLegacyModelIdString_DefaultPattern() {
 	modelId := mdl.ModelId{
 		Name: "testModel",
 		Tags: map[string]string{
@@ -30,21 +30,22 @@ func (s *ModelIdTestSuite) TestString_DefaultPattern() {
 		},
 	}
 
-	result := modelId.String()
+	result := mdl.FormatLegacyModelIdString(modelId)
 	s.Equal("myProject.myFamily.myGroup.testModel", result)
 }
 
-func (s *ModelIdTestSuite) TestString_MissingTags_ReturnsInvalid() {
+func (s *ModelIdTestSuite) TestFormatLegacyModelIdString_MissingTags_ReturnsEmpty() {
 	modelId := mdl.ModelId{
 		Name: "testModel",
 		// Missing required tags for default pattern
 	}
 
-	result := modelId.String()
-	s.Equal("<invalid:testModel>", result)
+	result := mdl.FormatLegacyModelIdString(modelId)
+	// With missing tags, placeholders resolve to empty strings
+	s.Equal("...testModel", result)
 }
 
-func (s *ModelIdTestSuite) TestString_EmptyName() {
+func (s *ModelIdTestSuite) TestFormatLegacyModelIdString_EmptyName() {
 	modelId := mdl.ModelId{
 		Name: "",
 		Tags: map[string]string{
@@ -54,15 +55,15 @@ func (s *ModelIdTestSuite) TestString_EmptyName() {
 		},
 	}
 
-	result := modelId.String()
+	result := mdl.FormatLegacyModelIdString(modelId)
 	s.Equal("myProject.myFamily.myGroup.", result)
 }
 
 // =============================================================================
-// Format() tests
+// FormatModelIdWithPattern() tests (replacement for Format())
 // =============================================================================
 
-func (s *ModelIdTestSuite) TestFormat_DefaultPattern() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_LegacyPattern() {
 	modelId := mdl.ModelId{
 		Name: "testModel",
 		Tags: map[string]string{
@@ -72,12 +73,12 @@ func (s *ModelIdTestSuite) TestFormat_DefaultPattern() {
 		},
 	}
 
-	result, err := modelId.Format(mdl.DefaultModelIdPattern)
+	result, err := mdl.FormatModelIdWithPattern(modelId, mdl.LegacyModelIdPattern)
 	s.NoError(err)
 	s.Equal("myProject.myFamily.myGroup.testModel", result)
 }
 
-func (s *ModelIdTestSuite) TestFormat_WithEnvAndApp() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_WithEnvAndApp() {
 	modelId := mdl.ModelId{
 		Name: "testModel",
 		Env:  "production",
@@ -87,42 +88,42 @@ func (s *ModelIdTestSuite) TestFormat_WithEnvAndApp() {
 		},
 	}
 
-	result, err := modelId.Format("{app.tags.project}-{app.env}-{app.name}-{modelId}")
+	result, err := mdl.FormatModelIdWithPattern(modelId, "{app.tags.project}-{app.env}-{app.name}-{modelId}")
 	s.NoError(err)
 	s.Equal("myProject-production-myApp-testModel", result)
 }
 
-func (s *ModelIdTestSuite) TestFormat_SinglePlaceholder_ModelId() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_SinglePlaceholder_ModelId() {
 	modelId := mdl.ModelId{
 		Name: "testModel",
 	}
 
-	result, err := modelId.Format("{modelId}")
+	result, err := mdl.FormatModelIdWithPattern(modelId, "{modelId}")
 	s.NoError(err)
 	s.Equal("testModel", result)
 }
 
-func (s *ModelIdTestSuite) TestFormat_SinglePlaceholder_AppEnv() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_SinglePlaceholder_AppEnv() {
 	modelId := mdl.ModelId{
 		Env: "staging",
 	}
 
-	result, err := modelId.Format("{app.env}")
+	result, err := mdl.FormatModelIdWithPattern(modelId, "{app.env}")
 	s.NoError(err)
 	s.Equal("staging", result)
 }
 
-func (s *ModelIdTestSuite) TestFormat_SinglePlaceholder_AppName() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_SinglePlaceholder_AppName() {
 	modelId := mdl.ModelId{
 		App: "myApplication",
 	}
 
-	result, err := modelId.Format("{app.name}")
+	result, err := mdl.FormatModelIdWithPattern(modelId, "{app.name}")
 	s.NoError(err)
 	s.Equal("myApplication", result)
 }
 
-func (s *ModelIdTestSuite) TestFormat_CustomTags() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_CustomTags() {
 	modelId := mdl.ModelId{
 		Name: "testModel",
 		Tags: map[string]string{
@@ -132,65 +133,65 @@ func (s *ModelIdTestSuite) TestFormat_CustomTags() {
 		},
 	}
 
-	result, err := modelId.Format("{app.tags.region}-{app.tags.team}-{app.tags.costCenter}-{modelId}")
+	result, err := mdl.FormatModelIdWithPattern(modelId, "{app.tags.region}-{app.tags.team}-{app.tags.costCenter}-{modelId}")
 	s.NoError(err)
 	s.Equal("eu-west-1-platform-12345-testModel", result)
 }
 
-func (s *ModelIdTestSuite) TestFormat_StaticPattern() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_StaticPattern() {
 	modelId := mdl.ModelId{
 		Name: "testModel",
 	}
 
-	result, err := modelId.Format("my-static-table-name")
+	result, err := mdl.FormatModelIdWithPattern(modelId, "my-static-table-name")
 	s.NoError(err)
 	s.Equal("my-static-table-name", result)
 }
 
-func (s *ModelIdTestSuite) TestFormat_DifferentDelimiters() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_DifferentDelimiters() {
 	modelId := mdl.ModelId{
 		Name: "testModel",
 		Env:  "dev",
 	}
 
 	// Dash delimiter
-	result, err := modelId.Format("{app.env}-{modelId}")
+	result, err := mdl.FormatModelIdWithPattern(modelId, "{app.env}-{modelId}")
 	s.NoError(err)
 	s.Equal("dev-testModel", result)
 
 	// Underscore delimiter
-	result, err = modelId.Format("{app.env}_{modelId}")
+	result, err = mdl.FormatModelIdWithPattern(modelId, "{app.env}_{modelId}")
 	s.NoError(err)
 	s.Equal("dev_testModel", result)
 
 	// Slash delimiter
-	result, err = modelId.Format("{app.env}/{modelId}")
+	result, err = mdl.FormatModelIdWithPattern(modelId, "{app.env}/{modelId}")
 	s.NoError(err)
 	s.Equal("dev/testModel", result)
 
 	// Colon delimiter
-	result, err = modelId.Format("{app.env}:{modelId}")
+	result, err = mdl.FormatModelIdWithPattern(modelId, "{app.env}:{modelId}")
 	s.NoError(err)
 	s.Equal("dev:testModel", result)
 }
 
-func (s *ModelIdTestSuite) TestFormat_Error_EmptyPattern() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_Error_EmptyPattern() {
 	modelId := mdl.ModelId{Name: "test"}
 
-	_, err := modelId.Format("")
+	_, err := mdl.FormatModelIdWithPattern(modelId, "")
 	s.Error(err)
 	s.Contains(err.Error(), "pattern cannot be empty")
 }
 
-func (s *ModelIdTestSuite) TestFormat_Error_UnknownPlaceholder() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_Error_UnknownPlaceholder() {
 	modelId := mdl.ModelId{Name: "test"}
 
-	_, err := modelId.Format("{unknown}-{modelId}")
+	_, err := mdl.FormatModelIdWithPattern(modelId, "{unknown}-{modelId}")
 	s.Error(err)
 	s.Contains(err.Error(), "unknown placeholder")
 }
 
-func (s *ModelIdTestSuite) TestFormat_Error_MissingTag() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_Error_MissingTag() {
 	modelId := mdl.ModelId{
 		Name: "testModel",
 		Tags: map[string]string{
@@ -199,69 +200,69 @@ func (s *ModelIdTestSuite) TestFormat_Error_MissingTag() {
 		},
 	}
 
-	_, err := modelId.Format("{app.tags.project}-{app.tags.family}-{modelId}")
+	_, err := mdl.FormatModelIdWithPattern(modelId, "{app.tags.project}-{app.tags.family}-{modelId}")
 	s.Error(err)
 	s.Contains(err.Error(), "missing required tags: family")
 }
 
-func (s *ModelIdTestSuite) TestFormat_Error_MissingMultipleTags() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_Error_MissingMultipleTags() {
 	modelId := mdl.ModelId{
 		Name: "testModel",
 		// Missing all tags
 	}
 
-	_, err := modelId.Format("{app.tags.project}-{app.tags.family}-{modelId}")
+	_, err := mdl.FormatModelIdWithPattern(modelId, "{app.tags.project}-{app.tags.family}-{modelId}")
 	s.Error(err)
 	s.Contains(err.Error(), "missing required tags")
 	s.Contains(err.Error(), "project")
 	s.Contains(err.Error(), "family")
 }
 
-func (s *ModelIdTestSuite) TestFormat_Error_EmptyEnv() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_Error_EmptyEnv() {
 	modelId := mdl.ModelId{
 		Name: "testModel",
 		Env:  "", // Empty
 	}
 
-	_, err := modelId.Format("{app.env}-{modelId}")
+	_, err := mdl.FormatModelIdWithPattern(modelId, "{app.env}-{modelId}")
 	s.Error(err)
 	s.Contains(err.Error(), "app.env but it is empty")
 }
 
-func (s *ModelIdTestSuite) TestFormat_Error_EmptyApp() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_Error_EmptyApp() {
 	modelId := mdl.ModelId{
 		Name: "testModel",
 		App:  "", // Empty
 	}
 
-	_, err := modelId.Format("{app.name}-{modelId}")
+	_, err := mdl.FormatModelIdWithPattern(modelId, "{app.name}-{modelId}")
 	s.Error(err)
 	s.Contains(err.Error(), "app.name but it is empty")
 }
 
-func (s *ModelIdTestSuite) TestFormat_Error_StaticTextInPattern() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_Error_StaticTextInPattern() {
 	modelId := mdl.ModelId{Name: "test"}
 
 	// Pattern with static text prefix
-	_, err := modelId.Format("prefix-{modelId}")
+	_, err := mdl.FormatModelIdWithPattern(modelId, "prefix-{modelId}")
 	s.Error(err)
 	s.Contains(err.Error(), "static text")
 }
 
-func (s *ModelIdTestSuite) TestFormat_Error_InconsistentDelimiters() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_Error_InconsistentDelimiters() {
 	modelId := mdl.ModelId{Name: "test", Env: "dev"}
 
 	// Pattern with different delimiters
-	_, err := modelId.Format("{app.env}-{modelId}.something")
+	_, err := mdl.FormatModelIdWithPattern(modelId, "{app.env}-{modelId}.something")
 	s.Error(err)
 }
 
 // =============================================================================
-// ModelIdFromString() tests
+// ParseLegacyModelId() tests (replacement for ModelIdFromString())
 // =============================================================================
 
-func (s *ModelIdTestSuite) TestModelIdFromString_DefaultPattern() {
-	modelId, err := mdl.ModelIdFromString("myProject.myFamily.myGroup.testModel")
+func (s *ModelIdTestSuite) TestParseLegacyModelId_DefaultPattern() {
+	modelId, err := mdl.ParseLegacyModelId("myProject.myFamily.myGroup.testModel")
 	s.NoError(err)
 
 	s.Equal("testModel", modelId.Name)
@@ -270,7 +271,7 @@ func (s *ModelIdTestSuite) TestModelIdFromString_DefaultPattern() {
 	s.Equal("myGroup", modelId.Tags["group"])
 }
 
-func (s *ModelIdTestSuite) TestModelIdFromString_Roundtrip() {
+func (s *ModelIdTestSuite) TestParseLegacyModelId_Roundtrip() {
 	original := mdl.ModelId{
 		Name: "testModel",
 		Tags: map[string]string{
@@ -280,8 +281,8 @@ func (s *ModelIdTestSuite) TestModelIdFromString_Roundtrip() {
 		},
 	}
 
-	str := original.String()
-	parsed, err := mdl.ModelIdFromString(str)
+	str := mdl.FormatLegacyModelIdString(original)
+	parsed, err := mdl.ParseLegacyModelId(str)
 	s.NoError(err)
 
 	s.Equal(original.Name, parsed.Name)
@@ -290,33 +291,33 @@ func (s *ModelIdTestSuite) TestModelIdFromString_Roundtrip() {
 	s.Equal(original.Tags["group"], parsed.Tags["group"])
 }
 
-func (s *ModelIdTestSuite) TestModelIdFromString_Error_WrongSegmentCount() {
-	_, err := mdl.ModelIdFromString("only.two.segments")
+func (s *ModelIdTestSuite) TestParseLegacyModelId_Error_WrongSegmentCount() {
+	_, err := mdl.ParseLegacyModelId("only.two.segments")
 	s.Error(err)
 	s.Contains(err.Error(), "has 3 segments but pattern expects 4")
 }
 
-func (s *ModelIdTestSuite) TestModelIdFromString_Error_TooManySegments() {
-	_, err := mdl.ModelIdFromString("one.two.three.four.five")
+func (s *ModelIdTestSuite) TestParseLegacyModelId_Error_TooManySegments() {
+	_, err := mdl.ParseLegacyModelId("one.two.three.four.five")
 	s.Error(err)
 	s.Contains(err.Error(), "has 5 segments but pattern expects 4")
 }
 
 // =============================================================================
-// ModelIdFromStringWithPattern() tests
+// ParseModelIdWithPattern() tests (replacement for ModelIdFromStringWithPattern())
 // =============================================================================
 
-func (s *ModelIdTestSuite) TestModelIdFromStringWithPattern_EnvAndModelId() {
-	modelId, err := mdl.ModelIdFromStringWithPattern("{app.env}-{modelId}", "production-myModel")
+func (s *ModelIdTestSuite) TestParseModelIdWithPattern_EnvAndModelId() {
+	modelId, err := mdl.ParseModelIdWithPattern("{app.env}-{modelId}", "production-myModel")
 	s.NoError(err)
 
 	s.Equal("myModel", modelId.Name)
 	s.Equal("production", modelId.Env)
 }
 
-func (s *ModelIdTestSuite) TestModelIdFromStringWithPattern_AllFields() {
+func (s *ModelIdTestSuite) TestParseModelIdWithPattern_AllFields() {
 	pattern := "{app.tags.project}-{app.env}-{app.name}-{modelId}"
-	modelId, err := mdl.ModelIdFromStringWithPattern(pattern, "myProject-staging-myApp-testModel")
+	modelId, err := mdl.ParseModelIdWithPattern(pattern, "myProject-staging-myApp-testModel")
 	s.NoError(err)
 
 	s.Equal("testModel", modelId.Name)
@@ -325,12 +326,12 @@ func (s *ModelIdTestSuite) TestModelIdFromStringWithPattern_AllFields() {
 	s.Equal("myProject", modelId.Tags["project"])
 }
 
-func (s *ModelIdTestSuite) TestModelIdFromStringWithPattern_CustomTags() {
+func (s *ModelIdTestSuite) TestParseModelIdWithPattern_CustomTags() {
 	// NOTE: When values might contain the delimiter character, use a different delimiter
 	// or ensure values don't contain the delimiter. Parsing is inherently ambiguous
 	// when values contain the delimiter.
 	pattern := "{app.tags.region}_{app.tags.team}_{modelId}"
-	modelId, err := mdl.ModelIdFromStringWithPattern(pattern, "eu-west-1_platform_myModel")
+	modelId, err := mdl.ParseModelIdWithPattern(pattern, "eu-west-1_platform_myModel")
 	s.NoError(err)
 
 	s.Equal("myModel", modelId.Name)
@@ -338,16 +339,16 @@ func (s *ModelIdTestSuite) TestModelIdFromStringWithPattern_CustomTags() {
 	s.Equal("platform", modelId.Tags["team"])
 }
 
-func (s *ModelIdTestSuite) TestModelIdFromStringWithPattern_SinglePlaceholder() {
-	modelId, err := mdl.ModelIdFromStringWithPattern("{modelId}", "justTheModel")
+func (s *ModelIdTestSuite) TestParseModelIdWithPattern_SinglePlaceholder() {
+	modelId, err := mdl.ParseModelIdWithPattern("{modelId}", "justTheModel")
 	s.NoError(err)
 
 	s.Equal("justTheModel", modelId.Name)
 }
 
-func (s *ModelIdTestSuite) TestModelIdFromStringWithPattern_UnderscoreDelimiter() {
+func (s *ModelIdTestSuite) TestParseModelIdWithPattern_UnderscoreDelimiter() {
 	pattern := "{app.env}_{app.name}_{modelId}"
-	modelId, err := mdl.ModelIdFromStringWithPattern(pattern, "dev_myApp_testModel")
+	modelId, err := mdl.ParseModelIdWithPattern(pattern, "dev_myApp_testModel")
 	s.NoError(err)
 
 	s.Equal("testModel", modelId.Name)
@@ -355,7 +356,7 @@ func (s *ModelIdTestSuite) TestModelIdFromStringWithPattern_UnderscoreDelimiter(
 	s.Equal("myApp", modelId.App)
 }
 
-func (s *ModelIdTestSuite) TestModelIdFromStringWithPattern_Roundtrip() {
+func (s *ModelIdTestSuite) TestParseModelIdWithPattern_Roundtrip() {
 	pattern := "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{modelId}"
 	original := mdl.ModelId{
 		Name: "testModel",
@@ -367,11 +368,11 @@ func (s *ModelIdTestSuite) TestModelIdFromStringWithPattern_Roundtrip() {
 		},
 	}
 
-	formatted, err := original.Format(pattern)
+	formatted, err := mdl.FormatModelIdWithPattern(original, pattern)
 	s.NoError(err)
 	s.Equal("myProject-production-myFamily-myGroup-testModel", formatted)
 
-	parsed, err := mdl.ModelIdFromStringWithPattern(pattern, formatted)
+	parsed, err := mdl.ParseModelIdWithPattern(pattern, formatted)
 	s.NoError(err)
 
 	s.Equal(original.Name, parsed.Name)
@@ -381,15 +382,15 @@ func (s *ModelIdTestSuite) TestModelIdFromStringWithPattern_Roundtrip() {
 	s.Equal(original.Tags["group"], parsed.Tags["group"])
 }
 
-func (s *ModelIdTestSuite) TestModelIdFromStringWithPattern_Error_InvalidPattern() {
-	_, err := mdl.ModelIdFromStringWithPattern("", "test")
+func (s *ModelIdTestSuite) TestParseModelIdWithPattern_Error_InvalidPattern() {
+	_, err := mdl.ParseModelIdWithPattern("", "test")
 	s.Error(err)
-	s.Contains(err.Error(), "invalid pattern")
+	s.Contains(err.Error(), "pattern cannot be empty")
 }
 
-func (s *ModelIdTestSuite) TestModelIdFromStringWithPattern_Error_WrongSegments() {
+func (s *ModelIdTestSuite) TestParseModelIdWithPattern_Error_WrongSegments() {
 	pattern := "{app.env}-{modelId}"
-	_, err := mdl.ModelIdFromStringWithPattern(pattern, "only-one-segment-too-many")
+	_, err := mdl.ParseModelIdWithPattern(pattern, "only-one-segment-too-many")
 	s.Error(err)
 	// "only-one-segment-too-many" splits by "-" into 5 segments
 	s.Contains(err.Error(), "has 5 segments but pattern expects 2")
@@ -429,8 +430,9 @@ func (m *mockConfigProvider) GetStringMap(key string, optionalDefault ...map[str
 func (s *ModelIdTestSuite) TestPadFromConfig_AllFields() {
 	config := &mockConfigProvider{
 		strings: map[string]string{
-			"app.env":  "production",
-			"app.name": "myApp",
+			"app.env":              "production",
+			"app.name":             "myApp",
+			"app.model_id.pattern": "{app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}",
 		},
 		stringMaps: map[string]map[string]any{
 			"app.tags": {
@@ -458,8 +460,9 @@ func (s *ModelIdTestSuite) TestPadFromConfig_AllFields() {
 func (s *ModelIdTestSuite) TestPadFromConfig_ExistingValuesNotOverwritten() {
 	config := &mockConfigProvider{
 		strings: map[string]string{
-			"app.env":  "production",
-			"app.name": "configApp",
+			"app.env":              "production",
+			"app.name":             "configApp",
+			"app.model_id.pattern": "{app.tags.project}.{app.tags.family}.{modelId}",
 		},
 		stringMaps: map[string]map[string]any{
 			"app.tags": {
@@ -489,9 +492,46 @@ func (s *ModelIdTestSuite) TestPadFromConfig_ExistingValuesNotOverwritten() {
 	s.Equal("configFamily", modelId.Tags["family"])
 }
 
-func (s *ModelIdTestSuite) TestPadFromConfig_MissingConfigKeys() {
+func (s *ModelIdTestSuite) TestPadFromConfig_MissingPattern_NoError() {
 	config := &mockConfigProvider{
-		strings:    map[string]string{},
+		strings: map[string]string{
+			"app.env":  "production",
+			"app.name": "myApp",
+			// app.model_id.pattern is missing
+		},
+		stringMaps: map[string]map[string]any{
+			"app.tags": {
+				"project": "myProject",
+			},
+		},
+	}
+
+	modelId := mdl.ModelId{
+		Name: "testModel",
+	}
+
+	// PadFromConfig should succeed even without pattern
+	err := modelId.PadFromConfig(config)
+	s.NoError(err)
+
+	// Identity fields should be padded
+	s.Equal("production", modelId.Env)
+	s.Equal("myApp", modelId.App)
+	s.Equal("myProject", modelId.Tags["project"])
+
+	// But Format() should fail since pattern is not set
+	_, err = modelId.Format()
+	s.Error(err)
+	s.Contains(err.Error(), "pattern is not set")
+}
+
+func (s *ModelIdTestSuite) TestPadFromConfig_InvalidPattern_ReturnsError() {
+	config := &mockConfigProvider{
+		strings: map[string]string{
+			"app.env":              "production",
+			"app.name":             "myApp",
+			"app.model_id.pattern": "{unknown}-{modelId}", // Unknown placeholder
+		},
 		stringMaps: map[string]map[string]any{},
 	}
 
@@ -499,20 +539,16 @@ func (s *ModelIdTestSuite) TestPadFromConfig_MissingConfigKeys() {
 		Name: "testModel",
 	}
 
-	// Should not error even if config keys are missing
 	err := modelId.PadFromConfig(config)
-	s.NoError(err)
-
-	// Values should remain empty
-	s.Equal("", modelId.Env)
-	s.Equal("", modelId.App)
-	s.NotNil(modelId.Tags) // Tags should be initialized
+	s.Error(err)
+	s.Contains(err.Error(), "invalid app.model_id.pattern")
 }
 
 func (s *ModelIdTestSuite) TestPadFromConfig_PartialConfig() {
 	config := &mockConfigProvider{
 		strings: map[string]string{
-			"app.env": "staging",
+			"app.env":              "staging",
+			"app.model_id.pattern": "{app.env}-{modelId}",
 			// app.name is missing
 		},
 		stringMaps: map[string]map[string]any{
@@ -536,6 +572,141 @@ func (s *ModelIdTestSuite) TestPadFromConfig_PartialConfig() {
 }
 
 // =============================================================================
+// Format() tests
+// =============================================================================
+
+func (s *ModelIdTestSuite) TestFormat_AfterPadFromConfig() {
+	config := &mockConfigProvider{
+		strings: map[string]string{
+			"app.env":              "production",
+			"app.name":             "myApp",
+			"app.model_id.pattern": "{app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}",
+		},
+		stringMaps: map[string]map[string]any{
+			"app.tags": {
+				"project": "myProject",
+				"family":  "myFamily",
+				"group":   "myGroup",
+			},
+		},
+	}
+
+	modelId := mdl.ModelId{
+		Name: "testModel",
+	}
+
+	err := modelId.PadFromConfig(config)
+	s.NoError(err)
+
+	result, err := modelId.Format()
+	s.NoError(err)
+	s.Equal("myProject.myFamily.myGroup.testModel", result)
+}
+
+func (s *ModelIdTestSuite) TestFormat_WithEnvAndAppPattern() {
+	config := &mockConfigProvider{
+		strings: map[string]string{
+			"app.env":              "staging",
+			"app.name":             "myApp",
+			"app.model_id.pattern": "{app.env}-{app.name}-{modelId}",
+		},
+		stringMaps: map[string]map[string]any{},
+	}
+
+	modelId := mdl.ModelId{
+		Name: "testModel",
+	}
+
+	err := modelId.PadFromConfig(config)
+	s.NoError(err)
+
+	result, err := modelId.Format()
+	s.NoError(err)
+	s.Equal("staging-myApp-testModel", result)
+}
+
+func (s *ModelIdTestSuite) TestFormat_WithoutPadFromConfig_ReturnsError() {
+	modelId := mdl.ModelId{
+		Name: "testModel",
+		Env:  "production",
+		Tags: map[string]string{
+			"project": "myProject",
+		},
+	}
+
+	// Format without calling PadFromConfig should fail
+	_, err := modelId.Format()
+	s.Error(err)
+	s.Contains(err.Error(), "pattern is not set")
+	s.Contains(err.Error(), "PadFromConfig")
+}
+
+func (s *ModelIdTestSuite) TestFormat_MissingRequiredTag_ReturnsError() {
+	config := &mockConfigProvider{
+		strings: map[string]string{
+			"app.env":              "production",
+			"app.model_id.pattern": "{app.tags.project}.{app.tags.family}.{modelId}",
+		},
+		stringMaps: map[string]map[string]any{
+			"app.tags": {
+				"project": "myProject",
+				// family is missing
+			},
+		},
+	}
+
+	modelId := mdl.ModelId{
+		Name: "testModel",
+	}
+
+	err := modelId.PadFromConfig(config)
+	s.NoError(err)
+
+	_, err = modelId.Format()
+	s.Error(err)
+	s.Contains(err.Error(), "missing required tags: family")
+}
+
+func (s *ModelIdTestSuite) TestFormat_PatternNotOverwrittenBySecondPadFromConfig() {
+	config1 := &mockConfigProvider{
+		strings: map[string]string{
+			"app.env":              "production",
+			"app.model_id.pattern": "{app.env}-{modelId}",
+		},
+		stringMaps: map[string]map[string]any{},
+	}
+
+	config2 := &mockConfigProvider{
+		strings: map[string]string{
+			"app.env":              "staging",
+			"app.model_id.pattern": "{app.tags.project}.{modelId}", // Different pattern
+		},
+		stringMaps: map[string]map[string]any{
+			"app.tags": {
+				"project": "myProject",
+			},
+		},
+	}
+
+	modelId := mdl.ModelId{
+		Name: "testModel",
+	}
+
+	// First pad
+	err := modelId.PadFromConfig(config1)
+	s.NoError(err)
+
+	// Second pad should not overwrite the pattern
+	err = modelId.PadFromConfig(config2)
+	s.NoError(err)
+
+	// Should use the first pattern
+	result, err := modelId.Format()
+	s.NoError(err)
+	s.Equal("production-testModel", result)
+}
+
+// =============================================================================
 // Pattern validation edge cases
 // =============================================================================
 
@@ -543,7 +714,7 @@ func (s *ModelIdTestSuite) TestPatternValidation_EmptyTagKey() {
 	modelId := mdl.ModelId{Name: "test"}
 
 	// app.tags. without a key after it
-	_, err := modelId.Format("{app.tags.}")
+	_, err := mdl.FormatModelIdWithPattern(modelId, "{app.tags.}")
 	s.Error(err)
 	s.Contains(err.Error(), "unknown placeholder")
 }
@@ -552,7 +723,7 @@ func (s *ModelIdTestSuite) TestPatternValidation_MultiCharDelimiter() {
 	modelId := mdl.ModelId{Name: "test", Env: "dev"}
 
 	// Two-character delimiter is not allowed
-	_, err := modelId.Format("{app.env}--{modelId}")
+	_, err := mdl.FormatModelIdWithPattern(modelId, "{app.env}--{modelId}")
 	s.Error(err)
 	s.Contains(err.Error(), "delimiter must be a single character")
 }
@@ -561,7 +732,7 @@ func (s *ModelIdTestSuite) TestPatternValidation_AlphanumericDelimiter() {
 	modelId := mdl.ModelId{Name: "test", Env: "dev"}
 
 	// Letter as delimiter is not allowed
-	_, err := modelId.Format("{app.env}x{modelId}")
+	_, err := mdl.FormatModelIdWithPattern(modelId, "{app.env}x{modelId}")
 	s.Error(err)
 	s.Contains(err.Error(), "delimiter must be non-alphanumeric")
 }
@@ -570,7 +741,7 @@ func (s *ModelIdTestSuite) TestPatternValidation_AlphanumericDelimiter() {
 // Edge cases with special characters in values
 // =============================================================================
 
-func (s *ModelIdTestSuite) TestFormat_ValuesWithSpecialChars() {
+func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_ValuesWithSpecialChars() {
 	modelId := mdl.ModelId{
 		Name: "test-model-v2",
 		Env:  "us-east-1",
@@ -580,15 +751,15 @@ func (s *ModelIdTestSuite) TestFormat_ValuesWithSpecialChars() {
 	}
 
 	// Values can contain the delimiter character
-	result, err := modelId.Format("{app.tags.project}.{app.env}.{modelId}")
+	result, err := mdl.FormatModelIdWithPattern(modelId, "{app.tags.project}.{app.env}.{modelId}")
 	s.NoError(err)
 	s.Equal("my_project.us-east-1.test-model-v2", result)
 }
 
-func (s *ModelIdTestSuite) TestParse_ValuesWithDelimiterChar() {
+func (s *ModelIdTestSuite) TestParseModelIdWithPattern_ValuesWithDelimiterChar() {
 	// When parsing, values containing the delimiter cause issues
 	// This is expected behavior - the delimiter splits the string
-	_, err := mdl.ModelIdFromStringWithPattern(
+	_, err := mdl.ParseModelIdWithPattern(
 		"{app.env}-{modelId}",
 		"us-east-1-my-model", // "us-east-1" and "my-model" both contain "-"
 	)

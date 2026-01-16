@@ -86,7 +86,7 @@ func (s *testSuite) TestSuccess(app suite.AppUnderTest) {
 		Name: "event 1",
 	}
 
-	err := s.producer.WriteOne(s.T().Context(), event, mdlsub.CreateMessageAttributes(mdl.ModelId{
+	err := s.producer.WriteOne(s.T().Context(), event, mdlsub.CreateMessageAttributes(mdl.FormatLegacyModelIdString(mdl.ModelId{
 		Name: "testEvent",
 		Env:  "test",
 		Tags: map[string]string{
@@ -94,7 +94,7 @@ func (s *testSuite) TestSuccess(app suite.AppUnderTest) {
 			"family":  "gosoline",
 			"group":   "source-group",
 		},
-	}, mdlsub.TypeCreate, 0))
+	}), mdlsub.TypeCreate, 0))
 	s.NoError(err)
 
 	app.WaitDone()

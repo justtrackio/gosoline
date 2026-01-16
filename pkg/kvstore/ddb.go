@@ -64,14 +64,19 @@ func NewDdbKvStore[T any](ctx context.Context, config cfg.Config, logger log.Log
 		return nil, fmt.Errorf("can not create ddb repository: %w", err)
 	}
 
-	return NewDdbKvStoreWithInterfaces[T](repository, settings), nil
+	modelIdString, err := settings.MetricModelIdString(config)
+	if err != nil {
+		return nil, fmt.Errorf("can not compute model id string for metrics: %w", err)
+	}
+
+	return NewDdbKvStoreWithInterfaces[T](repository, settings, modelIdString), nil
 }
 
-func NewDdbKvStoreWithInterfaces[T any](repository ddb.Repository, settings *Settings) KvStore[T] {
+func NewDdbKvStoreWithInterfaces[T any](repository ddb.Repository, settings *Settings, modelIdString string) KvStore[T] {
 	return NewMetricStoreWithInterfaces[T](&ddbKvStore[T]{
 		repository: repository,
 		settings:   settings,
-	}, settings)
+	}, settings, modelIdString)
 }
 
 func (s *ddbKvStore[T]) Contains(ctx context.Context, key any) (bool, error) {

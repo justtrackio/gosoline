@@ -34,7 +34,7 @@ func (s *PublisherTestSuite) SetupTest() {
 				"group":   "grp",
 			},
 		},
-	})
+	}, "gosoline.test.grp.event")
 }
 
 func (s *PublisherTestSuite) TestPublish() {

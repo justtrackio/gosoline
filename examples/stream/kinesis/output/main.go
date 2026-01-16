@@ -28,10 +28,10 @@ type ExampleRecord struct {
 }
 
 type outputModule struct {
-	logger  log.Logger
-	uuidGen uuid.Uuid
-	output  stream.Output
-	modelId mdl.ModelId
+	logger        log.Logger
+	uuidGen       uuid.Uuid
+	output        stream.Output
+	modelIdString string
 }
 
 func newOutputModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -49,11 +49,16 @@ func newOutputModule(ctx context.Context, config cfg.Config, logger log.Logger) 
 		return nil, fmt.Errorf("can not pad model id: %w", err)
 	}
 
+	modelIdString, err := modelId.Format()
+	if err != nil {
+		return nil, fmt.Errorf("can not get canonical model id string: %w", err)
+	}
+
 	module := &outputModule{
-		logger:  logger,
-		uuidGen: uuid.New(),
-		output:  output,
-		modelId: modelId,
+		logger:        logger,
+		uuidGen:       uuid.New(),
+		output:        output,
+		modelIdString: modelIdString,
 	}
 
 	return module, nil
@@ -79,7 +84,7 @@ func (p outputModule) Run(ctx context.Context) error {
 					return fmt.Errorf("failed to marshal record: %w", err)
 				}
 
-				records[i] = stream.NewJsonMessage(string(body), mdlsub.CreateMessageAttributes(p.modelId, mdlsub.TypeCreate, 0))
+				records[i] = stream.NewJsonMessage(string(body), mdlsub.CreateMessageAttributes(p.modelIdString, mdlsub.TypeCreate, 0))
 			}
 
 			if err := p.output.Write(ctx, records); err != nil {

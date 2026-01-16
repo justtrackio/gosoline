@@ -24,7 +24,7 @@ func TestGetAppIdentityFromConfig_WithMocks(t *testing.T) {
 	assert.Equal(t, cfg.AppIdentity{
 		Name: "name",
 		Env:  "test",
-		Tags: cfg.AppTags{
+		Tags: map[string]string{
 			"project": "prj",
 			"family":  "fam",
 			"group":   "grp",
@@ -49,7 +49,7 @@ func TestAppIdentity_PadFromConfig_WithMocks(t *testing.T) {
 	assert.Equal(t, cfg.AppIdentity{
 		Name: "name",
 		Env:  "test",
-		Tags: cfg.AppTags{
+		Tags: map[string]string{
 			"project": "prj",
 			"family":  "fam",
 			"group":   "grp",
