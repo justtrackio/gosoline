@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	ddbMocks "github.com/justtrackio/gosoline/pkg/ddb/mocks"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -277,15 +277,15 @@ func buildTestableDdbStore[T any](t *testing.T) (context.Context, kvstore.KvStor
 	repository := ddbMocks.NewRepository(t)
 
 	store := kvstore.NewDdbKvStoreWithInterfaces[T](repository, &kvstore.Settings{
-		AppIdentity: cfg.AppIdentity{
-			Name: "kvstore",
-			Tags: cfg.AppTags{
+		ModelId: mdl.ModelId{
+			Name: "test",
+			App:  "kvstore",
+			Tags: map[string]string{
 				"project": "applike",
 				"family":  "gosoline",
 				"group":   "grp",
 			},
 		},
-		Name:      "test",
 		BatchSize: 100,
 	}, "applike.gosoline.grp.test")
 

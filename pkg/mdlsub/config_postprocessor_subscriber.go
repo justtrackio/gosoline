@@ -172,13 +172,13 @@ func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string
 		return cfg.WithConfigSetting(kvstoreKey, nil, cfg.SkipExisting)
 	}
 
-	// Derive identity from TargetModel + config
-	identity, err := DeriveIdentity(config, subscriberSettings.TargetModel.ModelId)
-	if err != nil {
+	// Pad the ModelId from config to fill in any missing fields
+	modelId := subscriberSettings.TargetModel.ModelId
+	if err := modelId.PadFromConfig(config); err != nil {
 		return cfg.WithConfigSetting(kvstoreKey, nil, cfg.SkipExisting)
 	}
 
-	kvstoreSettings.Identity = identity
+	kvstoreSettings.ModelId = modelId
 	kvstoreSettings.Elements = []string{kvstore.TypeRedis, kvstore.TypeDdb}
 
 	return cfg.WithConfigSetting(kvstoreKey, kvstoreSettings, cfg.SkipExisting)

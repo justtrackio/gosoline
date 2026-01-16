@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 const (
@@ -23,7 +24,7 @@ type DdbSettings struct {
 }
 
 type ChainConfiguration struct {
-	Identity            cfg.AppIdentity       `cfg:"identity"`
+	ModelId             mdl.ModelId           `cfg:"model_id"`
 	Type                string                `cfg:"type" default:"chain" validate:"eq=chain"`
 	Elements            []string              `cfg:"elements" validate:"min=1"`
 	Ddb                 DdbSettings           `cfg:"ddb"`
@@ -84,10 +85,13 @@ func newKvStoreChainFromConfig[T any](ctx context.Context, config cfg.Config, lo
 		return nil, fmt.Errorf("failed to unmarshal kvstore configuration for %s: %w", name, err)
 	}
 
+	// Set the ModelId.Name to the kvstore name
+	modelId := configuration.ModelId
+	modelId.Name = name
+
 	store, err := NewChainKvStore[T](ctx, config, logger, configuration.MissingCacheEnabled, &Settings{
-		AppIdentity:    configuration.Identity,
+		ModelId:        modelId,
 		DdbSettings:    configuration.Ddb,
-		Name:           name,
 		Ttl:            configuration.Ttl,
 		BatchSize:      configuration.BatchSize,
 		MetricsEnabled: configuration.MetricsEnabled,
