@@ -5,6 +5,8 @@ app:
     project: gosoline
     family: integration-test
     group: grp
+  model_id:
+    pattern: "!nodecode {app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{modelId}"
 
 db:
   default:
