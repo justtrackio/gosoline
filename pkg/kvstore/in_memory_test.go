@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -22,16 +22,18 @@ type InMemoryKvStoreTestSuite struct {
 
 func (s *InMemoryKvStoreTestSuite) SetupTest() {
 	s.floatStore = kvstore.NewInMemoryKvStoreWithInterfaces[float64](&kvstore.Settings{
-		AppIdentity: cfg.AppIdentity{},
-		Name:        "",
-		Ttl:         time.Hour,
-		BatchSize:   100,
+		ModelId: mdl.ModelId{
+			Name: "",
+		},
+		Ttl:       time.Hour,
+		BatchSize: 100,
 	})
 	s.itemStore = kvstore.NewInMemoryKvStoreWithInterfaces[item](&kvstore.Settings{
-		AppIdentity: cfg.AppIdentity{},
-		Name:        "",
-		Ttl:         time.Hour,
-		BatchSize:   100,
+		ModelId: mdl.ModelId{
+			Name: "",
+		},
+		Ttl:       time.Hour,
+		BatchSize: 100,
 	})
 }
 

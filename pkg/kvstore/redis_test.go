@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	redisMocks "github.com/justtrackio/gosoline/pkg/redis/mocks"
@@ -184,16 +183,16 @@ func buildTestableRedisStore[T any](t *testing.T) (context.Context, kvstore.KvSt
 	client := redisMocks.NewClient(t)
 
 	store := kvstore.NewRedisKvStoreWithInterfaces[T](client, &kvstore.Settings{
-		AppIdentity: cfg.AppIdentity{
-			Name: "app",
+		ModelId: mdl.ModelId{
+			Name: "test",
+			App:  "app",
 			Env:  "env",
-			Tags: cfg.AppTags{
+			Tags: map[string]string{
 				"project": "justtrack",
 				"family":  "gosoline",
 				"group":   "grp",
 			},
 		},
-		Name:           "test",
 		BatchSize:      100,
 		MetricsEnabled: false,
 	}, "justtrack.gosoline.grp.test")
@@ -206,16 +205,16 @@ func buildTestableRedisStoreWithTTL[T any](t *testing.T) (context.Context, kvsto
 	client := redisMocks.NewClient(t)
 
 	store := kvstore.NewRedisKvStoreWithInterfaces[T](client, &kvstore.Settings{
-		AppIdentity: cfg.AppIdentity{
-			Name: "kvstore",
+		ModelId: mdl.ModelId{
+			Name: "test",
+			App:  "kvstore",
 			Env:  "test",
-			Tags: cfg.AppTags{
+			Tags: map[string]string{
 				"project": "justtrack",
 				"family":  "gosoline",
 				"group":   "grp",
 			},
 		},
-		Name:           "test",
 		BatchSize:      100,
 		MetricsEnabled: false,
 		Ttl:            time.Second,

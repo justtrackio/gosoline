@@ -272,9 +272,9 @@ func (s *redisKvStore[T]) key(key any) (string, error) {
 	}
 
 	keyStr = strings.Join([]string{
-		s.settings.Tags.Get("project"),
-		s.settings.Tags.Get("family"),
-		s.settings.Tags.Get("group"),
+		s.settings.Tags["project"],
+		s.settings.Tags["family"],
+		s.settings.Tags["group"],
 		"kvstore",
 		s.settings.Name,
 		keyStr,
