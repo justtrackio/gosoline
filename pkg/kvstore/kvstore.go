@@ -25,13 +25,8 @@ type Settings struct {
 // MetricModelIdString computes the model ID string for kvstore metrics.
 // This uses the canonical model ID pattern from config for consistency with other metrics.
 func (s *Settings) MetricModelIdString(config cfg.Config) (string, error) {
-	modelId := s.ModelId
-
-	if err := modelId.PadFromConfig(config); err != nil {
-		return "", err
-	}
-
-	return modelId.Format()
+	// Use the ModelId from Settings directly (it should already have PadFromConfig called)
+	return s.ModelId.Format()
 }
 
 // LegacyMetricModelIdString returns the model ID string in the legacy format

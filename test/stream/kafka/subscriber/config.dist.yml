@@ -5,6 +5,8 @@ app:
     project: justtrack
     family: gosoline
     group: kafka
+  model_id:
+    pattern: "!nodecode {app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{modelId}"
 
 cloud:
   aws:
@@ -16,7 +18,7 @@ mdlsub:
     testModel:
       input: kafka
       output: ddb
-      source: { group: source-group, name: testEvent }
+      source: { tags: { group: source-group }, name: testEvent }
 
 stream:
   input:

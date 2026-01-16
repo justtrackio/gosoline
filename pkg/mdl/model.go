@@ -170,13 +170,18 @@ func (m *ModelId) PadFromConfig(config ConfigProvider) error {
 	// Read and store the pattern if available (enables Format to work)
 	if m.pattern == "" {
 		pattern, err := config.GetString(ConfigKeyModelIdPattern)
-		if err == nil && pattern != "" {
+
+		if err == nil {
+			if pattern == "" {
+				return fmt.Errorf("model id pattern is empty")
+			}
+
 			if err := validateModelIdPattern(pattern); err != nil {
 				return fmt.Errorf("invalid %s: %w", ConfigKeyModelIdPattern, err)
 			}
 			m.pattern = pattern
 		}
-		// If pattern is not in config, leave it empty - Format() will error when called
+		// If app.model_id.pattern is not in config, leave pattern empty - Format() will error when called
 	}
 
 	return nil

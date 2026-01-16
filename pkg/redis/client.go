@@ -165,7 +165,11 @@ type redisClient struct {
 	settings *Settings
 }
 
-type redisKey Settings
+type redisBaseClientKey string
+
+func buildRedisBaseClientKey(settings *Settings) redisBaseClientKey {
+	return redisBaseClientKey(fmt.Sprintf("%s:%d:%s", settings.Address, settings.DB, settings.Dialer))
+}
 
 func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
 	settings, err := ReadSettings(config, name)
@@ -191,7 +195,7 @@ func NewClientWithSettings(ctx context.Context, logger log.Logger, settings *Set
 		return nil, fmt.Errorf("there is no redis dialer of type %s", settings.Dialer)
 	}
 
-	baseClient, err := appctx.Provide(ctx, redisKey(*settings), func() (*baseRedis.Client, error) {
+	baseClient, err := appctx.Provide(ctx, buildRedisBaseClientKey(settings), func() (*baseRedis.Client, error) {
 		baseClient := baseRedis.NewClient(&baseRedis.Options{
 			DB:     settings.DB,
 			Dialer: dialers[settings.Dialer](logger, settings),

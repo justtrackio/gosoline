@@ -5,6 +5,8 @@ app:
     project: justtrack
     family: gosoline
     group: mdlsub
+  model_id:
+    pattern: "!nodecode {app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{modelId}"
 
 cloud:
   aws:
@@ -23,7 +25,7 @@ mdlsub:
   subscribers:
     testModel:
       output: ddb
-      source: { group: management }
+      source: { tags: { group: management } }
 
 test:
   components:
