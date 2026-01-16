@@ -34,10 +34,12 @@ func (s *FixtureSetTestSuite) SetupTest() {
 
 	s.source = mdlsub.SubscriberModel{
 		ModelId: mdl.ModelId{
-			Project: "justtrack",
-			Family:  "gosoline",
-			Group:   "mdlsub",
-			Name:    "testModel",
+			Name: "testModel",
+			Tags: map[string]string{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "mdlsub",
+			},
 		},
 	}
 

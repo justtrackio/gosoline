@@ -49,8 +49,8 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 			return false, fmt.Errorf("can not unmarshal consumer settings for subscriber %s: %w", name, err)
 		}
 
-		consumerSettings.Input = GetSubscriberFQN(name, subscriberSettings.SourceModel)
-		consumerName := GetSubscriberFQN(name, subscriberSettings.SourceModel)
+		consumerSettings.Input = GetSubscriberFQN(config, name, subscriberSettings.SourceModel)
+		consumerName := GetSubscriberFQN(config, name, subscriberSettings.SourceModel)
 		consumerKey := stream.ConfigurableConsumerKey(consumerName)
 
 		configOptions := []cfg.Option{
@@ -77,7 +77,7 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 }
 
 func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option {
-	inputKey := getInputConfigKey(name, subscriberSettings.SourceModel)
+	inputKey := getInputConfigKey(config, name, subscriberSettings.SourceModel)
 	consumerId := subscriberSettings.SourceModel.Name
 	topicId := subscriberSettings.SourceModel.Name
 
@@ -94,18 +94,17 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
 	}
 
+	// Derive identity from ModelId + config
+	identity, err := DeriveIdentity(config, subscriberSettings.SourceModel.ModelId)
+	if err != nil {
+		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
+	}
+
 	inputSettings.ConsumerId = consumerId
 	inputSettings.Targets = []stream.SnsInputTargetConfiguration{
 		{
-			Identity: cfg.AppIdentity{
-				Name: subscriberSettings.SourceModel.Application,
-				Tags: cfg.AppTags{
-					"project": subscriberSettings.SourceModel.Project,
-					"family":  subscriberSettings.SourceModel.Family,
-					"group":   subscriberSettings.SourceModel.Group,
-				},
-			},
-			TopicId: topicId,
+			Identity: identity,
+			TopicId:  topicId,
 		},
 	}
 
@@ -113,7 +112,7 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 }
 
 func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option {
-	inputKey := getInputConfigKey(name, subscriberSettings.SourceModel)
+	inputKey := getInputConfigKey(config, name, subscriberSettings.SourceModel)
 	topicId := subscriberSettings.SourceModel.Name
 
 	if subscriberSettings.SourceModel.Shared {
@@ -125,12 +124,14 @@ func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, s
 		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
 	}
 
-	inputSettings.Tags = cfg.AppTags{
-		"project": subscriberSettings.SourceModel.Project,
-		"family":  subscriberSettings.SourceModel.Family,
-		"group":   subscriberSettings.SourceModel.Group,
+	// Derive identity from ModelId + config
+	identity, err := DeriveIdentity(config, subscriberSettings.SourceModel.ModelId)
+	if err != nil {
+		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
 	}
-	inputSettings.Name = subscriberSettings.SourceModel.Application
+
+	inputSettings.Tags = identity.Tags
+	inputSettings.Name = identity.Name
 	inputSettings.GroupId = topicId
 	inputSettings.TopicId = topicId
 
@@ -138,7 +139,7 @@ func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, s
 }
 
 func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option {
-	inputKey := getInputConfigKey(name, subscriberSettings.SourceModel)
+	inputKey := getInputConfigKey(config, name, subscriberSettings.SourceModel)
 	streamName := subscriberSettings.SourceModel.Name
 
 	if subscriberSettings.SourceModel.Shared {
@@ -150,12 +151,14 @@ func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string,
 		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
 	}
 
-	inputSettings.Tags = cfg.AppTags{
-		"project": subscriberSettings.SourceModel.Project,
-		"family":  subscriberSettings.SourceModel.Family,
-		"group":   subscriberSettings.SourceModel.Group,
+	// Derive identity from ModelId + config
+	identity, err := DeriveIdentity(config, subscriberSettings.SourceModel.ModelId)
+	if err != nil {
+		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
 	}
-	inputSettings.Name = subscriberSettings.SourceModel.Application
+
+	inputSettings.Tags = identity.Tags
+	inputSettings.Name = identity.Name
 	inputSettings.StreamName = streamName
 
 	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting)
@@ -169,25 +172,41 @@ func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string
 		return cfg.WithConfigSetting(kvstoreKey, nil, cfg.SkipExisting)
 	}
 
-	kvstoreSettings.Project = subscriberSettings.TargetModel.Project
-	kvstoreSettings.Family = subscriberSettings.TargetModel.Family
-	kvstoreSettings.Group = subscriberSettings.TargetModel.Group
-	kvstoreSettings.Application = subscriberSettings.TargetModel.Application
+	// Derive identity from TargetModel + config
+	identity, err := DeriveIdentity(config, subscriberSettings.TargetModel.ModelId)
+	if err != nil {
+		return cfg.WithConfigSetting(kvstoreKey, nil, cfg.SkipExisting)
+	}
+
+	kvstoreSettings.Identity = identity
 	kvstoreSettings.Elements = []string{kvstore.TypeRedis, kvstore.TypeDdb}
 
 	return cfg.WithConfigSetting(kvstoreKey, kvstoreSettings, cfg.SkipExisting)
 }
 
-func GetSubscriberFQN(name string, sourceModel SubscriberModel) string {
+func GetSubscriberFQN(config cfg.Config, name string, sourceModel SubscriberModel) string {
 	if !sourceModel.Shared {
 		return fmt.Sprintf("subscriber-%s", name)
 	}
 
-	return fmt.Sprintf("subscriber-%s-%s-%s-%s-%s", sourceModel.Project, sourceModel.Family, sourceModel.Group, sourceModel.Application, sharedName)
+	// For shared subscribers, include identity info in the name
+	// Derive identity from ModelId + config
+	identity, err := DeriveIdentity(config, sourceModel.ModelId)
+	if err != nil {
+		// Fall back to simple subscriber name if identity derivation fails
+		return fmt.Sprintf("subscriber-%s", name)
+	}
+
+	return fmt.Sprintf("subscriber-%s-%s-%s-%s-%s",
+		identity.Tags.Get("project"),
+		identity.Tags.Get("family"),
+		identity.Tags.Get("group"),
+		identity.Name,
+		sharedName)
 }
 
-func getInputConfigKey(name string, sourceModel SubscriberModel) string {
-	inputName := GetSubscriberFQN(name, sourceModel)
+func getInputConfigKey(config cfg.Config, name string, sourceModel SubscriberModel) string {
+	inputName := GetSubscriberFQN(config, name, sourceModel)
 
 	return stream.ConfigurableInputKey(inputName)
 }

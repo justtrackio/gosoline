@@ -76,11 +76,11 @@ func NewWriterWithInterfaces(
 	recorder FileRecorder,
 ) Writer {
 	combinedTags := map[string]string{
-		"Project":     modelId.Project,
-		"Environment": modelId.Environment,
-		"Family":      modelId.Family,
-		"Group":       modelId.Group,
-		"Application": modelId.Application,
+		"Project":     modelId.Tags["project"],
+		"Environment": modelId.Env,
+		"Family":      modelId.Tags["family"],
+		"Group":       modelId.Tags["group"],
+		"Application": modelId.App,
 		"Model":       modelId.Name,
 	}
 
@@ -187,12 +187,12 @@ func (w *s3Writer) parseItems(items any) (schema string, converted []string, err
 
 func (w *s3Writer) getBucketName() string {
 	return s3BucketNamingStrategy(cfg.AppIdentity{
-		Name: w.modelId.Application,
-		Env:  w.modelId.Environment,
+		Name: w.modelId.App,
+		Env:  w.modelId.Env,
 		Tags: cfg.AppTags{
-			"project": w.modelId.Project,
-			"family":  w.modelId.Family,
-			"group":   w.modelId.Group,
+			"project": w.modelId.Tags["project"],
+			"family":  w.modelId.Tags["family"],
+			"group":   w.modelId.Tags["group"],
 		},
 	})
 }

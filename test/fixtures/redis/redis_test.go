@@ -132,12 +132,14 @@ type Person struct {
 
 func (s *RedisTestSuite) provideKvStoreFixtures(data fixtures.NamedFixtures[*kvstore.KvStoreFixture]) ([]fixtures.FixtureSet, error) {
 	kvstoreWriter, err := kvstore.NewRedisKvStoreFixtureWriter[Person](s.Env().Context(), s.Env().Config(), s.Env().Logger(), &mdl.ModelId{
-		Project:     "gosoline",
-		Environment: "test",
-		Family:      "integration-test",
-		Group:       "grp",
-		Application: "test-application",
-		Name:        "testModel",
+		Name: "testModel",
+		Env:  "test",
+		App:  "test-application",
+		Tags: map[string]string{
+			"project": "gosoline",
+			"family":  "integration-test",
+			"group":   "grp",
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize kvstore writer: %w", err)

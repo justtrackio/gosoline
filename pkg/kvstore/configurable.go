@@ -23,10 +23,7 @@ type DdbSettings struct {
 }
 
 type ChainConfiguration struct {
-	Project             string                `cfg:"project"`
-	Family              string                `cfg:"family"`
-	Group               string                `cfg:"group"`
-	Application         string                `cfg:"application"`
+	Identity            cfg.AppIdentity       `cfg:"identity"`
 	Type                string                `cfg:"type" default:"chain" validate:"eq=chain"`
 	Elements            []string              `cfg:"elements" validate:"min=1"`
 	Ddb                 DdbSettings           `cfg:"ddb"`
@@ -88,14 +85,7 @@ func newKvStoreChainFromConfig[T any](ctx context.Context, config cfg.Config, lo
 	}
 
 	store, err := NewChainKvStore[T](ctx, config, logger, configuration.MissingCacheEnabled, &Settings{
-		AppIdentity: cfg.AppIdentity{
-			Name: configuration.Application,
-			Tags: cfg.AppTags{
-				"project": configuration.Project,
-				"family":  configuration.Family,
-				"group":   configuration.Group,
-			},
-		},
+		AppIdentity:    configuration.Identity,
 		DdbSettings:    configuration.Ddb,
 		Name:           name,
 		Ttl:            configuration.Ttl,

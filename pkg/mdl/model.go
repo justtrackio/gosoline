@@ -1,109 +1,398 @@
 package mdl
 
 import (
-	"errors"
 	"fmt"
 	"strings"
+	"unicode"
+)
+
+// DefaultModelIdPattern is the default pattern for formatting ModelId as a string.
+// It uses the conventional project.family.group.modelId format.
+const DefaultModelIdPattern = "{app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}"
+
+// Placeholder constants for ModelId patterns.
+const (
+	PlaceholderModelId = "modelId"
+	PlaceholderAppEnv  = "app.env"
+	PlaceholderAppName = "app.name"
+	PlaceholderAppTags = "app.tags."
 )
 
 // ConfigProvider is an interface for reading config values.
 // It is implemented by cfg.Config.
 type ConfigProvider interface {
 	GetString(key string, optionalDefault ...string) (string, error)
+	GetStringMap(key string, optionalDefault ...map[string]any) (map[string]any, error)
 }
 
-// ModelId represents the identity of a model, extending the application
-// identity with a model name.
+// ModelId represents the identity of a model using dynamic tags.
 //
-// The struct tag defaults use the macro placeholders:
-//   - {app.name} for application name
-//   - {app.tags.project} for project
-//   - {app.tags.family} for family
-//   - {app.tags.group} for group
-//   - {app.env} for environment
+// Unlike the legacy fixed-field ModelId (Project/Family/Group/etc),
+// this version uses a dynamic tags map that can hold any key-value pairs.
+//
+// The canonical string form is determined by a configurable pattern
+// (default: "{app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}").
 type ModelId struct {
-	Project     string `cfg:"project" default:"{app.tags.project}"`
-	Environment string `cfg:"environment" default:"{app.env}"`
-	Family      string `cfg:"family" default:"{app.tags.family}"`
-	Group       string `cfg:"group" default:"{app.tags.group}"`
-	Application string `cfg:"application" default:"{app.name}"`
-	Name        string `cfg:"name"`
+	// Name is the model's name (the {modelId} placeholder)
+	Name string `cfg:"name"`
+	// Env is the environment (the {app.env} placeholder)
+	Env string `cfg:"env"`
+	// App is the application name (the {app.name} placeholder)
+	App string `cfg:"app"`
+	// Tags holds dynamic tag values (for {app.tags.<key>} placeholders)
+	Tags map[string]string `cfg:"tags"`
 }
 
+// String returns the ModelId formatted using the default pattern.
+// This preserves the conventional "project.family.group.modelId" format
+// while sourcing values from dynamic tags.
 func (m *ModelId) String() string {
-	return fmt.Sprintf("%s.%s.%s.%s", m.Project, m.Family, m.Group, m.Name)
+	result, err := m.Format(DefaultModelIdPattern)
+	if err != nil {
+		// For String(), we return a best-effort result even on error
+		// to maintain compatibility with fmt.Stringer expectations
+		return fmt.Sprintf("<invalid:%s>", m.Name)
+	}
+
+	return result
+}
+
+// Format expands placeholders in the given pattern using ModelId values.
+//
+// Supported placeholders:
+//   - {modelId} - the model's Name
+//   - {app.env} - the Env field
+//   - {app.name} - the App field
+//   - {app.tags.<key>} - any tag from the Tags map
+//
+// If the pattern contains no placeholders, it is returned as-is.
+// This allows for explicit table name overrides.
+//
+// Returns an error if:
+//   - the pattern contains unknown placeholders
+//   - a required tag is missing (referenced in pattern but not in Tags)
+//   - {app.env} or {app.name} is referenced but the field is empty
+func (m *ModelId) Format(pattern string) (string, error) {
+	if err := validateModelIdPattern(pattern); err != nil {
+		return "", err
+	}
+
+	result := pattern
+	var missingTags []string
+
+	// Extract and process all placeholders
+	placeholders := extractPlaceholders(pattern)
+	for _, ph := range placeholders {
+		var value string
+		var ok bool
+
+		switch {
+		case ph == PlaceholderModelId:
+			value = m.Name
+			ok = true
+		case ph == PlaceholderAppEnv:
+			value = m.Env
+			ok = m.Env != ""
+			if !ok {
+				return "", fmt.Errorf("pattern requires %s but it is empty", PlaceholderAppEnv)
+			}
+		case ph == PlaceholderAppName:
+			value = m.App
+			ok = m.App != ""
+			if !ok {
+				return "", fmt.Errorf("pattern requires %s but it is empty", PlaceholderAppName)
+			}
+		case strings.HasPrefix(ph, PlaceholderAppTags):
+			tagKey := strings.TrimPrefix(ph, PlaceholderAppTags)
+			if m.Tags != nil {
+				value, ok = m.Tags[tagKey]
+			}
+			if !ok || value == "" {
+				missingTags = append(missingTags, tagKey)
+
+				continue
+			}
+		default:
+			return "", fmt.Errorf("unknown placeholder {%s} in pattern %q", ph, pattern)
+		}
+
+		result = strings.ReplaceAll(result, "{"+ph+"}", value)
+	}
+
+	if len(missingTags) > 0 {
+		return "", fmt.Errorf("missing required tags: %s", strings.Join(missingTags, ", "))
+	}
+
+	return result, nil
 }
 
 // PadFromConfig fills in empty fields of ModelId from config.
 //
-// This method requires the following config keys if the corresponding
-// ModelId fields are empty:
-//   - app.tags.project
-//   - app.tags.family
-//   - app.tags.group
-//   - app.name
-//   - app.env
+// This method reads:
+//   - app.env -> Env (if empty)
+//   - app.name -> App (if empty)
+//   - app.tags.* -> Tags (merged, existing tags take precedence)
 //
-// This method is useful when you have a partially populated ModelId
-// (e.g., from struct tag defaults) and want to fill remaining fields.
+// All fields are optional. If a config key is not found, the corresponding
+// field is left unchanged. This allows patterns to determine what's required
+// (enforced at Format time).
 func (m *ModelId) PadFromConfig(config ConfigProvider) error {
-	var errs []error
-
-	if m.Project == "" {
-		m.Project, errs = padStringFieldFromConfig(config, "app.tags.project", errs)
+	if m.Env == "" {
+		env, err := config.GetString("app.env")
+		if err == nil {
+			m.Env = env
+		}
+		// If app.env is not in config, leave Env empty - patterns will enforce requirements
 	}
 
-	if m.Environment == "" {
-		m.Environment, errs = padStringFieldFromConfig(config, "app.env", errs)
+	if m.App == "" {
+		app, err := config.GetString("app.name")
+		if err == nil {
+			m.App = app
+		}
 	}
 
-	if m.Family == "" {
-		m.Family, errs = padStringFieldFromConfig(config, "app.tags.family", errs)
+	// Merge tags from config (existing tags take precedence)
+	configTags, err := config.GetStringMap("app.tags")
+	if err != nil {
+		// Tags are optional, don't error if not present
+		configTags = make(map[string]any)
 	}
 
-	if m.Group == "" {
-		m.Group, errs = padStringFieldFromConfig(config, "app.tags.group", errs)
+	if m.Tags == nil {
+		m.Tags = make(map[string]string)
 	}
-
-	if m.Application == "" {
-		m.Application, errs = padStringFieldFromConfig(config, "app.name", errs)
-	}
-
-	if len(errs) > 0 {
-		return fmt.Errorf("could not pad ModelId from config: %w", errors.Join(errs...))
+	for k, v := range configTags {
+		if _, exists := m.Tags[k]; !exists {
+			if strVal, ok := v.(string); ok {
+				m.Tags[k] = strVal
+			}
+		}
 	}
 
 	return nil
 }
 
-// padStringFieldFromConfig reads a required string field from config and appends errors if needed.
-func padStringFieldFromConfig(config ConfigProvider, key string, errs []error) (string, []error) {
-	value, err := config.GetString(key)
-	switch {
-	case err != nil:
-		errs = append(errs, fmt.Errorf("%s: %w", key, err))
-	case value == "":
-		errs = append(errs, fmt.Errorf("%s: value is empty", key))
-	}
-
-	return value, errs
+// ModelIdFromString parses a string into a ModelId using the default pattern.
+// This is a convenience wrapper around ModelIdFromStringWithPattern.
+func ModelIdFromString(str string) (ModelId, error) {
+	return ModelIdFromStringWithPattern(DefaultModelIdPattern, str)
 }
 
-func ModelIdFromString(str string) (ModelId, error) {
-	parts := strings.Split(str, ".")
+// ModelIdFromStringWithPattern parses a string into a ModelId using the given pattern.
+//
+// The pattern must be "parseable" - consisting only of placeholders separated
+// by a single non-alphanumeric delimiter character. For example:
+//   - "{app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}" (delimiter ".")
+//   - "{app.env}-{modelId}" (delimiter "-")
+//
+// The string is split by the delimiter, and each segment is mapped to the
+// corresponding placeholder in the pattern.
+func ModelIdFromStringWithPattern(pattern, str string) (ModelId, error) {
+	if err := validateModelIdPattern(pattern); err != nil {
+		return ModelId{}, fmt.Errorf("invalid pattern: %w", err)
+	}
 
-	if len(parts) != 4 {
-		return ModelId{}, fmt.Errorf("the model id (%s) should consist out of 4 parts", str)
+	delimiter, err := extractDelimiter(pattern)
+	if err != nil {
+		return ModelId{}, fmt.Errorf("cannot parse with pattern: %w", err)
+	}
+
+	placeholders := extractPlaceholders(pattern)
+
+	var parts []string
+	if delimiter == "" {
+		// Single placeholder pattern
+		parts = []string{str}
+	} else {
+		parts = strings.Split(str, delimiter)
+	}
+
+	if len(parts) != len(placeholders) {
+		return ModelId{}, fmt.Errorf(
+			"string %q has %d segments but pattern expects %d (pattern: %s, delimiter: %q)",
+			str, len(parts), len(placeholders), pattern, delimiter,
+		)
 	}
 
 	modelId := ModelId{
-		Project: parts[0],
-		Family:  parts[1],
-		Group:   parts[2],
-		Name:    parts[3],
+		Tags: make(map[string]string),
+	}
+
+	for i, ph := range placeholders {
+		value := parts[i]
+
+		switch {
+		case ph == PlaceholderModelId:
+			modelId.Name = value
+		case ph == PlaceholderAppEnv:
+			modelId.Env = value
+		case ph == PlaceholderAppName:
+			modelId.App = value
+		case strings.HasPrefix(ph, PlaceholderAppTags):
+			tagKey := strings.TrimPrefix(ph, PlaceholderAppTags)
+			modelId.Tags[tagKey] = value
+		}
 	}
 
 	return modelId, nil
+}
+
+// validateModelIdPattern checks that a pattern is valid and parseable.
+//
+// A valid pattern:
+//   - is a non-empty string
+//   - if it contains placeholders, they must be recognized placeholders
+//   - placeholders must be separated by a single non-alphanumeric delimiter
+//   - no static text between placeholders (except the delimiter)
+//
+// A pattern with no placeholders is valid and will be returned as-is.
+func validateModelIdPattern(pattern string) error {
+	if pattern == "" {
+		return fmt.Errorf("pattern cannot be empty")
+	}
+
+	placeholders := extractPlaceholders(pattern)
+	if len(placeholders) == 0 {
+		// No placeholders - this is a static pattern, which is valid
+		// (useful for explicit table name overrides)
+		return nil
+	}
+
+	// Validate each placeholder
+	for _, ph := range placeholders {
+		if !isAllowedModelIdPlaceholder(ph) {
+			return fmt.Errorf("unknown placeholder {%s} in pattern", ph)
+		}
+	}
+
+	// Check that pattern is parseable (placeholders + delimiters only)
+	if len(placeholders) == 1 {
+		// Single placeholder - must be the entire pattern
+		if pattern != "{"+placeholders[0]+"}" {
+			return fmt.Errorf("pattern contains static text which makes it unparseable")
+		}
+
+		return nil
+	}
+
+	// Multiple placeholders - extract and validate delimiter
+	delimiter, err := extractDelimiter(pattern)
+	if err != nil {
+		return err
+	}
+
+	// Rebuild expected pattern and compare
+	var expectedParts []string
+	for _, ph := range placeholders {
+		expectedParts = append(expectedParts, "{"+ph+"}")
+	}
+	expectedPattern := strings.Join(expectedParts, delimiter)
+
+	if pattern != expectedPattern {
+		return fmt.Errorf("pattern contains static text or inconsistent delimiters which makes it unparseable")
+	}
+
+	return nil
+}
+
+// extractDelimiter finds the delimiter character used in a pattern.
+// Returns empty string if pattern has only one placeholder (no delimiter needed).
+func extractDelimiter(pattern string) (string, error) {
+	placeholders := extractPlaceholders(pattern)
+	if len(placeholders) <= 1 {
+		return "", nil
+	}
+
+	// Find text between first two placeholders
+	firstPh := "{" + placeholders[0] + "}"
+	secondPh := "{" + placeholders[1] + "}"
+
+	firstEnd := strings.Index(pattern, firstPh) + len(firstPh)
+	secondStart := strings.Index(pattern, secondPh)
+
+	if secondStart <= firstEnd {
+		return "", fmt.Errorf("no delimiter between placeholders")
+	}
+
+	delimiter := pattern[firstEnd:secondStart]
+
+	// Validate delimiter is a single non-alphanumeric character
+	if len(delimiter) != 1 {
+		return "", fmt.Errorf("delimiter must be a single character, got %q", delimiter)
+	}
+
+	r := rune(delimiter[0])
+	if unicode.IsLetter(r) || unicode.IsDigit(r) {
+		return "", fmt.Errorf("delimiter must be non-alphanumeric, got %q", delimiter)
+	}
+
+	// Verify all placeholders use the same delimiter
+	for i := 1; i < len(placeholders); i++ {
+		prevPh := "{" + placeholders[i-1] + "}"
+		currPh := "{" + placeholders[i] + "}"
+
+		prevEnd := strings.Index(pattern, prevPh) + len(prevPh)
+		currStart := strings.Index(pattern, currPh)
+
+		if currStart <= prevEnd {
+			return "", fmt.Errorf("no delimiter between placeholders")
+		}
+
+		betweenDelimiter := pattern[prevEnd:currStart]
+		if betweenDelimiter != delimiter {
+			return "", fmt.Errorf("inconsistent delimiters: expected %q, got %q", delimiter, betweenDelimiter)
+		}
+	}
+
+	return delimiter, nil
+}
+
+// extractPlaceholders returns all placeholder names from a pattern.
+// For "{app.tags.project}.{modelId}", returns ["app.tags.project", "modelId"].
+func extractPlaceholders(pattern string) []string {
+	var placeholders []string
+	remaining := pattern
+
+	for {
+		start := strings.Index(remaining, "{")
+		if start == -1 {
+			break
+		}
+
+		end := strings.Index(remaining[start:], "}")
+		if end == -1 {
+			break
+		}
+
+		ph := remaining[start+1 : start+end]
+		if ph != "" {
+			placeholders = append(placeholders, ph)
+		}
+
+		remaining = remaining[start+end+1:]
+	}
+
+	return placeholders
+}
+
+// isAllowedModelIdPlaceholder checks if a placeholder name is valid for ModelId patterns.
+func isAllowedModelIdPlaceholder(placeholder string) bool {
+	switch {
+	case placeholder == PlaceholderModelId:
+		return true
+	case placeholder == PlaceholderAppEnv:
+		return true
+	case placeholder == PlaceholderAppName:
+		return true
+	case strings.HasPrefix(placeholder, PlaceholderAppTags):
+		// Ensure there's actually a tag key after the prefix
+		tagKey := strings.TrimPrefix(placeholder, PlaceholderAppTags)
+
+		return tagKey != ""
+	default:
+		return false
+	}
 }
 
 type Identifiable interface {

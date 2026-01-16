@@ -81,11 +81,13 @@ func mysqlPlainFixtureSet(ctx context.Context, config cfg.Config, logger log.Log
 
 func dynamodbKvstoreFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
 	dynamoDbKvStoreWriter, err := kvstore.NewDynamoDbKvStoreFixtureWriter[DynamoDbExampleModel](ctx, config, logger, &mdl.ModelId{
-		Project:     "gosoline",
-		Environment: "dev",
-		Family:      "example",
-		Application: "fixture-loader",
-		Name:        "exampleModel",
+		Name: "exampleModel",
+		Env:  "dev",
+		App:  "fixture-loader",
+		Tags: map[string]string{
+			"project": "gosoline",
+			"family":  "example",
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize dynamodb kvstore writer: %w", err)
@@ -123,11 +125,13 @@ func redisFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) 
 func dynamodbFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
 	dynamodbWriter, err := ddb.NewDynamoDbFixtureWriter(ctx, config, logger, &ddb.Settings{
 		ModelId: mdl.ModelId{
-			Project:     "gosoline",
-			Environment: "dev",
-			Family:      "example",
-			Application: "fixture-loader",
-			Name:        "exampleModel",
+			Name: "exampleModel",
+			Env:  "dev",
+			App:  "fixture-loader",
+			Tags: map[string]string{
+				"project": "gosoline",
+				"family":  "example",
+			},
 		},
 		Main: ddb.MainSettings{
 			Model: DynamoDbExampleModel{},

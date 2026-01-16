@@ -76,7 +76,11 @@ func (c *localstackComponent) DdbRepository(settings *ddb.Settings) (ddb.Reposit
 		return nil, fmt.Errorf("failed to pad model id from config: %w", err)
 	}
 
-	tableName := ddb.GetTableNameWithSettings(settings, c.ddbNamingSettings)
+	tableName, err := ddb.GetTableNameWithSettings(settings, c.ddbNamingSettings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get table name: %w", err)
+	}
+
 	metadataFactory := ddb.NewMetadataFactoryWithInterfaces(settings, tableName)
 
 	return ddb.NewWithInterfaces(c.logger, tracer, client, metadataFactory)
