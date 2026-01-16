@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkdocs=globalThis.webpackChunkdocs||[]).push([[7472],{5513(s){s.exports=JSON.parse('{"title":"Recent posts","items":[{"title":"Log Sampling in Go: Less Noise, More Debuggability","permalink":"/gosoline/blog/sampling-fingers-crossed-logging","unlisted":false,"date":"2026-01-15T00:00:00.000Z"}]}')}}]);

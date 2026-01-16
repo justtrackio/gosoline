@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkdocs=globalThis.webpackChunkdocs||[]).push([[4325],{5001(o){o.exports=JSON.parse('{"metadata":{"permalink":"/gosoline/blog","page":1,"postsPerPage":10,"totalPages":1,"totalCount":1,"blogDescription":"Articles and announcements from the gosoline project","blogTitle":"Gosoline Blog"}}')}}]);
