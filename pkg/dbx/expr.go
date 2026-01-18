@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -14,6 +15,8 @@ const (
 	sqlTrue  = "(1=1)"
 	sqlFalse = "(1=0)"
 )
+
+var columnNameRegExp = regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 type expr struct {
 	sql  string
@@ -78,7 +81,7 @@ func (e expr) ToSql() (sql string, args []any, err error) {
 		sp = sp[i+1:]
 	}
 
-	// append the remaining sql and arguments
+	// append the remaining SQL and arguments
 	buf.WriteString(sp)
 
 	return buf.String(), append(args, ap...), err
@@ -90,7 +93,7 @@ func (ce concatExpr) ToSql() (sql string, args []any, err error) {
 	for _, part := range ce {
 		switch p := part.(type) {
 		case string:
-			sql += p
+			sql += quoteIfNeeded(p)
 		case Sqlizer:
 			pSql, pArgs, err := p.ToSql()
 			if err != nil {
@@ -188,7 +191,7 @@ func (eq Eq) toSQL(useNotOpr bool) (sql string, args []any, err error) {
 		}
 
 		if val == nil {
-			expr = fmt.Sprintf("%s %s NULL", key, nullOpr)
+			expr = fmt.Sprintf("%s %s NULL", quoteIfNeeded(key), nullOpr)
 		} else {
 			if isListType(val) {
 				valVal := reflect.ValueOf(val)
@@ -201,10 +204,10 @@ func (eq Eq) toSQL(useNotOpr bool) (sql string, args []any, err error) {
 					for i := 0; i < valVal.Len(); i++ {
 						args = append(args, valVal.Index(i).Interface())
 					}
-					expr = fmt.Sprintf("%s %s (%s)", key, inOpr, Placeholders(valVal.Len()))
+					expr = fmt.Sprintf("%s %s (%s)", quoteIfNeeded(key), inOpr, Placeholders(valVal.Len()))
 				}
 			} else {
-				expr = fmt.Sprintf("%s %s ?", key, equalOpr)
+				expr = fmt.Sprintf("%s %s ?", quoteIfNeeded(key), equalOpr)
 				args = append(args, val)
 			}
 		}
@@ -238,8 +241,6 @@ type Like map[string]any
 func (lk Like) toSql(opr string) (sql string, args []any, err error) {
 	var exprs []string
 	for key, val := range lk {
-		expr := ""
-
 		if v, ok := val.(driver.Valuer); ok {
 			if val, err = v.Value(); err != nil {
 				return
@@ -250,16 +251,17 @@ func (lk Like) toSql(opr string) (sql string, args []any, err error) {
 			err = fmt.Errorf("cannot use null with like operators")
 
 			return
-		} else {
-			if isListType(val) {
-				err = fmt.Errorf("cannot use array or slice with like operators")
-
-				return
-			} else {
-				expr = fmt.Sprintf("%s %s ?", key, opr)
-				args = append(args, val)
-			}
 		}
+
+		if isListType(val) {
+			err = fmt.Errorf("cannot use array or slice with like operators")
+
+			return
+		}
+
+		expr := fmt.Sprintf("%s %s ?", quoteIfNeeded(key), opr)
+		args = append(args, val)
+
 		exprs = append(exprs, expr)
 	}
 	sql = strings.Join(exprs, " AND ")
@@ -307,23 +309,11 @@ func (nilk NotILike) ToSql() (sql string, args []any, err error) {
 //	.Where(Lt{"id": 1})
 type Lt map[string]any
 
-func (lt Lt) toSql(opposite, orEq bool) (sql string, args []any, err error) {
-	var (
-		exprs []string
-		opr   = "<"
-	)
-
-	if opposite {
-		opr = ">"
-	}
-
-	if orEq {
-		opr = fmt.Sprintf("%s%s", opr, "=")
-	}
+func (lt Lt) toSql(opr string) (sql string, args []any, err error) {
+	var exprs []string
 
 	sortedKeys := getSortedKeys(lt)
 	for _, key := range sortedKeys {
-		var expr string
 		val := lt[key]
 
 		if v, ok := val.(driver.Valuer); ok {
@@ -342,7 +332,8 @@ func (lt Lt) toSql(opposite, orEq bool) (sql string, args []any, err error) {
 
 			return
 		}
-		expr = fmt.Sprintf("%s %s ?", key, opr)
+
+		expr := fmt.Sprintf("%s %s ?", quoteIfNeeded(key), opr)
 		args = append(args, val)
 
 		exprs = append(exprs, expr)
@@ -353,7 +344,7 @@ func (lt Lt) toSql(opposite, orEq bool) (sql string, args []any, err error) {
 }
 
 func (lt Lt) ToSql() (sql string, args []any, err error) {
-	return lt.toSql(false, false)
+	return lt.toSql("<")
 }
 
 // LtOrEq is syntactic sugar for use with Where/Having/Set methods.
@@ -363,7 +354,7 @@ func (lt Lt) ToSql() (sql string, args []any, err error) {
 type LtOrEq Lt
 
 func (ltOrEq LtOrEq) ToSql() (sql string, args []any, err error) {
-	return Lt(ltOrEq).toSql(false, true)
+	return Lt(ltOrEq).toSql("<=")
 }
 
 // Gt is syntactic sugar for use with Where/Having/Set methods.
@@ -373,7 +364,7 @@ func (ltOrEq LtOrEq) ToSql() (sql string, args []any, err error) {
 type Gt Lt
 
 func (gt Gt) ToSql() (sql string, args []any, err error) {
-	return Lt(gt).toSql(true, false)
+	return Lt(gt).toSql(">")
 }
 
 // GtOrEq is syntactic sugar for use with Where/Having/Set methods.
@@ -383,7 +374,7 @@ func (gt Gt) ToSql() (sql string, args []any, err error) {
 type GtOrEq Lt
 
 func (gtOrEq GtOrEq) ToSql() (sql string, args []any, err error) {
-	return Lt(gtOrEq).toSql(true, true)
+	return Lt(gtOrEq).toSql(">=")
 }
 
 type conj []Sqlizer
@@ -441,4 +432,13 @@ func isListType(val any) bool {
 	valVal := reflect.ValueOf(val)
 
 	return valVal.Kind() == reflect.Array || valVal.Kind() == reflect.Slice
+}
+
+// quote the argument if it looks like a column name
+func quoteIfNeeded(expr string) string {
+	if columnNameRegExp.MatchString(expr) {
+		return fmt.Sprintf("`%s`", expr)
+	}
+
+	return expr
 }

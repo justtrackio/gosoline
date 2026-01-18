@@ -54,7 +54,7 @@ func (d *deleteData[T]) toSql() (sqlStr string, args []any, err error) {
 	}
 
 	sql.WriteString("FROM ")
-	sql.WriteString(d.From)
+	sql.WriteString(quoteIfNeeded(d.From))
 
 	if len(d.WhereParts) > 0 {
 		sql.WriteString(" WHERE ")
@@ -85,7 +85,7 @@ func (d *deleteData[T]) toSql() (sqlStr string, args []any, err error) {
 type DeleteBuilder[T any] builder.Builder
 
 func newDeleteBuilder[T any](client db.Client, table string, placeholderFormat PlaceholderFormat) DeleteBuilder[T] {
-	b := builder.Builder(builder.EmptyBuilder)
+	b := builder.EmptyBuilder
 	db := DeleteBuilder[T](b).from(table)
 	db = db.placeholderFormat(placeholderFormat)
 	db = builder.Set(db, "Client", client).(DeleteBuilder[T])
