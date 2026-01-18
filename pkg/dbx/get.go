@@ -43,8 +43,8 @@ func (d *getData[T]) Exec(ctx context.Context) (T, error) {
 type GetBuilder[T any] builder.Builder
 
 func newGetBuilder[T any](client db.Client, table string, placeholderFormat PlaceholderFormat) GetBuilder[T] {
-	b := builder.Builder(builder.EmptyBuilder)
-	gb := GetBuilder[T](b).from(table)
+	b := builder.EmptyBuilder
+	gb := GetBuilder[T](b).from(quoteIfNeeded(table))
 	gb = gb.placeholderFormat(placeholderFormat)
 	gb = builder.Set(gb, "Client", client).(GetBuilder[T])
 

@@ -15,6 +15,7 @@ import (
 type ToDo struct {
 	Id        int       `db:"id"`
 	Name      string    `db:"name"`
+	Index     int       `db:"index"`
 	CreatedAt time.Time `db:"created_at"`
 }
 
@@ -45,6 +46,7 @@ func (s *ClientTestSuite) TestStatements() {
 	ctx := context.Background()
 	todo := ToDo{
 		Name:      "foobar",
+		Index:     1,
 		CreatedAt: time.Now(),
 	}
 
@@ -79,6 +81,7 @@ func (s *ClientTestSuite) TestStatements() {
 	todo = ToDo{
 		Id:        1,
 		Name:      "foo replace",
+		Index:     2,
 		CreatedAt: time.Now(),
 	}
 	res, err = s.client.Replace(todo).Exec(ctx)
