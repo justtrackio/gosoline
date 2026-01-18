@@ -19,7 +19,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"golang.org/x/sys/unix"
 )
 
 const (
@@ -121,7 +120,7 @@ func (k *kernel) Run() {
 	k.signalOnceAllStagesDone()
 
 	sig := make(chan os.Signal, 2)
-	signal.Notify(sig, unix.SIGTERM, unix.SIGINT)
+	signal.Notify(sig, interruptSignals...)
 	defer func() {
 		// stop receiving signals on that channel and close it to avoid leaking a go routine
 		signal.Stop(sig)
