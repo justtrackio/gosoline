@@ -2,6 +2,7 @@ package metric
 
 import (
 	"context"
+	"math"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
 )
@@ -52,6 +53,19 @@ func (w writer) Write(_ context.Context, batch Data) {
 	}
 
 	for i := 0; i < len(batch); i++ {
+		if math.IsNaN(batch[i].Value) {
+			// Replace with a counter metric for NaN occurrences
+			batch[i] = &Datum{
+				MetricName: "metric_writer_nan_count",
+				Value:      1,
+				Unit:       UnitCount,
+				Dimensions: Dimensions{
+					"metric_name": batch[i].MetricName,
+				},
+				Timestamp: w.clock.Now(),
+				Priority:  PriorityHigh,
+			}
+		}
 		if batch[i].Timestamp.IsZero() {
 			batch[i].Timestamp = w.clock.Now()
 		}
