@@ -35,6 +35,33 @@ func TestGetTagsJson(t *testing.T) {
 	assert.Equal(t, expected, tags3, "tags3 not matching")
 }
 
+func TestGetTagsNested(t *testing.T) {
+	type DeeplyNested struct {
+		Value int `json:"value"`
+	}
+
+	type Nested struct {
+		Name string `json:"name"`
+		DeeplyNested
+	}
+
+	type model struct {
+		Id int `json:"id"`
+		Nested
+	}
+
+	expected := []string{"id", "name", "value"}
+
+	tags1 := refl.GetTags(model{}, "json")
+	assert.Equal(t, expected, tags1, "tags1 not matching")
+
+	tags2 := refl.GetTags(&model{}, "json")
+	assert.Equal(t, expected, tags2, "tags2 not matching")
+
+	tags3 := refl.GetTags([]model{{}}, "json")
+	assert.Equal(t, expected, tags3, "tags3 not matching")
+}
+
 func TestGetTagNames(t *testing.T) {
 	// base struct with multiple tags on a field
 	type model struct {
@@ -83,4 +110,17 @@ func TestGetTagNames(t *testing.T) {
 	var ptr *modelNone
 	ptrTags := refl.GetTagNames(ptr)
 	assert.Equal(t, []string{}, ptrTags, "nil pointer should return empty slice")
+
+	// struct with nested tag values
+	type modelNested struct {
+		model
+		modelDup
+		modelEmpty
+		X int `validate:"x"`
+	}
+	tagsNested := refl.GetTagNames(modelNested{})
+	assert.Equal(t, []string{"db", "form", "json", "toml", "validate", "xml", "yaml"}, tagsNested, "nested structs are correctly handled")
 }
+
+// TODO: nested struct pointers
+// TODO: nested struct pointer loops?!
