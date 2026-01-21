@@ -22,6 +22,7 @@ type Settings struct {
 	Retry                 SettingsRetry     `cfg:"retry"`
 	Timeouts              SettingsTimeout   `cfg:"timeouts"`
 	Uri                   SettingsUri       `cfg:"uri"`
+	InterpolateParams     bool              `cfg:"interpolate_params" default:"true"`
 }
 
 type SettingsUri struct {
