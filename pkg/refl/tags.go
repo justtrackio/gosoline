@@ -13,6 +13,7 @@ var tagKeyRegex = regexp.MustCompile(`(\w+):"[^"]*"`)
 
 // GetTags reads the values of tags with the name tagName.
 // Tag values get extracted until the first comma.
+// Nested structs without or with an empty tag are embedded into the result.
 // Best suited to read json and db tags.
 func GetTags(v any, tagName string) []string {
 	typ := ResolveBaseType(v)
@@ -22,11 +23,12 @@ func GetTags(v any, tagName string) []string {
 	var availableFields, parts []string
 
 	for i := 0; i < typ.NumField(); i++ {
-		if tag, ok = typ.Field(i).Tag.Lookup(tagName); !ok {
-			continue
-		}
+		field := typ.Field(i)
+		if tag, ok = field.Tag.Lookup(tagName); !ok || tag == "" {
+			if field.Type.Kind() == reflect.Struct {
+				availableFields = append(availableFields, GetTags(reflect.New(field.Type).Elem().Interface(), tagName)...)
+			}
 
-		if tag == "" {
 			continue
 		}
 
@@ -42,6 +44,7 @@ func GetTags(v any, tagName string) []string {
 }
 
 // GetTagNames returns a sorted list of distinct struct tag keys present on the fields of the given value.
+// Nested structs without any tags are handled as if they were embedded.
 // Works with structs, pointers to structs, and slices of structs. Returns an empty slice for nil or non-structs.
 func GetTagNames(v any) []string {
 	if v == nil {
@@ -60,8 +63,13 @@ func GetTagNames(v any) []string {
 
 	set := make(funk.Set[string])
 	for i := 0; i < typ.NumField(); i++ {
-		raw := string(typ.Field(i).Tag)
+		field := typ.Field(i)
+		raw := string(field.Tag)
 		if raw == "" {
+			if field.Type.Kind() == reflect.Struct {
+				set.Add(GetTagNames(reflect.New(field.Type).Elem().Interface())...)
+			}
+
 			continue
 		}
 
