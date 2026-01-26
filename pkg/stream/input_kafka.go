@@ -62,7 +62,7 @@ func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, se
 		Name: settings.TopicId,
 	}
 	executor := exec.NewBackoffExecutorWithOptions(logger, res, &settings.Backoff, []exec.ErrorChecker{
-		CheckKafkaRetryableError,
+		CheckKafkaRetryableError(reader),
 	}, nil, exec.WithElapsedTimeTrackerFactory(func() exec.ElapsedTimeTracker {
 		return exec.NewErrorTriggeredElapsedTimeTracker()
 	}))
@@ -97,27 +97,32 @@ func NewKafkaInputWithInterfaces(
 // CheckKafkaRetryableError is an exec.ErrorChecker that classifies Kafka errors.
 // It returns ErrorTypeRetryable for transient errors (connection issues, broker errors)
 // and ErrorTypeUnknown for other errors (letting them fail).
-func CheckKafkaRetryableError(_ any, err error) exec.ErrorType {
-	if err == nil {
-		return exec.ErrorTypeOk
-	}
+func CheckKafkaRetryableError(kafkaReader kafkaConsumer.Reader) func(_ any, err error) exec.ErrorType {
+	return func(_ any, err error) exec.ErrorType {
+		errType := exec.ErrorTypeUnknown
 
-	// Check for network-level connection errors (connection refused, reset, EOF, etc.)
-	if exec.IsConnectionError(err) {
-		return exec.ErrorTypeRetryable
-	}
+		defer func() {
+			if errType == exec.ErrorTypeRetryable {
+				// we should allow a rebalance between executor retries to avoid getting kicked out of the group
+				// if we are blocking a rebalance for too long
+				kafkaReader.AllowRebalance()
+			}
+		}()
 
-	// Check if franz-go considers this a retryable broker error
-	if kgo.IsRetryableBrokerErr(err) {
-		return exec.ErrorTypeRetryable
-	}
+		switch {
+		case err == nil:
+			errType = exec.ErrorTypeOk
+		case exec.IsConnectionError(err): // Check for network-level connection errors (connection refused, reset, EOF, etc.)
+			errType = exec.ErrorTypeRetryable
+		case kgo.IsRetryableBrokerErr(err): // Check if franz-go considers this a retryable broker error
+			errType = exec.ErrorTypeRetryable
+		case kerr.IsRetriable(err): // Check if this is a retryable Kafka protocol error
+			errType = exec.ErrorTypeRetryable
+		default:
+		}
 
-	// Check if this is a retryable Kafka protocol error
-	if kerr.IsRetriable(err) {
-		return exec.ErrorTypeRetryable
+		return errType
 	}
-
-	return exec.ErrorTypeUnknown
 }
 
 // pollRecords wraps the PollRecords call with error handling for use with the executor.

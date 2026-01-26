@@ -2,6 +2,7 @@ package logging_test
 
 import (
 	"context"
+	"net"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/kafka/logging"
@@ -10,6 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/suite"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"golang.org/x/sys/unix"
 )
 
 type LoggerTestSuite struct {
@@ -83,4 +85,15 @@ func (s *LoggerTestSuite) TestFields_OneKeyNoValue() {
 	s.baseLogger.EXPECT().Error(matcher.Context, "some error")
 
 	s.logger.Log(kgo.LogLevelError, "some error", "field_1")
+}
+
+func (s *LoggerTestSuite) TestLogGroupManageLoopErrorAsWarning() {
+	connRefusedErr := &net.OpError{Op: "dial", Err: unix.ECONNREFUSED}
+
+	s.baseLogger.EXPECT().WithFields(log.Fields{
+		"err": connRefusedErr,
+	}).Return(s.baseLogger).Once()
+	s.baseLogger.EXPECT().Warn(matcher.Context, logging.KgoGroupManageLoopError)
+
+	s.logger.Log(kgo.LogLevelError, logging.KgoGroupManageLoopError, "err", connRefusedErr)
 }
