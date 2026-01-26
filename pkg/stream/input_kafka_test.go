@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/exec"
+	kafkaConsumerMocks "github.com/justtrackio/gosoline/pkg/kafka/consumer/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/twmb/franz-go/pkg/kerr"
 	"golang.org/x/sys/unix"
@@ -92,7 +93,13 @@ func TestCheckKafkaRetryableError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := CheckKafkaRetryableError(nil, tt.err)
+			kafkaReader := kafkaConsumerMocks.NewReader(t)
+
+			if tt.expected == exec.ErrorTypeRetryable {
+				kafkaReader.EXPECT().AllowRebalance().Once()
+			}
+
+			result := CheckKafkaRetryableError(kafkaReader)(nil, tt.err)
 			assert.Equal(t, tt.expected, result, "CheckKafkaRetryableError(nil, %v) = %v, want %v", tt.err, result, tt.expected)
 		})
 	}
