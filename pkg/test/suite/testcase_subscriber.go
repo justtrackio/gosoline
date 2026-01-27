@@ -23,25 +23,25 @@ func init() {
 
 type SubscriberTestCase interface {
 	GetName() string
-	GetModelId() mdl.ModelId
+	GetModelIdStrings() []string
 	GetInput() any
 	GetVersion() int
 }
 
 type subscriberTestCase struct {
-	Name    string
-	ModelId mdl.ModelId
-	Input   any
-	Output  mdlsub.Model
-	Version int
+	Name           string
+	ModelIdStrings []string
+	Input          any
+	Output         mdlsub.Model
+	Version        int
 }
 
 func (s subscriberTestCase) GetName() string {
 	return s.Name
 }
 
-func (s subscriberTestCase) GetModelId() mdl.ModelId {
-	return s.ModelId
+func (s subscriberTestCase) GetModelIdStrings() []string {
+	return s.ModelIdStrings
 }
 
 func (s subscriberTestCase) GetInput() any {
@@ -87,6 +87,25 @@ func isTestCaseSubscriber(_ TestingSuite, method reflect.Method) error {
 	return nil
 }
 
+// parseAndFormatModelId parses a model ID string and formats it using the config pattern.
+func parseAndFormatModelId(config mdl.ConfigProvider, modelIdString string) (string, error) {
+	modelId, err := mdl.ParseCanonicalModelId(config, modelIdString)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse model ID %q: %w", modelIdString, err)
+	}
+
+	if err := modelId.PadFromConfig(config); err != nil {
+		return "", fmt.Errorf("failed to pad model ID: %w", err)
+	}
+
+	result, err := modelId.Format()
+	if err != nil {
+		return "", fmt.Errorf("failed to format model ID: %w", err)
+	}
+
+	return result, nil
+}
+
 func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (TestCaseRunner, error) {
 	return func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment) {
 		suite.SetT(t)
@@ -107,7 +126,19 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (TestCaseRun
 			}
 
 			tc := ret[0].Interface().(SubscriberTestCase)
-			attrs := mdlsub.CreateMessageAttributes(mdl.FormatLegacyModelIdString(tc.GetModelId()), "create", tc.GetVersion())
+
+			// Parse source model ID from string using config pattern
+			modelIdStrings := tc.GetModelIdStrings()
+			if len(modelIdStrings) == 0 {
+				assert.FailNow(t, "no model ID strings provided", "the test case for the subscription of %s has no model ID strings", tc.GetName())
+			}
+
+			modelIdStr, err := parseAndFormatModelId(suite.Env().Config(), modelIdStrings[0])
+			if err != nil {
+				assert.FailNow(t, "invalid source model ID", "the test case for the subscription of %s: %v", tc.GetName(), err)
+			}
+
+			attrs := mdlsub.CreateMessageAttributes(modelIdStr, "create", tc.GetVersion())
 
 			sourceModel, err := mdlsub.UnmarshalSubscriberSourceModel(suite.Env().Config(), tc.GetName())
 			if err != nil {
@@ -177,11 +208,17 @@ func assertDdb(ctx context.Context, t *testing.T, suite TestingSuite, tc ddbSubs
 		return
 	}
 
+	// Parse target model ID from string using config pattern
+	targetModelId, err := mdl.ParseCanonicalModelId(config, tc.TargetModelIdString)
+	if err != nil {
+		assert.FailNow(t, "invalid target model ID", "the test case for the subscription of %s has an invalid target model ID %q: %v", tc.GetName(), tc.TargetModelIdString, err)
+	}
+
 	fetcher := &DdbSubscriberFetcher{
 		t: t,
 		repo: func(model any) (ddb.Repository, error) {
 			return ddb.NewRepository(ctx, config, logger, &ddb.Settings{
-				ModelId: tc.ModelIdTarget,
+				ModelId: targetModelId,
 				Main: ddb.MainSettings{
 					Model: model,
 				},
@@ -218,17 +255,12 @@ func assertKvStore(ctx context.Context, t *testing.T, suite TestingSuite, tc kvs
 }
 
 func DbTestCase(testCase DbSubscriberTestCase) (SubscriberTestCase, error) {
-	modelId, err := mdl.ParseLegacyModelId(testCase.ModelId)
-	if err != nil {
-		return nil, fmt.Errorf("invalid modelId for subscription test case %s: %w", testCase.Name, err)
-	}
-
 	return dbSubscriberTestCase{
 		subscriberTestCase: subscriberTestCase{
-			Name:    testCase.Name,
-			ModelId: modelId,
-			Input:   testCase.Input,
-			Version: testCase.Version,
+			Name:           testCase.Name,
+			ModelIdStrings: []string{testCase.ModelId},
+			Input:          testCase.Input,
+			Version:        testCase.Version,
 		},
 		Assert: testCase.Assert,
 	}, nil
@@ -302,26 +334,15 @@ func runSubscriptionFetcherOptions(options []SubscriptionFetcherOption) subscrib
 }
 
 func DdbTestCase(testCase DdbSubscriberTestCase) (SubscriberTestCase, error) {
-	var err error
-	var modelIdSource, modelIdTarget mdl.ModelId
-
-	if modelIdSource, err = mdl.ParseLegacyModelId(testCase.SourceModelId); err != nil {
-		return nil, fmt.Errorf("invalid source modelId for subscription test case %s: %w", testCase.Name, err)
-	}
-
-	if modelIdTarget, err = mdl.ParseLegacyModelId(testCase.TargetModelId); err != nil {
-		return nil, fmt.Errorf("invalid target modelId for subscription test case %s: %w", testCase.Name, err)
-	}
-
 	return ddbSubscriberTestCase{
 		subscriberTestCase: subscriberTestCase{
-			Name:    testCase.Name,
-			ModelId: modelIdSource,
-			Input:   testCase.Input,
-			Version: testCase.Version,
+			Name:           testCase.Name,
+			ModelIdStrings: []string{testCase.SourceModelId},
+			Input:          testCase.Input,
+			Version:        testCase.Version,
 		},
-		ModelIdTarget: modelIdTarget,
-		Assert:        testCase.Assert,
+		TargetModelIdString: testCase.TargetModelId,
+		Assert:              testCase.Assert,
 	}, nil
 }
 
@@ -336,8 +357,8 @@ type DdbSubscriberTestCase struct {
 
 type ddbSubscriberTestCase struct {
 	subscriberTestCase
-	ModelIdTarget mdl.ModelId
-	Assert        DdbSubscriberAssertion
+	TargetModelIdString string
+	Assert              DdbSubscriberAssertion
 }
 
 type DdbSubscriberAssertion func(t *testing.T, fetcher *DdbSubscriberFetcher)
@@ -393,17 +414,12 @@ func (f DdbSubscriberFetcher) ByHashAndRange(hash any, rangeValue any, model any
 }
 
 func KvstoreTestCase(testCase KvstoreSubscriberTestCase) (SubscriberTestCase, error) {
-	modelId, err := mdl.ParseLegacyModelId(testCase.ModelId)
-	if err != nil {
-		return nil, fmt.Errorf("invalid modelId for subscription test case %s: %w", testCase.Name, err)
-	}
-
 	return kvstoreSubscriberTestCase{
 		subscriberTestCase: subscriberTestCase{
-			Name:    testCase.Name,
-			ModelId: modelId,
-			Input:   testCase.Input,
-			Version: testCase.Version,
+			Name:           testCase.Name,
+			ModelIdStrings: []string{testCase.ModelId},
+			Input:          testCase.Input,
+			Version:        testCase.Version,
 		},
 		Assert: testCase.Assert,
 	}, nil

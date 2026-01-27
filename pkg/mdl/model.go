@@ -134,55 +134,74 @@ func (m *ModelId) format(pattern string) (string, error) {
 // the corresponding field is left unchanged. This allows patterns to determine
 // what's required (enforced at format time).
 func (m *ModelId) PadFromConfig(config ConfigProvider) error {
-	if m.Env == "" {
-		env, err := config.GetString("app.env")
-		if err == nil {
-			m.Env = env
-		}
-		// If app.env is not in config, leave Env empty - patterns will enforce requirements
+	m.padEnvFromConfig(config)
+	m.padAppFromConfig(config)
+	m.mergeTagsFromConfig(config)
+
+	return m.loadPatternFromConfig(config)
+}
+
+func (m *ModelId) padEnvFromConfig(config ConfigProvider) {
+	if m.Env != "" {
+		return
 	}
 
-	if m.App == "" {
-		app, err := config.GetString("app.name")
-		if err == nil {
-			m.App = app
-		}
+	if env, err := config.GetString("app.env"); err == nil {
+		m.Env = env
+	}
+}
+
+func (m *ModelId) padAppFromConfig(config ConfigProvider) {
+	if m.App != "" {
+		return
 	}
 
-	// Merge tags from config (existing tags take precedence)
+	if app, err := config.GetString("app.name"); err == nil {
+		m.App = app
+	}
+}
+
+func (m *ModelId) mergeTagsFromConfig(config ConfigProvider) {
 	configTags, err := config.GetStringMap("app.tags")
 	if err != nil {
-		// Tags are optional, don't error if not present
 		configTags = make(map[string]any)
 	}
 
 	if m.Tags == nil {
 		m.Tags = make(map[string]string)
 	}
+
 	for k, v := range configTags {
-		if _, exists := m.Tags[k]; !exists {
-			if strVal, ok := v.(string); ok {
-				m.Tags[k] = strVal
-			}
+		if _, exists := m.Tags[k]; exists {
+			continue
+		}
+
+		if strVal, ok := v.(string); ok {
+			m.Tags[k] = strVal
 		}
 	}
+}
 
-	// Read and store the pattern if available (enables Format to work)
-	if m.pattern == "" {
-		pattern, err := config.GetString(ConfigKeyModelIdPattern)
+func (m *ModelId) loadPatternFromConfig(config ConfigProvider) error {
+	if m.pattern != "" {
+		return nil
+	}
 
-		if err == nil {
-			if pattern == "" {
-				return fmt.Errorf("model id pattern is empty")
-			}
-
-			if err := validateModelIdPattern(pattern); err != nil {
-				return fmt.Errorf("invalid %s: %w", ConfigKeyModelIdPattern, err)
-			}
-			m.pattern = pattern
-		}
+	pattern, err := config.GetString(ConfigKeyModelIdPattern)
+	if err != nil {
 		// If app.model_id.pattern is not in config, leave pattern empty - Format() will error when called
+		return nil
 	}
+
+	if pattern == "" {
+		return fmt.Errorf("model id pattern is empty")
+	}
+
+	if err := validateModelIdPattern(pattern); err != nil {
+		return fmt.Errorf("invalid %s: %w", ConfigKeyModelIdPattern, err)
+	}
+
+	m.pattern = pattern
 
 	return nil
 }

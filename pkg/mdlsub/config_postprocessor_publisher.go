@@ -36,77 +36,102 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	}
 
 	for name := range publishers {
-		publisherKey := getPublisherConfigKey(name)
-
-		publisherSettings, err := readPublisherSetting(config, name)
-		if err != nil {
-			return false, fmt.Errorf("can not read publisher settings for %s: %w", name, err)
-		}
-
-		producerName := fmt.Sprintf("publisher-%s", name)
-		outputName := fmt.Sprintf("publisher-%s", name)
-
-		if publisherSettings.Producer != "" {
-			producerName = publisherSettings.Producer
-		} else {
-			publisherSettings.Producer = producerName
-		}
-
-		producerSettings := &stream.ProducerSettings{}
-		if err := config.UnmarshalDefaults(producerSettings); err != nil {
-			return false, fmt.Errorf("can not unmarshal producer settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
-		}
-
-		if err := publisherSettings.ModelId.PadFromConfig(config); err != nil {
-			return false, fmt.Errorf("can not pad model id from config for publisher %s: %w", publisherSettings.ModelId.Name, err)
-		}
-
-		modelIdString, err := publisherSettings.ModelId.Format()
-		if err != nil {
-			return false, fmt.Errorf("can not compute model id string for publisher %s: %w", publisherSettings.ModelId.Name, err)
-		}
-
-		producerSettings.Output = outputName
-		producerSettings.Daemon.MessageAttributes[AttributeModelId] = modelIdString
-
-		var ok bool
-		var outputTypeHandler publisherOutputTypeHandler
-
-		if outputTypeHandler, ok = publisherOutputTypeHandlers[publisherSettings.OutputType]; !ok {
-			return false, fmt.Errorf("no publisherOutputTypeHandler found for publisher %s and output type %s", publisherSettings.ModelId.Name, publisherSettings.OutputType)
-		}
-
-		clientName := producerName
-
-		outputSettings, err := outputTypeHandler(config, publisherSettings, producerSettings, clientName)
-		if err != nil {
-			return false, fmt.Errorf("can not handle publisher output type %s for publisher %s: %w", publisherSettings.OutputType, publisherSettings.ModelId.Name, err)
-		}
-
-		producerKey := stream.ConfigurableProducerKey(producerName)
-		outputKey := stream.ConfigurableOutputKey(outputName)
-
-		configOptions := []cfg.Option{
-			cfg.WithConfigSetting(producerKey, producerSettings, cfg.SkipExisting),
-			cfg.WithConfigSetting(outputKey, outputSettings, cfg.SkipExisting),
-			cfg.WithConfigSetting(publisherKey, publisherSettings),
-		}
-
-		if producerSettings.Daemon.Enabled {
-			// if the producer daemon is enabled, default to infinite retries for it.
-			// otherwise, if you have an API or similar, we will only retry for a time
-			// fitting the request timeout, but the producer daemon runs in the background,
-			// so it isn't bound like this
-			awsClientKey := aws.GetDefaultsKey(clientName) + ".backoff.type"
-			configOptions = append(configOptions, cfg.WithConfigSetting(awsClientKey, "infinite", cfg.SkipExisting))
-		}
-
-		if err := config.Option(configOptions...); err != nil {
-			return false, fmt.Errorf("can not apply config settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
+		if err := processPublisher(config, name); err != nil {
+			return false, err
 		}
 	}
 
 	return true, nil
+}
+
+func processPublisher(config cfg.GosoConf, name string) error {
+	publisherKey := getPublisherConfigKey(name)
+
+	publisherSettings, err := readPublisherSetting(config, name)
+	if err != nil {
+		return fmt.Errorf("can not read publisher settings for %s: %w", name, err)
+	}
+
+	producerName := fmt.Sprintf("publisher-%s", name)
+	outputName := fmt.Sprintf("publisher-%s", name)
+
+	if publisherSettings.Producer != "" {
+		producerName = publisherSettings.Producer
+	} else {
+		publisherSettings.Producer = producerName
+	}
+
+	producerSettings := &stream.ProducerSettings{}
+	if err := config.UnmarshalDefaults(producerSettings); err != nil {
+		return fmt.Errorf("can not unmarshal producer settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
+	}
+
+	if err := publisherSettings.ModelId.PadFromConfig(config); err != nil {
+		return fmt.Errorf("can not pad model id from config for publisher %s: %w", publisherSettings.ModelId.Name, err)
+	}
+
+	modelIdString, err := publisherSettings.ModelId.Format()
+	if err != nil {
+		return fmt.Errorf("can not compute model id string for publisher %s: %w", publisherSettings.ModelId.Name, err)
+	}
+
+	producerSettings.Output = outputName
+	producerSettings.Daemon.MessageAttributes[AttributeModelId] = modelIdString
+
+	outputSettings, clientName, err := buildPublisherOutput(config, publisherSettings, producerSettings, producerName)
+	if err != nil {
+		return err
+	}
+
+	return applyPublisherConfig(config, publisherSettings, producerSettings, outputSettings, producerName, outputName, publisherKey, clientName)
+}
+
+func buildPublisherOutput(config cfg.GosoConf, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings, producerName string) (stream.BaseOutputConfigurationAware, string, error) {
+	outputTypeHandler, ok := publisherOutputTypeHandlers[publisherSettings.OutputType]
+	if !ok {
+		return nil, "", fmt.Errorf("no publisherOutputTypeHandler found for publisher %s and output type %s", publisherSettings.ModelId.Name, publisherSettings.OutputType)
+	}
+
+	clientName := producerName
+
+	outputSettings, err := outputTypeHandler(config, publisherSettings, producerSettings, clientName)
+	if err != nil {
+		return nil, "", fmt.Errorf("can not handle publisher output type %s for publisher %s: %w", publisherSettings.OutputType, publisherSettings.ModelId.Name, err)
+	}
+
+	return outputSettings, clientName, nil
+}
+
+func applyPublisherConfig(
+	config cfg.GosoConf,
+	publisherSettings *PublisherSettings,
+	producerSettings *stream.ProducerSettings,
+	outputSettings stream.BaseOutputConfigurationAware,
+	producerName, outputName, publisherKey, clientName string,
+) error {
+	producerKey := stream.ConfigurableProducerKey(producerName)
+	outputKey := stream.ConfigurableOutputKey(outputName)
+
+	configOptions := []cfg.Option{
+		cfg.WithConfigSetting(producerKey, producerSettings, cfg.SkipExisting),
+		cfg.WithConfigSetting(outputKey, outputSettings, cfg.SkipExisting),
+		cfg.WithConfigSetting(publisherKey, publisherSettings),
+	}
+
+	if producerSettings.Daemon.Enabled {
+		// if the producer daemon is enabled, default to infinite retries for it.
+		// otherwise, if you have an API or similar, we will only retry for a time
+		// fitting the request timeout, but the producer daemon runs in the background,
+		// so it isn't bound like this
+		awsClientKey := aws.GetDefaultsKey(clientName) + ".backoff.type"
+		configOptions = append(configOptions, cfg.WithConfigSetting(awsClientKey, "infinite", cfg.SkipExisting))
+	}
+
+	if err := config.Option(configOptions...); err != nil {
+		return fmt.Errorf("can not apply config settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
+	}
+
+	return nil
 }
 
 func handlePublisherOutputTypeInMemory(config cfg.Config, _ *PublisherSettings, _ *stream.ProducerSettings, _ string) (stream.BaseOutputConfigurationAware, error) {

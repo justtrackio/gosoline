@@ -17,49 +17,6 @@ type ModelIdTestSuite struct {
 }
 
 // =============================================================================
-// FormatLegacyModelIdString() tests (replacement for String())
-// =============================================================================
-
-func (s *ModelIdTestSuite) TestFormatLegacyModelIdString_DefaultPattern() {
-	modelId := mdl.ModelId{
-		Name: "testModel",
-		Tags: map[string]string{
-			"project": "myProject",
-			"family":  "myFamily",
-			"group":   "myGroup",
-		},
-	}
-
-	result := mdl.FormatLegacyModelIdString(modelId)
-	s.Equal("myProject.myFamily.myGroup.testModel", result)
-}
-
-func (s *ModelIdTestSuite) TestFormatLegacyModelIdString_MissingTags_ReturnsEmpty() {
-	modelId := mdl.ModelId{
-		Name: "testModel",
-		// Missing required tags for default pattern
-	}
-
-	result := mdl.FormatLegacyModelIdString(modelId)
-	// With missing tags, placeholders resolve to empty strings
-	s.Equal("...testModel", result)
-}
-
-func (s *ModelIdTestSuite) TestFormatLegacyModelIdString_EmptyName() {
-	modelId := mdl.ModelId{
-		Name: "",
-		Tags: map[string]string{
-			"project": "myProject",
-			"family":  "myFamily",
-			"group":   "myGroup",
-		},
-	}
-
-	result := mdl.FormatLegacyModelIdString(modelId)
-	s.Equal("myProject.myFamily.myGroup.", result)
-}
-
-// =============================================================================
 // FormatModelIdWithPattern() tests (replacement for Format())
 // =============================================================================
 
@@ -255,52 +212,6 @@ func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_Error_InconsistentDelimi
 	// Pattern with different delimiters
 	_, err := mdl.FormatModelIdWithPattern(modelId, "{app.env}-{modelId}.something")
 	s.Error(err)
-}
-
-// =============================================================================
-// ParseLegacyModelId() tests (replacement for ModelIdFromString())
-// =============================================================================
-
-func (s *ModelIdTestSuite) TestParseLegacyModelId_DefaultPattern() {
-	modelId, err := mdl.ParseLegacyModelId("myProject.myFamily.myGroup.testModel")
-	s.NoError(err)
-
-	s.Equal("testModel", modelId.Name)
-	s.Equal("myProject", modelId.Tags["project"])
-	s.Equal("myFamily", modelId.Tags["family"])
-	s.Equal("myGroup", modelId.Tags["group"])
-}
-
-func (s *ModelIdTestSuite) TestParseLegacyModelId_Roundtrip() {
-	original := mdl.ModelId{
-		Name: "testModel",
-		Tags: map[string]string{
-			"project": "myProject",
-			"family":  "myFamily",
-			"group":   "myGroup",
-		},
-	}
-
-	str := mdl.FormatLegacyModelIdString(original)
-	parsed, err := mdl.ParseLegacyModelId(str)
-	s.NoError(err)
-
-	s.Equal(original.Name, parsed.Name)
-	s.Equal(original.Tags["project"], parsed.Tags["project"])
-	s.Equal(original.Tags["family"], parsed.Tags["family"])
-	s.Equal(original.Tags["group"], parsed.Tags["group"])
-}
-
-func (s *ModelIdTestSuite) TestParseLegacyModelId_Error_WrongSegmentCount() {
-	_, err := mdl.ParseLegacyModelId("only.two.segments")
-	s.Error(err)
-	s.Contains(err.Error(), "has 3 segments but pattern expects 4")
-}
-
-func (s *ModelIdTestSuite) TestParseLegacyModelId_Error_TooManySegments() {
-	_, err := mdl.ParseLegacyModelId("one.two.three.four.five")
-	s.Error(err)
-	s.Contains(err.Error(), "has 5 segments but pattern expects 4")
 }
 
 // =============================================================================

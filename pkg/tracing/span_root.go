@@ -38,12 +38,3 @@ func newRootSpan(ctx context.Context, name string, identity cfg.AppIdentity) (co
 
 	return ctx, transaction
 }
-
-func disabledRootSpan() *awsRootSpan {
-	return &awsRootSpan{
-		&awsSpan{
-			enabled: false,
-		},
-		nil,
-	}
-}

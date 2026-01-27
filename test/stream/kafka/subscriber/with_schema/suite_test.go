@@ -84,7 +84,7 @@ func (s *testSuite) TestSuccess(app suite.AppUnderTest) {
 		Name: "event 1",
 	}
 
-	err := s.producer.WriteOne(s.T().Context(), event, mdlsub.CreateMessageAttributes(mdl.FormatLegacyModelIdString(mdl.ModelId{
+	sourceModelId := mdl.ModelId{
 		Name: "testEvent",
 		Env:  "test",
 		Tags: map[string]string{
@@ -92,7 +92,18 @@ func (s *testSuite) TestSuccess(app suite.AppUnderTest) {
 			"family":  "gosoline",
 			"group":   "source-group",
 		},
-	}), mdlsub.TypeCreate, 0))
+	}
+	err := sourceModelId.PadFromConfig(s.Env().Config())
+	if !s.NoError(err, "failed to pad source model ID from config") {
+		return
+	}
+
+	modelIdStr, err := sourceModelId.Format()
+	if !s.NoError(err, "failed to format source model ID") {
+		return
+	}
+
+	err = s.producer.WriteOne(s.T().Context(), event, mdlsub.CreateMessageAttributes(modelIdStr, mdlsub.TypeCreate, 0))
 	s.NoError(err)
 
 	app.WaitDone()
