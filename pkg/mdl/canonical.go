@@ -78,35 +78,6 @@ func FormatModelIdWithPattern(id ModelId, pattern string) (string, error) {
 // This pattern is used for backward compatibility in tests and internal map keys.
 const LegacyModelIdPattern = "{app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}"
 
-// ParseLegacyModelId parses a string using the legacy format "project.family.group.name".
-// This is intended for test utilities and backward compatibility scenarios where
-// config-driven patterns are not available.
-//
-// For production code, prefer ParseCanonicalModelId with proper config.
-func ParseLegacyModelId(s string) (ModelId, error) {
-	return modelIdFromStringWithPattern(LegacyModelIdPattern, s)
-}
-
-// FormatLegacyModelIdString formats a ModelId using the legacy format.
-// This is intended for backward compatibility scenarios and internal map keys.
-// Missing tags are replaced with empty strings.
-//
-// For production code, call PadFromConfig once, then use Format().
-func FormatLegacyModelIdString(id ModelId) string {
-	// Initialize tags if nil to avoid nil map access
-	if id.Tags == nil {
-		id.Tags = make(map[string]string)
-	}
-
-	// Use direct string formatting to allow empty tags (format() would error on missing tags)
-	return fmt.Sprintf("%s.%s.%s.%s",
-		id.Tags["project"],
-		id.Tags["family"],
-		id.Tags["group"],
-		id.Name,
-	)
-}
-
 // ParseModelIdWithPattern parses a string into a ModelId using the given pattern.
 // This is a lower-level API intended for tests and special cases where a custom
 // pattern is needed.

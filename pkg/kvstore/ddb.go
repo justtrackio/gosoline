@@ -42,7 +42,7 @@ func NewDdbKvStore[T any](ctx context.Context, config cfg.Config, logger log.Log
 
 	// Verify that the pattern was actually loaded from config
 	// Format() will fail if pattern is not set, so we call it here to get a better error message
-	if _, err := settings.ModelId.Format(); err != nil {
+	if _, err := settings.Format(); err != nil {
 		// Try to get the pattern from config to provide a helpful error message
 		pattern, configErr := config.GetString(mdl.ConfigKeyModelIdPattern)
 		if configErr != nil {

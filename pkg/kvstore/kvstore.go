@@ -26,7 +26,7 @@ type Settings struct {
 // This uses the canonical model ID pattern from config for consistency with other metrics.
 func (s *Settings) MetricModelIdString(config cfg.Config) (string, error) {
 	// Use the ModelId from Settings directly (it should already have PadFromConfig called)
-	return s.ModelId.Format()
+	return s.Format()
 }
 
 // LegacyMetricModelIdString returns the model ID string in the legacy format
