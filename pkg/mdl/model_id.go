@@ -228,7 +228,7 @@ func (m ModelId) Format() (string, error) {
 }
 
 // modelIdFromStringWithPattern parses a string into a ModelId using the given pattern.
-// This is an internal function - use ParseCanonicalModelId() for public API.
+// This is an internal function - use ParseModelId() for public API.
 //
 // The pattern must be "parseable" - consisting only of placeholders separated
 // by a single non-alphanumeric delimiter character. For example:

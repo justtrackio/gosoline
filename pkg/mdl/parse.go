@@ -4,36 +4,14 @@ import (
 	"fmt"
 )
 
-// RequiredModelIdPattern reads the model id pattern from config.
-// The pattern must be set in config at "app.model_id.pattern".
-// Returns an error if:
-//   - the config key is missing or empty
-//   - the pattern is invalid (unknown placeholders, unparseable)
-func RequiredModelIdPattern(config ConfigProvider) (string, error) {
-	pattern, err := config.GetString(ConfigKeyModelIdPattern)
-	if err != nil {
-		return "", fmt.Errorf("%s must be set: %w", ConfigKeyModelIdPattern, err)
-	}
-
-	if pattern == "" {
-		return "", fmt.Errorf("%s must not be empty", ConfigKeyModelIdPattern)
-	}
-
-	if err := validateModelIdPattern(pattern); err != nil {
-		return "", fmt.Errorf("invalid %s: %w", ConfigKeyModelIdPattern, err)
-	}
-
-	return pattern, nil
-}
-
-// ParseCanonicalModelId parses a string into a ModelId using the required pattern from config.
+// ParseModelId parses a string into a ModelId using the required pattern from config.
 // This is the only supported way to parse a canonical model id string.
 //
 // Returns an error if:
 //   - the pattern is not configured or invalid
 //   - the string doesn't match the expected pattern structure
-func ParseCanonicalModelId(config ConfigProvider, s string) (ModelId, error) {
-	pattern, err := RequiredModelIdPattern(config)
+func ParseModelId(config ConfigProvider, s string) (ModelId, error) {
+	pattern, err := readModelIdPattern(config)
 	if err != nil {
 		return ModelId{}, err
 	}
@@ -51,6 +29,15 @@ func ParseCanonicalModelId(config ConfigProvider, s string) (ModelId, error) {
 // It should NOT be used for routing, persistence keys, or message attributes.
 func DebugModelIdString(id ModelId) string {
 	return fmt.Sprintf("ModelId{Name:%q, Env:%q, App:%q, Tags:%v}", id.Name, id.Env, id.App, id.Tags)
+}
+
+// ParseModelIdWithPattern parses a string into a ModelId using the given pattern.
+// This is a lower-level API intended for tests and special cases where a custom
+// pattern is needed.
+//
+// For production code, prefer ParseModelId with proper config.
+func ParseModelIdWithPattern(pattern, s string) (ModelId, error) {
+	return modelIdFromStringWithPattern(pattern, s)
 }
 
 // FormatModelIdWithPattern formats a ModelId using the given pattern.
@@ -74,15 +61,19 @@ func FormatModelIdWithPattern(id ModelId, pattern string) (string, error) {
 	return result, nil
 }
 
-// LegacyModelIdPattern is the old default format for ModelId strings.
-// This pattern is used for backward compatibility in tests and internal map keys.
-const LegacyModelIdPattern = "{app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}"
+func readModelIdPattern(config ConfigProvider) (string, error) {
+	pattern, err := config.GetString(ConfigKeyModelIdPattern)
+	if err != nil {
+		return "", fmt.Errorf("%s must be set: %w", ConfigKeyModelIdPattern, err)
+	}
 
-// ParseModelIdWithPattern parses a string into a ModelId using the given pattern.
-// This is a lower-level API intended for tests and special cases where a custom
-// pattern is needed.
-//
-// For production code, prefer ParseCanonicalModelId with proper config.
-func ParseModelIdWithPattern(pattern, s string) (ModelId, error) {
-	return modelIdFromStringWithPattern(pattern, s)
+	if pattern == "" {
+		return "", fmt.Errorf("%s must not be empty", ConfigKeyModelIdPattern)
+	}
+
+	if err := validateModelIdPattern(pattern); err != nil {
+		return "", fmt.Errorf("invalid %s: %w", ConfigKeyModelIdPattern, err)
+	}
+
+	return pattern, nil
 }

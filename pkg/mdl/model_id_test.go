@@ -20,21 +20,6 @@ type ModelIdTestSuite struct {
 // FormatModelIdWithPattern() tests (replacement for Format())
 // =============================================================================
 
-func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_LegacyPattern() {
-	modelId := mdl.ModelId{
-		Name: "testModel",
-		Tags: map[string]string{
-			"project": "myProject",
-			"family":  "myFamily",
-			"group":   "myGroup",
-		},
-	}
-
-	result, err := mdl.FormatModelIdWithPattern(modelId, mdl.LegacyModelIdPattern)
-	s.NoError(err)
-	s.Equal("myProject.myFamily.myGroup.testModel", result)
-}
-
 func (s *ModelIdTestSuite) TestFormatModelIdWithPattern_WithEnvAndApp() {
 	modelId := mdl.ModelId{
 		Name: "testModel",

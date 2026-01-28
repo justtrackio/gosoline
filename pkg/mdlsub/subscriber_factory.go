@@ -16,12 +16,7 @@ func NewSubscriberFactory(transformerFactoryMap TransformerMapTypeVersionFactori
 	}
 }
 
-func SubscriberFactory(
-	ctx context.Context,
-	config cfg.Config,
-	logger log.Logger,
-	transformerFactories TransformerMapTypeVersionFactories,
-) (map[string]kernel.ModuleFactory, error) {
+func SubscriberFactory(ctx context.Context, config cfg.Config, logger log.Logger, transformerFactories TransformerMapTypeVersionFactories) (map[string]kernel.ModuleFactory, error) {
 	var err error
 	var core SubscriberCore
 	var settings *Settings

@@ -27,13 +27,3 @@ func DeriveIdentity(config cfg.Config, modelId mdl.ModelId) (cfg.AppIdentity, er
 		Tags: cfg.AppTags(modelId.Tags),
 	}, nil
 }
-
-// DeriveIdentityFromModelId creates a cfg.AppIdentity directly from a mdl.ModelId
-// without padding from config. Use this when you already have a fully-populated ModelId.
-func DeriveIdentityFromModelId(modelId mdl.ModelId) cfg.AppIdentity {
-	return cfg.AppIdentity{
-		Env:  modelId.Env,
-		Name: modelId.App,
-		Tags: cfg.AppTags(modelId.Tags),
-	}
-}
