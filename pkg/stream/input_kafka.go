@@ -118,6 +118,8 @@ func CheckKafkaRetryableError(kafkaReader kafkaConsumer.Reader) func(_ any, err 
 			errType = exec.ErrorTypeRetryable
 		case kerr.IsRetriable(err): // Check if this is a retryable Kafka protocol error
 			errType = exec.ErrorTypeRetryable
+		case exec.IsDNSNotFoundError(err): // Check for "no such host" errors. This might be temporary in some environments if a broker restarts.
+			errType = exec.ErrorTypeRetryable
 		default:
 		}
 

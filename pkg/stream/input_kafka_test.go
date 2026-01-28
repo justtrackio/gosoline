@@ -89,6 +89,11 @@ func TestCheckKafkaRetryableError(t *testing.T) {
 			err:      &net.OpError{Op: "dial", Err: unix.ECONNREFUSED},
 			expected: exec.ErrorTypeRetryable,
 		},
+		{
+			name:     "no such host",
+			err:      &net.DNSError{Err: "no such host", IsNotFound: true},
+			expected: exec.ErrorTypeRetryable,
+		},
 	}
 
 	for _, tt := range tests {
