@@ -15,6 +15,7 @@ import (
 
 const (
 	MetricNameSuccess = "ModelEventConsumeSuccess"
+	MetricNameSkipped = "ModelEventConsumeSkipped"
 	MetricNameFailure = "ModelEventConsumeFailure"
 )
 
@@ -153,6 +154,7 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 
 	if model == nil {
 		logger.Info(ctx, "skipping %s op for subscription for modelId %s and version %d", spec.CrudType, spec.ModelId, spec.Version)
+		s.writeMetric(ctx, MetricNameSkipped, spec)
 
 		return true, nil
 	}
@@ -210,6 +212,16 @@ func getSubscriberCallbackDefaultMetrics(modelIds []string) []*metric.Datum {
 			Value: 0.0,
 		}
 
+		skipped := &metric.Datum{
+			Priority:   metric.PriorityHigh,
+			MetricName: MetricNameSkipped,
+			Dimensions: map[string]string{
+				"ModelId": modelId,
+			},
+			Unit:  metric.UnitCount,
+			Value: 0.0,
+		}
+
 		failure := &metric.Datum{
 			Priority:   metric.PriorityHigh,
 			MetricName: MetricNameFailure,
@@ -220,7 +232,7 @@ func getSubscriberCallbackDefaultMetrics(modelIds []string) []*metric.Datum {
 			Value: 0.0,
 		}
 
-		defaults = append(defaults, success, failure)
+		defaults = append(defaults, success, skipped, failure)
 	}
 
 	return defaults
