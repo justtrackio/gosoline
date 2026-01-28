@@ -146,3 +146,13 @@ func IsHttp2ClientConnectionForceClosedError(err error) bool {
 
 	return strings.Contains(err.Error(), "http2: client connection force closed")
 }
+
+func IsDNSNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var dnsErr *net.DNSError
+
+	return errors.As(err, &dnsErr) && dnsErr.IsNotFound
+}
