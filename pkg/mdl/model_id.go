@@ -3,11 +3,11 @@ package mdl
 import (
 	"fmt"
 	"strings"
-	"unicode"
 )
 
 // Placeholder constants for ModelId patterns.
 const (
+	delimiterDot       = "."
 	PlaceholderModelId = "modelId"
 	PlaceholderAppEnv  = "app.env"
 	PlaceholderAppName = "app.name"
@@ -231,9 +231,9 @@ func (m ModelId) Format() (string, error) {
 // This is an internal function - use ParseModelId() for public API.
 //
 // The pattern must be "parseable" - consisting only of placeholders separated
-// by a single non-alphanumeric delimiter character. For example:
-//   - "{app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}" (delimiter ".")
-//   - "{app.env}-{modelId}" (delimiter "-")
+// by a single dot "." delimiter. For example:
+//   - "{app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}"
+//   - "{app.env}.{modelId}"
 //
 // The string is split by the delimiter, and each segment is mapped to the
 // corresponding placeholder in the pattern.
@@ -242,25 +242,13 @@ func modelIdFromStringWithPattern(pattern, str string) (ModelId, error) {
 		return ModelId{}, fmt.Errorf("invalid pattern: %w", err)
 	}
 
-	delimiter, err := extractDelimiter(pattern)
-	if err != nil {
-		return ModelId{}, fmt.Errorf("cannot parse with pattern: %w", err)
-	}
-
 	placeholders := extractPlaceholders(pattern)
-
-	var parts []string
-	if delimiter == "" {
-		// Single placeholder pattern
-		parts = []string{str}
-	} else {
-		parts = strings.Split(str, delimiter)
-	}
+	parts := strings.Split(str, delimiterDot)
 
 	if len(parts) != len(placeholders) {
 		return ModelId{}, fmt.Errorf(
 			"string %q has %d segments but pattern expects %d (pattern: %s, delimiter: %q)",
-			str, len(parts), len(placeholders), pattern, delimiter,
+			str, len(parts), len(placeholders), pattern, delimiterDot,
 		)
 	}
 
@@ -292,8 +280,8 @@ func modelIdFromStringWithPattern(pattern, str string) (ModelId, error) {
 // A valid pattern:
 //   - is a non-empty string
 //   - if it contains placeholders, they must be recognized placeholders
-//   - placeholders must be separated by a single non-alphanumeric delimiter
-//   - no static text between placeholders (except the delimiter)
+//   - for multiple placeholders, they must be separated by a single dot "." delimiter
+//   - no static text between placeholders (except the dot delimiter)
 //
 // A pattern with no placeholders is valid and will be returned as-is.
 func validateModelIdPattern(pattern string) error {
@@ -315,7 +303,7 @@ func validateModelIdPattern(pattern string) error {
 		}
 	}
 
-	// Check that pattern is parseable (placeholders + delimiters only)
+	// Check that pattern is parseable (placeholders + dot delimiter only)
 	if len(placeholders) == 1 {
 		// Single placeholder - must be the entire pattern
 		if pattern != "{"+placeholders[0]+"}" {
@@ -325,76 +313,18 @@ func validateModelIdPattern(pattern string) error {
 		return nil
 	}
 
-	// Multiple placeholders - extract and validate delimiter
-	delimiter, err := extractDelimiter(pattern)
-	if err != nil {
-		return err
-	}
-
-	// Rebuild expected pattern and compare
+	// Multiple placeholders - ensure they are joined by dot
 	var expectedParts []string
 	for _, ph := range placeholders {
 		expectedParts = append(expectedParts, "{"+ph+"}")
 	}
-	expectedPattern := strings.Join(expectedParts, delimiter)
+	expectedPattern := strings.Join(expectedParts, ".")
 
 	if pattern != expectedPattern {
-		return fmt.Errorf("pattern contains static text or inconsistent delimiters which makes it unparseable")
+		return fmt.Errorf("pattern must consist of placeholders separated by dots (.), got %q", pattern)
 	}
 
 	return nil
-}
-
-// extractDelimiter finds the delimiter character used in a pattern.
-// Returns empty string if pattern has only one placeholder (no delimiter needed).
-func extractDelimiter(pattern string) (string, error) {
-	placeholders := extractPlaceholders(pattern)
-	if len(placeholders) <= 1 {
-		return "", nil
-	}
-
-	// Find text between first two placeholders
-	firstPh := "{" + placeholders[0] + "}"
-	secondPh := "{" + placeholders[1] + "}"
-
-	firstEnd := strings.Index(pattern, firstPh) + len(firstPh)
-	secondStart := strings.Index(pattern, secondPh)
-
-	if secondStart <= firstEnd {
-		return "", fmt.Errorf("no delimiter between placeholders")
-	}
-
-	delimiter := pattern[firstEnd:secondStart]
-
-	// Validate delimiter is a single non-alphanumeric character
-	if len(delimiter) != 1 {
-		return "", fmt.Errorf("delimiter must be a single character, got %q", delimiter)
-	}
-
-	r := rune(delimiter[0])
-	if unicode.IsLetter(r) || unicode.IsDigit(r) {
-		return "", fmt.Errorf("delimiter must be non-alphanumeric, got %q", delimiter)
-	}
-
-	// Verify all placeholders use the same delimiter
-	for i := 1; i < len(placeholders); i++ {
-		prevPh := "{" + placeholders[i-1] + "}"
-		currPh := "{" + placeholders[i] + "}"
-
-		prevEnd := strings.Index(pattern, prevPh) + len(prevPh)
-		currStart := strings.Index(pattern, currPh)
-
-		if currStart <= prevEnd {
-			return "", fmt.Errorf("no delimiter between placeholders")
-		}
-
-		betweenDelimiter := pattern[prevEnd:currStart]
-		if betweenDelimiter != delimiter {
-			return "", fmt.Errorf("inconsistent delimiters: expected %q, got %q", delimiter, betweenDelimiter)
-		}
-	}
-
-	return delimiter, nil
 }
 
 // extractPlaceholders returns all placeholder names from a pattern.
