@@ -11,9 +11,9 @@ import (
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	kafkaConsumer "github.com/justtrackio/gosoline/pkg/kafka/consumer"
+	kafkaErrors "github.com/justtrackio/gosoline/pkg/kafka/errors"
 	schemaRegistry "github.com/justtrackio/gosoline/pkg/kafka/schema-registry"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
@@ -99,31 +99,18 @@ func NewKafkaInputWithInterfaces(
 // and ErrorTypeUnknown for other errors (letting them fail).
 func CheckKafkaRetryableError(kafkaReader kafkaConsumer.Reader) func(_ any, err error) exec.ErrorType {
 	return func(_ any, err error) exec.ErrorType {
-		errType := exec.ErrorTypeUnknown
-
-		defer func() {
-			if errType == exec.ErrorTypeRetryable {
-				// we should allow a rebalance between executor retries to avoid getting kicked out of the group
-				// if we are blocking a rebalance for too long
-				kafkaReader.AllowRebalance()
-			}
-		}()
-
 		switch {
 		case err == nil:
-			errType = exec.ErrorTypeOk
-		case exec.IsConnectionError(err): // Check for network-level connection errors (connection refused, reset, EOF, etc.)
-			errType = exec.ErrorTypeRetryable
-		case kgo.IsRetryableBrokerErr(err): // Check if franz-go considers this a retryable broker error
-			errType = exec.ErrorTypeRetryable
-		case kerr.IsRetriable(err): // Check if this is a retryable Kafka protocol error
-			errType = exec.ErrorTypeRetryable
-		case exec.IsDNSNotFoundError(err): // Check for "no such host" errors. This might be temporary in some environments if a broker restarts.
-			errType = exec.ErrorTypeRetryable
-		default:
-		}
+			return exec.ErrorTypeOk
+		case kafkaErrors.IsRetryableKafkaError(err):
+			// we should allow a rebalance between executor retries to avoid getting kicked out of the group
+			// if we are blocking a rebalance for too long
+			kafkaReader.AllowRebalance()
 
-		return errType
+			return exec.ErrorTypeRetryable
+		default:
+			return exec.ErrorTypeUnknown
+		}
 	}
 }
 
