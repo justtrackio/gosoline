@@ -50,7 +50,7 @@ func Test_Publish_Notifier(t *testing.T) {
 	// Use !nodecode to prevent config string expansion on the pattern value
 	config := cfg.New()
 	configErr := config.Option(cfg.WithConfigMap(map[string]any{
-		"app.model_id.pattern": "!nodecode {app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}",
+		"app.model_id.domain_pattern": "!nodecode {app.tags.project}.{app.tags.family}.{app.tags.group}",
 	}))
 	assert.NoError(t, configErr)
 

@@ -10,7 +10,7 @@ import (
 )
 
 type TableNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{modelId}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}"`
 }
 
 func TableName(config cfg.Config, settings *Settings) (string, error) {
@@ -44,7 +44,6 @@ func GetTableNamingSettings(config cfg.Config, clientName string) (*TableNamingS
 
 // GetTableNameWithSettings formats the table name using the ModelId and naming pattern.
 // The pattern supports the same placeholders as ModelId.Format:
-//   - {modelId} - the model's Name
 //   - {app.env} - the Env field
 //   - {app.name} - the App field
 //   - {app.tags.<key>} - any tag from the Tags map
@@ -80,9 +79,6 @@ func formatTableName(m mdl.ModelId, pattern string) (string, error) {
 		var ok bool
 
 		switch {
-		case ph == mdl.PlaceholderModelId:
-			value = m.Name
-			ok = true
 		case ph == mdl.PlaceholderAppEnv:
 			value = m.Env
 			ok = m.Env != ""
@@ -115,6 +111,8 @@ func formatTableName(m mdl.ModelId, pattern string) (string, error) {
 	if len(missingTags) > 0 {
 		return "", fmt.Errorf("missing required tags: %s", strings.Join(missingTags, ", "))
 	}
+
+	result = fmt.Sprintf("%s-%s", result, m.Name)
 
 	return result, nil
 }

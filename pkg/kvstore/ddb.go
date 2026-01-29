@@ -9,7 +9,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
@@ -41,17 +40,8 @@ func NewDdbKvStore[T any](ctx context.Context, config cfg.Config, logger log.Log
 	}
 
 	// Verify that the pattern was actually loaded from config
-	// Format() will fail if pattern is not set, so we call it here to get a better error message
-	if _, err := settings.Format(); err != nil {
-		// Try to get the pattern from config to provide a helpful error message
-		pattern, configErr := config.GetString(mdl.ConfigKeyModelIdPattern)
-		if configErr != nil {
-			return nil, fmt.Errorf("model id pattern is required but not found in config at key %q: %w", mdl.ConfigKeyModelIdPattern, configErr)
-		}
-		if pattern == "" {
-			return nil, fmt.Errorf("model id pattern is required but empty in config at key %q", mdl.ConfigKeyModelIdPattern)
-		}
-		// Pattern exists in config but Format still failed - return original error
+	// String() will fail if pattern is not set, so we call it here to get a better error message
+	if _, err := settings.String(); err != nil {
 		return nil, fmt.Errorf("failed to format model id: %w", err)
 	}
 

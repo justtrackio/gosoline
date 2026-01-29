@@ -23,7 +23,7 @@ Use `ModelId.ReplaceMacros(pattern)` to interpolate naming patterns:
 ```go
 modelId := mdl.ModelId{Name: "users"}
 modelId.PadFromConfig(config)
-tableName := modelId.ReplaceMacros("{project}-{env}-{family}-{group}-{modelId}")
+tableName := modelId.ReplaceMacros("{project}-{env}-{family}-{group}")
 // Result: "myproject-dev-myfamily-mygroup-myproject.myfamily.mygroup.users"
 ```
 
@@ -36,7 +36,7 @@ tableName := modelId.ReplaceMacros("{project}-{env}-{family}-{group}-{modelId}")
 | `{family}` | Family from ModelId |
 | `{group}` | Group from ModelId |
 | `{app}` | App from ModelId |
-| `{modelId}` | Model's string representation |
+| `{modelId}` | Model's string representation (automatically appended to canonical model IDs) |
 
 ## Related packages
 - `pkg/cfg` - `NamingTemplate` with AppIdentity macros (for AWS resource naming)
@@ -47,3 +47,10 @@ tableName := modelId.ReplaceMacros("{project}-{env}-{family}-{group}-{modelId}")
 - `ModelId` macros (`{project}`, `{family}`) differ from `cfg.NamingTemplate` macros (`{app.tags.project}`, `{app.tags.family}`).
 - DynamoDB and SQL tables use `ModelId`; AWS resources (SQS, SNS, Kinesis) use `cfg.NamingTemplate`.
 - Document any new `ModelId` fields in root AGENT so downstream contributors know how to configure them.
+
+## Canonical Model IDs
+For canonical model IDs (used in message routing, etc.), the pattern works differently and is configured via `app.model_id.domain_pattern`.
+
+- It supports standard `{app.env}`, `{app.name}`, and `{app.tags.*}` placeholders
+- `{modelId}` is **NOT** used; the model name is automatically appended as the last segment
+- Example pattern: `{app.tags.project}.{app.env}` -> `myProject.production.myModel`

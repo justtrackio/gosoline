@@ -35,7 +35,7 @@ func (s *SubscriberTestSuite) SetupSuite() []suite.Option {
 		suite.WithConfigMap(map[string]any{
 			"app": map[string]any{
 				"model_id": map[string]any{
-					"pattern": "!nodecode {app.tags.project}.{app.tags.family}.{app.tags.group}.{modelId}",
+					"domain_pattern": "!nodecode {app.tags.project}.{app.tags.family}.{app.tags.group}",
 				},
 			},
 			"cloud": map[string]any{

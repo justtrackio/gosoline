@@ -6,7 +6,7 @@ app:
     family: test
     group: grp
   model_id:
-    pattern: "!nodecode {app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}.{modelId}"
+    domain_pattern: "!nodecode {app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
 
 exec:
   backoff:
