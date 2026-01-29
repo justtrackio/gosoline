@@ -89,7 +89,7 @@ func (s *testSuite) TestSuccess(app suite.AppUnderTest) {
 		return
 	}
 
-	modelIdStr, err := sourceModelId.Format()
+	modelIdStr, err := sourceModelId.String()
 	if !s.NoError(err, "failed to format source model ID") {
 		return
 	}

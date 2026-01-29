@@ -196,7 +196,6 @@ func GetSubscriberFQN(config cfg.Config, name string, sourceModel SubscriberMode
 		// Fall back to simple subscriber name if identity derivation fails
 		return fmt.Sprintf("subscriber-%s", name)
 	}
-
 	return fmt.Sprintf("subscriber-%s-%s-%s-%s-%s",
 		identity.Tags.Get("project"),
 		identity.Tags.Get("family"),

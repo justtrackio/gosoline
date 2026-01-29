@@ -22,7 +22,7 @@ func NewPublisherNotifier(_ context.Context, config cfg.Config, publisher Publis
 		return nil, fmt.Errorf("can not pad model id from config: %w", err)
 	}
 
-	modelIdString, err := modelId.Format()
+	modelIdString, err := modelId.String()
 	if err != nil {
 		return nil, fmt.Errorf("can not compute model id string: %w", err)
 	}

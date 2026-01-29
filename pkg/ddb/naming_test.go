@@ -64,7 +64,7 @@ func (s *TableNameTestSuite) TestDefault() {
 
 func (s *TableNameTestSuite) TestDefaultWithPattern() {
 	s.setupConfig(map[string]any{
-		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app.name}-{modelId}",
+		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app.name}",
 	})
 
 	name, err := ddb.TableName(s.config, s.settings)
@@ -78,7 +78,7 @@ func (s *TableNameTestSuite) TestDefaultWithPattern() {
 func (s *TableNameTestSuite) TestSpecificClientWithPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.dynamodb.clients.specific.naming.pattern": "{app.name}-{modelId}",
+		"cloud.aws.dynamodb.clients.specific.naming.pattern": "{app.name}",
 	})
 
 	name, err := ddb.TableName(s.config, s.settings)
@@ -99,13 +99,13 @@ func (s *TableNameTestSuite) TestPatternFromTableSettings() {
 		s.FailNow("there should be no error on getting the table name", err)
 	}
 
-	s.Equal("this-is-an-fqn-overwrite", name)
+	s.Equal("this-is-an-fqn-overwrite-event", name)
 }
 
 func (s *TableNameTestSuite) TestSpecificClientWithFallbackPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app.name}-{modelId}",
+		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app.name}",
 	})
 
 	name, err := ddb.TableName(s.config, s.settings)
@@ -119,7 +119,7 @@ func (s *TableNameTestSuite) TestSpecificClientWithFallbackPattern() {
 func (s *TableNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
 	s.settings.ClientName = "specific"
 	s.setupConfigEnv(map[string]string{
-		"CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_PATTERN": "!nodecode {app.name}-{modelId}",
+		"CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_PATTERN": "!nodecode {app.name}",
 	})
 
 	name, err := ddb.TableName(s.config, s.settings)

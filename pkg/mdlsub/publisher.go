@@ -62,7 +62,7 @@ func NewPublisherWithSettings(ctx context.Context, config cfg.Config, logger log
 		return nil, fmt.Errorf("can not pad model id from config for publisher %s: %w", settings.ModelId.Name, err)
 	}
 
-	modelIdString, err := settings.ModelId.Format()
+	modelIdString, err := settings.ModelId.String()
 	if err != nil {
 		return nil, fmt.Errorf("can not compute model id string for publisher %s: %w", settings.ModelId.Name, err)
 	}

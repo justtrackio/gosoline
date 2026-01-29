@@ -23,7 +23,7 @@
 ## Naming with ModelId
 Table names are generated via `ModelId.ReplaceMacros(pattern)`. Default pattern:
 ```yaml
-ddb.default.naming.pattern: "{project}-{env}-{family}-{group}-{modelId}"
+ddb.default.naming.pattern: "{project}-{env}-{family}-{group}"
 ```
 
 **Note:** DynamoDB uses `ModelId`-based macros, NOT `cfg.NamingTemplate` macros. The placeholders are different:
@@ -35,12 +35,12 @@ ddb.default.naming.pattern: "{project}-{env}-{family}-{group}-{modelId}"
 | `{family}` | Family from ModelId |
 | `{group}` | Group from ModelId |
 | `{app}` | App from ModelId |
-| `{modelId}` | Model's string representation |
+| `{modelId}` | Model's string representation (automatically appended to canonical model IDs) |
 
 ## Common config keys
 ```yaml
 cloud.aws.dynamodb.clients.default.endpoint: http://localhost:4566
-ddb.default.naming.pattern: "{project}-{env}-{family}-{group}-{modelId}"
+ddb.default.naming.pattern: "{project}-{env}-{family}-{group}"
 ```
 
 ## Related packages

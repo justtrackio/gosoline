@@ -27,7 +27,7 @@ type SubscriberModel struct {
 // String returns a string representation of the SubscriberModel for internal use.
 // This uses the legacy format (project.family.group.name) for backward compatibility
 // with map keys and internal identifiers. For canonical external representation,
-// call PadFromConfig once, then use ModelId.Format().
+// call PadFromConfig once, then use ModelId.String().
 func (s SubscriberModel) String() string {
 	return fmt.Sprintf("%s.%s.%s.%s", s.Tags["project"], s.Tags["family"], s.Tags["group"], s.Name)
 }

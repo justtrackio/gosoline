@@ -93,7 +93,7 @@ func New(ctx context.Context, config cfg.Config, logger log.Logger, settings Set
 		return nil, fmt.Errorf("can not pad model id from config: %w", err)
 	}
 
-	modelIdString, err := settings.Metadata.ModelId.Format()
+	modelIdString, err := settings.Metadata.ModelId.String()
 	if err != nil {
 		return nil, fmt.Errorf("can not compute model id string: %w", err)
 	}
@@ -123,7 +123,7 @@ func NewWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("can not pad model id from config: %w", err)
 	}
 
-	modelIdString, err := repoSettings.Metadata.ModelId.Format()
+	modelIdString, err := repoSettings.Metadata.ModelId.String()
 	if err != nil {
 		return nil, fmt.Errorf("can not compute model id string: %w", err)
 	}

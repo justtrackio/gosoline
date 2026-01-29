@@ -18,7 +18,7 @@ type DynamoDbSettings struct {
 }
 
 type DynamoDbNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{modelId}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}"`
 }
 
 type CloudWatchSettings struct {
