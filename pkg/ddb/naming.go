@@ -2,6 +2,7 @@ package ddb
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
@@ -54,11 +55,92 @@ func GetTableNameWithSettings(tableSettings *Settings, namingSettings *TableNami
 		pattern = tableSettings.TableNamingSettings.Pattern
 	}
 
-	// Use FormatModelIdWithPattern to expand the pattern
-	tableName, err := mdl.FormatModelIdWithPattern(tableSettings.ModelId, pattern)
+	// Use internal formatting to allow flexible delimiters (e.g., dashes)
+	tableName, err := formatTableName(tableSettings.ModelId, pattern)
 	if err != nil {
 		return "", fmt.Errorf("failed to format table name with pattern %q: %w", pattern, err)
 	}
 
 	return tableName, nil
+}
+
+func formatTableName(m mdl.ModelId, pattern string) (string, error) {
+	result := pattern
+	var missingTags []string
+
+	// Simple extraction of placeholders like {foo}
+	// We do a manual scan or reuse the logic.
+	// Since we can't call internal mdl.extractPlaceholders, we'll reimplement a simple version or
+	// iterate known placeholders. But dynamic tags {app.tags.*} make iteration hard.
+	// Let's implement a simple placeholder extractor.
+
+	placeholders := extractPlaceholders(pattern)
+	for _, ph := range placeholders {
+		var value string
+		var ok bool
+
+		switch {
+		case ph == mdl.PlaceholderModelId:
+			value = m.Name
+			ok = true
+		case ph == mdl.PlaceholderAppEnv:
+			value = m.Env
+			ok = m.Env != ""
+			if !ok {
+				return "", fmt.Errorf("pattern requires %s but it is empty", mdl.PlaceholderAppEnv)
+			}
+		case ph == mdl.PlaceholderAppName:
+			value = m.App
+			ok = m.App != ""
+			if !ok {
+				return "", fmt.Errorf("pattern requires %s but it is empty", mdl.PlaceholderAppName)
+			}
+		case strings.HasPrefix(ph, mdl.PlaceholderAppTags):
+			tagKey := strings.TrimPrefix(ph, mdl.PlaceholderAppTags)
+			if m.Tags != nil {
+				value, ok = m.Tags[tagKey]
+			}
+			if !ok || value == "" {
+				missingTags = append(missingTags, tagKey)
+
+				continue
+			}
+		default:
+			return "", fmt.Errorf("unknown placeholder {%s} in pattern %q", ph, pattern)
+		}
+
+		result = strings.ReplaceAll(result, "{"+ph+"}", value)
+	}
+
+	if len(missingTags) > 0 {
+		return "", fmt.Errorf("missing required tags: %s", strings.Join(missingTags, ", "))
+	}
+
+	return result, nil
+}
+
+func extractPlaceholders(pattern string) []string {
+	var placeholders []string
+	remaining := pattern
+
+	for {
+		start := strings.Index(remaining, "{")
+		if start == -1 {
+			break
+		}
+
+		end := strings.Index(remaining[start:], "}")
+		if end == -1 {
+			break
+		}
+
+		ph := remaining[start+1 : start+end]
+		if ph != "" {
+			placeholders = append(placeholders, ph)
+		}
+
+		remaining = remaining[start+end+1:]
+	}
+
+	return placeholders
 }

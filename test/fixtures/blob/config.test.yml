@@ -6,7 +6,7 @@ app:
     family: fam
     group: grp
   model_id:
-    pattern: "!nodecode {app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{modelId}"
+    pattern: "!nodecode {app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}.{modelId}"
 
 
 cloud:
