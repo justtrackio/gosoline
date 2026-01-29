@@ -41,6 +41,7 @@ type Settings struct {
 	RebalanceTimeout  time.Duration `cfg:"rebalance_timeout"  default:"60s"`
 	SessionTimeout    time.Duration `cfg:"session_timeout"    default:"45s"`
 	HeartbeatInterval time.Duration `cfg:"heartbeat_interval" default:"3s"`
+	IdleWaitTime      time.Duration `cfg:"idle_wait_time"     default:"500ms"`
 
 	Healthcheck health.HealthCheckSettings `cfg:"healthcheck"`
 	Backoff     exec.BackoffSettings       `cfg:"backoff"`
