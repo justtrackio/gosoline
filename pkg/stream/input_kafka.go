@@ -11,23 +11,25 @@ import (
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	kafkaConsumer "github.com/justtrackio/gosoline/pkg/kafka/consumer"
+	kafkaErrors "github.com/justtrackio/gosoline/pkg/kafka/errors"
 	schemaRegistry "github.com/justtrackio/gosoline/pkg/kafka/schema-registry"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 type kafkaInput struct {
 	logger                log.Logger
+	clock                 clock.Clock
 	connection            connection.Settings
 	healthCheckTimer      clock.HealthCheckTimer
 	pollingOrRebalancing  atomic.Bool
-	partitionManager      kafkaConsumer.PartitionManager
+	partitionManager      *kafkaConsumer.PartitionManager
 	reader                kafkaConsumer.Reader
 	schemaRegistryService schemaRegistry.Service
 	executor              exec.Executor
-	maxPollRecords        int
+	settings              kafkaConsumer.Settings
 	data                  chan *Message
+	stopped               chan struct{}
 }
 
 var _ SchemaRegistryAwareInput = &kafkaInput{}
@@ -67,30 +69,33 @@ func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, se
 		return exec.NewErrorTriggeredElapsedTimeTracker()
 	}))
 
-	return NewKafkaInputWithInterfaces(logger, *conn, healthCheckTimer, partitionManager, reader, schemaRegistryService, executor, settings.MaxPollRecords, data), nil
+	return NewKafkaInputWithInterfaces(logger, clock.Provider, *conn, healthCheckTimer, partitionManager, reader, schemaRegistryService, executor, settings, data), nil
 }
 
 func NewKafkaInputWithInterfaces(
 	logger log.Logger,
+	clock clock.Clock,
 	connection connection.Settings,
 	healthCheckTimer clock.HealthCheckTimer,
-	partitionManager kafkaConsumer.PartitionManager,
+	partitionManager *kafkaConsumer.PartitionManager,
 	reader kafkaConsumer.Reader,
 	schemaRegistryService schemaRegistry.Service,
 	executor exec.Executor,
-	maxPollRecords int,
+	settings kafkaConsumer.Settings,
 	data chan *Message,
 ) Input {
 	return &kafkaInput{
 		logger:                logger,
+		clock:                 clock,
 		connection:            connection,
 		healthCheckTimer:      healthCheckTimer,
 		partitionManager:      partitionManager,
 		reader:                reader,
 		schemaRegistryService: schemaRegistryService,
 		executor:              executor,
-		maxPollRecords:        maxPollRecords,
+		settings:              settings,
 		data:                  data,
+		stopped:               make(chan struct{}),
 	}
 }
 
@@ -99,37 +104,36 @@ func NewKafkaInputWithInterfaces(
 // and ErrorTypeUnknown for other errors (letting them fail).
 func CheckKafkaRetryableError(kafkaReader kafkaConsumer.Reader) func(_ any, err error) exec.ErrorType {
 	return func(_ any, err error) exec.ErrorType {
-		errType := exec.ErrorTypeUnknown
-
-		defer func() {
-			if errType == exec.ErrorTypeRetryable {
-				// we should allow a rebalance between executor retries to avoid getting kicked out of the group
-				// if we are blocking a rebalance for too long
-				kafkaReader.AllowRebalance()
-			}
-		}()
-
 		switch {
 		case err == nil:
-			errType = exec.ErrorTypeOk
-		case exec.IsConnectionError(err): // Check for network-level connection errors (connection refused, reset, EOF, etc.)
-			errType = exec.ErrorTypeRetryable
-		case kgo.IsRetryableBrokerErr(err): // Check if franz-go considers this a retryable broker error
-			errType = exec.ErrorTypeRetryable
-		case kerr.IsRetriable(err): // Check if this is a retryable Kafka protocol error
-			errType = exec.ErrorTypeRetryable
-		case exec.IsDNSNotFoundError(err): // Check for "no such host" errors. This might be temporary in some environments if a broker restarts.
-			errType = exec.ErrorTypeRetryable
-		default:
-		}
+			return exec.ErrorTypeOk
+		case kafkaErrors.IsRetryableKafkaError(err):
+			// we should allow a rebalance between executor retries to avoid getting kicked out of the group
+			// if we are blocking a rebalance for too long
+			kafkaReader.AllowRebalance()
 
-		return errType
+			return exec.ErrorTypeRetryable
+		default:
+			return exec.ErrorTypeUnknown
+		}
 	}
 }
 
 // pollRecords wraps the PollRecords call with error handling for use with the executor.
 func (i *kafkaInput) pollRecords(ctx context.Context) (any, error) {
-	fetches := i.reader.PollRecords(ctx, i.maxPollRecords)
+	select {
+	case <-ctx.Done():
+		return kgo.Fetches{}, ctx.Err()
+	case <-i.stopped:
+		return kgo.Fetches{}, nil
+	default:
+	}
+
+	//nolint:staticcheck //We pass a nil context to prevent PollRecords from blocking when waiting for new messages (this is by design of PollRecords the intended way to do this).
+	// Otherwise, the executor might exceed the max retry duration in some cases while waiting for PollRecords to return.
+	// Also note that PollRecords just returns empty fetches instead of an ErrClientClosed error if the context is nil and the client was closed (unclear if this is intentional or a bug).
+	// So, we need to make sure to break out of any poll loop if the input was stopped.
+	fetches := i.reader.PollRecords(nil, i.settings.MaxPollRecords)
 
 	if fetches.IsClientClosed() || exec.IsRequestCanceled(fetches.Err0()) {
 		return fetches, nil
@@ -158,12 +162,12 @@ func (i *kafkaInput) pollRecords(ctx context.Context) (any, error) {
 }
 
 // processPartitions handles the fetched records from each partition.
-func (i *kafkaInput) processPartitions(fetches kgo.Fetches) {
+func (i *kafkaInput) processPartitions(ctx context.Context, fetches kgo.Fetches) {
 	fetches.EachPartition(func(p kgo.FetchTopicPartition) {
 		if i.connection.IsReadOnly {
 			i.partitionManager.HandleWithoutCommit(p.Records)
 		} else {
-			i.partitionManager.Handle(p.Topic, p.Partition, p.Records)
+			i.partitionManager.Handle(ctx, p.Topic, p.Partition, p.Records)
 		}
 
 		// mark us as healthy in case there is backpressure from the consumer, and we take a long time
@@ -173,9 +177,18 @@ func (i *kafkaInput) processPartitions(fetches kgo.Fetches) {
 }
 
 func (i *kafkaInput) Run(ctx context.Context) error {
+	defer i.reader.CloseAllowingRebalance()
 	defer i.partitionManager.Stop(ctx)
 
 	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-i.stopped:
+			return nil
+		default:
+		}
+
 		// while we are polling messages, we can't get unhealthy
 		// (as this code is outside our control to add code to mark us as healthy)
 		i.pollingOrRebalancing.Store(true)
@@ -203,7 +216,7 @@ func (i *kafkaInput) Run(ctx context.Context) error {
 			return nil
 		}
 
-		i.processPartitions(fetches)
+		i.processPartitions(ctx, fetches)
 
 		// we can't get unhealthy here as the rebalance may take some time and is out of our control
 		i.pollingOrRebalancing.Store(true)
@@ -211,11 +224,16 @@ func (i *kafkaInput) Run(ctx context.Context) error {
 		// mark us as healthy now, in case the rebalance took too long
 		i.healthCheckTimer.MarkHealthy()
 		i.pollingOrRebalancing.Store(false)
+
+		if len(fetches) == 0 {
+			// wait a bit before polling again to avoid unnecessary requests and busy looping when there are no messages
+			i.clock.Sleep(i.settings.IdleWaitTime)
+		}
 	}
 }
 
 func (i *kafkaInput) Stop(_ context.Context) {
-	i.reader.CloseAllowingRebalance()
+	close(i.stopped)
 }
 
 func (i *kafkaInput) Data() <-chan *Message {

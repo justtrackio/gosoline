@@ -14,7 +14,7 @@ type PartitionManager struct {
 	logger         log.Logger
 	cfn            coffin.Coffin
 	consumers      map[assignment]*PartitionConsumer
-	lck            *sync.Mutex
+	lck            sync.RWMutex
 	messageHandler KafkaMessageHandler
 	done           chan struct{}
 }
@@ -24,7 +24,7 @@ type assignment struct {
 	partition int32
 }
 
-func NewPartitionManager(logger log.Logger, messageHandler KafkaMessageHandler) PartitionManager {
+func NewPartitionManager(logger log.Logger, messageHandler KafkaMessageHandler) *PartitionManager {
 	cfn := coffin.New()
 	done := make(chan struct{})
 
@@ -34,11 +34,10 @@ func NewPartitionManager(logger log.Logger, messageHandler KafkaMessageHandler) 
 		return nil
 	})
 
-	return PartitionManager{
+	return &PartitionManager{
 		logger:         logger,
 		cfn:            cfn,
 		consumers:      make(map[assignment]*PartitionConsumer),
-		lck:            &sync.Mutex{},
 		messageHandler: messageHandler,
 		done:           done,
 	}
@@ -100,11 +99,19 @@ func (p *PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo
 	}
 }
 
-func (p *PartitionManager) Handle(topic string, partition int32, records []*kgo.Record) {
-	p.lck.Lock()
-	defer p.lck.Unlock()
+func (p *PartitionManager) Handle(ctx context.Context, topic string, partition int32, records []*kgo.Record) {
+	p.lck.RLock()
+	defer p.lck.RUnlock()
 
-	p.consumers[assignment{topic, partition}].assignedBatch <- records
+	consumer, ok := p.consumers[assignment{topic, partition}]
+	if !ok {
+		// at the time Handle is called, we are blocking a rebalance and OnPartitionsLostOrRevoked is only called once a rebalance is allowed again, so this should never happen
+		p.logger.Error(ctx, "no consumer found for partition %d of topic %s", partition, topic)
+
+		return
+	}
+
+	consumer.assignedBatch <- records
 }
 
 func (p *PartitionManager) HandleWithoutCommit(records []*kgo.Record) {
@@ -113,10 +120,10 @@ func (p *PartitionManager) HandleWithoutCommit(records []*kgo.Record) {
 
 func (p *PartitionManager) Stop(ctx context.Context) {
 	p.lck.Lock()
-	for _, consumer := range p.consumers {
+	for assignment, consumer := range p.consumers {
 		consumer.Stop()
+		delete(p.consumers, assignment)
 	}
-	p.consumers = map[assignment]*PartitionConsumer{}
 	p.lck.Unlock()
 
 	close(p.done)

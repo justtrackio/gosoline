@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/justtrackio/gosoline/pkg/exec"
+	kafkaErrors "github.com/justtrackio/gosoline/pkg/kafka/errors"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
@@ -59,14 +58,11 @@ func (l kafkaLogger) Log(level kgo.LogLevel, msg string, keyvals ...any) {
 
 func adjustLevel(level kgo.LogLevel, msg string, fields map[string]any) kgo.LogLevel {
 	if errI, ok := fields["err"]; ok && level == kgo.LogLevelError && msg == KgoGroupManageLoopError {
-		err, ok := errI.(error)
-		if ok {
-			if exec.IsConnectionError(err) || kgo.IsRetryableBrokerErr(err) || kerr.IsRetriable(err) {
-				// these errors are already logged, handled and retried when returned by PollRecords.
-				// for some reason the kafka library logs them again as group manage loop errors,
-				// which is just unnecessary, so we downgrade them to warnings here.
-				return kgo.LogLevelWarn
-			}
+		if err, ok := errI.(error); ok && kafkaErrors.IsRetryableKafkaError(err) {
+			// these errors are already logged, handled and retried when returned by PollRecords.
+			// for some reason the kafka library logs them again as group manage loop errors,
+			// which is just unnecessary, so we downgrade them to warnings here.
+			return kgo.LogLevelWarn
 		}
 	}
 

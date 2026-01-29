@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -35,6 +36,7 @@ func (s *testSuite) SetupSuite() []suite.Option {
 
 	return []suite.Option{
 		suite.WithLogLevel(log.LevelDebug),
+		suite.WithClockProvider(clock.NewFakeClock(clock.WithNonBlockingSleep)),
 		suite.WithConfigFile("../config.dist.yml"),
 		kafka.WithKafkaBrokerPort(9293),
 		suite.WithModuleFactory(func(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
