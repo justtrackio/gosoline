@@ -79,13 +79,7 @@ type (
 	VersionedModelTransformers              map[int]ModelTransformer
 )
 
-func initTransformers(
-	ctx context.Context,
-	config cfg.Config,
-	logger log.Logger,
-	subscriberSettings map[string]*SubscriberSettings,
-	transformerFactories TransformerMapTypeVersionFactories,
-) (ModelTransformers, error) {
+func initTransformers(ctx context.Context, config cfg.Config, logger log.Logger, subscriberSettings map[string]*SubscriberSettings, transformerFactories TransformerMapTypeVersionFactories) (ModelTransformers, error) {
 	var err error
 	transformers := make(ModelTransformers)
 

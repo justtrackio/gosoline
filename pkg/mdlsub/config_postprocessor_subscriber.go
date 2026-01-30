@@ -2,6 +2,7 @@ package mdlsub
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
@@ -13,8 +14,8 @@ func init() {
 }
 
 type (
-	SubscriberInputConfigPostProcessor  func(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option
-	SubscriberOutputConfigPostProcessor func(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option
+	SubscriberInputConfigPostProcessor  func(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) (cfg.Option, error)
+	SubscriberOutputConfigPostProcessor func(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) (cfg.Option, error)
 )
 
 var subscriberInputConfigPostProcessors = map[string]SubscriberInputConfigPostProcessor{
@@ -33,8 +34,11 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	}
 
 	var ok bool
+	var err error
+	var consumerName string
 	var inputPostProcessor SubscriberInputConfigPostProcessor
 	var outputPostProcessor SubscriberOutputConfigPostProcessor
+	var inputOption, outputOption cfg.Option
 
 	settings, err := unmarshalSettings(config)
 	if err != nil {
@@ -45,12 +49,18 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		subscriberKey := GetSubscriberConfigKey(name)
 
 		consumerSettings := &stream.ConsumerSettings{}
-		if err := config.UnmarshalDefaults(consumerSettings); err != nil {
+		if err = config.UnmarshalDefaults(consumerSettings); err != nil {
 			return false, fmt.Errorf("can not unmarshal consumer settings for subscriber %s: %w", name, err)
 		}
 
-		consumerSettings.Input = GetSubscriberFQN(config, name, subscriberSettings.SourceModel)
-		consumerName := GetSubscriberFQN(config, name, subscriberSettings.SourceModel)
+		if consumerSettings.Input, err = GetSubscriberFQN(config, name, subscriberSettings.SourceModel); err != nil {
+			return false, fmt.Errorf("can not get subscriber fqn for subscriber %s: %w", name, err)
+		}
+
+		if consumerName, err = GetSubscriberFQN(config, name, subscriberSettings.SourceModel); err != nil {
+			return false, fmt.Errorf("can not get subscriber fqn for subscriber %s: %w", name, err)
+		}
+
 		consumerKey := stream.ConfigurableConsumerKey(consumerName)
 
 		configOptions := []cfg.Option{
@@ -59,12 +69,18 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		}
 
 		if inputPostProcessor, ok = subscriberInputConfigPostProcessors[subscriberSettings.Input]; ok {
-			inputOption := inputPostProcessor(config, name, subscriberSettings)
+			if inputOption, err = inputPostProcessor(config, name, subscriberSettings); err != nil {
+				return false, fmt.Errorf("can not process input config for subscriber %s: %w", name, err)
+			}
+
 			configOptions = append(configOptions, inputOption)
 		}
 
 		if outputPostProcessor, ok = subscriberOutputConfigPostProcessors[subscriberSettings.Output]; ok {
-			outputOption := outputPostProcessor(config, name, subscriberSettings)
+			if outputOption, err = outputPostProcessor(config, name, subscriberSettings); err != nil {
+				return false, fmt.Errorf("can not process output config for subscriber %s: %w", name, err)
+			}
+
 			configOptions = append(configOptions, outputOption)
 		}
 
@@ -76,12 +92,19 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	return true, nil
 }
 
-func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option {
-	inputKey := getInputConfigKey(config, name, subscriberSettings.SourceModel)
-	consumerId := subscriberSettings.SourceModel.Name
-	topicId := subscriberSettings.SourceModel.Name
+func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) (cfg.Option, error) {
+	var err error
+	var inputKey string
 
-	if subscriberSettings.SourceModel.Shared {
+	sourceModel := subscriberSettings.SourceModel
+	if inputKey, err = getInputConfigKey(config, name, sourceModel); err != nil {
+		return nil, fmt.Errorf("can not get input key for subscriber %s: %w", name, err)
+	}
+
+	consumerId := sourceModel.Name
+	topicId := sourceModel.Name
+
+	if sourceModel.Shared {
 		topicId = sharedName
 	}
 
@@ -91,123 +114,123 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 
 	inputSettings := &stream.SnsInputConfiguration{}
 	if err := config.UnmarshalDefaults(inputSettings); err != nil {
-		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
-	}
-
-	// Derive identity from ModelId + config
-	identity, err := DeriveIdentity(config, subscriberSettings.SourceModel.ModelId)
-	if err != nil {
-		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
+		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting), nil
 	}
 
 	inputSettings.ConsumerId = consumerId
 	inputSettings.Targets = []stream.SnsInputTargetConfiguration{
 		{
-			Identity: identity,
-			TopicId:  topicId,
+			Identity: cfg.AppIdentity{
+				Env:  sourceModel.ModelId.Env,
+				Name: sourceModel.ModelId.App,
+				Tags: cfg.AppTags(sourceModel.ModelId.Tags),
+			},
+			TopicId: topicId,
 		},
 	}
 
-	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting)
+	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting), nil
 }
 
-func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option {
-	inputKey := getInputConfigKey(config, name, subscriberSettings.SourceModel)
-	topicId := subscriberSettings.SourceModel.Name
+func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) (cfg.Option, error) {
+	var err error
+	var inputKey string
 
-	if subscriberSettings.SourceModel.Shared {
+	sourceModel := subscriberSettings.SourceModel
+	if inputKey, err = getInputConfigKey(config, name, sourceModel); err != nil {
+		return nil, fmt.Errorf("can not get input key for subscriber %s: %w", name, err)
+	}
+
+	topicId := sourceModel.Name
+	if sourceModel.Shared {
 		topicId = sharedName
 	}
 
 	inputSettings := &stream.KafkaInputConfiguration{}
 	if err := config.UnmarshalDefaults(inputSettings); err != nil {
-		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
+		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting), nil
 	}
 
-	// Derive identity from ModelId + config
-	identity, err := DeriveIdentity(config, subscriberSettings.SourceModel.ModelId)
-	if err != nil {
-		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
-	}
-
-	inputSettings.Tags = identity.Tags
-	inputSettings.Name = identity.Name
+	inputSettings.Tags = sourceModel.Tags
+	inputSettings.Name = sourceModel.App
 	inputSettings.GroupId = topicId
 	inputSettings.TopicId = topicId
 
-	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting)
+	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting), nil
 }
 
-func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option {
-	inputKey := getInputConfigKey(config, name, subscriberSettings.SourceModel)
-	streamName := subscriberSettings.SourceModel.Name
+func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) (cfg.Option, error) {
+	var err error
+	var inputKey string
 
-	if subscriberSettings.SourceModel.Shared {
+	sourceModel := subscriberSettings.SourceModel
+	if inputKey, err = getInputConfigKey(config, name, sourceModel); err != nil {
+		return nil, fmt.Errorf("can not get input key for subscriber %s: %w", name, err)
+	}
+
+	streamName := sourceModel.Name
+	if sourceModel.Shared {
 		streamName = sharedName
 	}
 
 	inputSettings := &stream.KinesisInputConfiguration{}
 	if err := config.UnmarshalDefaults(inputSettings); err != nil {
-		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
+		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting), nil
 	}
 
-	// Derive identity from ModelId + config
-	identity, err := DeriveIdentity(config, subscriberSettings.SourceModel.ModelId)
-	if err != nil {
-		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting)
-	}
-
-	inputSettings.Tags = identity.Tags
-	inputSettings.Name = identity.Name
+	inputSettings.Tags = sourceModel.Tags
+	inputSettings.Name = sourceModel.Name
 	inputSettings.StreamName = streamName
 
-	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting)
+	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting), nil
 }
 
-func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option {
+func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) (cfg.Option, error) {
 	kvstoreKey := kvstore.GetConfigurableKey(name)
 
 	kvstoreSettings := &kvstore.ChainConfiguration{}
 	if err := config.UnmarshalDefaults(kvstoreSettings); err != nil {
-		return cfg.WithConfigSetting(kvstoreKey, nil, cfg.SkipExisting)
+		return cfg.WithConfigSetting(kvstoreKey, nil, cfg.SkipExisting), nil
 	}
 
 	// Pad the ModelId from config to fill in any missing fields
 	modelId := subscriberSettings.TargetModel.ModelId
 	if err := modelId.PadFromConfig(config); err != nil {
-		return cfg.WithConfigSetting(kvstoreKey, nil, cfg.SkipExisting)
+		return cfg.WithConfigSetting(kvstoreKey, nil, cfg.SkipExisting), nil
 	}
 
 	kvstoreSettings.ModelId = modelId
 	kvstoreSettings.Elements = []string{kvstore.TypeRedis, kvstore.TypeDdb}
 
-	return cfg.WithConfigSetting(kvstoreKey, kvstoreSettings, cfg.SkipExisting)
+	return cfg.WithConfigSetting(kvstoreKey, kvstoreSettings, cfg.SkipExisting), nil
 }
 
-func GetSubscriberFQN(config cfg.Config, name string, sourceModel SubscriberModel) string {
+func GetSubscriberFQN(config cfg.Config, name string, sourceModel SubscriberModel) (string, error) {
 	if !sourceModel.Shared {
-		return fmt.Sprintf("subscriber-%s", name)
+		return fmt.Sprintf("subscriber-%s", name), nil
 	}
 
-	// For shared subscribers, include identity info in the name
-	// Derive identity from ModelId + config
-	identity, err := DeriveIdentity(config, sourceModel.ModelId)
-	if err != nil {
-		// Fall back to simple subscriber name if identity derivation fails
-		return fmt.Sprintf("subscriber-%s", name)
+	var err error
+	var domain string
+
+	if domain, err = sourceModel.DomainString(); err != nil {
+		return "", fmt.Errorf("failed to get domain from sourceModel: %w", err)
 	}
-	return fmt.Sprintf("subscriber-%s-%s-%s-%s-%s",
-		identity.Tags.Get("project"),
-		identity.Tags.Get("family"),
-		identity.Tags.Get("group"),
-		identity.Name,
-		sharedName)
+
+	domain = strings.Replace(domain, ".", "_", -1)
+
+	return fmt.Sprintf("subscriber-%s-%s", domain, sharedName), nil
 }
 
-func getInputConfigKey(config cfg.Config, name string, sourceModel SubscriberModel) string {
-	inputName := GetSubscriberFQN(config, name, sourceModel)
+func getInputConfigKey(config cfg.Config, name string, sourceModel SubscriberModel) (string, error) {
+	var err error
+	var inputName string
 
-	return stream.ConfigurableInputKey(inputName)
+	if inputName, err = GetSubscriberFQN(config, name, sourceModel); err != nil {
+		return "", fmt.Errorf("failed to get subscriber fqn: %w", err)
+	}
+
+	return stream.ConfigurableInputKey(inputName), nil
 }
 
 func GetSubscriberConfigKey(name string) string {

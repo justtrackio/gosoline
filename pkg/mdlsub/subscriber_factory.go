@@ -20,6 +20,7 @@ func SubscriberFactory(ctx context.Context, config cfg.Config, logger log.Logger
 	var err error
 	var core SubscriberCore
 	var settings *Settings
+	var subscriberFQN string
 
 	if settings, err = unmarshalSettings(config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal subscriber settings: %w", err)
@@ -32,7 +33,9 @@ func SubscriberFactory(ctx context.Context, config cfg.Config, logger log.Logger
 	modules := make(map[string]kernel.ModuleFactory)
 
 	for name, subscriberSettings := range settings.Subscribers {
-		subscriberFQN := GetSubscriberFQN(config, name, subscriberSettings.SourceModel)
+		if subscriberFQN, err = GetSubscriberFQN(config, name, subscriberSettings.SourceModel); err != nil {
+			return nil, fmt.Errorf("can not get subscriber fqn for subscriber %s: %w", name, err)
+		}
 
 		if _, ok := modules[subscriberFQN]; ok {
 			continue
