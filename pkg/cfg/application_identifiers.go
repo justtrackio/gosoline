@@ -23,10 +23,6 @@ func (t AppTags) Get(key string) string {
 // AppIdentity represents the resolved application identity.
 // It is used throughout gosoline for resource naming and identification.
 //
-// Unlike the old AppId type, AppIdentity uses dynamic tags rather than
-// fixed fields for project/family/group. This allows arbitrary tags
-// while still supporting the common naming patterns.
-//
 // Configuration structure:
 //
 //	app:

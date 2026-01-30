@@ -149,12 +149,11 @@ func handlePublisherOutputTypeKafka(config cfg.Config, publisherSettings *Publis
 		return nil, fmt.Errorf("can not unmarshal kafka output settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
 	}
 
-	identity, err := DeriveIdentity(config, publisherSettings.ModelId)
-	if err != nil {
-		return nil, fmt.Errorf("can not derive identity for publisher %s: %w", publisherSettings.ModelId.Name, err)
+	outputSettings.Identity = cfg.AppIdentity{
+		Env:  publisherSettings.ModelId.Env,
+		Name: publisherSettings.ModelId.App,
+		Tags: cfg.AppTags(publisherSettings.ModelId.Tags),
 	}
-
-	outputSettings.Identity = identity
 	outputSettings.TopicId = publisherSettings.ModelId.Name
 	outputSettings.Tracing.Enabled = false
 
@@ -176,12 +175,11 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 		return nil, fmt.Errorf("can not unmarshal kinesis output settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
 	}
 
-	identity, err := DeriveIdentity(config, publisherSettings.ModelId)
-	if err != nil {
-		return nil, fmt.Errorf("can not derive identity for publisher %s: %w", publisherSettings.ModelId.Name, err)
+	outputSettings.Identity = cfg.AppIdentity{
+		Env:  publisherSettings.ModelId.Env,
+		Name: publisherSettings.ModelId.App,
+		Tags: cfg.AppTags(publisherSettings.ModelId.Tags),
 	}
-
-	outputSettings.Identity = identity
 	outputSettings.ClientName = clientName
 	outputSettings.StreamName = publisherSettings.ModelId.Name
 	outputSettings.Tracing.Enabled = false
@@ -195,12 +193,11 @@ func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *Publishe
 		return nil, fmt.Errorf("can not unmarshal sns output settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
 	}
 
-	identity, err := DeriveIdentity(config, publisherSettings.ModelId)
-	if err != nil {
-		return nil, fmt.Errorf("can not derive identity for publisher %s: %w", publisherSettings.ModelId.Name, err)
+	outputSettings.Identity = cfg.AppIdentity{
+		Env:  publisherSettings.ModelId.Env,
+		Name: publisherSettings.ModelId.App,
+		Tags: cfg.AppTags(publisherSettings.ModelId.Tags),
 	}
-
-	outputSettings.Identity = identity
 	outputSettings.TopicId = publisherSettings.ModelId.Name
 	outputSettings.ClientName = clientName
 
@@ -217,12 +214,11 @@ func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *Publishe
 		return nil, fmt.Errorf("can not unmarshal sqs output settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
 	}
 
-	identity, err := DeriveIdentity(config, publisherSettings.ModelId)
-	if err != nil {
-		return nil, fmt.Errorf("can not derive identity for publisher %s: %w", publisherSettings.ModelId.Name, err)
+	outputSettings.Identity = cfg.AppIdentity{
+		Env:  publisherSettings.ModelId.Env,
+		Name: publisherSettings.ModelId.App,
+		Tags: cfg.AppTags(publisherSettings.ModelId.Tags),
 	}
-
-	outputSettings.Identity = identity
 	outputSettings.QueueId = publisherSettings.ModelId.Name
 	outputSettings.ClientName = clientName
 
