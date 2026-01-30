@@ -2,6 +2,7 @@ package mdl
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -13,6 +14,8 @@ const (
 	PlaceholderAppName = "app.name"
 	PlaceholderAppTags = "app.tags."
 )
+
+var domainRegex = regexp.MustCompile(`(?m)\{([^\}]+)\}`)
 
 // ConfigKeyModelIdDomainPattern is the config key for the required model id domain pattern.
 const ConfigKeyModelIdDomainPattern = "app.model_id.domain_pattern"
@@ -66,68 +69,35 @@ type ModelId struct {
 //   - the model name is empty
 //   - a required tag is missing (referenced in pattern but not in Tags)
 //   - {app.env} or {app.name} is referenced but the field is empty
-func (m *ModelId) format(domainPattern string) (string, error) {
-	if m.Name == "" {
-		return "", fmt.Errorf("model name is required")
-	}
+func (m *ModelId) format(domainPattern string) string {
+	domain := m.formatDomain(domainPattern)
 
-	domain, err := m.formatDomain(domainPattern)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%s.%s", domain, m.Name), nil
+	return fmt.Sprintf("%s.%s", domain, m.Name)
 }
 
-func (m *ModelId) formatDomain(domainPattern string) (string, error) {
-	if err := validateModelIdDomainPattern(domainPattern); err != nil {
-		return "", err
-	}
+func (m *ModelId) formatDomain(domainPattern string) string {
+	var value string
 
 	result := domainPattern
-	var missingTags []string
+	matches := domainRegex.FindAllStringSubmatch(domainPattern, -1)
 
-	// Extract and process all placeholders
-	placeholders := extractPlaceholders(domainPattern)
-	for _, ph := range placeholders {
-		var value string
-		var ok bool
+	for _, match := range matches {
+		placeholder := match[1]
 
 		switch {
-		case ph == PlaceholderAppEnv:
+		case placeholder == PlaceholderAppEnv:
 			value = m.Env
-			ok = m.Env != ""
-			if !ok {
-				return "", fmt.Errorf("pattern requires %s but it is empty", PlaceholderAppEnv)
-			}
-		case ph == PlaceholderAppName:
+		case placeholder == PlaceholderAppName:
 			value = m.App
-			ok = m.App != ""
-			if !ok {
-				return "", fmt.Errorf("pattern requires %s but it is empty", PlaceholderAppName)
-			}
-		case strings.HasPrefix(ph, PlaceholderAppTags):
-			tagKey := strings.TrimPrefix(ph, PlaceholderAppTags)
-			if m.Tags != nil {
-				value, ok = m.Tags[tagKey]
-			}
-			if !ok || value == "" {
-				missingTags = append(missingTags, tagKey)
-
-				continue
-			}
-		default:
-			return "", fmt.Errorf("unknown placeholder {%s} in pattern %q", ph, domainPattern)
+		case strings.HasPrefix(placeholder, PlaceholderAppTags):
+			tagKey := strings.TrimPrefix(placeholder, PlaceholderAppTags)
+			value = m.Tags[tagKey]
 		}
 
-		result = strings.ReplaceAll(result, "{"+ph+"}", value)
+		result = strings.ReplaceAll(result, match[0], value)
 	}
 
-	if len(missingTags) > 0 {
-		return "", fmt.Errorf("missing required tags: %s", strings.Join(missingTags, ", "))
-	}
-
-	return result, nil
+	return result
 }
 
 // String returns the canonical string representation of the ModelId.
@@ -138,17 +108,8 @@ func (m *ModelId) formatDomain(domainPattern string) (string, error) {
 // Returns an error if:
 //   - the domainPattern is not set (call PadFromConfig first)
 //   - the domainPattern references fields/tags that are missing from the ModelId
-func (m ModelId) String() (string, error) {
-	if m.domainPattern == "" {
-		return "", fmt.Errorf("model id domain pattern is not set; call PadFromConfig first")
-	}
-
-	result, err := m.format(m.domainPattern)
-	if err != nil {
-		return "", fmt.Errorf("failed to format model id with pattern %q: %w", m.domainPattern, err)
-	}
-
-	return result, nil
+func (m ModelId) String() string {
+	return m.format(m.domainPattern)
 }
 
 // DomainString returns the canonical domain string representation of the ModelId (without the model name).
@@ -159,17 +120,8 @@ func (m ModelId) String() (string, error) {
 // Returns an error if:
 //   - the domainPattern is not set (call PadFromConfig first)
 //   - the domainPattern references fields/tags that are missing from the ModelId
-func (m ModelId) DomainString() (string, error) {
-	if m.domainPattern == "" {
-		return "", fmt.Errorf("model id domain pattern is not set; call PadFromConfig first")
-	}
-
-	result, err := m.formatDomain(m.domainPattern)
-	if err != nil {
-		return "", fmt.Errorf("failed to format model id domain with pattern %q: %w", m.domainPattern, err)
-	}
-
-	return result, nil
+func (m ModelId) DomainString() string {
+	return m.formatDomain(m.domainPattern)
 }
 
 // PadFromConfig fills in empty fields of ModelId from config.
