@@ -25,6 +25,7 @@ const (
 type XrayTracerSettings struct {
 	AddressType                 string                `cfg:"addr_type" default:"local" validate:"required"`
 	AddressValue                string                `cfg:"add_value" default:""`
+	SrvPattern                  string                `cfg:"srv_pattern,nodecode" default:"xray.{app.env}.{app.tags.family}"`
 	Sampling                    SamplingConfiguration `cfg:"sampling"`
 	StreamingMaxSubsegmentCount int                   `cfg:"streaming_max_subsegment_count" default:"20"`
 }
@@ -38,6 +39,7 @@ type XRaySettings struct {
 
 type awsTracer struct {
 	cfg.AppIdentity
+	appId string
 }
 
 func NewAwsTracer(_ context.Context, config cfg.Config, logger log.Logger) (Tracer, error) {
@@ -51,7 +53,15 @@ func NewAwsTracer(_ context.Context, config cfg.Config, logger log.Logger) (Trac
 		return nil, fmt.Errorf("failed to unmarshal xray tracer settings: %w", err)
 	}
 
-	addr := lookupAddr(identity, settings)
+	appId, err := resolveAppId(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to format app id: %w", err)
+	}
+
+	addr, err := lookupAddr(config, identity, settings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup address: %w", err)
+	}
 	ctxMissingStrategy := NewContextMissingWarningLogStrategy(logger)
 
 	samplingStrategy, err := getSamplingStrategy(&settings.Sampling)
@@ -66,10 +76,10 @@ func NewAwsTracer(_ context.Context, config cfg.Config, logger log.Logger) (Trac
 		StreamingMaxSubsegmentCount: settings.StreamingMaxSubsegmentCount,
 	}
 
-	return NewAwsTracerWithInterfaces(logger, identity, xRaySettings)
+	return NewAwsTracerWithInterfaces(logger, identity, xRaySettings, appId)
 }
 
-func NewAwsTracerWithInterfaces(logger log.Logger, identity cfg.AppIdentity, settings *XRaySettings) (*awsTracer, error) {
+func NewAwsTracerWithInterfaces(logger log.Logger, identity cfg.AppIdentity, settings *XRaySettings, appId string) (*awsTracer, error) {
 	if settings.StreamingMaxSubsegmentCount == 0 {
 		settings.StreamingMaxSubsegmentCount = xrayDefaultMaxSubsegmentCount
 	}
@@ -94,6 +104,7 @@ func NewAwsTracerWithInterfaces(logger log.Logger, identity cfg.AppIdentity, set
 
 	return &awsTracer{
 		AppIdentity: identity,
+		appId:       appId,
 	}, nil
 }
 
@@ -105,16 +116,16 @@ func (t *awsTracer) StartSubSpan(ctx context.Context, name string) (context.Cont
 		return ctx, disabledSpan()
 	}
 
-	return newSpan(ctxWithSegment, segment, t.AppIdentity)
+	return newSpan(ctxWithSegment, segment, t.AppIdentity, t.appId)
 }
 
 func (t *awsTracer) StartSpan(name string) (context.Context, Span) {
-	return newRootSpan(context.Background(), name, t.AppIdentity)
+	return newRootSpan(context.Background(), name, t.AppIdentity, t.appId)
 }
 
 func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (context.Context, Span) {
 	parentSpan := GetSpanFromContext(ctx)
-	ctx, transaction := newRootSpan(ctx, name, t.AppIdentity)
+	ctx, transaction := newRootSpan(ctx, name, t.AppIdentity, t.appId)
 
 	if parentSpan != nil {
 		parentTrace := parentSpan.GetTrace()
@@ -138,27 +149,36 @@ func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (cont
 	return ctx, transaction
 }
 
-func lookupAddr(identity cfg.AppIdentity, settings *XrayTracerSettings) string {
+func lookupAddr(config cfg.Config, identity cfg.AppIdentity, settings *XrayTracerSettings) (string, error) {
 	addressValue := settings.AddressValue
 
-	if settings.AddressType == dnsSrv {
-		if addressValue == "" {
-			addressValue = fmt.Sprintf("xray.%v.%v", identity.Env, identity.Tags.Get("family"))
-		}
-
-		_, srvs, err := net.LookupSRV("", "", addressValue)
-		if err != nil {
-			panic(err)
-		}
-
-		for _, srv := range srvs {
-			addressValue = fmt.Sprintf("%v:%v", srv.Target, srv.Port)
-
-			break
-		}
+	if settings.AddressType != dnsSrv {
+		return addressValue, nil
 	}
 
-	return addressValue
+	var err error
+	var srvName string
+	var srvs []*net.SRV
+
+	if addressValue == "" {
+		if srvName, err = config.FormatString(settings.SrvPattern); err != nil {
+			return "", fmt.Errorf("failed to format srv name: %w", err)
+		}
+
+		addressValue = srvName
+	}
+
+	if _, srvs, err = net.LookupSRV("", "", addressValue); err != nil {
+		return "", fmt.Errorf("failed to lookup srv records for %s: %w", addressValue, err)
+	}
+
+	for _, srv := range srvs {
+		addressValue = fmt.Sprintf("%v:%v", srv.Target, srv.Port)
+
+		break
+	}
+
+	return addressValue, nil
 }
 
 func getSamplingStrategy(samplingConfiguration *SamplingConfiguration) (sampling.Strategy, error) {
