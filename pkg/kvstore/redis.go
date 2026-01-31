@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -13,8 +12,9 @@ import (
 )
 
 type redisKvStore[T any] struct {
-	client   redis.Client
-	settings *Settings
+	client    redis.Client
+	settings  *Settings
+	keyPrefix string
 }
 
 func RedisBasename(name string) string {
@@ -37,13 +37,21 @@ func NewRedisKvStore[T any](ctx context.Context, config cfg.Config, logger log.L
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 
-	return NewRedisKvStoreWithInterfaces[T](client, settings), nil
+	keyPrefix, err := config.FormatString(settings.RedisSettings.KeyPrefixPattern, map[string]string{
+		"store": settings.Name,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can not format key pattern: %w", err)
+	}
+
+	return NewRedisKvStoreWithInterfaces[T](client, settings, keyPrefix), nil
 }
 
-func NewRedisKvStoreWithInterfaces[T any](client redis.Client, settings *Settings) KvStore[T] {
+func NewRedisKvStoreWithInterfaces[T any](client redis.Client, settings *Settings, keyPrefix string) KvStore[T] {
 	return NewMetricStoreWithInterfaces[T](&redisKvStore[T]{
-		client:   client,
-		settings: settings,
+		client:    client,
+		settings:  settings,
+		keyPrefix: keyPrefix,
 	}, settings)
 }
 
@@ -266,14 +274,5 @@ func (s *redisKvStore[T]) key(key any) (string, error) {
 		return "", fmt.Errorf("can not cast key %T %v to string: %w", key, key, err)
 	}
 
-	keyStr = strings.Join([]string{
-		s.settings.Tags["project"],
-		s.settings.Tags["family"],
-		s.settings.Tags["group"],
-		"kvstore",
-		s.settings.Name,
-		keyStr,
-	}, "-")
-
-	return keyStr, nil
+	return s.keyPrefix + keyStr, nil
 }

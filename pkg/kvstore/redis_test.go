@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	cfgMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	redisMocks "github.com/justtrackio/gosoline/pkg/redis/mocks"
@@ -178,9 +180,45 @@ func TestRedisKvStore_DeleteBatch(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestRedisKvStore_CustomPattern(t *testing.T) {
+	ctx := t.Context()
+	client := redisMocks.NewClient(t)
+
+	config := new(cfgMocks.Config)
+	config.EXPECT().FormatString(mock.Anything, mock.Anything).RunAndReturn(func(s string, m ...map[string]string) (string, error) {
+		return cfg.New().FormatString(s, m...)
+	})
+
+	store := kvstore.NewRedisKvStoreWithInterfaces[Item](client, &kvstore.Settings{
+		ModelId: mdl.ModelId{
+			Name: "test",
+			App:  "app",
+			Env:  "env",
+			Tags: map[string]string{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "grp",
+			},
+		},
+		BatchSize:      100,
+		MetricsEnabled: false,
+	}, "test:{key}")
+
+	client.EXPECT().Exists(ctx, "test:foo").Return(int64(1), nil)
+
+	exists, err := store.Contains(ctx, "foo")
+	assert.NoError(t, err)
+	assert.True(t, exists)
+}
+
 func buildTestableRedisStore[T any](t *testing.T) (context.Context, kvstore.KvStore[T], *redisMocks.Client) {
 	ctx := t.Context()
 	client := redisMocks.NewClient(t)
+
+	config := new(cfgMocks.Config)
+	config.EXPECT().FormatString(mock.Anything, mock.Anything).RunAndReturn(func(s string, m ...map[string]string) (string, error) {
+		return cfg.New().FormatString(s, m...)
+	})
 
 	store := kvstore.NewRedisKvStoreWithInterfaces[T](client, &kvstore.Settings{
 		ModelId: mdl.ModelId{
@@ -195,7 +233,7 @@ func buildTestableRedisStore[T any](t *testing.T) (context.Context, kvstore.KvSt
 		},
 		BatchSize:      100,
 		MetricsEnabled: false,
-	})
+	}, "justtrack-gosoline-grp-kvstore-test-{key}")
 
 	return ctx, store, client
 }
@@ -203,6 +241,11 @@ func buildTestableRedisStore[T any](t *testing.T) (context.Context, kvstore.KvSt
 func buildTestableRedisStoreWithTTL[T any](t *testing.T) (context.Context, kvstore.KvStore[T], *redisMocks.Client) {
 	ctx := t.Context()
 	client := redisMocks.NewClient(t)
+
+	config := new(cfgMocks.Config)
+	config.EXPECT().FormatString(mock.Anything, mock.Anything).RunAndReturn(func(s string, m ...map[string]string) (string, error) {
+		return cfg.New().FormatString(s, m...)
+	})
 
 	store := kvstore.NewRedisKvStoreWithInterfaces[T](client, &kvstore.Settings{
 		ModelId: mdl.ModelId{
@@ -218,7 +261,7 @@ func buildTestableRedisStoreWithTTL[T any](t *testing.T) (context.Context, kvsto
 		BatchSize:      100,
 		MetricsEnabled: false,
 		Ttl:            time.Second,
-	})
+	}, "justtrack-gosoline-grp-kvstore-test-{key}")
 
 	return ctx, store, client
 }

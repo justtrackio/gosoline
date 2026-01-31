@@ -16,6 +16,7 @@ type Settings struct {
 	mdl.ModelId
 	InMemorySettings
 	DdbSettings    DdbSettings
+	RedisSettings  RedisSettings
 	Ttl            time.Duration
 	BatchSize      int
 	MetricsEnabled bool
@@ -28,6 +29,14 @@ type InMemorySettings struct {
 	DeleteBuffer   uint32
 	PromoteBuffer  uint32
 	GetsPerPromote int32
+}
+
+type DdbSettings struct {
+	ClientName string `cfg:"client_name" default:"default"`
+}
+
+type RedisSettings struct {
+	KeyPrefixPattern string
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name KvStore

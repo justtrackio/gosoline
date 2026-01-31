@@ -814,7 +814,7 @@ func (s *Struct) decodeAndCastValue(tag *StructTag, targetType reflect.Type, sou
 	if !tag.NoDecode {
 		for _, decoder := range s.decoders {
 			if sourceValue, err = decoder(targetType, sourceValue); err != nil {
-				return nil, fmt.Errorf("can not decode value %v", sourceValue)
+				return nil, fmt.Errorf("can not decode value \"%v\": %w", sourceValue, err)
 			}
 		}
 	}

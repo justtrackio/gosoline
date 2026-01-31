@@ -19,10 +19,6 @@ const (
 	TypeRedis    = "redis"
 )
 
-type DdbSettings struct {
-	ClientName string `cfg:"client_name" default:"default"`
-}
-
 type ChainConfiguration struct {
 	ModelId             mdl.ModelId           `cfg:"model_id"`
 	Type                string                `cfg:"type" default:"chain" validate:"eq=chain"`
@@ -46,7 +42,8 @@ type InMemoryConfiguration struct {
 }
 
 type RedisConfiguration struct {
-	DB int `cfg:"db" default:"0"`
+	DB               int    `cfg:"db" default:"0"`
+	KeyPrefixPattern string `cfg:"key_prefix_pattern" default:"!nodecode {app.tags.project}-{app.tags.family}-{app.tags.group}-kvstore-{store}-{key}"`
 }
 
 type kvStoreAppCtxKey string
@@ -102,6 +99,9 @@ func newKvStoreChainFromConfig[T any](ctx context.Context, config cfg.Config, lo
 			DeleteBuffer:   configuration.InMemory.DeleteBuffer,
 			PromoteBuffer:  configuration.InMemory.PromoteBuffer,
 			GetsPerPromote: configuration.InMemory.GetsPerPromote,
+		},
+		RedisSettings: RedisSettings{
+			KeyPrefixPattern: configuration.Redis.KeyPrefixPattern,
 		},
 	})
 	if err != nil {
