@@ -11,39 +11,25 @@ import (
 //   - the domain pattern is not configured or invalid
 //   - the string doesn't match the expected domain pattern structure
 func ParseModelId(config ConfigProvider, s string) (ModelId, error) {
-	domainPattern, err := readModelIdDomainPattern(config)
-	if err != nil {
-		return ModelId{}, err
+	var err error
+	var domainPattern string
+	var id ModelId
+
+	if domainPattern, err = config.GetString(ConfigKeyModelIdDomainPattern); err != nil {
+		return ModelId{}, fmt.Errorf("%s must be set: %w", ConfigKeyModelIdDomainPattern, err)
 	}
 
-	id, err := modelIdFromStringWithDomainPattern(domainPattern, s)
-	if err != nil {
+	if domainPattern == "" {
+		return ModelId{}, fmt.Errorf("%s must not be empty", ConfigKeyModelIdDomainPattern)
+	}
+
+	if err = validateModelIdDomainPattern(domainPattern); err != nil {
+		return ModelId{}, fmt.Errorf("invalid %s: %w", ConfigKeyModelIdDomainPattern, err)
+	}
+
+	if id, err = modelIdFromStringWithDomainPattern(domainPattern, s); err != nil {
 		return ModelId{}, fmt.Errorf("failed to parse model id %q with domain pattern %q: %w", s, domainPattern, err)
 	}
 
 	return id, nil
-}
-
-// DebugModelIdString returns a debug representation of a ModelId.
-// This is safe to use for logging and does not require config.
-// It should NOT be used for routing, persistence keys, or message attributes.
-func DebugModelIdString(id ModelId) string {
-	return fmt.Sprintf("ModelId{Name:%q, Env:%q, App:%q, Tags:%v}", id.Name, id.Env, id.App, id.Tags)
-}
-
-func readModelIdDomainPattern(config ConfigProvider) (string, error) {
-	domainPattern, err := config.GetString(ConfigKeyModelIdDomainPattern)
-	if err != nil {
-		return "", fmt.Errorf("%s must be set: %w", ConfigKeyModelIdDomainPattern, err)
-	}
-
-	if domainPattern == "" {
-		return "", fmt.Errorf("%s must not be empty", ConfigKeyModelIdDomainPattern)
-	}
-
-	if err := validateModelIdDomainPattern(domainPattern); err != nil {
-		return "", fmt.Errorf("invalid %s: %w", ConfigKeyModelIdDomainPattern, err)
-	}
-
-	return domainPattern, nil
 }

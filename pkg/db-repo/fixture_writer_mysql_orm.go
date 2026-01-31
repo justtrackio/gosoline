@@ -8,7 +8,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/db"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type mysqlOrmFixtureWriter struct {
@@ -23,7 +22,7 @@ func MysqlOrmFixtureSetFactory[T any](metadata *Metadata, data fixtures.NamedFix
 		var writer fixtures.FixtureWriter
 
 		if writer, err = NewMysqlOrmFixtureWriter(ctx, config, logger, metadata); err != nil {
-			return nil, fmt.Errorf("failed to create mysql orm fixture writer for %s: %w", mdl.DebugModelIdString(metadata.ModelId), err)
+			return nil, fmt.Errorf("failed to create mysql orm fixture writer for %s: %w", metadata.ModelId.String(), err)
 		}
 
 		return fixtures.NewSimpleFixtureSet(data, writer, options...), nil

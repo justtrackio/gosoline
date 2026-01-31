@@ -22,10 +22,7 @@ func NewMetricRepository(config cfg.Config, logger log.Logger, repo Repository) 
 		return nil, fmt.Errorf("failed to pad model id from config: %w", err)
 	}
 
-	modelIdString, err := modelId.String()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get canonical model id string: %w", err)
-	}
+	modelIdString := modelId.String()
 
 	defaults := getDefaultMetrics(modelIdString)
 	output := metric.NewWriter(defaults...)

@@ -98,11 +98,7 @@ func (s *testSuite) TestSuccess(app suite.AppUnderTest) {
 		return
 	}
 
-	modelIdStr, err := sourceModelId.String()
-	if !s.NoError(err, "failed to format source model ID") {
-		return
-	}
-
+	modelIdStr := sourceModelId.String()
 	err = s.producer.WriteOne(s.T().Context(), event, mdlsub.CreateMessageAttributes(modelIdStr, mdlsub.TypeCreate, 0))
 	s.NoError(err)
 

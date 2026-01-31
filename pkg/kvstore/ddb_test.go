@@ -287,7 +287,7 @@ func buildTestableDdbStore[T any](t *testing.T) (context.Context, kvstore.KvStor
 			},
 		},
 		BatchSize: 100,
-	}, "applike.gosoline.grp.test")
+	})
 
 	return ctx, store, repository
 }

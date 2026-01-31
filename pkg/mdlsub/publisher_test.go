@@ -33,8 +33,9 @@ func (s *PublisherTestSuite) SetupTest() {
 				"family":  "test",
 				"group":   "grp",
 			},
+			DomainPattern: "{app.tags.project}.{app.tags.family}.{app.tags.group}",
 		},
-	}, "gosoline.test.grp.event")
+	})
 }
 
 func (s *PublisherTestSuite) TestPublish() {
