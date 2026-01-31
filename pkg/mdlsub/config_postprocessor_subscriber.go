@@ -190,13 +190,13 @@ func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string
 
 	kvstoreSettings := &kvstore.ChainConfiguration{}
 	if err := config.UnmarshalDefaults(kvstoreSettings); err != nil {
-		return cfg.WithConfigSetting(kvstoreKey, nil, cfg.SkipExisting), nil
+		return nil, fmt.Errorf("failed to unmarshal default kvstore configuration for subscriber %q: %w", name, err)
 	}
 
 	// Pad the ModelId from config to fill in any missing fields
 	modelId := subscriberSettings.TargetModel.ModelId
 	if err := modelId.PadFromConfig(config); err != nil {
-		return cfg.WithConfigSetting(kvstoreKey, nil, cfg.SkipExisting), nil
+		return nil, fmt.Errorf("failed to pad model id from config for subscriber %q: %w", name, err)
 	}
 
 	kvstoreSettings.ModelId = modelId
