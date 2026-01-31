@@ -6,8 +6,6 @@ app:
     family: fam
     group: grp
 
-ame
-
 fixtures:
   enabled: true
 

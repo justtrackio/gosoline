@@ -6,8 +6,6 @@ app:
     family: gosoline
     group: fixtures
 
-qlx
-
 db:
   default:
     driver: mysql

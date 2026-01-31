@@ -24,4 +24,3 @@ db:
       enabled: true
       table_prefixed: false
       path: ./migrations
-

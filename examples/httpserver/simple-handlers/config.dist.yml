@@ -6,8 +6,6 @@ app:
     family: family
     group: grp
 
-ame
-
 httpserver:
   default:
     port: 8088

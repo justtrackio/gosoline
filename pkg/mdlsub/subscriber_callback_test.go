@@ -30,10 +30,14 @@ func (s *SubscriberCallbackTestSuite) SetupTest() {
 	s.output = mocks.NewOutput(s.T())
 
 	s.modelId = mdl.ModelId{
-		Project: "justtrack",
-		Family:  "gosoline",
-		Group:   "mdlsub",
-		Name:    "testModel",
+		Name: "testModel",
+		Env:  "test",
+		Tags: map[string]string{
+			"project": "justtrack",
+			"family":  "gosoline",
+			"group":   "mdlsub",
+		},
+		DomainPattern: "{app.tags.project}.{app.tags.family}.{app.tags.group}",
 	}
 
 	sourceModel := mdlsub.SubscriberModel{

@@ -6,8 +6,6 @@ app:
     family: metrics
     group: grp
 
-rometheus
-
 httpserver:
   default:
     port: 8088

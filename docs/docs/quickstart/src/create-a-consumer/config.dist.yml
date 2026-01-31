@@ -5,7 +5,6 @@ app:
     project: gosoline
     family: how-to
     group: grp
-onsumer
 
 stream:
   input:

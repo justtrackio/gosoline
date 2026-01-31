@@ -5,7 +5,6 @@ app:
     project: gosoline
     family: example
     group: mdlsub
-ublisher
 
 cfg:
   server:
