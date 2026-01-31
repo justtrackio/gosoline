@@ -78,3 +78,41 @@ func (s *UrlBuilderTestSuite) TestWithCustomBucket() {
 	s.NoError(err, "there should be no error on GetAbsoluteUrl")
 	s.Equal("https://my-custom-bucket.s3.eu-central-1.amazonaws.com/my_file.bin", url)
 }
+
+func (s *UrlBuilderTestSuite) TestWithBucketPattern() {
+	err := s.config.Option(cfg.WithConfigMap(map[string]any{
+		"blob.my_store": map[string]any{
+			"bucket_pattern": "{app.env}-{app.name}-bucket",
+		},
+		"cloud.aws.defaults.endpoint":               "",
+		"cloud.aws.s3.clients.default.usePathStyle": false,
+	}))
+
+	s.NoError(err, "there should be no error on config create")
+
+	builder, err := blob.NewUrlBuilder(s.config, "my_store")
+	s.NoError(err, "there should be no error on builder create")
+
+	url, err := builder.GetAbsoluteUrl("my_file.bin")
+	s.NoError(err, "there should be no error on GetAbsoluteUrl")
+	s.Equal("https://test-uploader-bucket.s3.eu-central-1.amazonaws.com/my_file.bin", url)
+}
+
+func (s *UrlBuilderTestSuite) TestWithDefaultBucketPattern() {
+	err := s.config.Option(cfg.WithConfigMap(map[string]any{
+		"blob.default": map[string]any{
+			"bucket_pattern": "{app.env}-{app.name}-default",
+		},
+		"cloud.aws.defaults.endpoint":               "",
+		"cloud.aws.s3.clients.default.usePathStyle": false,
+	}))
+
+	s.NoError(err, "there should be no error on config create")
+
+	builder, err := blob.NewUrlBuilder(s.config, "my_store")
+	s.NoError(err, "there should be no error on builder create")
+
+	url, err := builder.GetAbsoluteUrl("my_file.bin")
+	s.NoError(err, "there should be no error on GetAbsoluteUrl")
+	s.Equal("https://test-uploader-default.s3.eu-central-1.amazonaws.com/my_file.bin", url)
+}
