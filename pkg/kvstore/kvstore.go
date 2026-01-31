@@ -2,7 +2,6 @@ package kvstore
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -20,23 +19,6 @@ type Settings struct {
 	Ttl            time.Duration
 	BatchSize      int
 	MetricsEnabled bool
-}
-
-// MetricModelIdString computes the model ID string for kvstore metrics.
-// This uses the canonical model ID pattern from config for consistency with other metrics.
-func (s *Settings) MetricModelIdString(config cfg.Config) (string, error) {
-	// Use the ModelId from Settings directly (it should already have PadFromConfig called)
-	return s.String()
-}
-
-// LegacyMetricModelIdString returns the model ID string in the legacy format
-// (project.family.group.name) for backward compatibility when config is not available.
-func (s *Settings) LegacyMetricModelIdString() string {
-	project := s.Tags["project"]
-	family := s.Tags["family"]
-	group := s.Tags["group"]
-
-	return fmt.Sprintf("%s.%s.%s.%s", project, family, group, s.Name)
 }
 
 type InMemorySettings struct {

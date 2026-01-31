@@ -39,12 +39,6 @@ func NewDdbKvStore[T any](ctx context.Context, config cfg.Config, logger log.Log
 		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
 	}
 
-	// Verify that the pattern was actually loaded from config
-	// String() will fail if pattern is not set, so we call it here to get a better error message
-	if _, err := settings.String(); err != nil {
-		return nil, fmt.Errorf("failed to format model id: %w", err)
-	}
-
 	name := DdbBaseName(settings)
 
 	// Create a ModelId for the DDB table with the kvstore name
@@ -64,19 +58,14 @@ func NewDdbKvStore[T any](ctx context.Context, config cfg.Config, logger log.Log
 		return nil, fmt.Errorf("can not create ddb repository: %w", err)
 	}
 
-	modelIdString, err := settings.MetricModelIdString(config)
-	if err != nil {
-		return nil, fmt.Errorf("can not compute model id string for metrics: %w", err)
-	}
-
-	return NewDdbKvStoreWithInterfaces[T](repository, settings, modelIdString), nil
+	return NewDdbKvStoreWithInterfaces[T](repository, settings), nil
 }
 
-func NewDdbKvStoreWithInterfaces[T any](repository ddb.Repository, settings *Settings, modelIdString string) KvStore[T] {
+func NewDdbKvStoreWithInterfaces[T any](repository ddb.Repository, settings *Settings) KvStore[T] {
 	return NewMetricStoreWithInterfaces[T](&ddbKvStore[T]{
 		repository: repository,
 		settings:   settings,
-	}, settings, modelIdString)
+	}, settings)
 }
 
 func (s *ddbKvStore[T]) Contains(ctx context.Context, key any) (bool, error) {

@@ -210,13 +210,7 @@ func GetSubscriberFQN(config cfg.Config, name string, sourceModel SubscriberMode
 		return fmt.Sprintf("subscriber-%s", name), nil
 	}
 
-	var err error
-	var domain string
-
-	if domain, err = sourceModel.DomainString(); err != nil {
-		return "", fmt.Errorf("failed to get domain from sourceModel: %w", err)
-	}
-
+	domain := sourceModel.DomainString()
 	domain = strings.Replace(domain, ".", "_", -1)
 
 	return fmt.Sprintf("subscriber-%s-%s", domain, sharedName), nil

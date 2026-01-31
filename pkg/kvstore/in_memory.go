@@ -22,9 +22,13 @@ type InMemoryKvStore[T any] struct {
 	cacheSize *int64
 }
 
-func NewInMemoryKvStore[T any](_ context.Context, _ cfg.Config, _ log.Logger, settings *Settings) (KvStore[T], error) {
+func NewInMemoryKvStore[T any](_ context.Context, config cfg.Config, _ log.Logger, settings *Settings) (KvStore[T], error) {
 	if reflect.ValueOf(new(T)).Elem().Kind() == reflect.Pointer {
 		return nil, fmt.Errorf("the generic type T should not be a pointer type but is of type %T", *new(T))
+	}
+
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("can not pad settings from config: %w", err)
 	}
 
 	return NewInMemoryKvStoreWithInterfaces[T](settings), nil
@@ -81,14 +85,11 @@ func NewInMemoryKvStoreWithInterfaces[T any](settings *Settings) KvStore[T] {
 
 	baseCache := cache.NewWithConfiguration[T](*cacheConfig, ttl)
 
-	// Use legacy format for in-memory stores since config is not available
-	modelIdString := settings.LegacyMetricModelIdString()
-
 	return NewMetricStoreWithInterfaces[T](&InMemoryKvStore[T]{
 		cache:     baseCache,
 		settings:  settings,
 		cacheSize: cacheSize,
-	}, settings, modelIdString)
+	}, settings)
 }
 
 func (s *InMemoryKvStore[T]) Contains(_ context.Context, key any) (bool, error) {

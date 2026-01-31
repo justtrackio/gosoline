@@ -22,10 +22,7 @@ func NewPublisherNotifier(_ context.Context, config cfg.Config, publisher Publis
 		return nil, fmt.Errorf("can not pad model id from config: %w", err)
 	}
 
-	modelIdString, err := modelId.String()
-	if err != nil {
-		return nil, fmt.Errorf("can not compute model id string: %w", err)
-	}
+	modelIdString := modelId.String()
 
 	notifier := newNotifier(logger, modelIdString, version)
 
@@ -42,7 +39,7 @@ func (n *publisherNotifier) Send(ctx context.Context, notificationType string, v
 	err := n.publisher.Publish(ctx, notificationType, n.version, out)
 
 	if exec.IsRequestCanceled(err) {
-		n.logger.Info(ctx, "request canceled while executing notification publish on %s for model %s with id %d", notificationType, mdl.DebugModelIdString(n.modelId), value.GetId())
+		n.logger.Info(ctx, "request canceled while executing notification publish on %s for model %s with id %d", notificationType, n.modelId.String(), value.GetId())
 		n.writeMetric(ctx, err)
 
 		return err
@@ -51,10 +48,10 @@ func (n *publisherNotifier) Send(ctx context.Context, notificationType string, v
 	if err != nil {
 		n.writeMetric(ctx, err)
 
-		return fmt.Errorf("error executing notification on %s for model %s with id %d: %w", notificationType, mdl.DebugModelIdString(n.modelId), *value.GetId(), err)
+		return fmt.Errorf("error executing notification on %s for model %s with id %d: %w", notificationType, n.modelId.String(), *value.GetId(), err)
 	}
 
-	n.logger.Info(ctx, "published on %s successful, for model %s with id %d", notificationType, mdl.DebugModelIdString(n.modelId), *value.GetId())
+	n.logger.Info(ctx, "published on %s successful, for model %s with id %d", notificationType, n.modelId.String(), *value.GetId())
 	n.writeMetric(ctx, nil)
 
 	return nil

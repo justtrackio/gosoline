@@ -35,7 +35,6 @@ type ConfigProvider interface {
 // The canonical string form is determined by the app.model_id.domain_pattern config key.
 // Call PadFromConfig() once to populate fields from config (including the domain pattern),
 // then use String() to obtain the canonical string representation.
-// Use DebugModelIdString() for logging/debugging purposes.
 type ModelId struct {
 	// Name is the model's name (the {modelId} placeholder)
 	Name string `cfg:"name"`
@@ -46,9 +45,9 @@ type ModelId struct {
 	// Tags holds dynamic tag values (for {app.tags.<key>} placeholders)
 	Tags map[string]string `cfg:"tags"`
 
-	// domainPattern is the formatting pattern read from config during PadFromConfig.
+	// DomainPattern is the formatting pattern read from config during PadFromConfig.
 	// This is private and not serialized; it is set by PadFromConfig.
-	domainPattern string
+	DomainPattern string
 }
 
 // format expands placeholders in the given pattern using ModelId values.
@@ -92,6 +91,8 @@ func (m *ModelId) formatDomain(domainPattern string) string {
 		case strings.HasPrefix(placeholder, PlaceholderAppTags):
 			tagKey := strings.TrimPrefix(placeholder, PlaceholderAppTags)
 			value = m.Tags[tagKey]
+		default:
+			continue
 		}
 
 		result = strings.ReplaceAll(result, match[0], value)
@@ -102,26 +103,26 @@ func (m *ModelId) formatDomain(domainPattern string) string {
 
 // String returns the canonical string representation of the ModelId.
 //
-// This method requires that the domainPattern has been set via PadFromConfig.
-// If no domainPattern is set, String returns an error.
+// This method requires that the DomainPattern has been set via PadFromConfig.
+// If no DomainPattern is set, String returns an error.
 //
 // Returns an error if:
-//   - the domainPattern is not set (call PadFromConfig first)
-//   - the domainPattern references fields/tags that are missing from the ModelId
+//   - the DomainPattern is not set (call PadFromConfig first)
+//   - the DomainPattern references fields/tags that are missing from the ModelId
 func (m ModelId) String() string {
-	return m.format(m.domainPattern)
+	return m.format(m.DomainPattern)
 }
 
 // DomainString returns the canonical domain string representation of the ModelId (without the model name).
 //
-// This method requires that the domainPattern has been set via PadFromConfig.
-// If no domainPattern is set, DomainString returns an error.
+// This method requires that the DomainPattern has been set via PadFromConfig.
+// If no DomainPattern is set, DomainString returns an error.
 //
 // Returns an error if:
-//   - the domainPattern is not set (call PadFromConfig first)
-//   - the domainPattern references fields/tags that are missing from the ModelId
+//   - the DomainPattern is not set (call PadFromConfig first)
+//   - the DomainPattern references fields/tags that are missing from the ModelId
 func (m ModelId) DomainString() string {
-	return m.formatDomain(m.domainPattern)
+	return m.formatDomain(m.DomainPattern)
 }
 
 // PadFromConfig fills in empty fields of ModelId from config.
@@ -130,10 +131,10 @@ func (m ModelId) DomainString() string {
 //   - app.env -> Env (if empty)
 //   - app.name -> App (if empty)
 //   - app.tags.* -> Tags (merged, existing tags take precedence)
-//   - app.model_id.domain_pattern -> domainPattern (if empty and available)
+//   - app.model_id.domain_pattern -> DomainPattern (if empty and available)
 //
-// The domainPattern is read if available, enabling String() to work afterward.
-// If the domain pattern config key is missing, the domainPattern field is left empty,
+// The DomainPattern is read if available, enabling String() to work afterward.
+// If the domain pattern config key is missing, the DomainPattern field is left empty,
 // and String() will return an error when called.
 //
 // All identity fields (env, app, tags) are optional. If a config key is not found,
@@ -189,13 +190,13 @@ func (m *ModelId) mergeTagsFromConfig(config ConfigProvider) {
 }
 
 func (m *ModelId) loadDomainPatternFromConfig(config ConfigProvider) error {
-	if m.domainPattern != "" {
+	if m.DomainPattern != "" {
 		return nil
 	}
 
 	domainPattern, err := config.GetString(ConfigKeyModelIdDomainPattern)
 	if err != nil {
-		// If app.model_id.domain_pattern is not in config, leave domainPattern empty - String() will error when called
+		// If app.model_id.domain_pattern is not in config, leave DomainPattern empty - String() will error when called
 		return nil
 	}
 
@@ -207,7 +208,7 @@ func (m *ModelId) loadDomainPatternFromConfig(config ConfigProvider) error {
 		return fmt.Errorf("invalid %s: %w", ConfigKeyModelIdDomainPattern, err)
 	}
 
-	m.domainPattern = domainPattern
+	m.DomainPattern = domainPattern
 
 	return nil
 }

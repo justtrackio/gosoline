@@ -70,10 +70,7 @@ func processPublisher(config cfg.GosoConf, name string) error {
 		return fmt.Errorf("can not pad model id from config for publisher %s: %w", publisherSettings.ModelId.Name, err)
 	}
 
-	modelIdString, err := publisherSettings.ModelId.String()
-	if err != nil {
-		return fmt.Errorf("can not compute model id string for publisher %s: %w", publisherSettings.ModelId.Name, err)
-	}
+	modelIdString := publisherSettings.ModelId.String()
 
 	producerSettings.Output = outputName
 	producerSettings.Daemon.MessageAttributes[AttributeModelId] = modelIdString

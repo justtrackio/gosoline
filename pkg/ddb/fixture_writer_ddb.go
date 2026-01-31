@@ -7,7 +7,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type dynamoDbFixtureWriter struct {
@@ -21,7 +20,7 @@ func DynamoDbFixtureSetFactory[T any](settings *Settings, data fixtures.NamedFix
 		var writer fixtures.FixtureWriter
 
 		if writer, err = NewDynamoDbFixtureWriter(ctx, config, logger, settings); err != nil {
-			return nil, fmt.Errorf("failed to create dynamodb fixture writer for %s: %w", mdl.DebugModelIdString(settings.ModelId), err)
+			return nil, fmt.Errorf("failed to create dynamodb fixture writer for %s: %w", settings.ModelId.String(), err)
 		}
 
 		return fixtures.NewSimpleFixtureSet(data, writer, options...), nil

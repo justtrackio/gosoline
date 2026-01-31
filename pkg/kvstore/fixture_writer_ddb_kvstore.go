@@ -30,7 +30,7 @@ func DynamoDbKvStoreFixtureSetFactory[T any](modelId *mdl.ModelId, data fixtures
 		var writer fixtures.FixtureWriter
 
 		if writer, err = NewDynamoDbKvStoreFixtureWriter[T](ctx, config, logger, modelId); err != nil {
-			return nil, fmt.Errorf("failed to create dynamodb kvstore fixture writer for %s: %w", mdl.DebugModelIdString(*modelId), err)
+			return nil, fmt.Errorf("failed to create dynamodb kvstore fixture writer for %s: %w", modelId.String(), err)
 		}
 
 		return fixtures.NewSimpleFixtureSet(data, writer, options...), nil

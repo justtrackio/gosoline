@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
+	cfgMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	loggerMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -42,6 +43,15 @@ func (s *FixtureSetTestSuite) SetupTest() {
 			},
 		},
 	}
+
+	config := cfgMocks.NewConfig(s.T())
+	config.EXPECT().GetString("app.env").Return("test", nil)
+	config.EXPECT().GetString("app.name").Return("my-app", nil)
+	config.EXPECT().GetStringMap("app.tags").Return(map[string]any{}, nil)
+	config.EXPECT().GetString("app.model_id.domain_pattern").Return("{app.tags.project}.{app.tags.family}.{app.tags.group}", nil)
+
+	err := s.source.PadFromConfig(config)
+	s.NoError(err)
 
 	s.spec = &mdlsub.ModelSpecification{
 		CrudType: "create",

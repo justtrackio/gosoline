@@ -35,10 +35,9 @@ type Publisher interface {
 }
 
 type publisher struct {
-	logger        log.Logger
-	producer      stream.Producer
-	settings      *PublisherSettings
-	modelIdString string
+	logger   log.Logger
+	producer stream.Producer
+	settings *PublisherSettings
 }
 
 func NewPublisher(ctx context.Context, config cfg.Config, logger log.Logger, name string, options ...stream.ProducerOption) (Publisher, error) {
@@ -62,44 +61,42 @@ func NewPublisherWithSettings(ctx context.Context, config cfg.Config, logger log
 		return nil, fmt.Errorf("can not pad model id from config for publisher %s: %w", settings.ModelId.Name, err)
 	}
 
-	modelIdString, err := settings.ModelId.String()
-	if err != nil {
-		return nil, fmt.Errorf("can not compute model id string for publisher %s: %w", settings.ModelId.Name, err)
-	}
-
-	return NewPublisherWithInterfaces(logger, producer, settings, modelIdString), nil
+	return NewPublisherWithInterfaces(logger, producer, settings), nil
 }
 
-func NewPublisherWithInterfaces(logger log.Logger, producer stream.Producer, settings *PublisherSettings, modelIdString string) Publisher {
+func NewPublisherWithInterfaces(logger log.Logger, producer stream.Producer, settings *PublisherSettings) Publisher {
 	return &publisher{
-		logger:        logger,
-		producer:      producer,
-		settings:      settings,
-		modelIdString: modelIdString,
+		logger:   logger,
+		producer: producer,
+		settings: settings,
 	}
 }
 
 func (p *publisher) PublishBatch(ctx context.Context, typ string, version int, values []any, customAttributes ...map[string]string) error {
+	modelId := p.settings.ModelId.String()
+
 	attributes := []map[string]string{
-		CreateMessageAttributes(p.modelIdString, typ, version),
+		CreateMessageAttributes(modelId, typ, version),
 	}
 	attributes = append(attributes, customAttributes...)
 
 	if err := p.producer.Write(ctx, values, attributes...); err != nil {
-		return fmt.Errorf("can not publish %s with publisher %s: %w", mdl.DebugModelIdString(p.settings.ModelId), p.settings.ModelId.Name, err)
+		return fmt.Errorf("can not publish %s with publisher %s: %w", modelId, p.settings.ModelId.Name, err)
 	}
 
 	return nil
 }
 
 func (p *publisher) Publish(ctx context.Context, typ string, version int, value any, customAttributes ...map[string]string) error {
+	modelId := p.settings.ModelId.String()
+
 	attributes := []map[string]string{
-		CreateMessageAttributes(p.modelIdString, typ, version),
+		CreateMessageAttributes(modelId, typ, version),
 	}
 	attributes = append(attributes, customAttributes...)
 
 	if err := p.producer.WriteOne(ctx, value, attributes...); err != nil {
-		return fmt.Errorf("can not publish %s with publisher %s: %w", mdl.DebugModelIdString(p.settings.ModelId), p.settings.ModelId.Name, err)
+		return fmt.Errorf("can not publish %s with publisher %s: %w", modelId, p.settings.ModelId.Name, err)
 	}
 
 	return nil

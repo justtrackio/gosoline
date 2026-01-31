@@ -29,11 +29,12 @@ type MetricStore[T any] struct {
 	store        string
 }
 
-func NewMetricStoreWithInterfaces[T any](store KvStore[T], settings *Settings, modelIdString string) KvStore[T] {
+func NewMetricStoreWithInterfaces[T any](store KvStore[T], settings *Settings) KvStore[T] {
 	if !settings.MetricsEnabled {
 		return store
 	}
 
+	modelIdString := settings.String()
 	storeName := fmt.Sprintf("%T", store)
 	defaults := getDefaultMetrics(modelIdString, storeName)
 

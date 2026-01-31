@@ -49,10 +49,7 @@ func newOutputModule(ctx context.Context, config cfg.Config, logger log.Logger) 
 		return nil, fmt.Errorf("can not pad model id: %w", err)
 	}
 
-	modelIdString, err := modelId.String()
-	if err != nil {
-		return nil, fmt.Errorf("can not get canonical model id string: %w", err)
-	}
+	modelIdString := modelId.String()
 
 	module := &outputModule{
 		logger:        logger,
