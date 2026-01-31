@@ -69,7 +69,7 @@ func getTracer(t *testing.T) tracing.Tracer {
 		},
 	}, &tracing.XRaySettings{
 		SamplingStrategy: &TestSamplingStrategy{},
-	})
+	}, "test_project-test_env-test_family-test_group-test_name")
 
 	assert.NoError(t, err, "we should be able to get a tracer")
 

@@ -21,6 +21,7 @@ func init() {
 
 type otelInstrumentor struct {
 	cfg.AppIdentity
+	name string
 }
 
 func NewOtelInstrumentor(ctx context.Context, config cfg.Config, logger log.Logger) (Instrumentor, error) {
@@ -29,23 +30,28 @@ func NewOtelInstrumentor(ctx context.Context, config cfg.Config, logger log.Logg
 		return nil, fmt.Errorf("could not get app identity from config: %w", err)
 	}
 
+	name, err := resolveAppId(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to format service name: %w", err)
+	}
+
 	// used to set the global trace provider and text map propagator.
 	_, err = ProvideOtelTraceProvider(ctx, config, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewOtelInstrumentorWithInterfaces(identity), nil
+	return NewOtelInstrumentorWithInterfaces(identity, name), nil
 }
 
-func NewOtelInstrumentorWithInterfaces(identity cfg.AppIdentity) *otelInstrumentor {
+func NewOtelInstrumentorWithInterfaces(identity cfg.AppIdentity, name string) *otelInstrumentor {
 	return &otelInstrumentor{
 		AppIdentity: identity,
+		name:        name,
 	}
 }
 
 func (t *otelInstrumentor) HttpHandler(h http.Handler) http.Handler {
-	name := fmt.Sprintf("%s-%s-%s-%s-%s", t.Tags.Get("project"), t.Env, t.Tags.Get("family"), t.Tags.Get("group"), t.Name)
 	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		span := trace.SpanFromContext(ctx)
@@ -56,7 +62,7 @@ func (t *otelInstrumentor) HttpHandler(h http.Handler) http.Handler {
 		h.ServeHTTP(w, r)
 	})
 
-	return otelhttp.NewHandler(handlerFunc, name)
+	return otelhttp.NewHandler(handlerFunc, t.name)
 }
 
 func (t *otelInstrumentor) HttpClient(baseClient *http.Client) *http.Client {

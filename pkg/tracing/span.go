@@ -2,7 +2,6 @@ package tracing
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -77,15 +76,12 @@ func (s awsSpan) Finish() {
 	s.segment.Close(nil)
 }
 
-func newSpan(ctx context.Context, seg *xray.Segment, identity cfg.AppIdentity) (context.Context, *awsSpan) {
+func newSpan(ctx context.Context, seg *xray.Segment, identity cfg.AppIdentity, appId string) (context.Context, *awsSpan) {
 	span := &awsSpan{
 		enabled: true,
 		segment: seg,
 	}
 
-	appFamily := fmt.Sprintf("%s-%s-%s", identity.Tags.Get("project"), identity.Env, identity.Tags.Get("family"))
-	appId := fmt.Sprintf("%s-%s-%s-%s-%s", identity.Tags.Get("project"), identity.Env, identity.Tags.Get("family"), identity.Tags.Get("group"), identity.Name)
-	span.AddAnnotation("appFamily", appFamily)
 	span.AddAnnotation("appId", appId)
 
 	return ContextWithSpan(ctx, span), span
