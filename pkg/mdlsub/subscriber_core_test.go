@@ -28,6 +28,7 @@ func (s *SubscriberCoreTestSuite) SetupTest() {
 			"family":  "gosoline",
 			"group":   "mdlsub",
 		},
+		DomainPattern: "{app.tags.project}.{app.tags.family}.{app.tags.group}",
 	}
 }
 
@@ -45,6 +46,7 @@ func (s *SubscriberCoreTestSuite) TestGetLatestModelIdMissingModelId() {
 			"family":  "gosoline",
 			"group":   "foobar",
 		},
+		DomainPattern: "{app.tags.project}.{app.tags.family}.{app.tags.group}",
 	})
 	s.EqualError(err, "failed to find model transformer for model id justtrack.gosoline.foobar.testModel")
 }

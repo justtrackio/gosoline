@@ -150,10 +150,15 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteCon
 	envOptions := []env.Option{
 		env.WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
 		env.WithConfigMap(map[string]any{
-			"app_project": "justtrack",
-			"app_family":  "gosoline",
-			"app_group":   "test",
-			"app_name":    "test",
+			"app": map[string]any{
+				"env":  "test",
+				"name": "test",
+				"tags": map[string]any{
+					"project": "justtrack",
+					"family":  "gosoline",
+					"group":   "test",
+				},
+			},
 		}),
 	}
 	envOptions = append(envOptions, suiteConf.envOptions...)

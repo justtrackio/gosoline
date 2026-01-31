@@ -285,6 +285,15 @@ func validateModelIdDomainPattern(domainPattern string) error {
 	}
 
 	// Validate each placeholder
+	if err := validatePlaceholders(placeholders); err != nil {
+		return err
+	}
+
+	// Check that pattern is parseable (placeholders + dot delimiter only)
+	return validatePatternFormat(domainPattern, placeholders)
+}
+
+func validatePlaceholders(placeholders []string) error {
 	for _, ph := range placeholders {
 		if ph == PlaceholderModelId {
 			return fmt.Errorf("{modelId} placeholder is no longer allowed in patterns; the model name is automatically appended as the last segment")
@@ -295,7 +304,10 @@ func validateModelIdDomainPattern(domainPattern string) error {
 		}
 	}
 
-	// Check that pattern is parseable (placeholders + dot delimiter only)
+	return nil
+}
+
+func validatePatternFormat(domainPattern string, placeholders []string) error {
 	if len(placeholders) == 1 {
 		// Single placeholder - must be the entire pattern
 		if domainPattern != "{"+placeholders[0]+"}" {
@@ -306,37 +318,45 @@ func validateModelIdDomainPattern(domainPattern string) error {
 	}
 
 	// Multiple placeholders - ensure they are joined by dot
+	expectedPattern := buildExpectedPattern(placeholders)
+
+	if domainPattern != expectedPattern {
+		return validateDelimiterError(domainPattern, expectedPattern, placeholders)
+	}
+
+	return nil
+}
+
+func buildExpectedPattern(placeholders []string) string {
 	var expectedParts []string
 	for _, ph := range placeholders {
 		expectedParts = append(expectedParts, "{"+ph+"}")
 	}
-	expectedPattern := strings.Join(expectedParts, ".")
 
-	if domainPattern != expectedPattern {
-		// Provide a more specific error message if the only difference is the delimiter
-		// Reconstruct the pattern but with dots to check if that's the issue
-		if len(domainPattern) == len(expectedPattern) {
-			// Check if only delimiters differ
-			matchesPlaceholders := true
-			currentIdx := 0
-			for _, part := range expectedParts {
-				idx := strings.Index(domainPattern[currentIdx:], part)
-				if idx == -1 {
-					matchesPlaceholders = false
-					break
-				}
-				currentIdx += idx + len(part)
-			}
+	return strings.Join(expectedParts, ".")
+}
 
-			if matchesPlaceholders {
-				return fmt.Errorf("pattern must consist of placeholders separated by dots (.), got %q", domainPattern)
-			}
-		}
-
-		return fmt.Errorf("pattern contains static text which makes it unparseable")
+func validateDelimiterError(domainPattern, expectedPattern string, placeholders []string) error {
+	// Provide a more specific error message if the only difference is the delimiter
+	if len(domainPattern) == len(expectedPattern) && hasMatchingPlaceholders(domainPattern, placeholders) {
+		return fmt.Errorf("pattern must consist of placeholders separated by dots (.), got %q", domainPattern)
 	}
 
-	return nil
+	return fmt.Errorf("pattern contains static text which makes it unparseable")
+}
+
+func hasMatchingPlaceholders(domainPattern string, placeholders []string) bool {
+	currentIdx := 0
+	for _, ph := range placeholders {
+		part := "{" + ph + "}"
+		idx := strings.Index(domainPattern[currentIdx:], part)
+		if idx == -1 {
+			return false
+		}
+		currentIdx += idx + len(part)
+	}
+
+	return true
 }
 
 // extractPlaceholders returns all placeholder names from a pattern.

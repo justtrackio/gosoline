@@ -121,9 +121,9 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 	inputSettings.Targets = []stream.SnsInputTargetConfiguration{
 		{
 			Identity: cfg.AppIdentity{
-				Env:  sourceModel.ModelId.Env,
-				Name: sourceModel.ModelId.App,
-				Tags: cfg.AppTags(sourceModel.ModelId.Tags),
+				Env:  sourceModel.Env,
+				Name: sourceModel.App,
+				Tags: cfg.AppTags(sourceModel.Tags),
 			},
 			TopicId: topicId,
 		},
@@ -211,7 +211,7 @@ func GetSubscriberFQN(config cfg.Config, name string, sourceModel SubscriberMode
 	}
 
 	domain := sourceModel.DomainString()
-	domain = strings.Replace(domain, ".", "_", -1)
+	domain = strings.ReplaceAll(domain, ".", "_")
 
 	return fmt.Sprintf("subscriber-%s-%s", domain, sharedName), nil
 }
