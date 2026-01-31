@@ -5,7 +5,6 @@ app:
     project: project
     family: family
     group: grp
-rpc_server
 
 # grpcserver module configuration
 grpc_server:

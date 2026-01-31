@@ -6,8 +6,6 @@ app:
     family: example
     group: money
 
-xchange
-
 httpserver:
   default:
     port: 8080

@@ -5,7 +5,6 @@ app:
     project: gosoline
     family: get-started
     group: grp
-ello-world
 
 // highlight-start
 log:

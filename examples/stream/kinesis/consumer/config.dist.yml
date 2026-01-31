@@ -6,8 +6,6 @@ app:
     family: example
     group: grp
 
-tream-kinesis-consumer
-
 stream:
   consumer:
     default:
