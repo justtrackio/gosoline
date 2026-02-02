@@ -36,22 +36,13 @@ type ddbLockProvider struct {
 	domain          string
 }
 
-func NewDdbLockProvider(
-	ctx context.Context,
-	config cfg.Config,
-	logger log.Logger,
-	settings conc.DistributedLockSettings,
-) (conc.DistributedLockProvider, error) {
+func NewDdbLockProvider(ctx context.Context, config cfg.Config, logger log.Logger, settings conc.DistributedLockSettings) (conc.DistributedLockProvider, error) {
 	ddbSettings := &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Name: "locks",
 			Env:  settings.Env,
 			App:  settings.Name,
-			Tags: map[string]string{
-				"project": settings.Tags.Get("project"),
-				"family":  settings.Tags.Get("family"),
-				"group":   settings.Tags.Get("group"),
-			},
+			Tags: settings.Tags,
 		},
 		Main: ddb.MainSettings{
 			Model:              &DdbLockItem{},

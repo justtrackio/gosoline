@@ -49,32 +49,6 @@ type ZRangeArgs struct {
 	Count   int64
 }
 
-// BuildFullyQualifiedKey builds a fully qualified Redis key using the configured naming pattern.
-// The pattern is read from redis.default.naming.key_pattern and supports all AppIdentity placeholders
-// ({app.env}, {app.name}, {app.tags.*}) plus the {key} placeholder for the key name.
-//
-// Example pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}"
-func BuildFullyQualifiedKey(config cfg.Config, identity cfg.AppIdentity, key string) (string, error) {
-	namingSettings := &Naming{}
-	if err := config.UnmarshalKey("redis.default.naming", namingSettings); err != nil {
-		return "", fmt.Errorf("failed to unmarshal redis key naming settings: %w", err)
-	}
-
-	// Validate that the pattern contains {key} placeholder
-	if !strings.Contains(namingSettings.KeyPattern, "{key}") {
-		return "", fmt.Errorf("redis key naming pattern must contain {key} placeholder, got: %q", namingSettings.KeyPattern)
-	}
-
-	fullKey, err := config.FormatString(namingSettings.KeyPattern, identity.ToMap(), map[string]string{
-		"key": key,
-	})
-	if err != nil {
-		return "", fmt.Errorf("redis key naming failed: %w", err)
-	}
-
-	return fullKey, nil
-}
-
 type redisCacheKey string
 
 func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {

@@ -27,7 +27,6 @@ type redisListOutput struct {
 	metricWriter      metric.Writer
 	client            redis.Client
 	settings          *RedisListOutputSettings
-	fullyQualifiedKey string
 }
 
 func NewRedisListOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *RedisListOutputSettings) (Output, error) {
@@ -42,27 +41,18 @@ func NewRedisListOutput(ctx context.Context, config cfg.Config, logger log.Logge
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 
-	fullyQualifiedKey, err := redis.BuildFullyQualifiedKey(config, settings.AppIdentity, settings.Key)
-	if err != nil {
-		return nil, fmt.Errorf("can not build fully qualified key: %w", err)
-	}
-
-	defaultMetrics, err := getRedisListOutputDefaultMetrics(config, settings.AppIdentity, settings.Key)
-	if err != nil {
-		return nil, fmt.Errorf("can not build default metrics: %w", err)
-	}
+	defaultMetrics := getRedisListOutputDefaultMetrics(settings)
 	mw := metric.NewWriter(defaultMetrics...)
 
-	return NewRedisListOutputWithInterfaces(config, logger, mw, client, settings, fullyQualifiedKey), nil
+	return NewRedisListOutputWithInterfaces(config, logger, mw, client, settings), nil
 }
 
-func NewRedisListOutputWithInterfaces(config cfg.Config, logger log.Logger, mw metric.Writer, client redis.Client, settings *RedisListOutputSettings, fullyQualifiedKey string) Output {
+func NewRedisListOutputWithInterfaces(config cfg.Config, logger log.Logger, mw metric.Writer, client redis.Client, settings *RedisListOutputSettings) Output {
 	return &redisListOutput{
 		logger:            logger,
 		metricWriter:      mw,
 		client:            client,
 		settings:          settings,
-		fullyQualifiedKey: fullyQualifiedKey,
 	}
 }
 
@@ -78,7 +68,7 @@ func (o *redisListOutput) Write(ctx context.Context, batch []WritableMessage) er
 
 	for _, chunk := range chunks {
 		interfaces := ByteChunkToInterfaces(chunk)
-		_, err := o.client.RPush(ctx, o.fullyQualifiedKey, interfaces...)
+		_, err := o.client.RPush(ctx, o.settings.Key, interfaces...)
 		if err != nil {
 			return err
 		}
@@ -95,7 +85,7 @@ func (o *redisListOutput) writeListWriteMetric(ctx context.Context, length int) 
 		Timestamp:  time.Now(),
 		MetricName: metricNameRedisListOutputWrites,
 		Dimensions: map[string]string{
-			"StreamName": o.fullyQualifiedKey,
+			"StreamName": fmt.Sprintf("%s-%s", o.settings.ServerName, o.settings.Key),
 		},
 		Unit:  metric.UnitCount,
 		Value: float64(length),
@@ -104,21 +94,16 @@ func (o *redisListOutput) writeListWriteMetric(ctx context.Context, length int) 
 	o.metricWriter.Write(ctx, data)
 }
 
-func getRedisListOutputDefaultMetrics(config cfg.Config, appIdentity cfg.AppIdentity, key string) (metric.Data, error) {
-	fullyQualifiedKey, err := redis.BuildFullyQualifiedKey(config, appIdentity, key)
-	if err != nil {
-		return nil, fmt.Errorf("can not build fully qualified key: %w", err)
-	}
-
+func getRedisListOutputDefaultMetrics(settings *RedisListOutputSettings) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameRedisListOutputWrites,
 			Dimensions: map[string]string{
-				"StreamName": fullyQualifiedKey,
+				"StreamName": fmt.Sprintf("%s-%s", settings.ServerName, settings.Key),
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
-	}, nil
+	}
 }
