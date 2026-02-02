@@ -16,7 +16,7 @@ import (
 
 func TestRedisListOutput_WriteOne(t *testing.T) {
 	ctx, output, redisMock := setup(1, t)
-	redisMock.EXPECT().RPush(ctx, "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Once()
+	redisMock.EXPECT().RPush(ctx, "my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Once()
 
 	record := stream.NewMessage("bla")
 	err := output.WriteOne(ctx, record)
@@ -26,7 +26,7 @@ func TestRedisListOutput_WriteOne(t *testing.T) {
 
 func TestRedisListOutput_Write(t *testing.T) {
 	ctx, output, redisMock := setup(2, t)
-	redisMock.EXPECT().RPush(ctx, "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8"), mock.AnythingOfType("[]uint8")).Return(int64(2), nil).Once()
+	redisMock.EXPECT().RPush(ctx, "my-list", mock.AnythingOfType("[]uint8"), mock.AnythingOfType("[]uint8")).Return(int64(2), nil).Once()
 
 	batch := []stream.WritableMessage{
 		stream.NewMessage("foo"),
@@ -39,7 +39,7 @@ func TestRedisListOutput_Write(t *testing.T) {
 
 func TestRedisListOutput_Write_Chunked(t *testing.T) {
 	ctx, output, redisMock := setup(1, t)
-	redisMock.EXPECT().RPush(ctx, "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Times(2)
+	redisMock.EXPECT().RPush(ctx, "my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Times(2)
 
 	batch := []stream.WritableMessage{
 		stream.NewMessage("foo"),
@@ -58,8 +58,7 @@ func setup(batchSize int, t *testing.T) (context.Context, stream.Output, *redisM
 	mw.EXPECT().Write(matcher.Context, mock.Anything).Return().Maybe()
 
 	redisMock := redisMocks.NewClient(t)
-	fullyQualifiedKey := "mcoins-test-fam-grp-app-my-list"
-	output := stream.NewRedisListOutputWithInterfaces(config, loggerMock, mw, redisMock, getSettings(batchSize), fullyQualifiedKey)
+	output := stream.NewRedisListOutputWithInterfaces(config, loggerMock, mw, redisMock, getSettings(batchSize))
 
 	return ctx, output, redisMock
 }
