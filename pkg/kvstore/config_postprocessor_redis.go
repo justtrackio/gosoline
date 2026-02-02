@@ -2,6 +2,7 @@ package kvstore
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/funk"
@@ -51,10 +52,6 @@ func RedisConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 			return false, fmt.Errorf("failed to unmarshal kvstore redis configuration for %s: %w", name, err)
 		}
 
-		if configuration.Redis.DB == 0 {
-			continue
-		}
-
 		// not reading the whole default settings here as it would implicitly set the hostname/port and other settings,
 		// that we don't want to override here
 		redisBaseName := RedisBasename(name)
@@ -64,6 +61,9 @@ func RedisConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 			cfg.WithConfigMap(map[string]any{
 				redisKey: map[string]any{
 					"db": configuration.Redis.DB,
+					"naming": map[string]any{
+						"key_pattern": strings.ReplaceAll(configuration.Redis.KeyPattern, "{store}", name),
+					},
 				},
 			}),
 		}

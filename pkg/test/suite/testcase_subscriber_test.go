@@ -55,9 +55,6 @@ func (s *SubscriberTestSuite) SetupSuite() []suite.Option {
 						"inMemory",
 						"ddb",
 					},
-					"redis": map[string]any{
-						"key_pattern": "!nodecode {app.tags.project}-{app.tags.family}-{app.tags.group}-kvstore-{store}-{key}",
-					},
 				},
 			},
 			"mdlsub": map[string]any{

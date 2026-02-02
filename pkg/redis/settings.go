@@ -1,18 +1,15 @@
 package redis
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/exec"
-	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type Naming struct {
 	AddressPattern string `cfg:"address_pattern,nodecode" default:"{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}"`
-	KeyPattern     string `cfg:"key_pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}"`
+	KeyPattern     string `cfg:"key_pattern,nodecode" default:"{key}"` // e.g. {app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}
 }
 
 type Settings struct {
@@ -23,20 +20,6 @@ type Settings struct {
 	Address         string `cfg:"address" default:"127.0.0.1:6379"`
 	Naming          Naming `cfg:"naming"`
 	BackoffSettings exec.BackoffSettings
-}
-
-type redisCacheKey string
-
-func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
-	settings, err := ReadSettings(config, name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read redis settings for name %q in ProvideClient: %w", name, err)
-	}
-	cacheKey := fmt.Sprintf("%s:%s", settings.Address, name)
-
-	return appctx.Provide(ctx, redisCacheKey(cacheKey), func() (Client, error) {
-		return NewClient(ctx, config, logger, name)
-	})
 }
 
 func GetRedisConfigKey(name string) string {

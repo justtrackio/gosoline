@@ -16,3 +16,7 @@ redis:
   default:
     dialer: tcp
 
+kvstore:
+  testModel:
+    elements:
+      - redis
