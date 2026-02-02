@@ -45,9 +45,12 @@ func (s *RedisTestSuite) TestRedis() {
 	}
 
 	// should have created the set_test item
+	res := redisClient.Exists(ctx, "set_test")
+	s.Equal(int64(1), res.Val(), "key set_test should exist")
+
 	setValue, err := redisClient.Get(ctx, "set_test").Result()
 	s.NoError(err)
-	s.Equal("bar", setValue)
+	s.Equal("bar", setValue, "key set_test should have value 'bar'")
 
 	// should have created the rpush_test first item
 	rpopValue, err := redisClient.LPop(ctx, "rpush_test").Result()
@@ -70,7 +73,7 @@ func (s *RedisTestSuite) TestRedisKvStore() {
 	}
 
 	// should have created the item
-	res, err := redisClient.Get(ctx, "gosoline-integration-test-grp-kvstore-testModel-kvstore_entry_1").Result()
+	res, err := redisClient.Get(ctx, "prj-fam-grp-kvstore-testModel-kvstore_entry_1").Result()
 	s.NoError(err)
 	s.JSONEq(`{"name":"foo","age":123}`, res)
 }

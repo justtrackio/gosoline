@@ -12,9 +12,8 @@ import (
 )
 
 type redisKvStore[T any] struct {
-	client    redis.Client
-	settings  *Settings
-	keyPrefix string
+	client   redis.Client
+	settings *Settings
 }
 
 func RedisBasename(name string) string {
@@ -37,21 +36,13 @@ func NewRedisKvStore[T any](ctx context.Context, config cfg.Config, logger log.L
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 
-	keyPrefix, err := config.FormatString(settings.RedisSettings.KeyPrefixPattern, map[string]string{
-		"store": settings.Name,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("can not format key pattern: %w", err)
-	}
-
-	return NewRedisKvStoreWithInterfaces[T](client, settings, keyPrefix), nil
+	return NewRedisKvStoreWithInterfaces[T](client, settings), nil
 }
 
-func NewRedisKvStoreWithInterfaces[T any](client redis.Client, settings *Settings, keyPrefix string) KvStore[T] {
+func NewRedisKvStoreWithInterfaces[T any](client redis.Client, settings *Settings) KvStore[T] {
 	return NewMetricStoreWithInterfaces[T](&redisKvStore[T]{
-		client:    client,
-		settings:  settings,
-		keyPrefix: keyPrefix,
+		client:   client,
+		settings: settings,
 	}, settings)
 }
 
@@ -202,7 +193,7 @@ func (s *redisKvStore[T]) flushChunk(ctx context.Context, pairs []any) error {
 	}
 
 	pipe := s.client.Pipeline().TxPipeline()
-	pipe.MSet(ctx, pairs)
+	pipe.MSet(ctx, pairs...)
 
 	// setting ttl
 	if s.settings.Ttl != 0 {
@@ -274,5 +265,5 @@ func (s *redisKvStore[T]) key(key any) (string, error) {
 		return "", fmt.Errorf("can not cast key %T %v to string: %w", key, key, err)
 	}
 
-	return s.keyPrefix + keyStr, nil
+	return keyStr, nil
 }

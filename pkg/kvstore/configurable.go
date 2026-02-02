@@ -42,8 +42,8 @@ type InMemoryConfiguration struct {
 }
 
 type RedisConfiguration struct {
-	DB               int    `cfg:"db" default:"0"`
-	KeyPrefixPattern string `cfg:"key_prefix_pattern" default:"!nodecode {app.tags.project}-{app.tags.family}-{app.tags.group}-kvstore-{store}-{key}"`
+	DB         int    `cfg:"db" default:"0"`
+	KeyPattern string `cfg:"key_pattern,nodecode" default:"{app.tags.project}-{app.tags.family}-{app.tags.group}-kvstore-{store}-{key}"`
 }
 
 type kvStoreAppCtxKey string
@@ -101,7 +101,7 @@ func newKvStoreChainFromConfig[T any](ctx context.Context, config cfg.Config, lo
 			GetsPerPromote: configuration.InMemory.GetsPerPromote,
 		},
 		RedisSettings: RedisSettings{
-			KeyPrefixPattern: configuration.Redis.KeyPrefixPattern,
+			KeyPrefixPattern: configuration.Redis.KeyPattern,
 		},
 	})
 	if err != nil {

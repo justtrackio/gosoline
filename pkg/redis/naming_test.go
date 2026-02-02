@@ -8,6 +8,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestNamingTestSuite(t *testing.T) {
+	suite.Run(t, new(NamingTestSuite))
+}
+
 type NamingTestSuite struct {
 	suite.Suite
 	config   cfg.GosoConf
@@ -50,7 +54,7 @@ func (s *NamingTestSuite) TestBuildFullyQualifiedKey_DefaultPattern() {
 
 	key, err := redis.BuildFullyQualifiedKey(s.config, s.identity, "mykey")
 	s.NoError(err)
-	s.Equal("myproject-test-myfamily-mygroup-myapp-mykey", key)
+	s.Equal("mykey", key)
 }
 
 func (s *NamingTestSuite) TestBuildFullyQualifiedKey_CustomMinimalPattern() {
@@ -131,16 +135,4 @@ func (s *NamingTestSuite) TestBuildFullyQualifiedKey_InvalidPlaceholder() {
 	_, err := redis.BuildFullyQualifiedKey(s.config, s.identity, "mykey")
 	s.Error(err)
 	s.Contains(err.Error(), "there is no config setting or default for key \"app.invalid\"")
-}
-
-func (s *NamingTestSuite) TestBuildFullyQualifiedKey_ComplexKey() {
-	s.initConfig(map[string]any{})
-
-	key, err := redis.BuildFullyQualifiedKey(s.config, s.identity, "cache:user:123")
-	s.NoError(err)
-	s.Equal("myproject-test-myfamily-mygroup-myapp-cache:user:123", key)
-}
-
-func TestNamingTestSuite(t *testing.T) {
-	suite.Run(t, new(NamingTestSuite))
 }

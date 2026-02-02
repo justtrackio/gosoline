@@ -9,9 +9,12 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/elliotchance/redismock/v8"
 	baseRedis "github.com/go-redis/redis/v8"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	cfgMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/redis"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -19,6 +22,8 @@ import (
 type ClientWithMiniRedisTestSuite struct {
 	suite.Suite
 
+	config     *cfgMocks.Config
+	logger     logMocks.LoggerMock
 	settings   *redis.Settings
 	server     *miniredis.Miniredis
 	baseClient *baseRedis.Client
@@ -33,8 +38,9 @@ func (s *ClientWithMiniRedisTestSuite) SetupTest() {
 		return
 	}
 
+	s.config = new(cfgMocks.Config)
 	s.settings = &redis.Settings{}
-	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
+	s.logger = logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	executor := exec.NewDefaultExecutor()
 
 	s.baseClient = baseRedis.NewClient(&baseRedis.Options{
@@ -42,7 +48,69 @@ func (s *ClientWithMiniRedisTestSuite) SetupTest() {
 	})
 
 	s.server = server
-	s.client = redis.NewClientWithInterfaces(logger, s.baseClient, executor, s.settings)
+	s.client = redis.NewClientWithInterfaces(s.logger, s.baseClient, executor, s.settings, "")
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestNewClientWithSettings_InvalidPattern_MissingKey() {
+	s.settings.Naming.KeyPattern = "prefix-{app.env}" // Missing {key}
+
+	client, err := redis.NewClientWithSettings(s.T().Context(), s.config, s.logger, s.settings)
+
+	s.Error(err)
+	s.Nil(client)
+	s.Contains(err.Error(), "must end with {key}")
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestNewClientWithSettings_InvalidPattern_KeyNotAtEnd() {
+	s.settings.Naming.KeyPattern = "prefix-{key}-suffix"
+
+	client, err := redis.NewClientWithSettings(s.T().Context(), s.config, s.logger, s.settings)
+
+	s.Error(err)
+	s.Nil(client)
+	s.Contains(err.Error(), "must end with {key}")
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestNewClientWithSettings_FormatError() {
+	s.settings.Naming.KeyPattern = "{app.missing}-{key}"
+	s.settings.AppIdentity = cfg.AppIdentity{
+		Name: "app",
+		Env:  "env",
+	}
+
+	// Mock FormatString to return error
+	s.config.EXPECT().FormatString("{app.missing}-", mock.Anything).Return("", assert.AnError)
+
+	client, err := redis.NewClientWithSettings(s.T().Context(), s.config, s.logger, s.settings)
+
+	s.Error(err)
+	s.Nil(client)
+	s.Contains(err.Error(), "redis key naming failed")
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestClient_Prefixing() {
+	keyPrefix := "my-prefix-"
+	executor := exec.NewDefaultExecutor()
+	client := redis.NewClientWithInterfaces(s.logger, s.baseClient, executor, s.settings, keyPrefix)
+
+	ctx := s.T().Context()
+
+	// Test Get
+	// We expect the key to be prefixed in the underlying storage
+	err := s.server.Set("my-prefix-foo", "bar")
+	s.NoError(err)
+
+	val, err := client.Get(ctx, "foo")
+	s.NoError(err)
+	s.Equal("bar", val)
+
+	// Test Set
+	err = client.Set(ctx, "key", "value", time.Minute)
+	s.NoError(err)
+
+	val, err = s.server.Get("my-prefix-key")
+	s.NoError(err)
+	s.Equal("value", val)
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestGetNotFound() {
@@ -57,7 +125,7 @@ func (s *ClientWithMiniRedisTestSuite) TestGetNotFound() {
 		MaxInterval:     time.Second * 3,
 		MaxElapsedTime:  0,
 	}, "test")
-	s.client = redis.NewClientWithInterfaces(logger, s.baseClient, executor, s.settings)
+	s.client = redis.NewClientWithInterfaces(logger, s.baseClient, executor, s.settings, "")
 
 	res, err := s.client.Get(s.T().Context(), "missing")
 
@@ -729,7 +797,7 @@ func (s *ClientWithMockTestSuite) SetupTest() {
 	executor := redis.NewBackoffExecutor(logger, settings.BackoffSettings, "test")
 
 	s.redisMock = redismock.NewMock()
-	s.client = redis.NewClientWithInterfaces(logger, s.redisMock, executor, settings)
+	s.client = redis.NewClientWithInterfaces(logger, s.redisMock, executor, settings, "")
 }
 
 func (s *ClientWithMockTestSuite) TestSetWithOOM() {
