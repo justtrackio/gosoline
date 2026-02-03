@@ -50,6 +50,20 @@ type ModelId struct {
 	DomainPattern string
 }
 
+func (i ModelId) ToMap() map[string]string {
+	mss := map[string]string{
+		"name":     i.Name,
+		"app.name": i.App,
+		"app.env":  i.Env,
+	}
+
+	for key, value := range i.Tags {
+		mss[fmt.Sprintf("app.tags.%s", key)] = value
+	}
+
+	return mss
+}
+
 // format expands placeholders in the given pattern using ModelId values.
 // This is an internal method - call PadFromConfig once, then use String() for public API.
 //
@@ -211,56 +225,6 @@ func (m *ModelId) loadDomainPatternFromConfig(config ConfigProvider) error {
 	m.DomainPattern = domainPattern
 
 	return nil
-}
-
-// modelIdFromStringWithDomainPattern parses a string into a ModelId using the given domain pattern.
-// This is an internal function - use ParseModelId() for public API.
-//
-// The pattern must be "parseable" - consisting only of placeholders separated
-// by a single dot "." delimiter. For example:
-//   - "{app.tags.project}.{app.tags.family}.{app.tags.group}"
-//   - "{app.env}"
-//
-// The string is split by the delimiter, and each segment is mapped to the
-// corresponding placeholder in the pattern. The last segment is implicitly
-// treated as the model name.
-func modelIdFromStringWithDomainPattern(domainPattern, str string) (ModelId, error) {
-	if err := validateModelIdDomainPattern(domainPattern); err != nil {
-		return ModelId{}, fmt.Errorf("invalid pattern: %w", err)
-	}
-
-	placeholders := extractPlaceholders(domainPattern)
-	parts := strings.Split(str, delimiterDot)
-
-	expectedParts := len(placeholders) + 1
-	if len(parts) != expectedParts {
-		return ModelId{}, fmt.Errorf(
-			"string %q has %d segments but pattern expects %d (%d from pattern + 1 for model name)",
-			str, len(parts), expectedParts, len(placeholders),
-		)
-	}
-
-	modelId := ModelId{
-		Tags: make(map[string]string),
-	}
-
-	for i, ph := range placeholders {
-		value := parts[i]
-
-		switch {
-		case ph == PlaceholderAppEnv:
-			modelId.Env = value
-		case ph == PlaceholderAppName:
-			modelId.App = value
-		case strings.HasPrefix(ph, PlaceholderAppTags):
-			tagKey := strings.TrimPrefix(ph, PlaceholderAppTags)
-			modelId.Tags[tagKey] = value
-		}
-	}
-
-	modelId.Name = parts[len(parts)-1]
-
-	return modelId, nil
 }
 
 // validateModelIdDomainPattern checks that a pattern is valid and parseable.

@@ -21,7 +21,6 @@ type localstackComponent struct {
 	logger            log.Logger
 	endpointAddress   string
 	region            string
-	ddbNamingSettings *ddb.TableNamingSettings
 	toxiproxy         *toxiproxy.Proxy
 }
 
@@ -76,12 +75,10 @@ func (c *localstackComponent) DdbRepository(settings *ddb.Settings) (ddb.Reposit
 		return nil, fmt.Errorf("failed to pad model id from config: %w", err)
 	}
 
-	tableName, err := ddb.GetTableNameWithSettings(settings, c.ddbNamingSettings)
+	metadataFactory, err := ddb.NewMetadataFactory(c.config, settings)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get table name: %w", err)
+		return nil, fmt.Errorf("failed to create ddb metadata factory: %w", err)
 	}
-
-	metadataFactory := ddb.NewMetadataFactoryWithInterfaces(settings, tableName)
 
 	return ddb.NewWithInterfaces(c.logger, tracer, client, metadataFactory)
 }
