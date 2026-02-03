@@ -32,6 +32,8 @@ func ParseModelId(config ConfigProvider, s string) (ModelId, error) {
 		return ModelId{}, fmt.Errorf("failed to parse model id %q with domain pattern %q: %w", s, domainPattern, err)
 	}
 
+	id.DomainPattern = domainPattern
+
 	return id, nil
 }
 

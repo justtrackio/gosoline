@@ -107,6 +107,23 @@ Unlike other naming patterns, the `ModelId` domain pattern **must** use dots (`.
 *   Model Identity: `env=prod`, `project=logistics`, `name=Shipment`
 *   Result: `logistics.prod.Shipment`
 
+### Kafka
+Kafka supports naming for both Topics and Consumer Groups.
+
+**Topic Config Key:** `kafka.naming.topic_pattern`
+**Topic Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}`
+
+| Macro | Description |
+|-------|-------------|
+| `{topicId}` | The logical topic name |
+
+**Consumer Group Config Key:** `kafka.naming.group_pattern`
+**Group Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{groupId}`
+
+| Macro | Description |
+|-------|-------------|
+| `{groupId}` | The logical consumer group ID |
+
 ### Redis
 Redis has patterns for both the server address (for service discovery) and key namespacing.
 
