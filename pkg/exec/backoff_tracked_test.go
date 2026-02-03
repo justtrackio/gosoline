@@ -11,12 +11,24 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type TrackedBackOffTestSuite struct {
-	suite.Suite
-	fakeClock clock.FakeClock
-	settings  *exec.BackoffSettings
-	tracker   exec.ElapsedTimeTracker
-	bo        *exec.TrackedBackOff
+type (
+	TrackedBackOffTestSuite struct {
+		suite.Suite
+		fakeClock clock.FakeClock
+		settings  *exec.BackoffSettings
+		tracker   exec.ElapsedTimeTracker
+		bo        *exec.TrackedBackOff
+	}
+	DefaultTrackedBackoffTestSuite struct {
+		TrackedBackOffTestSuite
+	}
+	ErrorTriggeredTrackedBackoffTestSuite struct {
+		TrackedBackOffTestSuite
+	}
+)
+
+func TestDefaultTrackedBackoffTestSuite(t *testing.T) {
+	suite.Run(t, new(DefaultTrackedBackoffTestSuite))
 }
 
 func (s *TrackedBackOffTestSuite) SetupTest() {
@@ -26,11 +38,25 @@ func (s *TrackedBackOffTestSuite) SetupTest() {
 		MaxInterval:     1 * time.Second,
 		MaxElapsedTime:  5 * time.Second,
 	}
+}
+
+func (s *DefaultTrackedBackoffTestSuite) SetupTest() {
+	s.TrackedBackOffTestSuite.SetupTest()
+	s.tracker = exec.NewDefaultElapsedTimeTrackerWithInterfaces(s.fakeClock)
+	s.bo = exec.NewTrackedBackOff(s.settings, s.tracker)
+}
+
+func TestErrorTriggeredTrackedBackoffTestSuite(t *testing.T) {
+	suite.Run(t, new(ErrorTriggeredTrackedBackoffTestSuite))
+}
+
+func (s *ErrorTriggeredTrackedBackoffTestSuite) SetupTest() {
+	s.TrackedBackOffTestSuite.SetupTest()
 	s.tracker = exec.NewErrorTriggeredElapsedTimeTrackerWithInterfaces(s.fakeClock)
 	s.bo = exec.NewTrackedBackOff(s.settings, s.tracker)
 }
 
-func (s *TrackedBackOffTestSuite) TestNextBackOff_WithDefaultTracker() {
+func (s *DefaultTrackedBackoffTestSuite) TestNextBackOff_WithDefaultTracker() {
 	s.tracker.Start()
 	// First backoff should return an interval
 	interval := s.bo.NextBackOff()
@@ -45,7 +71,19 @@ func (s *TrackedBackOffTestSuite) TestNextBackOff_WithDefaultTracker() {
 	s.Equal(backoff.Stop, interval)
 }
 
-func (s *TrackedBackOffTestSuite) TestNextBackOff_WithErrorTriggeredTracker() {
+func (s *DefaultTrackedBackoffTestSuite) TestNextBackOff_NoMaxElapsedTime() {
+	s.settings.MaxElapsedTime = 0 // disabled
+	s.bo = exec.NewTrackedBackOff(s.settings, s.tracker)
+	s.tracker.Start()
+
+	// Even after a very long time, should not stop
+	s.fakeClock.Advance(24 * time.Hour)
+
+	interval := s.bo.NextBackOff()
+	s.NotEqual(backoff.Stop, interval, "should never stop when MaxElapsedTime is 0")
+}
+
+func (s *ErrorTriggeredTrackedBackoffTestSuite) TestNextBackOff_WithErrorTriggeredTracker() {
 	s.tracker.Start()
 
 	// Simulate blocking for 10 seconds before first error (e.g., Kafka poll)
@@ -73,7 +111,7 @@ func (s *TrackedBackOffTestSuite) TestNextBackOff_WithErrorTriggeredTracker() {
 	s.Equal(backoff.Stop, interval, "should stop after max elapsed time since first error")
 }
 
-func (s *TrackedBackOffTestSuite) TestNextBackOff_ErrorTriggeredTracker_ResetOnSuccess() {
+func (s *ErrorTriggeredTrackedBackoffTestSuite) TestNextBackOff_ErrorTriggeredTracker_ResetOnSuccess() {
 	s.tracker.Start()
 
 	// Error occurs
@@ -105,7 +143,7 @@ func (s *TrackedBackOffTestSuite) TestNextBackOff_ErrorTriggeredTracker_ResetOnS
 	s.Equal(backoff.Stop, interval, "should stop after exceeding new budget")
 }
 
-func (s *TrackedBackOffTestSuite) TestNextBackOff_NoMaxElapsedTime() {
+func (s *ErrorTriggeredTrackedBackoffTestSuite) TestNextBackOff_NoMaxElapsedTime() {
 	s.settings.MaxElapsedTime = 0 // disabled
 	s.bo = exec.NewTrackedBackOff(s.settings, s.tracker)
 	s.tracker.Start()
@@ -115,8 +153,4 @@ func (s *TrackedBackOffTestSuite) TestNextBackOff_NoMaxElapsedTime() {
 
 	interval := s.bo.NextBackOff()
 	s.NotEqual(backoff.Stop, interval, "should never stop when MaxElapsedTime is 0")
-}
-
-func TestTrackedBackOffTestSuite(t *testing.T) {
-	suite.Run(t, new(TrackedBackOffTestSuite))
 }

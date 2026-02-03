@@ -68,7 +68,6 @@ func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, se
 		[]exec.ErrorChecker{
 			CheckKafkaRetryableError(reader),
 		},
-		nil,
 		exec.WithElapsedTimeTrackerFactory(func() exec.ElapsedTimeTracker {
 			return exec.NewErrorTriggeredElapsedTimeTracker()
 		}),
