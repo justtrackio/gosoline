@@ -36,6 +36,7 @@ func (p *prefixedPipeliner) MSet(ctx context.Context, pairs ...any) *baseRedis.S
 	if err != nil {
 		cmd := baseRedis.NewStatusCmd(ctx, "mset")
 		cmd.SetErr(err)
+
 		return cmd
 	}
 
@@ -47,6 +48,7 @@ func (p *prefixedPipeliner) Expire(ctx context.Context, key string, expiration t
 	if err != nil {
 		cmd := baseRedis.NewBoolCmd(ctx, "expire")
 		cmd.SetErr(err)
+
 		return cmd
 	}
 
@@ -58,6 +60,7 @@ func (p *prefixedPipeliner) ExpireNX(ctx context.Context, key string, expiration
 	if err != nil {
 		cmd := baseRedis.NewBoolCmd(ctx, "expire")
 		cmd.SetErr(err)
+
 		return cmd
 	}
 
@@ -69,6 +72,7 @@ func (p *prefixedPipeliner) Incr(ctx context.Context, key string) *baseRedis.Int
 	if err != nil {
 		cmd := baseRedis.NewIntCmd(ctx, "incr")
 		cmd.SetErr(err)
+
 		return cmd
 	}
 
@@ -80,6 +84,7 @@ func (p *prefixedPipeliner) TTL(ctx context.Context, key string) *baseRedis.Dura
 	if err != nil {
 		cmd := baseRedis.NewDurationCmd(ctx, time.Duration(0), "ttl")
 		cmd.SetErr(err)
+
 		return cmd
 	}
 

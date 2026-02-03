@@ -718,6 +718,7 @@ func (c *redisClient) ZRangeArgs(ctx context.Context, args ZRangeArgs) ([]string
 
 	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
 		zRangeArgs.Key = keys[0]
+
 		return c.base.ZRangeArgs(ctx, zRangeArgs)
 	}, args.Key)
 
@@ -729,6 +730,7 @@ func (c *redisClient) ZRangeArgsWithScore(ctx context.Context, args ZRangeArgs) 
 
 	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
 		zRangeArgs.Key = keys[0]
+
 		return c.base.ZRangeArgsWithScores(ctx, zRangeArgs)
 	}, args.Key)
 

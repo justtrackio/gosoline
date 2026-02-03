@@ -545,62 +545,70 @@ func (s *Struct) doWrite(target any, sourceValues *MapX) error {
 	st = st.Elem()
 	sv = sv.Elem()
 
-	var tag *StructTag
-	var ok bool
-
 	for i := 0; i < st.NumField(); i++ {
 		targetField := st.Field(i)
 		targetValue := sv.Field(i)
 
-		// skip unexported fields
-		if targetField.PkgPath != "" {
-			continue
+		if err := s.doWriteField(targetField, targetValue, sourceValues); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Struct) doWriteField(targetField reflect.StructField, targetValue reflect.Value, sourceValues *MapX) error {
+	var tag *StructTag
+	var ok bool
+
+	// skip unexported fields
+	if targetField.PkgPath != "" {
+		return nil
+	}
+
+	if !targetValue.IsValid() {
+		return fmt.Errorf("field %s is invalid", targetField.Name)
+	}
+
+	if !targetValue.CanSet() {
+		return fmt.Errorf("field %s is not addressable", targetField.Name)
+	}
+
+	if targetField.Anonymous {
+		if err := s.doWriteAnonymous(targetField.Name, targetValue, sourceValues); err != nil {
+			return err
 		}
 
-		if !targetValue.IsValid() {
-			return fmt.Errorf("field %s is invalid", targetField.Name)
-		}
+		return nil
+	}
 
-		if !targetValue.CanSet() {
-			return fmt.Errorf("field %s is not addressable", targetField.Name)
-		}
+	if tag, ok = s.readTag(targetField.Tag, targetField.Name); !ok {
+		return nil
+	}
 
-		if targetField.Anonymous {
-			if err := s.doWriteAnonymous(targetField.Name, targetValue, sourceValues); err != nil {
+	// Handle prefix option for struct fields
+	if tag.Prefix != "" {
+		targetKind := targetValue.Kind()
+		isStruct := targetKind == reflect.Struct && targetValue.Type() != reflect.TypeOf(time.Time{})
+		isPtrToStruct := targetKind == reflect.Ptr && targetValue.Type().Elem().Kind() == reflect.Struct
+
+		if isStruct || isPtrToStruct {
+			if err := s.doWritePrefixedStruct(tag, targetValue, sourceValues); err != nil {
 				return err
 			}
 
-			continue
+			return nil
 		}
+	}
 
-		if tag, ok = s.readTag(targetField.Tag, targetField.Name); !ok {
-			continue
-		}
+	// Use findMatchingKey instead of direct Has() check
+	matchedKey := s.findMatchingKey(sourceValues, tag.Name)
+	if matchedKey == "" {
+		return nil
+	}
 
-		// Handle prefix option for struct fields
-		if tag.Prefix != "" {
-			targetKind := targetValue.Kind()
-			isStruct := targetKind == reflect.Struct && targetValue.Type() != reflect.TypeOf(time.Time{})
-			isPtrToStruct := targetKind == reflect.Ptr && targetValue.Type().Elem().Kind() == reflect.Struct
-
-			if isStruct || isPtrToStruct {
-				if err := s.doWritePrefixedStruct(tag, targetValue, sourceValues); err != nil {
-					return err
-				}
-
-				continue
-			}
-		}
-
-		// Use findMatchingKey instead of direct Has() check
-		matchedKey := s.findMatchingKey(sourceValues, tag.Name)
-		if matchedKey == "" {
-			continue
-		}
-
-		if err := s.doWriteValue(tag, matchedKey, sourceValues, targetValue); err != nil {
-			return err
-		}
+	if err := s.doWriteValue(tag, matchedKey, sourceValues, targetValue); err != nil {
+		return err
 	}
 
 	return nil
@@ -981,6 +989,7 @@ func (s *Struct) readTag(sourceTag reflect.StructTag, fieldName string) (*Struct
 		if s.settings.DefaultToFieldName && fieldName != "" {
 			return &StructTag{Name: fieldName}, true
 		}
+
 		return nil, ok
 	}
 

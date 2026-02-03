@@ -23,10 +23,10 @@ type RedisListOutputSettings struct {
 }
 
 type redisListOutput struct {
-	logger            log.Logger
-	metricWriter      metric.Writer
-	client            redis.Client
-	settings          *RedisListOutputSettings
+	logger       log.Logger
+	metricWriter metric.Writer
+	client       redis.Client
+	settings     *RedisListOutputSettings
 }
 
 func NewRedisListOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *RedisListOutputSettings) (Output, error) {
@@ -49,10 +49,10 @@ func NewRedisListOutput(ctx context.Context, config cfg.Config, logger log.Logge
 
 func NewRedisListOutputWithInterfaces(config cfg.Config, logger log.Logger, mw metric.Writer, client redis.Client, settings *RedisListOutputSettings) Output {
 	return &redisListOutput{
-		logger:            logger,
-		metricWriter:      mw,
-		client:            client,
-		settings:          settings,
+		logger:       logger,
+		metricWriter: mw,
+		client:       client,
+		settings:     settings,
 	}
 }
 
