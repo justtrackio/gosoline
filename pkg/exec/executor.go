@@ -27,7 +27,7 @@ type Executor interface {
 }
 
 func NewExecutor(logger log.Logger, res *ExecutableResource, settings *BackoffSettings, checks []ErrorChecker, notifier ...Notify) Executor {
-	return NewBackoffExecutor(logger, res, settings, checks, notifier...)
+	return NewBackoffExecutor(logger, res, settings, checks, WithNotifiers(notifier...))
 }
 
 type DefaultExecutor struct{}

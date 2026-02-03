@@ -31,18 +31,19 @@ func WithElapsedTimeTrackerFactory(factory func() ElapsedTimeTracker) BackoffExe
 	}
 }
 
-func NewBackoffExecutor(logger log.Logger, res *ExecutableResource, settings *BackoffSettings, checks []ErrorChecker, notifier ...Notify) *BackoffExecutor {
-	return NewBackoffExecutorWithOptions(logger, res, settings, checks, notifier)
+// WithNotifiers adds notifiers that will be called on each retry attempt.
+func WithNotifiers(notifiers ...Notify) BackoffExecutorOption {
+	return func(e *BackoffExecutor) {
+		e.notifier = append(e.notifier, notifiers...)
+	}
 }
 
-// NewBackoffExecutorWithOptions creates a BackoffExecutor with functional options.
-// Use this when you need to customize behavior like elapsed time tracking.
-func NewBackoffExecutorWithOptions(
+// NewBackoffExecutor creates a BackoffExecutor with functional options.
+func NewBackoffExecutor(
 	logger log.Logger,
 	res *ExecutableResource,
 	settings *BackoffSettings,
 	checks []ErrorChecker,
-	notifier []Notify,
 	opts ...BackoffExecutorOption,
 ) *BackoffExecutor {
 	e := &BackoffExecutor{
@@ -51,7 +52,6 @@ func NewBackoffExecutorWithOptions(
 		resource:           res,
 		checks:             checks,
 		settings:           settings,
-		notifier:           notifier,
 		timeTrackerFactory: func() ElapsedTimeTracker { return NewDefaultElapsedTimeTracker() },
 	}
 

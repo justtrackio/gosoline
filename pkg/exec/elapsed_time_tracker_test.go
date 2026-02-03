@@ -7,126 +7,129 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestDefaultElapsedTimeTracker_MeasuresFromStart(t *testing.T) {
-	fakeClock := clock.NewFakeClock()
-	tracker := exec.NewDefaultElapsedTimeTrackerWithInterfaces(fakeClock)
+type (
+	TimeTrackerTestSuite struct {
+		suite.Suite
+		fakeClock clock.FakeClock
+		tracker   exec.ElapsedTimeTracker
+	}
 
-	tracker.Start()
-	fakeClock.Advance(5 * time.Second)
+	DefaultElapsedTimeTrackerTestSuite        TimeTrackerTestSuite
+	ErrorTriggeredElapsedTimeTrackerTestSuite TimeTrackerTestSuite
+)
 
-	elapsed := tracker.Elapsed()
-	assert.Equal(t, 5*time.Second, elapsed)
+func TestDefaultElapsedTimeTrackerTestSuite(t *testing.T) {
+	suite.Run(t, new(DefaultElapsedTimeTrackerTestSuite))
 }
 
-func TestDefaultElapsedTimeTracker_OnErrorDoesNotAffectElapsed(t *testing.T) {
-	fakeClock := clock.NewFakeClock()
-	tracker := exec.NewDefaultElapsedTimeTrackerWithInterfaces(fakeClock)
-
-	tracker.Start()
-	fakeClock.Advance(3 * time.Second)
-	tracker.OnError(assert.AnError)
-	fakeClock.Advance(2 * time.Second)
-
-	elapsed := tracker.Elapsed()
-	assert.Equal(t, 5*time.Second, elapsed)
+func (s *DefaultElapsedTimeTrackerTestSuite) SetupTest() {
+	s.fakeClock = clock.NewFakeClock()
+	s.tracker = exec.NewDefaultElapsedTimeTrackerWithInterfaces(s.fakeClock)
 }
 
-func TestDefaultElapsedTimeTracker_OnSuccessDoesNotAffectElapsed(t *testing.T) {
-	fakeClock := clock.NewFakeClock()
-	tracker := exec.NewDefaultElapsedTimeTrackerWithInterfaces(fakeClock)
-
-	tracker.Start()
-	fakeClock.Advance(3 * time.Second)
-	tracker.OnSuccess()
-	fakeClock.Advance(2 * time.Second)
-
-	elapsed := tracker.Elapsed()
-	assert.Equal(t, 5*time.Second, elapsed)
+func TestErrorTriggeredElapsedTimeTrackerTestSuite(t *testing.T) {
+	suite.Run(t, new(ErrorTriggeredElapsedTimeTrackerTestSuite))
 }
 
-func TestErrorTriggeredElapsedTimeTracker_ReturnsZeroBeforeError(t *testing.T) {
-	fakeClock := clock.NewFakeClock()
-	tracker := exec.NewErrorTriggeredElapsedTimeTrackerWithInterfaces(fakeClock)
-
-	tracker.Start()
-	fakeClock.Advance(10 * time.Second)
-
-	elapsed := tracker.Elapsed()
-	assert.Equal(t, time.Duration(0), elapsed)
+func (s *ErrorTriggeredElapsedTimeTrackerTestSuite) SetupTest() {
+	s.fakeClock = clock.NewFakeClock()
+	s.tracker = exec.NewErrorTriggeredElapsedTimeTrackerWithInterfaces(s.fakeClock)
 }
 
-func TestErrorTriggeredElapsedTimeTracker_MeasuresFromFirstError(t *testing.T) {
-	fakeClock := clock.NewFakeClock()
-	tracker := exec.NewErrorTriggeredElapsedTimeTrackerWithInterfaces(fakeClock)
+func (s *DefaultElapsedTimeTrackerTestSuite) TestDefaultElapsedTimeTracker_MeasuresFromStart() {
+	s.tracker.Start()
+	s.fakeClock.Advance(5 * time.Second)
 
-	tracker.Start()
-	fakeClock.Advance(10 * time.Second) // Blocking time - should not count
-	tracker.OnError(assert.AnError)
-	fakeClock.Advance(3 * time.Second)
-
-	elapsed := tracker.Elapsed()
-	assert.Equal(t, 3*time.Second, elapsed)
+	elapsed := s.tracker.Elapsed()
+	s.Equal(5*time.Second, elapsed)
 }
 
-func TestErrorTriggeredElapsedTimeTracker_SecondErrorDoesNotResetTimer(t *testing.T) {
-	fakeClock := clock.NewFakeClock()
-	tracker := exec.NewErrorTriggeredElapsedTimeTrackerWithInterfaces(fakeClock)
+func (s *DefaultElapsedTimeTrackerTestSuite) TestDefaultElapsedTimeTracker_OnErrorDoesNotAffectElapsed() {
+	s.tracker.Start()
+	s.fakeClock.Advance(3 * time.Second)
+	s.tracker.OnError(assert.AnError)
+	s.fakeClock.Advance(2 * time.Second)
 
-	tracker.Start()
-	tracker.OnError(assert.AnError)
-	fakeClock.Advance(2 * time.Second)
-	tracker.OnError(assert.AnError) // Second error should not reset
-	fakeClock.Advance(3 * time.Second)
-
-	elapsed := tracker.Elapsed()
-	assert.Equal(t, 5*time.Second, elapsed)
+	elapsed := s.tracker.Elapsed()
+	s.Equal(5*time.Second, elapsed)
 }
 
-func TestErrorTriggeredElapsedTimeTracker_SuccessResetsTimer(t *testing.T) {
-	fakeClock := clock.NewFakeClock()
-	tracker := exec.NewErrorTriggeredElapsedTimeTrackerWithInterfaces(fakeClock)
+func (s *DefaultElapsedTimeTrackerTestSuite) TestDefaultElapsedTimeTracker_OnSuccessDoesNotAffectElapsed() {
+	s.tracker.Start()
+	s.fakeClock.Advance(3 * time.Second)
+	s.tracker.OnSuccess()
+	s.fakeClock.Advance(2 * time.Second)
 
-	tracker.Start()
-	tracker.OnError(assert.AnError)
-	fakeClock.Advance(5 * time.Second)
-	tracker.OnSuccess() // Should reset
-	fakeClock.Advance(10 * time.Second)
+	elapsed := s.tracker.Elapsed()
+	s.Equal(5*time.Second, elapsed)
+}
+
+func (s *ErrorTriggeredElapsedTimeTrackerTestSuite) TestErrorTriggeredElapsedTimeTracker_ReturnsZeroBeforeError() {
+	s.tracker.Start()
+	s.fakeClock.Advance(10 * time.Second)
+
+	elapsed := s.tracker.Elapsed()
+	s.Equal(time.Duration(0), elapsed)
+}
+
+func (s *ErrorTriggeredElapsedTimeTrackerTestSuite) TestErrorTriggeredElapsedTimeTracker_MeasuresFromFirstError() {
+	s.tracker.Start()
+	s.fakeClock.Advance(10 * time.Second) // Blocking time - should not count
+	s.tracker.OnError(assert.AnError)
+	s.fakeClock.Advance(3 * time.Second)
+
+	elapsed := s.tracker.Elapsed()
+	s.Equal(3*time.Second, elapsed)
+}
+
+func (s *ErrorTriggeredElapsedTimeTrackerTestSuite) TestErrorTriggeredElapsedTimeTracker_SecondErrorDoesNotResetTimer() {
+	s.tracker.Start()
+	s.tracker.OnError(assert.AnError)
+	s.fakeClock.Advance(2 * time.Second)
+	s.tracker.OnError(assert.AnError) // Second error should not reset
+	s.fakeClock.Advance(3 * time.Second)
+
+	elapsed := s.tracker.Elapsed()
+	s.Equal(5*time.Second, elapsed)
+}
+
+func (s *ErrorTriggeredElapsedTimeTrackerTestSuite) TestErrorTriggeredElapsedTimeTracker_SuccessResetsTimer() {
+	s.tracker.Start()
+	s.tracker.OnError(assert.AnError)
+	s.fakeClock.Advance(5 * time.Second)
+	s.tracker.OnSuccess() // Should reset
+	s.fakeClock.Advance(10 * time.Second)
 
 	// After success, elapsed should be zero again
-	elapsed := tracker.Elapsed()
-	assert.Equal(t, time.Duration(0), elapsed)
+	elapsed := s.tracker.Elapsed()
+	s.Equal(time.Duration(0), elapsed)
 }
 
-func TestErrorTriggeredElapsedTimeTracker_ErrorAfterSuccessStartsFresh(t *testing.T) {
-	fakeClock := clock.NewFakeClock()
-	tracker := exec.NewErrorTriggeredElapsedTimeTrackerWithInterfaces(fakeClock)
+func (s *ErrorTriggeredElapsedTimeTrackerTestSuite) TestErrorTriggeredElapsedTimeTracker_ErrorAfterSuccessStartsFresh() {
+	s.tracker.Start()
+	s.tracker.OnError(assert.AnError)
+	s.fakeClock.Advance(5 * time.Second)
+	s.tracker.OnSuccess() // Reset
+	s.fakeClock.Advance(10 * time.Second)
+	s.tracker.OnError(assert.AnError) // New error
+	s.fakeClock.Advance(2 * time.Second)
 
-	tracker.Start()
-	tracker.OnError(assert.AnError)
-	fakeClock.Advance(5 * time.Second)
-	tracker.OnSuccess() // Reset
-	fakeClock.Advance(10 * time.Second)
-	tracker.OnError(assert.AnError) // New error
-	fakeClock.Advance(2 * time.Second)
-
-	elapsed := tracker.Elapsed()
-	assert.Equal(t, 2*time.Second, elapsed)
+	elapsed := s.tracker.Elapsed()
+	s.Equal(2*time.Second, elapsed)
 }
 
-func TestErrorTriggeredElapsedTimeTracker_StartResetsState(t *testing.T) {
-	fakeClock := clock.NewFakeClock()
-	tracker := exec.NewErrorTriggeredElapsedTimeTrackerWithInterfaces(fakeClock)
-
-	tracker.Start()
-	tracker.OnError(assert.AnError)
-	fakeClock.Advance(5 * time.Second)
+func (s *ErrorTriggeredElapsedTimeTrackerTestSuite) TestErrorTriggeredElapsedTimeTracker_StartResetsState() {
+	s.tracker.Start()
+	s.tracker.OnError(assert.AnError)
+	s.fakeClock.Advance(5 * time.Second)
 
 	// Start again should reset everything
-	tracker.Start()
-	fakeClock.Advance(10 * time.Second)
+	s.tracker.Start()
+	s.fakeClock.Advance(10 * time.Second)
 
-	elapsed := tracker.Elapsed()
-	assert.Equal(t, time.Duration(0), elapsed)
+	elapsed := s.tracker.Elapsed()
+	s.Equal(time.Duration(0), elapsed)
 }
