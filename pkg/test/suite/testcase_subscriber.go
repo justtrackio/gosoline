@@ -107,7 +107,13 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (TestCaseRun
 			}
 
 			tc := ret[0].Interface().(SubscriberTestCase)
-			attrs := mdlsub.CreateMessageAttributes(tc.GetModelId(), "create", tc.GetVersion())
+
+			modelId, err := mdl.ParseModelId(suite.Env().Config(), tc.GetModelId())
+			if err != nil {
+				assert.FailNow(t, "invalid model id for subscription", "the test case for the subscription of %s has an invalid model id: %v", tc.GetName(), err)
+			}
+
+			attrs := mdlsub.CreateMessageAttributes(modelId, "create", tc.GetVersion())
 
 			sourceModel, err := mdlsub.UnmarshalSubscriberSourceModel(suite.Env().Config(), tc.GetName())
 			if err != nil {
