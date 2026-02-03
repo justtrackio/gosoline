@@ -33,6 +33,21 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		return false, nil
 	}
 
+	settings, err := unmarshalSettings(config)
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal mdlsub settings: %w", err)
+	}
+
+	for name, subscriberSettings := range settings.Subscribers {
+		if err := processSubscriberConfig(config, name, subscriberSettings); err != nil {
+			return false, err
+		}
+	}
+
+	return true, nil
+}
+
+func processSubscriberConfig(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) error {
 	var ok bool
 	var err error
 	var consumerName string
@@ -40,56 +55,49 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	var outputPostProcessor SubscriberOutputConfigPostProcessor
 	var inputOption, outputOption cfg.Option
 
-	settings, err := unmarshalSettings(config)
-	if err != nil {
-		return false, fmt.Errorf("failed to unmarshal mdlsub settings: %w", err)
+	subscriberKey := GetSubscriberConfigKey(name)
+
+	consumerSettings := &stream.ConsumerSettings{}
+	if err = config.UnmarshalDefaults(consumerSettings); err != nil {
+		return fmt.Errorf("can not unmarshal consumer settings for subscriber %s: %w", name, err)
 	}
 
-	for name, subscriberSettings := range settings.Subscribers {
-		subscriberKey := GetSubscriberConfigKey(name)
-
-		consumerSettings := &stream.ConsumerSettings{}
-		if err = config.UnmarshalDefaults(consumerSettings); err != nil {
-			return false, fmt.Errorf("can not unmarshal consumer settings for subscriber %s: %w", name, err)
-		}
-
-		if consumerSettings.Input, err = GetSubscriberFQN(config, name, subscriberSettings.SourceModel); err != nil {
-			return false, fmt.Errorf("can not get subscriber fqn for subscriber %s: %w", name, err)
-		}
-
-		if consumerName, err = GetSubscriberFQN(config, name, subscriberSettings.SourceModel); err != nil {
-			return false, fmt.Errorf("can not get subscriber fqn for subscriber %s: %w", name, err)
-		}
-
-		consumerKey := stream.ConfigurableConsumerKey(consumerName)
-
-		configOptions := []cfg.Option{
-			cfg.WithConfigSetting(consumerKey, consumerSettings, cfg.SkipExisting),
-			cfg.WithConfigSetting(subscriberKey, subscriberSettings),
-		}
-
-		if inputPostProcessor, ok = subscriberInputConfigPostProcessors[subscriberSettings.Input]; ok {
-			if inputOption, err = inputPostProcessor(config, name, subscriberSettings); err != nil {
-				return false, fmt.Errorf("can not process input config for subscriber %s: %w", name, err)
-			}
-
-			configOptions = append(configOptions, inputOption)
-		}
-
-		if outputPostProcessor, ok = subscriberOutputConfigPostProcessors[subscriberSettings.Output]; ok {
-			if outputOption, err = outputPostProcessor(config, name, subscriberSettings); err != nil {
-				return false, fmt.Errorf("can not process output config for subscriber %s: %w", name, err)
-			}
-
-			configOptions = append(configOptions, outputOption)
-		}
-
-		if err := config.Option(configOptions...); err != nil {
-			return false, fmt.Errorf("can not apply config settings for subscriber %s: %w", name, err)
-		}
+	if consumerSettings.Input, err = GetSubscriberFQN(config, name, subscriberSettings.SourceModel); err != nil {
+		return fmt.Errorf("can not get subscriber fqn for subscriber %s: %w", name, err)
 	}
 
-	return true, nil
+	if consumerName, err = GetSubscriberFQN(config, name, subscriberSettings.SourceModel); err != nil {
+		return fmt.Errorf("can not get subscriber fqn for subscriber %s: %w", name, err)
+	}
+
+	consumerKey := stream.ConfigurableConsumerKey(consumerName)
+
+	configOptions := []cfg.Option{
+		cfg.WithConfigSetting(consumerKey, consumerSettings, cfg.SkipExisting),
+		cfg.WithConfigSetting(subscriberKey, subscriberSettings),
+	}
+
+	if inputPostProcessor, ok = subscriberInputConfigPostProcessors[subscriberSettings.Input]; ok {
+		if inputOption, err = inputPostProcessor(config, name, subscriberSettings); err != nil {
+			return fmt.Errorf("can not process input config for subscriber %s: %w", name, err)
+		}
+
+		configOptions = append(configOptions, inputOption)
+	}
+
+	if outputPostProcessor, ok = subscriberOutputConfigPostProcessors[subscriberSettings.Output]; ok {
+		if outputOption, err = outputPostProcessor(config, name, subscriberSettings); err != nil {
+			return fmt.Errorf("can not process output config for subscriber %s: %w", name, err)
+		}
+
+		configOptions = append(configOptions, outputOption)
+	}
+
+	if err := config.Option(configOptions...); err != nil {
+		return fmt.Errorf("can not apply config settings for subscriber %s: %w", name, err)
+	}
+
+	return nil
 }
 
 func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) (cfg.Option, error) {

@@ -17,11 +17,11 @@ import (
 
 type localstackComponent struct {
 	baseComponent
-	config            cfg.Config
-	logger            log.Logger
-	endpointAddress   string
-	region            string
-	toxiproxy         *toxiproxy.Proxy
+	config          cfg.Config
+	logger          log.Logger
+	endpointAddress string
+	region          string
+	toxiproxy       *toxiproxy.Proxy
 }
 
 func (c *localstackComponent) CfgOptions() []cfg.Option {
