@@ -14,27 +14,58 @@ type StreamNameSettingsAware interface {
 }
 
 type StreamNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{streamName}"`
+	StreamPattern   string `cfg:"stream_pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{streamName}"`
+	MetadataPattern string `cfg:"metadata_pattern,nodecode" default:"{app.env}-kinsumer-metadata"`
 }
 
 func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream, error) {
-	if settings.GetClientName() == "" {
-		return "", fmt.Errorf("the client name shouldn't be empty")
+	var err error
+	var namingSettings *StreamNamingSettings
+
+	if namingSettings, err = readNamingSettings(config, settings); err != nil {
+		return "", fmt.Errorf("failed to read naming settings: %w", err)
 	}
 
-	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("kinesis", settings.GetClientName()))
-	defaultPatternKey := fmt.Sprintf("%s.naming.pattern", aws.GetClientConfigKey("kinesis", "default"))
-	namingSettings := &StreamNamingSettings{}
-	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "pattern")); err != nil {
-		return "", fmt.Errorf("failed to unmarshal kinesis naming settings for %s: %w", namingKey, err)
-	}
-
-	name, err := config.FormatString(namingSettings.Pattern, settings.GetAppIdentity().ToMap(), map[string]string{
+	name, err := config.FormatString(namingSettings.StreamPattern, settings.GetAppIdentity().ToMap(), map[string]string{
 		"streamName": settings.GetStreamName(),
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to format kinesis naming settings for %s: %w", namingKey, err)
+		return "", fmt.Errorf("failed to format kinesis naming settings for %s: %w", settings.GetStreamName(), err)
 	}
 
 	return Stream(name), nil
+}
+
+func GetMetadataTableName(config cfg.Config, settings StreamNameSettingsAware) (string, error) {
+	var err error
+	var namingSettings *StreamNamingSettings
+
+	if namingSettings, err = readNamingSettings(config, settings); err != nil {
+		return "", fmt.Errorf("failed to read naming settings: %w", err)
+	}
+
+	name, err := config.FormatString(namingSettings.MetadataPattern, settings.GetAppIdentity().ToMap())
+	if err != nil {
+		return "", fmt.Errorf("failed to format kinesis metadata table naming settings: %w", err)
+	}
+
+	return name, nil
+}
+
+func readNamingSettings(config cfg.Config, settings StreamNameSettingsAware) (*StreamNamingSettings, error) {
+	if settings.GetClientName() == "" {
+		return nil, fmt.Errorf("the client name shouldn't be empty")
+	}
+
+	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("kinesis", settings.GetClientName()))
+	defaultNamingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("kinesis", "default"))
+	defaultStreamPatternKey := fmt.Sprintf("%s.stream_pattern", defaultNamingKey)
+	defaultMetadataPatternKey := fmt.Sprintf("%s.metadata_pattern", defaultNamingKey)
+
+	namingSettings := &StreamNamingSettings{}
+	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultStreamPatternKey, "stream_pattern"), cfg.UnmarshalWithDefaultsFromKey(defaultMetadataPatternKey, "metadata_pattern")); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal kinesis naming settings for %s: %w", namingKey, err)
+	}
+
+	return namingSettings, nil
 }

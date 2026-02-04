@@ -35,7 +35,7 @@
 
 Stream inputs and outputs use an `identity` block for application identity configuration.
 The `identity.name` is optional and defaults to the global `app.name` if not specified.
-The `identity.tags` must include `project`, `family`, and `group` for resource naming.
+The `identity.tags` are required only if referenced by the configured naming patterns.
 
 ### Output example (SQS)
 ```yaml

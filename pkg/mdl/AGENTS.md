@@ -18,25 +18,28 @@
 - `go test ./pkg/mdl`.
 - When macros change, rerun `go test ./pkg/{ddb,db-repo}` to ensure naming remains consistent.
 
-## ReplaceMacros method
-Use `ModelId.ReplaceMacros(pattern)` to interpolate naming patterns:
+## Usage
+To get the canonical string representation (defined by `app.model_id.domain_pattern`):
 ```go
 modelId := mdl.ModelId{Name: "users"}
 modelId.PadFromConfig(config)
-tableName := modelId.ReplaceMacros("{project}-{env}-{family}-{group}")
-// Result: "myproject-dev-myfamily-mygroup-myproject.myfamily.mygroup.users"
+canonical := modelId.String()
+// Result: "myproject.production.myfamily.mygroup.users"
 ```
 
-**Note:** `ModelId` macros are different from `cfg.NamingTemplate` macros:
+To format other strings (e.g., table names), use `config.FormatString` with `modelId.ToMap()`:
+```go
+name, err := config.FormatString("{app.tags.project}-{name}", modelId.ToMap())
+```
 
-| ModelId Macro | Description |
-|---------------|-------------|
-| `{project}` | Project from ModelId |
-| `{env}` | Environment from ModelId |
-| `{family}` | Family from ModelId |
-| `{group}` | Group from ModelId |
-| `{app}` | App from ModelId |
-| `{modelId}` | Model's string representation (automatically appended to canonical model IDs) |
+**Note:** `ModelId` fields map to `AppIdentity` style keys:
+
+| Field | Map Key |
+|-------|---------|
+| `Env` | `app.env` |
+| `App` | `app.name` |
+| `Tags` | `app.tags.<key>` |
+| `Name` | `name` |
 
 ## Related packages
 - `pkg/cfg` - `NamingTemplate` with AppIdentity macros (for AWS resource naming)
@@ -44,8 +47,7 @@ tableName := modelId.ReplaceMacros("{project}-{env}-{family}-{group}")
 - `pkg/db-repo` - uses ModelId for SQL table metadata
 
 ## Tips
-- `ModelId` macros (`{project}`, `{family}`) differ from `cfg.NamingTemplate` macros (`{app.tags.project}`, `{app.tags.family}`).
-- DynamoDB and SQL tables use `ModelId`; AWS resources (SQS, SNS, Kinesis) use `cfg.NamingTemplate`.
+- DynamoDB and SQL tables use `ModelId` (via `config.FormatString`); AWS resources (SQS, SNS, Kinesis) use `cfg.NamingTemplate`.
 - Document any new `ModelId` fields in root AGENT so downstream contributors know how to configure them.
 
 ## Canonical Model IDs

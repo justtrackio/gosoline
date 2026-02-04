@@ -16,7 +16,7 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 - `.github/workflows/`: CI pipelines—mockery check, build, golangci-lint, unit tests, race tests, integration tests.
 
 ## Day-to-day workflow for changes
-1. Capture user requirements and convert them into a todo list (use the `manage_todo_list` tool). Keep a single active item at a time.
+1. Capture user requirements and convert them into a todo list (use the `todowrite` tool). Keep a single active item at a time.
 2. Survey the relevant package (readme, docs, nested AGENTS.md) before editing code.
 3. Edit Go sources and immediately format using `gofumpt -w <files>`.
 4. Regenerate artifacts after interface changes:
@@ -30,13 +30,13 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 7. Update AGENTS.md files if your changes affect package structure, APIs, or workflows documented there. Check both the root `AGENTS.md` and any package-specific `AGENTS.md` (e.g., `pkg/<package>/AGENTS.md`).
 8. Summarize work with requirement coverage, commands executed, and pending follow-ups. Never stage or commit; CI and reviewers expect clean diffs only.
 
-## GitHub MCP server workflow
-- **Repository:** `justtrackio/gosoline`. Pass owner `justtrackio` and name `gosoline` to GitHub MCP tools.
-- **Search issues/PRs:** Use `github-pull-request_formSearchQuery` to convert natural language to GitHub search syntax, then execute with `github-pull-request_doSearch`. Filter by state, labels, or assignees as needed.
-- **Inspect an issue:** Fetch issue details with `github-pull-request_issue_fetch` by supplying `repo: {owner: "justtrackio", name: "gosoline"}` and the `issueNumber`.
-- **Active PR context:** Use `github-pull-request_activePullRequest` to get details about the currently checked-out PR, including title, description, changed files, review comments, and CI status.
-- **Suggest fixes:** Use `github-pull-request_suggest-fix` to analyze an issue and propose implementation approaches.
-- **Pull requests:** Do not create PRs yourself. Use `github-pull-request_openPullRequest` to inspect the currently visible PR if needed for review context.
+## GitHub workflow
+- **Repository:** `justtrackio/gosoline`.
+- **Tooling:** Use the `gh` CLI via the `bash` tool for all GitHub operations.
+- **Search:** Use `gh issue list` or `gh pr list` with filters.
+- **Inspect:** Use `gh issue view <number>` or `gh pr view <number>` to see details.
+- **Context:** Use `gh pr view` to inspect the PR associated with the current branch.
+- **Actions:** Do not create PRs unless explicitly instructed. Use `gh pr create` when requested.
 
 ## Git contribution rules
 - **Branch creation:** Never create branches manually. Let maintainers handle branch creation.

@@ -113,14 +113,15 @@ type metadataRepository struct {
 	finishedLck sync.Mutex
 }
 
-func NewMetadataRepository(
-	ctx context.Context,
-	config cfg.Config,
-	logger log.Logger,
-	stream Stream,
-	clientId ClientId,
-	settings Settings,
-) (MetadataRepository, error) {
+func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Logger, stream Stream, clientId ClientId, settings Settings) (MetadataRepository, error) {
+	var err error
+	var repo ddb.Repository
+	var tableName string
+
+	if tableName, err = GetMetadataTableName(config, settings); err != nil {
+		return nil, fmt.Errorf("can not get metadata table name: %w", err)
+	}
+
 	ddbSettings := &ddb.Settings{
 		ClientName: settings.ClientName,
 		ModelId: mdl.ModelId{
@@ -132,11 +133,11 @@ func NewMetadataRepository(
 		Main: ddb.MainSettings{
 			Model: &FullRecord{},
 		},
+		TableNamingSettings: ddb.TableNamingSettings{
+			Pattern: tableName,
+		},
 		DisableTracing: true,
 	}
-
-	var err error
-	var repo ddb.Repository
 
 	if repo, err = ddb.NewRepository(ctx, config, logger, ddbSettings); err != nil {
 		return nil, fmt.Errorf("can not create ddb repository: %w", err)
