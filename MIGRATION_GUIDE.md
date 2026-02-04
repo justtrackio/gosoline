@@ -257,3 +257,100 @@ export GOSO_CLOUD_AWS_SQS_CLIENTS_DEFAULT_NAMING_PATTERN="{app.env}-{queueId}"
 # Set a redis key prefix
 export GOSO_REDIS_CLIENTS_DEFAULT_NAMING_KEY_PATTERN="{app.name}:{key}"
 ```
+
+## 6. Stream Input/Output Configuration
+
+The configuration for stream inputs and outputs has been updated to use the new `AppIdentity` structure.
+
+### General Change
+For most inputs (Redis) and outputs (Kafka, Kinesis, Redis, SNS, SQS), the flat fields `project`, `family`, `group`, and `application` have been replaced by an `identity` block.
+
+**Old Output Config:**
+```yaml
+stream:
+  output:
+    my-output:
+      type: sqs
+      project: my-project
+      family: my-family
+      group: my-group
+      queue_id: my-queue
+```
+
+**New Output Config:**
+```yaml
+stream:
+  output:
+    my-output:
+      type: sqs
+      identity:
+        tags:
+          project: my-project
+          family: my-family
+          group: my-group
+      queue_id: my-queue
+```
+
+### SQS Input
+For SQS inputs, the `target_*` fields for identity have been grouped into `target_identity`.
+
+**Old:**
+```yaml
+stream:
+  input:
+    my-input:
+      type: sqs
+      target_family: my-family
+      target_group: my-group
+      target_queue_id: my-queue
+```
+
+**New:**
+```yaml
+stream:
+  input:
+    my-input:
+      type: sqs
+      target_identity:
+        tags:
+          family: my-family
+          group: my-group
+      target_queue_id: my-queue
+```
+
+### SNS Input
+For SNS inputs, the consumer identity and the target topic identities have been updated.
+
+**Old:**
+```yaml
+stream:
+  input:
+    my-sns-input:
+      type: sns
+      id: my-consumer
+      family: my-family
+      group: my-group
+      targets:
+        - family: target-family
+          group: target-group
+          topic_id: target-topic
+```
+
+**New:**
+```yaml
+stream:
+  input:
+    my-sns-input:
+      type: sns
+      id: my-consumer
+      identity:
+        tags:
+          family: my-family
+          group: my-group
+      targets:
+        - identity:
+            tags:
+              family: target-family
+              group: target-group
+          topic_id: target-topic
+```
