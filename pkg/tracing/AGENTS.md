@@ -1,4 +1,4 @@
-ru# Tracing Package Agent Guide
+# Tracing Package Agent Guide
 
 ## Scope
 - Distributed tracing via AWS X-Ray and OpenTelemetry.

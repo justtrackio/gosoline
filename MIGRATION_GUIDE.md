@@ -191,12 +191,18 @@ This section lists the configuration keys, their old and new defaults, and the c
 *   **New Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}`
 *   **Environment Variable:** `GOSO_CLOUD_AWS_SNS_CLIENTS_DEFAULT_NAMING_PATTERN`
 
-### Kinesis Stream Naming
+### Kinesis Naming
 
-*   **Config Key:** `cloud.aws.kinesis.clients.default.naming.pattern`
+**Stream Pattern:**
+*   **Config Key:** `cloud.aws.kinesis.clients.default.naming.stream_pattern` (Renamed from `pattern`)
 *   **Old Default:** `{project}-{env}-{family}-{group}-{streamName}`
 *   **New Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{streamName}`
-*   **Environment Variable:** `GOSO_CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_PATTERN`
+*   **Environment Variable:** `GOSO_CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_STREAM_PATTERN`
+
+**Metadata Table Pattern:**
+*   **Config Key:** `cloud.aws.kinesis.clients.default.naming.metadata_pattern` (New)
+*   **New Default:** `{app.env}-kinsumer-metadata`
+*   **Environment Variable:** `GOSO_CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_METADATA_PATTERN`
 
 ### Kafka Naming
 
@@ -227,11 +233,20 @@ This section lists the configuration keys, their old and new defaults, and the c
 *   **Environment Variable:** `GOSO_METRIC_WRITER_CLOUDWATCH_NAMING_PATTERN`
 
 ### Redis Key Prefix
-
 *   **Config Key:** `redis.clients.default.naming.key_pattern`
 *   **Old Default:** N/A (Feature did not exist)
 *   **New Default:** `{key}` (No prefix)
 *   **Environment Variable:** `GOSO_REDIS_CLIENTS_DEFAULT_NAMING_KEY_PATTERN`
+
+### Blob / S3 Bucket Patterns
+If you use the `blob` package with custom bucket patterns, you must update the placeholders.
+
+*   **Config Key:** `blob.<store_name>.bucket_pattern` or `blob.default.bucket_pattern`
+*   **Old Default:** `{project}-{env}-{family}`
+*   **New Default:** `{app.tags.project}-{app.env}-{app.tags.family}`
+
+**Migration:**
+Replace old placeholders (`{project}`, `{env}`, `{family}`, `{group}`, `{app}`) with their new `AppIdentity` equivalents (`{app.tags.project}`, `{app.env}`, etc.).
 
 **Example Env Var Usage:**
 

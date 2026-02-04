@@ -51,13 +51,18 @@ Different services support additional macros specific to their context. You can 
 |-------|-------------|
 | `{topicId}` | The logical name of the topic provided in code |
 
-### AWS Kinesis (Streams)
-**Config Key:** `cloud.aws.kinesis.clients.<client_name>.naming.pattern`
-**Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{streamName}`
+### AWS Kinesis
+Kinesis configuration supports naming for both Streams and the DynamoDB Metadata table used by the Kinsumer.
+
+**Stream Config Key:** `cloud.aws.kinesis.clients.<client_name>.naming.stream_pattern`
+**Stream Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{streamName}`
 
 | Macro | Description |
 |-------|-------------|
 | `{streamName}` | The logical name of the stream provided in code |
+
+**Metadata Config Key:** `cloud.aws.kinesis.clients.<client_name>.naming.metadata_pattern`
+**Metadata Default:** `{app.env}-kinsumer-metadata`
 
 ### AWS CloudWatch (Metrics Namespace)
 CloudWatch naming configures the **Namespace** under which metrics are published.
@@ -140,6 +145,27 @@ Redis has patterns for both the server address (for service discovery) and key n
 | Macro | Description |
 |-------|-------------|
 | `{key}` | The specific key being accessed |
+
+### Blob / S3 Buckets
+The `blob` package manages S3 buckets and supports naming patterns for creating or accessing buckets.
+
+**Config Priority:**
+1. `blob.<store_name>.bucket` (Explicit override, ignores patterns)
+2. `blob.<store_name>.bucket_pattern`
+3. `blob.default.bucket_pattern`
+4. **Default:** `{app.tags.project}-{app.env}-{app.tags.family}`
+
+**Config Keys:**
+*   `blob.<store_name>.bucket_pattern`
+*   `blob.default.bucket_pattern`
+
+| Macro | Description |
+|-------|-------------|
+| `{app.env}` | Environment |
+| `{app.name}` | Application name |
+| `{app.tags.<tag>}` | Any tag from the identity |
+
+**Note:** Blob stores do not support service-specific macros like `{queueId}`.
 
 ## Configuration Example
 

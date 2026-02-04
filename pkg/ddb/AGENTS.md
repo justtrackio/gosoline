@@ -21,26 +21,26 @@
 - For changes affecting naming/macros, also test `pkg/cloud/aws/kinesis` and `pkg/stream` to ensure shared expectations.
 
 ## Naming with ModelId
-Table names are generated via `ModelId.ReplaceMacros(pattern)`. Default pattern:
+Table names are generated via `config.FormatString` using the ModelId (converted to a map). Default pattern:
 ```yaml
-ddb.default.naming.pattern: "{project}-{env}-{family}-{group}"
+ddb.default.naming.pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{name}"
 ```
 
-**Note:** DynamoDB uses `ModelId`-based macros, NOT `cfg.NamingTemplate` macros. The placeholders are different:
+**Note:** DynamoDB uses `AppIdentity`-style macros. The placeholders are:
 
-| ModelId Macro | Description |
-|---------------|-------------|
-| `{project}` | Project from ModelId |
-| `{env}` | Environment from ModelId |
-| `{family}` | Family from ModelId |
-| `{group}` | Group from ModelId |
-| `{app}` | App from ModelId |
-| `{modelId}` | Model's string representation (automatically appended to canonical model IDs) |
+| Macro | Description |
+|-------|-------------|
+| `{app.tags.project}` | Project tag |
+| `{app.env}` | Environment |
+| `{app.tags.family}` | Family tag |
+| `{app.tags.group}` | Group tag |
+| `{app.name}` | App name |
+| `{name}` | Model name (from metadata) |
 
 ## Common config keys
 ```yaml
 cloud.aws.dynamodb.clients.default.endpoint: http://localhost:4566
-ddb.default.naming.pattern: "{project}-{env}-{family}-{group}"
+ddb.default.naming.pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{name}"
 ```
 
 ## Related packages

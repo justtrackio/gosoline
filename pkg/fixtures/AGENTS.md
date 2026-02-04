@@ -49,5 +49,5 @@ fixtures.groups:
 
 ## Tips
 - Keep fixtures idempotent—providers should detect existing state when possible.
-- Respect `fixtures.disabled` config toggle so CI can skip expensive setup.
+- Respect `fixtures.enabled` config toggle so CI can skip expensive setup.
 - Document new fixture types/examples under `examples/fixtures` if they require external services.

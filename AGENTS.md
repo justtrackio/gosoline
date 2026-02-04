@@ -16,7 +16,7 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 - `.github/workflows/`: CI pipelines—mockery check, build, golangci-lint, unit tests, race tests, integration tests.
 
 ## Day-to-day workflow for changes
-1. Capture user requirements and convert them into a todo list (use the `manage_todo_list` tool). Keep a single active item at a time.
+1. Capture user requirements and convert them into a todo list (use the `todowrite` tool). Keep a single active item at a time.
 2. Survey the relevant package (readme, docs, nested AGENTS.md) before editing code.
 3. Edit Go sources and immediately format using `gofumpt -w <files>`.
 4. Regenerate artifacts after interface changes:

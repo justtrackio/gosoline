@@ -35,7 +35,7 @@
 
 ### Loading identity
 ```go
-identity, err := cfg.LoadAppIdentity(config)
+identity, err := cfg.GetAppIdentityFromConfig(config)
 ```
 
 ### Requiring tags
