@@ -108,7 +108,7 @@ func NewBaseConsumer(
 ) (*baseConsumer, error) {
 	uuidGen := uuid.New()
 	logger = logger.WithChannel(fmt.Sprintf("consumer-%s", name))
-	appIdentity, err := cfg.GetAppIdentityFromConfig(config)
+	appIdentity, err := cfg.GetAppIdentity(config)
 	if err != nil {
 		return nil, fmt.Errorf("can not get app identity from config: %w", err)
 	}

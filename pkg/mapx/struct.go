@@ -263,9 +263,26 @@ func (s *Struct) doReadMap(path string, mapValues *MapX, mp any) error {
 		return s.doReadMapOfSlice(path, mapValues, mapValue)
 	case reflect.Struct:
 		return s.doReadMapOfStruct(path, mapValues, mapValue)
+	case reflect.String, reflect.Interface:
+		return s.doReadMapOfValue(path, mapValues, mapValue)
 	default:
 		return fmt.Errorf("MSI fields or a map of structs are allowed only for path %s", path)
 	}
+}
+
+func (s *Struct) doReadMapOfValue(path string, mapValues *MapX, mapValue reflect.Value) error {
+	for _, key := range mapValue.MapKeys() {
+		if key.Kind() != reflect.String {
+			return fmt.Errorf("only string values are allowed as map keys for path %s", path)
+		}
+
+		element := mapValue.MapIndex(key).Interface()
+		elementPath := fmt.Sprintf("%s.%s", path, key.String())
+
+		mapValues.Set(elementPath, element)
+	}
+
+	return nil
 }
 
 func (s *Struct) doReadMapOfMap(path string, mapValues *MapX, mapValue reflect.Value) error {

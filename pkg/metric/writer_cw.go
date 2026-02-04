@@ -218,7 +218,7 @@ func GetCloudWatchNamespace(config cfg.Config) (string, error) {
 	var identity cfg.AppIdentity
 	var namespace string
 
-	if identity, err = cfg.GetAppIdentityFromConfig(config); err != nil {
+	if identity, err = cfg.GetAppIdentity(config); err != nil {
 		return "", fmt.Errorf("failed to get app identity from config: %w", err)
 	}
 

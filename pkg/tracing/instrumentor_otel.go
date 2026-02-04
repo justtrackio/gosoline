@@ -25,7 +25,7 @@ type otelInstrumentor struct {
 }
 
 func NewOtelInstrumentor(ctx context.Context, config cfg.Config, logger log.Logger) (Instrumentor, error) {
-	identity, err := cfg.GetAppIdentityFromConfig(config)
+	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
 		return nil, fmt.Errorf("could not get app identity from config: %w", err)
 	}

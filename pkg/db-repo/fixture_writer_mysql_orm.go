@@ -34,7 +34,7 @@ func NewMysqlOrmFixtureWriter(ctx context.Context, config cfg.Config, logger log
 		return nil, fmt.Errorf("can not pad model id from config: %w", err)
 	}
 
-	appIdentity, err := cfg.GetAppIdentityFromConfig(config)
+	appIdentity, err := cfg.GetAppIdentity(config)
 	if err != nil {
 		return nil, fmt.Errorf("can not get app identity from config: %w", err)
 	}

@@ -145,7 +145,7 @@ func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Lo
 
 	// we need the app identity from the application we are running at, not the app id from the settings as this is the same
 	// for different kinsumers of the same stream!
-	appIdentity, err := cfg.GetAppIdentityFromConfig(config)
+	appIdentity, err := cfg.GetAppIdentity(config)
 	if err != nil {
 		return nil, fmt.Errorf("can not get app identity from config: %w", err)
 	}

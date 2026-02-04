@@ -41,7 +41,7 @@ func calculatorConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 		pattern = strings.ReplaceAll(pattern, templ, val)
 	}
 
-	identity, err := cfg.GetAppIdentityFromConfig(config)
+	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
 		return false, fmt.Errorf("could not get app identity: %w", err)
 	}
@@ -50,7 +50,7 @@ func calculatorConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 		Naming: ddb.TableNamingSettings{
 			Pattern: pattern,
 		},
-		GroupId:       fmt.Sprintf("%s-%s", identity.Tags.Get("group"), identity.Name),
+		GroupId:       fmt.Sprintf("%s-%s", identity.Tags["group"], identity.Name),
 		LeaseDuration: time.Minute,
 	}
 

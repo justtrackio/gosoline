@@ -73,7 +73,7 @@ func kinsumerAutoscaleConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 		return true, nil
 	}
 
-	identity, err := cfg.GetAppIdentityFromConfig(config)
+	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
 		return false, fmt.Errorf("could not get app identity: %w", err)
 	}
@@ -82,7 +82,7 @@ func kinsumerAutoscaleConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 		Naming: ddb.TableNamingSettings{
 			Pattern: settings.DynamoDb.Naming.Pattern,
 		},
-		GroupId:       fmt.Sprintf("%s-%s", identity.Tags.Get("group"), identity.Name),
+		GroupId:       fmt.Sprintf("%s-%s", identity.Tags["group"], identity.Name),
 		LeaseDuration: time.Minute,
 	}
 
