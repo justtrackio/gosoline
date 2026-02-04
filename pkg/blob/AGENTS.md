@@ -19,26 +19,27 @@
 ## Configuration
 
 ### Bucket Naming
-Bucket naming can be configured per store or globally using patterns with `cfg.AppIdentity` placeholders.
+Bucket naming is handled by the `pkg/cloud/aws/s3` package naming settings. The `blob` package provides the store name as the `{bucketId}`.
 
 **Priority:**
 1. `blob.<name>.bucket` (explicit override)
-2. `blob.<name>.bucket_pattern`
-3. `blob.default.bucket_pattern`
+2. `cloud.aws.s3.clients.<client>.naming.bucket_pattern`
+3. `cloud.aws.s3.clients.default.naming.bucket_pattern`
 4. Default pattern: `{app.tags.project}-{app.env}-{app.tags.family}`
 
 **Supported placeholders:**
 - `{app.env}` - Environment
 - `{app.name}` - Application name
-- `{app.tags.<key>}` - Any tag value (e.g., `{app.tags.project}`, `{app.tags.costCenter}`)
+- `{app.tags.<key>}` - Any tag value
+- `{bucketId}` - The name of the blob store
 
 **Config examples:**
 ```yaml
-# Global default pattern
-blob.default.bucket_pattern: "{app.tags.project}-{app.env}-{app.name}-blobs"
+# Global default pattern for all S3 clients (including blob stores)
+cloud.aws.s3.clients.default.naming.bucket_pattern: "{app.tags.project}-{app.env}-{app.name}-blobs-{bucketId}"
 
-# Store-specific pattern
-blob.images.bucket_pattern: "{app.env}-images-{app.tags.region}"
+# Store-specific S3 client pattern (if blob uses a specific client)
+cloud.aws.s3.clients.my_store_client.naming.bucket_pattern: "{app.env}-images-{app.tags.region}"
 
 # Explicit bucket name (ignores patterns)
 blob.legacy.bucket: "my-legacy-bucket"

@@ -38,7 +38,8 @@ func (s QueueNameSettings) GetQueueId() string {
 }
 
 type QueueNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{queueId}"`
+	Pattern   string `cfg:"pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{queueId}"`
+	Delimiter string `cfg:"delimiter" default:"-"`
 }
 
 func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (string, error) {
@@ -53,7 +54,7 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 		return "", fmt.Errorf("failed to unmarshal sqs naming settings for %s: %w", namingKey, err)
 	}
 
-	name, err := config.FormatString(namingSettings.Pattern, queueSettings.GetAppIdentity().ToMap(), map[string]string{
+	name, err := queueSettings.GetAppIdentity().Format(namingSettings.Pattern, namingSettings.Delimiter, map[string]string{
 		"queueId": queueSettings.GetQueueId(),
 	})
 	if err != nil {

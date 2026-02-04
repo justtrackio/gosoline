@@ -91,6 +91,19 @@ DynamoDB table naming uses the standard `AppIdentity` macros plus `{name}` for t
 
 **Note:** Unlike the Canonical Model ID, the table name pattern **does not** automatically append the name. You must include `{name}` in the pattern.
 
+### AWS S3 Buckets
+**Config Key:** `cloud.aws.s3.clients.<client_name>.naming.bucket_pattern`
+**Default:** `{app.tags.project}-{app.env}-{app.tags.family}`
+
+| Macro | Description |
+|-------|-------------|
+| `{app.env}` | Environment |
+| `{app.name}` | Application name |
+| `{app.tags.<tag>}` | Any tag from the identity |
+| `{bucketId}` | The bucket ID (e.g. the blob store name) |
+
+**Note:** For the `blob` package, you can still override the bucket name explicitly using `blob.<store_name>.bucket`.
+
 ### ModelId Domain Pattern
 Resources that use `ModelId` but are not tied to a specific service client (like canonical message routing keys) use the domain pattern.
 
@@ -145,27 +158,6 @@ Redis has patterns for both the server address (for service discovery) and key n
 | Macro | Description |
 |-------|-------------|
 | `{key}` | The specific key being accessed |
-
-### Blob / S3 Buckets
-The `blob` package manages S3 buckets and supports naming patterns for creating or accessing buckets.
-
-**Config Priority:**
-1. `blob.<store_name>.bucket` (Explicit override, ignores patterns)
-2. `blob.<store_name>.bucket_pattern`
-3. `blob.default.bucket_pattern`
-4. **Default:** `{app.tags.project}-{app.env}-{app.tags.family}`
-
-**Config Keys:**
-*   `blob.<store_name>.bucket_pattern`
-*   `blob.default.bucket_pattern`
-
-| Macro | Description |
-|-------|-------------|
-| `{app.env}` | Environment |
-| `{app.name}` | Application name |
-| `{app.tags.<tag>}` | Any tag from the identity |
-
-**Note:** Blob stores do not support service-specific macros like `{queueId}`.
 
 ## Configuration Example
 

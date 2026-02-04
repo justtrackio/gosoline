@@ -81,11 +81,10 @@ func (s *UrlBuilderTestSuite) TestWithCustomBucket() {
 
 func (s *UrlBuilderTestSuite) TestWithBucketPattern() {
 	err := s.config.Option(cfg.WithConfigMap(map[string]any{
-		"blob.my_store": map[string]any{
-			"bucket_pattern": "{app.env}-{app.name}-bucket",
-		},
-		"cloud.aws.defaults.endpoint":               "",
-		"cloud.aws.s3.clients.default.usePathStyle": false,
+		"blob.my_store.client_name":                           "my_store",
+		"cloud.aws.s3.clients.my_store.naming.bucket_pattern": "{app.env}-{app.name}-bucket",
+		"cloud.aws.defaults.endpoint":                         "",
+		"cloud.aws.s3.clients.default.usePathStyle":           false,
 	}))
 
 	s.NoError(err, "there should be no error on config create")
@@ -100,11 +99,9 @@ func (s *UrlBuilderTestSuite) TestWithBucketPattern() {
 
 func (s *UrlBuilderTestSuite) TestWithDefaultBucketPattern() {
 	err := s.config.Option(cfg.WithConfigMap(map[string]any{
-		"blob.default": map[string]any{
-			"bucket_pattern": "{app.env}-{app.name}-default",
-		},
-		"cloud.aws.defaults.endpoint":               "",
-		"cloud.aws.s3.clients.default.usePathStyle": false,
+		"cloud.aws.s3.clients.default.naming.bucket_pattern": "{app.env}-{app.name}-default",
+		"cloud.aws.defaults.endpoint":                        "",
+		"cloud.aws.s3.clients.default.usePathStyle":          false,
 	}))
 
 	s.NoError(err, "there should be no error on config create")

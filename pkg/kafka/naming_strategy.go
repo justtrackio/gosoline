@@ -8,8 +8,10 @@ import (
 )
 
 type KafkaNamingSettings struct {
-	TopicPattern string `cfg:"topic_pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}"`
-	GroupPattern string `cfg:"group_pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{groupId}"`
+	TopicPattern   string `cfg:"topic_pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}"`
+	TopicDelimiter string `cfg:"topic_delimiter" default:"-"`
+	GroupPattern   string `cfg:"group_pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{groupId}"`
+	GroupDelimiter string `cfg:"group_delimiter" default:"-"`
 }
 
 func NormalizeKafkaName(name string) string {
@@ -22,7 +24,7 @@ func BuildFullTopicName(config cfg.Config, identity cfg.AppIdentity, topicId str
 		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' to build kafka topic name: %w", err)
 	}
 
-	name, err := config.FormatString(namingSettings.TopicPattern, identity.ToMap(), map[string]string{
+	name, err := identity.Format(namingSettings.TopicPattern, namingSettings.TopicDelimiter, map[string]string{
 		"topicId": topicId,
 	})
 	if err != nil {
@@ -43,7 +45,7 @@ func BuildFullConsumerGroupId(config cfg.Config, groupId string) (string, error)
 		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' to build kakfa consumer group id: %w", err)
 	}
 
-	name, err := config.FormatString(namingSettings.GroupPattern, identity.ToMap(), map[string]string{
+	name, err := identity.Format(namingSettings.GroupPattern, namingSettings.GroupDelimiter, map[string]string{
 		"groupId": groupId,
 	})
 	if err != nil {

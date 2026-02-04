@@ -8,8 +8,10 @@ import (
 )
 
 type Naming struct {
-	AddressPattern string `cfg:"address_pattern,nodecode" default:"{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}"`
-	KeyPattern     string `cfg:"key_pattern,nodecode" default:"{key}"` // e.g. {app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}
+	AddressPattern   string `cfg:"address_pattern,nodecode" default:"{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}"`
+	AddressDelimiter string `cfg:"address_delimiter,nodecode" default:"."`
+	KeyPattern       string `cfg:"key_pattern,nodecode" default:"{key}"` // e.g. {app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}
+	KeyDelimiter     string `cfg:"key_delimiter,nodecode" default:"-"`
 }
 
 type Settings struct {
@@ -50,7 +52,7 @@ func ReadSettings(config cfg.Config, name string) (*Settings, error) {
 	}
 
 	if settings.Address == "" {
-		settings.Address, err = config.FormatString(settings.Naming.AddressPattern, settings.ToMap(), map[string]string{
+		settings.Address, err = settings.Format(settings.Naming.AddressPattern, settings.Naming.AddressDelimiter, map[string]string{
 			"name": settings.Name,
 		})
 		if err != nil {
