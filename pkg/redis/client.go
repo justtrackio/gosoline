@@ -182,7 +182,7 @@ func NewClientWithSettings(ctx context.Context, config cfg.Config, logger log.Lo
 		}
 
 		keyPrefix = strings.TrimSuffix(settings.Naming.KeyPattern, "{key}")
-		if keyPrefix, err = config.FormatString(keyPrefix, settings.ToMap()); err != nil {
+		if keyPrefix, err = settings.Format(keyPrefix, settings.Naming.KeyDelimiter); err != nil {
 			return nil, fmt.Errorf("redis key naming failed: %w", err)
 		}
 	}

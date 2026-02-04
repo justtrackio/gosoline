@@ -14,8 +14,10 @@ type StreamNameSettingsAware interface {
 }
 
 type StreamNamingSettings struct {
-	StreamPattern   string `cfg:"stream_pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{streamName}"`
-	MetadataPattern string `cfg:"metadata_pattern,nodecode" default:"{app.env}-kinsumer-metadata"`
+	StreamPattern     string `cfg:"stream_pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{streamName}"`
+	StreamDelimiter   string `cfg:"stream_delimiter" default:"-"`
+	MetadataPattern   string `cfg:"metadata_pattern,nodecode" default:"{app.env}-kinsumer-metadata"`
+	MetadataDelimiter string `cfg:"metadata_delimiter" default:"-"`
 }
 
 func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream, error) {
@@ -26,7 +28,7 @@ func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream,
 		return "", fmt.Errorf("failed to read naming settings: %w", err)
 	}
 
-	name, err := config.FormatString(namingSettings.StreamPattern, settings.GetAppIdentity().ToMap(), map[string]string{
+	name, err := settings.GetAppIdentity().Format(namingSettings.StreamPattern, namingSettings.StreamDelimiter, map[string]string{
 		"streamName": settings.GetStreamName(),
 	})
 	if err != nil {
@@ -44,7 +46,7 @@ func GetMetadataTableName(config cfg.Config, settings StreamNameSettingsAware) (
 		return "", fmt.Errorf("failed to read naming settings: %w", err)
 	}
 
-	name, err := config.FormatString(namingSettings.MetadataPattern, settings.GetAppIdentity().ToMap())
+	name, err := settings.GetAppIdentity().Format(namingSettings.MetadataPattern, namingSettings.MetadataDelimiter)
 	if err != nil {
 		return "", fmt.Errorf("failed to format kinesis metadata table naming settings: %w", err)
 	}

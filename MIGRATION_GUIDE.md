@@ -239,14 +239,15 @@ This section lists the configuration keys, their old and new defaults, and the c
 *   **Environment Variable:** `GOSO_REDIS_CLIENTS_DEFAULT_NAMING_KEY_PATTERN`
 
 ### Blob / S3 Bucket Patterns
-If you use the `blob` package with custom bucket patterns, you must update the placeholders.
+The `blob` package now delegates bucket naming to the `cloud.aws.s3` package. The configuration keys `blob.<store_name>.bucket_pattern` and `blob.default.bucket_pattern` have been **removed**.
 
-*   **Config Key:** `blob.<store_name>.bucket_pattern` or `blob.default.bucket_pattern`
-*   **Old Default:** `{project}-{env}-{family}`
-*   **New Default:** `{app.tags.project}-{app.env}-{app.tags.family}`
+*   **Config Key:** `cloud.aws.s3.clients.<client_name>.naming.bucket_pattern`
+*   **Old Default:** `{app.tags.project}-{app.env}-{app.tags.family}`
+*   **New Default:** `{app.tags.project}-{app.env}-{app.tags.family}` (Unchanged)
+*   **New Placeholder:** `{bucketId}` is now available (resolves to the blob store name).
 
 **Migration:**
-Replace old placeholders (`{project}`, `{env}`, `{family}`, `{group}`, `{app}`) with their new `AppIdentity` equivalents (`{app.tags.project}`, `{app.env}`, etc.).
+Move any custom bucket patterns to the new S3 naming config key. If you used `blob.default.bucket_pattern`, move it to `cloud.aws.s3.clients.default.naming.bucket_pattern`.
 
 **Example Env Var Usage:**
 

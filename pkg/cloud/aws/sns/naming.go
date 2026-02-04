@@ -32,7 +32,8 @@ func (s TopicNameSettings) GetTopicId() string {
 }
 
 type TopicNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}"`
+	Pattern   string `cfg:"pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}"`
+	Delimiter string `cfg:"delimiter" default:"-"`
 }
 
 func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (string, error) {
@@ -48,7 +49,7 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 		return "", fmt.Errorf("failed to unmarshal sns naming settings for %s: %w", namingKey, err)
 	}
 
-	return config.FormatString(namingSettings.Pattern, topicSettings.GetAppIdentity().ToMap(), map[string]string{
+	return topicSettings.GetAppIdentity().Format(namingSettings.Pattern, namingSettings.Delimiter, map[string]string{
 		"topicId": topicSettings.GetTopicId(),
 	})
 }
