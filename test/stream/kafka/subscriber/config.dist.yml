@@ -30,7 +30,9 @@ stream:
   output:
     testEvent:
       type: kafka
-      group: source-group
+      identity:
+        tags:
+          group: source-group
       topic_id: testEvent
       in_memory_override: false
 
