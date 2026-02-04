@@ -11,32 +11,23 @@ import (
 // AppTags is a map of tag key-value pairs with helper methods.
 type AppTags map[string]string
 
-// Get returns the value for a tag key, or empty string if not present.
-func (t AppTags) Get(key string) string {
-	if t == nil {
-		return ""
-	}
-
-	return t[key]
-}
-
 // AppIdentity represents the resolved application identity.
 // It is used throughout gosoline for resource naming and identification.
 //
 // Configuration structure:
 //
 //	app:
-//	  env: production    # required globally
+//	  env: production    # required
 //	  name: myapp        # required
-//	  tags:              # optional globally, but some subsystems require specific tags
+//	  tags:              # optional
 //	    project: ...
 //	    family: ...
 //	    group: ...
 //	    custom: ...      # any additional tags
 type AppIdentity struct {
-	Name string  `json:"name"`
-	Env  string  `json:"env"`
-	Tags AppTags `json:"tags"`
+	Name string  `json:"name" cfg:"name"`
+	Env  string  `json:"env" cfg:"env"`
+	Tags AppTags `json:"tags" cfg:"tags"`
 }
 
 func (i AppIdentity) ToMap() map[string]string {
@@ -52,45 +43,19 @@ func (i AppIdentity) ToMap() map[string]string {
 	return mss
 }
 
-// GetAppIdentityFromConfig reads the application identity from config.
+// GetAppIdentity reads the application identity from config.
 //
 // This function requires:
 //   - "app.name" to be present and non-empty
 //   - "app.env" to be present and non-empty
-//
-// Tags are optional at this level. Subsystems that require specific tags
-// (e.g., project, family, group for naming) should call RequireTags().
-func GetAppIdentityFromConfig(config Config) (AppIdentity, error) {
-	var err error
-	var name, env string
-	var tags map[string]string
+func GetAppIdentity(config Config) (AppIdentity, error) {
+	identity := AppIdentity{}
 
-	// app.name is required
-	if name, err = config.GetString("app.name"); err != nil {
-		return AppIdentity{}, fmt.Errorf("app.name: %w", err)
-	}
-	if strings.TrimSpace(name) == "" {
-		return AppIdentity{}, errors.New("app.name: value is empty")
+	if err := config.UnmarshalKey("app", &identity); err != nil {
+		return AppIdentity{}, fmt.Errorf("failed to unmarshal app identity: %w", err)
 	}
 
-	// app.env is required
-	if env, err = config.GetString("app.env"); err != nil {
-		return AppIdentity{}, fmt.Errorf("app.env: %w", err)
-	}
-	if strings.TrimSpace(env) == "" {
-		return AppIdentity{}, errors.New("app.env: value is empty")
-	}
-
-	// Tags are optional
-	if tags, err = config.GetStringMapString("app.tags", map[string]string{}); err != nil {
-		return AppIdentity{}, fmt.Errorf("app.tags: %w", err)
-	}
-
-	return AppIdentity{
-		Name: name,
-		Env:  env,
-		Tags: tags,
-	}, nil
+	return identity, nil
 }
 
 // PadFromConfig fills in empty fields of AppIdentity from config.
@@ -155,10 +120,10 @@ func (i *AppIdentity) PadFromConfig(config Config) error {
 //   - Partial: "production-myapp" (if only env and name are set)
 func (i *AppIdentity) String() string {
 	elements := []string{
-		i.Tags.Get("project"),
+		i.Tags["project"],
 		i.Env,
-		i.Tags.Get("family"),
-		i.Tags.Get("group"),
+		i.Tags["family"],
+		i.Tags["group"],
 		i.Name,
 	}
 	elements = funk.Filter(elements, func(element string) bool {

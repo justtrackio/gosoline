@@ -30,7 +30,7 @@ func NewBasicAuthHandler(config cfg.Config, logger log.Logger) (gin.HandlerFunc,
 		return nil, fmt.Errorf("can not create basicAuthAuthenticator: %w", err)
 	}
 
-	identity, err := cfg.GetAppIdentityFromConfig(config)
+	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
 		return nil, fmt.Errorf("can not get app identity: %w", err)
 	}

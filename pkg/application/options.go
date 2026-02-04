@@ -277,20 +277,20 @@ func WithKinsumerAutoscaleModule(kinsumerInputName string) Option {
 
 func WithLoggerGroupTag(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
-		identity, err := cfg.GetAppIdentityFromConfig(config)
+		identity, err := cfg.GetAppIdentity(config)
 		if err != nil {
 			return fmt.Errorf("can not get app identity to set group on logger: %w", err)
 		}
 
 		return logger.Option(log.WithFields(map[string]any{
-			"group": identity.Tags.Get("group"),
+			"group": identity.Tags["group"],
 		}))
 	})
 }
 
 func WithLoggerApplicationTag(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
-		identity, err := cfg.GetAppIdentityFromConfig(config)
+		identity, err := cfg.GetAppIdentity(config)
 		if err != nil {
 			return fmt.Errorf("can not get app identity to set application on logger: %w", err)
 		}

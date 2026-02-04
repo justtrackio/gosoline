@@ -43,7 +43,7 @@ func NewCurrencyModule() kernel.ModuleFactory {
 			return nil, fmt.Errorf("can not create updater: %w", err)
 		}
 
-		appIdentity, err := cfg.GetAppIdentityFromConfig(config)
+		appIdentity, err := cfg.GetAppIdentity(config)
 		if err != nil {
 			return nil, fmt.Errorf("can not get app identity from config: %w", err)
 		}

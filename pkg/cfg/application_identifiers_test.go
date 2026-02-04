@@ -4,21 +4,23 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	cfgMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetAppIdentityFromConfig_WithMocks(t *testing.T) {
-	config := cfgMocks.NewConfig(t)
-	config.EXPECT().GetString("app.name").Return("name", nil)
-	config.EXPECT().GetString("app.env").Return("test", nil)
-	config.EXPECT().GetStringMapString("app.tags", map[string]string{}).Return(map[string]string{
-		"project": "prj",
-		"family":  "fam",
-		"group":   "grp",
-	}, nil)
+func TestGetAppIdentityFromConfig(t *testing.T) {
+	config := cfg.New(map[string]any{
+		"app": map[string]any{
+			"name": "name",
+			"env":  "test",
+			"tags": map[string]any{
+				"project": "prj",
+				"family":  "fam",
+				"group":   "grp",
+			},
+		},
+	})
 
-	identity, err := cfg.GetAppIdentityFromConfig(config)
+	identity, err := cfg.GetAppIdentity(config)
 	assert.NoError(t, err)
 
 	assert.Equal(t, cfg.AppIdentity{
@@ -32,15 +34,18 @@ func TestGetAppIdentityFromConfig_WithMocks(t *testing.T) {
 	}, identity)
 }
 
-func TestAppIdentity_PadFromConfig_WithMocks(t *testing.T) {
-	config := cfgMocks.NewConfig(t)
-	config.EXPECT().GetString("app.name").Return("name", nil)
-	config.EXPECT().GetString("app.env").Return("test", nil)
-	config.EXPECT().GetStringMapString("app.tags", map[string]string{}).Return(map[string]string{
-		"project": "prj",
-		"family":  "fam",
-		"group":   "grp",
-	}, nil)
+func TestAppIdentity_PadFromConfig(t *testing.T) {
+	config := cfg.New(map[string]any{
+		"app": map[string]any{
+			"name": "name",
+			"env":  "test",
+			"tags": map[string]any{
+				"project": "prj",
+				"family":  "fam",
+				"group":   "grp",
+			},
+		},
+	})
 
 	identity := cfg.AppIdentity{}
 	err := identity.PadFromConfig(config)
@@ -55,6 +60,4 @@ func TestAppIdentity_PadFromConfig_WithMocks(t *testing.T) {
 			"group":   "grp",
 		},
 	}, identity)
-
-	config.AssertExpectations(t)
 }

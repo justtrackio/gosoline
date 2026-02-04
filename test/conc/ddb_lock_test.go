@@ -31,7 +31,7 @@ func (s *DdbLockTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *DdbLockTestSuite) SetupTest() (err error) {
-	appIdentity, err := cfg.GetAppIdentityFromConfig(s.Env().Config())
+	appIdentity, err := cfg.GetAppIdentity(s.Env().Config())
 	if err != nil {
 		return fmt.Errorf("failed to get app identity: %w", err)
 	}

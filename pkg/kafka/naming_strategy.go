@@ -33,7 +33,7 @@ func BuildFullTopicName(config cfg.Config, identity cfg.AppIdentity, topicId str
 }
 
 func BuildFullConsumerGroupId(config cfg.Config, groupId string) (string, error) {
-	identity, err := cfg.GetAppIdentityFromConfig(config)
+	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
 		return "", fmt.Errorf("failed to get app identity from config: %w", err)
 	}

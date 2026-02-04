@@ -22,7 +22,7 @@ type awsInstrumentor struct {
 }
 
 func NewAwsInstrumentor(_ context.Context, config cfg.Config, _ log.Logger) (Instrumentor, error) {
-	identity, err := cfg.GetAppIdentityFromConfig(config)
+	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
 		return nil, fmt.Errorf("could not get app identity from config: %w", err)
 	}
