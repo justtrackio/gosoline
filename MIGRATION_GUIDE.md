@@ -22,11 +22,14 @@ app_name: my-service
 app:
   env: production
   name: my-service
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
   tags:
     project: justtrack
     family: platform
     group: core
 ```
+
+**Note:** The `app.namespace` configuration is optional but recommended. It allows you to define a reusable namespace pattern that can be referenced as `{app.namespace}` in all resource naming patterns. See the "Namespace Pattern" section below for details.
 
 ### Environment Variables
 
@@ -39,10 +42,66 @@ If you configure your app via environment variables, update the keys:
 | `GOSO_APP_GROUP` | `GOSO_APP_TAGS_GROUP` |
 | `GOSO_APP_NAME` | `GOSO_APP_NAME` (no change) |
 | `GOSO_ENV` | `GOSO_APP_ENV` |
+| N/A (new feature) | `GOSO_APP_NAMESPACE` |
 
 ## 2. Update Resource Naming Patterns
 
-If you have customized the naming patterns for AWS resources (SQS, SNS, Kinesis, DynamoDB) or Kafka in your config, you must update the placeholders.
+**IMPORTANT:** The default naming patterns for most services have changed to use `{app.namespace}` instead of explicit tag placeholders. If you don't configure `app.namespace`, your resource names will be missing the project/family/group prefix. For backward compatibility, you should configure:
+
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+```
+
+This ensures your resource names remain consistent with the previous defaults.
+
+If you have customized the naming patterns for AWS resources (SQS, SNS, Kinesis, DynamoDB), Kafka, or Tracing in your config, you must update the placeholders.
+
+### Namespace Pattern (New Feature)
+
+A new `app.namespace` configuration option allows you to define a reusable namespace pattern that can be referenced in all resource naming patterns.
+
+**Config Key:** `app.namespace`
+**Format:** A pattern using dots (`.`) as delimiters, with standard `{app.*}` and `{app.tags.*}` placeholders
+**Usage:** Reference as `{app.namespace}` in any resource naming pattern
+
+**Example:**
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+  tags:
+    project: justtrack
+    family: platform
+    group: core
+  env: production
+
+cloud:
+  aws:
+    sqs:
+      clients:
+        default:
+          naming:
+            # {app.namespace} expands to: justtrack-production-platform-core
+            pattern: "{app.namespace}-{queueId}"
+```
+
+**Benefits:**
+- Define your naming hierarchy once and reuse it everywhere
+- Simplify resource patterns by using `{app.namespace}` instead of repeating the same placeholders
+- Easy to change your naming convention across all resources in one place
+
+**Note:** When expanded, the dots in the namespace pattern are replaced with the service-specific delimiter (usually `-`). If no namespace is configured, `{app.namespace}` expands to an empty string.
+
+### Delimiter Configuration
+
+Each resource naming pattern has a paired **delimiter** configuration that controls how `{app.namespace}` is expanded:
+
+- **Most services** use `identity.Format()` with a configurable delimiter (default is usually `-`)
+- The delimiter replaces dots in the `{app.namespace}` pattern during expansion
+- Example: namespace `{app.tags.project}.{app.env}` with delimiter `-` becomes `myproject-prod`
+- Each service's delimiter can be customized via its `naming.delimiter` configuration key
+
+All services now use `identity.Format()` with configurable delimiters.
 
 ### Placeholder Mapping
 
@@ -181,56 +240,189 @@ This section lists the configuration keys, their old and new defaults, and the c
 
 *   **Config Key:** `cloud.aws.sqs.clients.default.naming.pattern`
 *   **Old Default:** `{project}-{env}-{family}-{group}-{queueId}`
-*   **New Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{queueId}`
+*   **New Default:** `{app.namespace}-{queueId}` (requires `app.namespace` to be configured for backward compatibility)
 *   **Environment Variable:** `GOSO_CLOUD_AWS_SQS_CLIENTS_DEFAULT_NAMING_PATTERN`
+
+*   **Delimiter Config Key:** `cloud.aws.sqs.clients.default.naming.delimiter`
+*   **Delimiter Default:** `-`
+*   **Delimiter Environment Variable:** `GOSO_CLOUD_AWS_SQS_CLIENTS_DEFAULT_NAMING_DELIMITER`
+
+**Note:** The new default uses `{app.namespace}`. To maintain backward compatibility, configure:
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+```
 
 ### SNS Topic Naming
 
 *   **Config Key:** `cloud.aws.sns.clients.default.naming.pattern`
 *   **Old Default:** `{project}-{env}-{family}-{group}-{topicId}`
-*   **New Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}`
+*   **New Default:** `{app.namespace}-{topicId}` (requires `app.namespace` to be configured for backward compatibility)
 *   **Environment Variable:** `GOSO_CLOUD_AWS_SNS_CLIENTS_DEFAULT_NAMING_PATTERN`
+
+*   **Delimiter Config Key:** `cloud.aws.sns.clients.default.naming.delimiter`
+*   **Delimiter Default:** `-`
+*   **Delimiter Environment Variable:** `GOSO_CLOUD_AWS_SNS_CLIENTS_DEFAULT_NAMING_DELIMITER`
+
+**Note:** The new default uses `{app.namespace}`. To maintain backward compatibility, configure:
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+```
 
 ### Kinesis Naming
 
-**Stream Pattern:**
+#### Stream Pattern
+
 *   **Config Key:** `cloud.aws.kinesis.clients.default.naming.stream_pattern` (Renamed from `pattern`)
 *   **Old Default:** `{project}-{env}-{family}-{group}-{streamName}`
-*   **New Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{streamName}`
+*   **New Default:** `{app.namespace}-{streamName}` (requires `app.namespace` to be configured for backward compatibility)
 *   **Environment Variable:** `GOSO_CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_STREAM_PATTERN`
 
-**Metadata Table Pattern:**
-*   **Config Key:** `cloud.aws.kinesis.clients.default.naming.metadata_pattern` (New)
-*   **New Default:** `{app.env}-kinsumer-metadata`
-*   **Environment Variable:** `GOSO_CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_METADATA_PATTERN`
+*   **Delimiter Config Key:** `cloud.aws.kinesis.clients.default.naming.stream_delimiter`
+*   **Delimiter Default:** `-`
+*   **Delimiter Environment Variable:** `GOSO_CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_STREAM_DELIMITER`
+
+**Note:** The new default uses `{app.namespace}`. To maintain backward compatibility, configure:
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+```
+
+#### Metadata Table Pattern
+
+*   **Config Key:** `cloud.aws.kinesis.clients.default.naming.metadata_table_pattern`
+*   **Old Default:** `{app.env}-kinsumer-metadata`
+*   **New Default:** `{app.namespace}-kinsumer-metadata` (requires `app.namespace` to be configured for backward compatibility)
+*   **Environment Variable:** `GOSO_CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_METADATA_TABLE_PATTERN`
+
+*   **Delimiter Config Key:** `cloud.aws.kinesis.clients.default.naming.metadata_table_delimiter`
+*   **Delimiter Default:** `-`
+*   **Delimiter Environment Variable:** `GOSO_CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_METADATA_TABLE_DELIMITER`
+
+**Important Change:** The metadata table pattern now uses `{app.namespace}` instead of just `{app.env}`. For backward compatibility, configure:
+```yaml
+app:
+  namespace: "{app.env}"  # To match old default of {app.env}-kinsumer-metadata
+```
+
+Or use the full namespace pattern if you want the extended hierarchy:
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+```
+
+#### Metadata Namespace Pattern (New Feature)
+
+*   **Config Key:** `cloud.aws.kinesis.clients.default.naming.metadata_namespace_pattern`
+*   **Old Default:** Not configurable (hardcoded based on app identity)
+*   **New Default:** `{app.namespace}-{app.name}`
+*   **Environment Variable:** `GOSO_CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_METADATA_NAMESPACE_PATTERN`
+
+*   **Delimiter Config Key:** `cloud.aws.kinesis.clients.default.naming.metadata_namespace_delimiter`
+*   **Delimiter Default:** `-`
+*   **Delimiter Environment Variable:** `GOSO_CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_METADATA_NAMESPACE_DELIMITER`
+
+**Note:** This new pattern controls the namespace prefix used within the metadata table for organizing client and checkpoint records. It allows multiple applications to share the same metadata table. For backward compatibility with previous internal naming:
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+```
 
 ### Kafka Naming
 
 **Topic Pattern:**
 *   **Config Key:** `kafka.naming.topic_pattern`
 *   **Old Default:** `{project}-{env}-{family}-{group}-{topicId}`
-*   **New Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}`
+*   **New Default:** `{app.namespace}-{topicId}` (requires `app.namespace` to be configured for backward compatibility)
 *   **Environment Variable:** `GOSO_KAFKA_NAMING_TOPIC_PATTERN`
+
+*   **Delimiter Config Key:** `kafka.naming.topic_delimiter`
+*   **Delimiter Default:** `-`
+*   **Delimiter Environment Variable:** `GOSO_KAFKA_NAMING_TOPIC_DELIMITER`
+
+**Note:** The new default uses `{app.namespace}`. To maintain backward compatibility, configure:
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+```
 
 **Consumer Group Pattern:**
 *   **Config Key:** `kafka.naming.group_pattern`
 *   **Old Default:** `{project}-{env}-{family}-{group}-{app}-{groupId}`
-*   **New Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{groupId}`
+*   **New Default:** `{app.namespace}-{app.name}-{groupId}` (requires `app.namespace` to be configured for backward compatibility)
 *   **Environment Variable:** `GOSO_KAFKA_NAMING_GROUP_PATTERN`
+
+*   **Delimiter Config Key:** `kafka.naming.group_delimiter`
+*   **Delimiter Default:** `-`
+*   **Delimiter Environment Variable:** `GOSO_KAFKA_NAMING_GROUP_DELIMITER`
+
+**Note:** The new default uses `{app.namespace}`. To maintain backward compatibility, configure:
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+```
 
 ### DynamoDB Table Naming
 
 *   **Config Key:** `cloud.aws.dynamodb.clients.default.naming.pattern`
 *   **Old Default:** `{project}-{env}-{family}-{group}-{modelId}`
-*   **New Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{name}`
+*   **New Default:** `{app.namespace}-{name}` (requires `app.namespace` to be configured for backward compatibility)
 *   **Environment Variable:** `GOSO_CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_PATTERN`
 
-### CloudWatch Namespace
+*   **Delimiter Config Key:** `cloud.aws.dynamodb.clients.default.naming.delimiter`
+*   **Delimiter Default:** `-`
+*   **Delimiter Environment Variable:** `GOSO_CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_DELIMITER`
 
-*   **Config Key:** `metric.writer.cloudwatch.naming.pattern`
+**Note:** The new default uses `{app.namespace}`. To maintain backward compatibility, configure:
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+```
+
+### Metrics Naming
+
+#### CloudWatch Namespace
+
+*   **Config Key:** `metric.writer_settings.cloudwatch.naming.pattern`
 *   **Old Default:** `{project}/{env}/{family}/{group}-{app}`
-*   **New Default:** `{app.tags.project}/{app.env}/{app.tags.family}/{app.tags.group}-{app.name}`
-*   **Environment Variable:** `GOSO_METRIC_WRITER_CLOUDWATCH_NAMING_PATTERN`
+*   **New Default:** `{app.namespace}-{app.name}` (requires `app.namespace` to be configured for backward compatibility)
+*   **Environment Variable:** `GOSO_METRIC_WRITER_SETTINGS_CLOUDWATCH_NAMING_PATTERN`
+
+*   **Delimiter Config Key:** `metric.writer_settings.cloudwatch.naming.delimiter`
+*   **Delimiter Default:** `/`
+*   **Delimiter Environment Variable:** `GOSO_METRIC_WRITER_SETTINGS_CLOUDWATCH_NAMING_DELIMITER`
+
+**Important:** CloudWatch uses `/` as the delimiter (not `-`), creating hierarchical namespaces in AWS Console.
+
+**Note:** To maintain backward compatibility with the previous CloudWatch namespace format (`project/env/family/group-app`), configure:
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+```
+
+This will result in namespaces like: `my-project/production/platform/core-my-app`
+
+#### Prometheus Namespace
+
+*   **Config Key:** `metric.writer_settings.prometheus.naming.namespace_pattern`
+*   **Old Default:** Not explicitly documented (likely followed similar pattern)
+*   **New Default:** `{app.namespace}-{app.name}` (requires `app.namespace` to be configured for backward compatibility)
+*   **Environment Variable:** `GOSO_METRIC_WRITER_SETTINGS_PROMETHEUS_NAMING_NAMESPACE_PATTERN`
+
+*   **Delimiter Config Key:** `metric.writer_settings.prometheus.naming.namespace_delimiter`
+*   **Delimiter Default:** `_` (underscores, following Prometheus naming conventions)
+*   **Delimiter Environment Variable:** `GOSO_METRIC_WRITER_SETTINGS_PROMETHEUS_NAMING_NAMESPACE_DELIMITER`
+
+**Important:** Prometheus uses `_` (underscores) as the delimiter, which is standard for Prometheus metric naming.
+
+**Note:** To maintain backward compatibility, configure:
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+```
+
+This will result in metric prefixes like: `my_project_production_platform_core_my_app`
 
 ### Redis Key Prefix
 *   **Config Key:** `redis.clients.default.naming.key_pattern`
@@ -238,16 +430,95 @@ This section lists the configuration keys, their old and new defaults, and the c
 *   **New Default:** `{key}` (No prefix)
 *   **Environment Variable:** `GOSO_REDIS_CLIENTS_DEFAULT_NAMING_KEY_PATTERN`
 
+*   **Delimiter Config Key:** `redis.clients.default.naming.key_delimiter`
+*   **Delimiter Default:** `-`
+*   **Delimiter Environment Variable:** `GOSO_REDIS_CLIENTS_DEFAULT_NAMING_KEY_DELIMITER`
+
+**Note:** Redis also has an address pattern with delimiter:
+*   **Address Delimiter Config Key:** `redis.clients.default.naming.address_delimiter`
+*   **Address Delimiter Default:** `.` (dots)
+*   **Address Delimiter Environment Variable:** `GOSO_REDIS_CLIENTS_DEFAULT_NAMING_ADDRESS_DELIMITER`
+
+### Tracing Service Name
+
+*   **Config Key:** `tracing.naming.pattern`
+*   **Old Default:** `{project}-{env}-{family}-{group}-{app}`
+*   **New Default:** `{app.namespace}-{app.name}` (requires `app.namespace` to be configured for backward compatibility)
+*   **Environment Variable:** `GOSO_TRACING_NAMING_PATTERN`
+
+*   **Delimiter Config Key:** `tracing.naming.delimiter`
+*   **Delimiter Default:** `-`
+*   **Delimiter Environment Variable:** `GOSO_TRACING_NAMING_DELIMITER`
+
+**Note:** The new default uses `{app.namespace}`. To maintain backward compatibility, configure:
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+```
+
+#### AWS X-Ray Daemon SRV Lookup (Optional)
+
+If you use DNS SRV-based service discovery for the X-Ray daemon (`tracing.xray.addr_type: srv`), there is an additional naming pattern:
+
+*   **Config Key:** `tracing.xray.srv_naming.pattern`
+*   **Old Default:** `xray.{app.env}.{app.tags.family}` (implied from old SRV pattern logic)
+*   **New Default:** `xray.{app.namespace}`
+*   **Environment Variable:** `GOSO_TRACING_XRAY_SRV_NAMING_PATTERN`
+
+*   **Delimiter Config Key:** `tracing.xray.srv_naming.delimiter`
+*   **Delimiter Default:** `.` (dots, appropriate for DNS names)
+*   **Delimiter Environment Variable:** `GOSO_TRACING_XRAY_SRV_NAMING_DELIMITER`
+
+**Note:** This only applies if you're using `tracing.xray.addr_type: srv` for DNS-based X-Ray daemon discovery. For backward compatibility with SRV lookups:
+```yaml
+app:
+  namespace: "{app.env}.{app.tags.family}"  # Or your previous SRV pattern structure
+```
+
 ### Blob / S3 Bucket Patterns
 The `blob` package now delegates bucket naming to the `cloud.aws.s3` package. The configuration keys `blob.<store_name>.bucket_pattern` and `blob.default.bucket_pattern` have been **removed**.
 
 *   **Config Key:** `cloud.aws.s3.clients.<client_name>.naming.bucket_pattern`
 *   **Old Default:** `{app.tags.project}-{app.env}-{app.tags.family}`
-*   **New Default:** `{app.tags.project}-{app.env}-{app.tags.family}` (Unchanged)
-*   **New Placeholder:** `{bucketId}` is now available (resolves to the blob store name).
+*   **New Default:** `{app.namespace}` (uses the configured namespace, see below)
+*   **New Placeholder:** `{bucketId}` is now available (resolves to the blob store name)
+
+*   **Delimiter Config Key:** `cloud.aws.s3.clients.<client_name>.naming.delimiter`
+*   **Delimiter Default:** `-`
+*   **Delimiter Environment Variable:** `GOSO_CLOUD_AWS_S3_CLIENTS_<CLIENT_NAME>_NAMING_DELIMITER`
 
 **Migration:**
-Move any custom bucket patterns to the new S3 naming config key. If you used `blob.default.bucket_pattern`, move it to `cloud.aws.s3.clients.default.naming.bucket_pattern`.
+1. Move any custom bucket patterns to the new S3 naming config key. If you used `blob.default.bucket_pattern`, move it to `cloud.aws.s3.clients.default.naming.bucket_pattern`.
+2. **Recommended:** Configure `app.namespace` to match your previous naming structure:
+   ```yaml
+   app:
+     namespace: "{app.tags.project}.{app.env}.{app.tags.family}"
+   ```
+   This will ensure bucket names remain consistent with the old default pattern.
+
+**Example:**
+```yaml
+# Old configuration (no longer supported)
+blob:
+  default:
+    bucket_pattern: "{project}-{env}-data"
+
+# New configuration
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}"
+  
+cloud:
+  aws:
+    s3:
+      clients:
+        default:
+          naming:
+            # Option 1: Use namespace (results in same pattern as before)
+            bucket_pattern: "{app.namespace}-data"
+            
+            # Option 2: Define pattern explicitly
+            bucket_pattern: "{app.tags.project}-{app.env}-data"
+```
 
 **Example Env Var Usage:**
 

@@ -23,11 +23,16 @@ const (
 )
 
 type XrayTracerSettings struct {
-	AddressType                 string                `cfg:"addr_type" default:"local" validate:"required"`
-	AddressValue                string                `cfg:"add_value" default:""`
-	SrvPattern                  string                `cfg:"srv_pattern,nodecode" default:"xray.{app.env}.{app.tags.family}"`
-	Sampling                    SamplingConfiguration `cfg:"sampling"`
-	StreamingMaxSubsegmentCount int                   `cfg:"streaming_max_subsegment_count" default:"20"`
+	AddressType                 string                      `cfg:"addr_type" default:"local" validate:"required"`
+	AddressValue                string                      `cfg:"add_value" default:""`
+	Naming                      XrayTracerSrvNamingSettings `cfg:"srv_naming"`
+	Sampling                    SamplingConfiguration       `cfg:"sampling"`
+	StreamingMaxSubsegmentCount int                         `cfg:"streaming_max_subsegment_count" default:"20"`
+}
+
+type XrayTracerSrvNamingSettings struct {
+	Pattern   string `cfg:"pattern,nodecode" default:"xray.{app.namespace}"`
+	Delimiter string `cfg:"delimiter" default:"."`
 }
 
 type XRaySettings struct {
@@ -161,7 +166,7 @@ func lookupAddr(config cfg.Config, identity cfg.AppIdentity, settings *XrayTrace
 	var srvs []*net.SRV
 
 	if addressValue == "" {
-		if srvName, err = config.FormatString(settings.SrvPattern); err != nil {
+		if srvName, err = identity.Format(settings.Naming.Pattern, settings.Naming.Delimiter); err != nil {
 			return "", fmt.Errorf("failed to format srv name: %w", err)
 		}
 

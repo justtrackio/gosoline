@@ -38,7 +38,7 @@ func (s QueueNameSettings) GetQueueId() string {
 }
 
 type QueueNamingSettings struct {
-	Pattern   string `cfg:"pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{queueId}"`
+	Pattern   string `cfg:"pattern,nodecode" default:"{app.namespace}-{queueId}"`
 	Delimiter string `cfg:"delimiter" default:"-"`
 }
 

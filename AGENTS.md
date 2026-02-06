@@ -143,16 +143,16 @@ Note: DynamoDB table naming uses ModelId-based macros (legacy style), not AppIde
 ### Example configs
 ```yaml
 # SQS queue naming
-cloud.aws.sqs.clients.default.naming.pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{queueId}"
+cloud.aws.sqs.clients.default.naming.pattern: "{app.namespace}-{queueId}"
 
 # SNS topic naming
-cloud.aws.sns.clients.default.naming.pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}"
+cloud.aws.sns.clients.default.naming.pattern: "{app.namespace}-{topicId}"
 
 # Kinesis stream naming
-cloud.aws.kinesis.clients.default.naming.pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{streamName}"
+cloud.aws.kinesis.clients.default.naming.pattern: "{app.namespace}-{streamName}"
 
 # Kafka topic naming
-kafka.naming.topic_pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}"
+kafka.naming.topic_pattern: "{app.namespace}-{topicId}"
 
 # CloudWatch namespace
 metric.writer.cloudwatch.naming.pattern: "{app.tags.project}/{app.env}/{app.tags.family}/{app.tags.group}-{app.name}"

@@ -8,9 +8,9 @@ import (
 )
 
 type KafkaNamingSettings struct {
-	TopicPattern   string `cfg:"topic_pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}"`
+	TopicPattern   string `cfg:"topic_pattern,nodecode" default:"{app.namespace}-{topicId}"`
 	TopicDelimiter string `cfg:"topic_delimiter" default:"-"`
-	GroupPattern   string `cfg:"group_pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{groupId}"`
+	GroupPattern   string `cfg:"group_pattern,nodecode" default:"{app.namespace}-{app.name}-{groupId}"`
 	GroupDelimiter string `cfg:"group_delimiter" default:"-"`
 }
 

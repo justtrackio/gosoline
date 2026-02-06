@@ -54,6 +54,10 @@ func (s *TableNameTestSuite) setupConfigEnv(settings map[string]string) {
 }
 
 func (s *TableNameTestSuite) TestDefault() {
+	s.setupConfig(map[string]any{
+		"app.namespace": "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
+	})
+
 	name, err := ddb.GetTableName(s.config, s.settings)
 	if err != nil {
 		s.FailNow("there should be no error on getting the table name", err)

@@ -108,7 +108,7 @@ func (s *GetTopicNameTestSuite) TestUnknownPlaceholderReturnsError() {
 
 	_, err := sns.GetTopicName(s.config, s.settings)
 	s.Error(err)
-	s.Contains(err.Error(), "there is no config setting or default for key \"project\"")
+	s.Contains(err.Error(), "unknown placeholder {project}")
 }
 
 func (s *GetTopicNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {

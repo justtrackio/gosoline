@@ -8,7 +8,8 @@ import (
 )
 
 type TableNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{name}"`
+	Pattern   string `cfg:"pattern,nodecode" default:"{app.namespace}-{name}"`
+	Delimiter string `cfg:"delimiter" default:"-"`
 }
 
 func GetTableName(config cfg.Config, settings *Settings) (string, error) {
@@ -17,8 +18,12 @@ func GetTableName(config cfg.Config, settings *Settings) (string, error) {
 		return "", fmt.Errorf("failed to get table naming settings for client %s: %w", settings.ClientName, err)
 	}
 
-	// Pad the ModelId from config to fill in missing values like Env, App, and Tags
-	if err := settings.ModelId.PadFromConfig(config); err != nil {
+	identity := cfg.AppIdentity{
+		Env:       settings.ModelId.Env,
+		Name:      settings.ModelId.Name,
+		Tags:      settings.ModelId.Tags,
+	}
+	if err := identity.PadFromConfig(config); err != nil {
 		return "", fmt.Errorf("failed to pad ModelId from config: %w", err)
 	}
 
@@ -26,7 +31,7 @@ func GetTableName(config cfg.Config, settings *Settings) (string, error) {
 		namingSettings.Pattern = settings.TableNamingSettings.Pattern
 	}
 
-	return config.FormatString(namingSettings.Pattern, settings.ModelId.ToMap())
+	return identity.Format(namingSettings.Pattern, namingSettings.Delimiter, settings.ModelId.ToMap())
 }
 
 func GetTableNamingSettings(config cfg.Config, clientName string) (*TableNamingSettings, error) {

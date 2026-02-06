@@ -23,7 +23,7 @@
 ## Naming with ModelId
 Table names are generated via `config.FormatString` using the ModelId (converted to a map). Default pattern:
 ```yaml
-ddb.default.naming.pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{name}"
+ddb.default.naming.pattern: "{app.namespace}-{name}"
 ```
 
 **Note:** DynamoDB uses `AppIdentity`-style macros. The placeholders are:
@@ -40,7 +40,7 @@ ddb.default.naming.pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app
 ## Common config keys
 ```yaml
 cloud.aws.dynamodb.clients.default.endpoint: http://localhost:4566
-ddb.default.naming.pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{name}"
+ddb.default.naming.pattern: "{app.namespace}-{name}"
 ```
 
 ## Related packages
