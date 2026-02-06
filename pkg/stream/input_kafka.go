@@ -28,6 +28,7 @@ type kafkaInput struct {
 	executor              exec.Executor
 	maxPollRecords        int
 	data                  chan *Message
+	done                  chan struct{}
 }
 
 var _ SchemaRegistryAwareInput = &kafkaInput{}
@@ -91,6 +92,7 @@ func NewKafkaInputWithInterfaces(
 		executor:              executor,
 		maxPollRecords:        maxPollRecords,
 		data:                  data,
+		done:                  make(chan struct{}),
 	}
 }
 
@@ -165,6 +167,12 @@ func (i *kafkaInput) Run(ctx context.Context) error {
 	defer i.partitionManager.Stop(ctx)
 
 	for {
+		select {
+		case <-i.done:
+			return nil
+		default:
+		}
+
 		// while we are polling messages, we can't get unhealthy
 		// (as this code is outside our control to add code to mark us as healthy)
 		i.pollingOrRebalancing.Store(true)
@@ -204,6 +212,7 @@ func (i *kafkaInput) Run(ctx context.Context) error {
 }
 
 func (i *kafkaInput) Stop(_ context.Context) {
+	defer close(i.done)
 	i.reader.CloseAllowingRebalance()
 }
 
