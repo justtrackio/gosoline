@@ -87,7 +87,7 @@ func (s *AppIdentityTestSuite) TestFormatIdentifier() {
 			"tags": map[string]any{
 				"project": "gosoline",
 			},
-			"namespace": []string{"app.tags.project", "app.env", "app.name"},
+			"namespace": "{app.tags.project}.{app.env}.{app.name}",
 		},
 	})
 

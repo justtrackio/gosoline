@@ -10,8 +10,10 @@ import (
 	"github.com/spf13/cast"
 )
 
-var patternRegex = regexp.MustCompile(`(?m)\{([^\}]+)\}`)
-var namespaceRegex = regexp.MustCompile(`\{[^}]+\}|[^.]+`)
+var (
+	patternRegex   = regexp.MustCompile(`(?m)\{([^\}]+)\}`)
+	namespaceRegex = regexp.MustCompile(`\{[^}]+\}|[^.]+`)
+)
 
 // AppTags is a map of tag key-value pairs with helper methods.
 type AppTags map[string]string
@@ -169,26 +171,4 @@ func (i *AppIdentity) PadFromConfig(config Config) error {
 	i.namespaceParts = namespaceRegex.FindAllString(i.Namespace, -1)
 
 	return nil
-}
-
-// String returns a canonical string representation of the identity.
-// It joins non-empty components in the order: project, env, family, group, name.
-// Empty components are skipped.
-//
-// Examples:
-//   - Full: "myproject-production-myfamily-mygroup-myapp"
-//   - Partial: "production-myapp" (if only env and name are set)
-func (i *AppIdentity) String() string {
-	elements := []string{
-		i.Tags["project"],
-		i.Env,
-		i.Tags["family"],
-		i.Tags["group"],
-		i.Name,
-	}
-	elements = funk.Filter(elements, func(element string) bool {
-		return element != ""
-	})
-
-	return strings.Join(elements, "-")
 }

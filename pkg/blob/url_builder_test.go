@@ -22,8 +22,9 @@ func (s *UrlBuilderTestSuite) SetupTest() {
 	s.config = cfg.New()
 	err := s.config.Option(cfg.WithConfigMap(map[string]any{
 		"app": map[string]any{
-			"env":  "test",
-			"name": "uploader",
+			"env":       "test",
+			"name":      "uploader",
+			"namespace": "{app.tags.project}.{app.env}.{app.tags.family}",
 			"tags": map[string]any{
 				"project": "justtrack",
 				"family":  "gosoline",

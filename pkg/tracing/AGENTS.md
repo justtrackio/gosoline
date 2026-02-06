@@ -23,7 +23,7 @@ tracing:
   naming:
     # Pattern for service name / appId.
     # Supported placeholders: {app.env}, {app.name}, {app.tags.<key>}
-    pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}"
+    pattern: "{app.namespace}-{app.name}"
 ```
 
 ### X-Ray specific

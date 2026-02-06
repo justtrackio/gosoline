@@ -10,7 +10,7 @@ import (
 type Naming struct {
 	AddressPattern   string `cfg:"address_pattern,nodecode" default:"{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}"`
 	AddressDelimiter string `cfg:"address_delimiter,nodecode" default:"."`
-	KeyPattern       string `cfg:"key_pattern,nodecode" default:"{key}"` // e.g. {app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}
+	KeyPattern       string `cfg:"key_pattern,nodecode" default:"{key}"` // e.g. {app.namespace}-{app.name}-{key}
 	KeyDelimiter     string `cfg:"key_delimiter,nodecode" default:"-"`
 }
 

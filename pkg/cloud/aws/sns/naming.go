@@ -32,7 +32,7 @@ func (s TopicNameSettings) GetTopicId() string {
 }
 
 type TopicNamingSettings struct {
-	Pattern   string `cfg:"pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}"`
+	Pattern   string `cfg:"pattern,nodecode" default:"{app.namespace}-{topicId}"`
 	Delimiter string `cfg:"delimiter" default:"-"`
 }
 

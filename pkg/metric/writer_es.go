@@ -47,8 +47,10 @@ func ProvideElasticsearchWriter(ctx context.Context, config cfg.Config, logger l
 }
 
 func NewElasticsearchWriter(_ context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
-	esSettings := &ElasticsearchSettings{}
-	if err := getMetricWriterSettings(config, WriterTypeElasticsearch, esSettings); err != nil {
+	var err error
+	var esSettings *ElasticsearchSettings
+
+	if esSettings, err = getMetricWriterSettings[ElasticsearchSettings](config, WriterTypeElasticsearch); err != nil {
 		return nil, fmt.Errorf("could not get elasticsearch writer settings: %w", err)
 	}
 

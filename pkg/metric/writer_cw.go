@@ -42,7 +42,7 @@ type (
 	}
 
 	CloudwatchNamingSettings struct {
-		Pattern   string `cfg:"pattern,nodecode" default:"{app.tags.project}/{app.env}/{app.tags.family}/{app.tags.group}-{app.name}"`
+		Pattern   string `cfg:"pattern,nodecode" default:"{app.namespace}-{app.name}"`
 		Delimiter string `cfg:"delimiter" default:"/"`
 	}
 
@@ -68,8 +68,10 @@ func ProvideCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.
 func NewCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	testClock := clock.NewRealClock()
 
-	cwSettings := &CloudWatchSettings{}
-	if err := getMetricWriterSettings(config, WriterTypeCloudwatch, cwSettings); err != nil {
+	var err error
+	var cwSettings *CloudWatchSettings
+
+	if cwSettings, err = getMetricWriterSettings[CloudWatchSettings](config, WriterTypeCloudwatch); err != nil {
 		return nil, fmt.Errorf("failed to get cloudwatch settings: %w", err)
 	}
 
@@ -217,14 +219,14 @@ func (w *cloudwatchWriter) buildMetricData(ctx context.Context, batch Data) ([]t
 func GetCloudWatchNamespace(config cfg.Config) (string, error) {
 	var err error
 	var identity cfg.AppIdentity
+	var cloudwatchSettings *CloudWatchSettings
 	var namespace string
 
 	if identity, err = cfg.GetAppIdentity(config); err != nil {
 		return "", fmt.Errorf("failed to get app identity from config: %w", err)
 	}
 
-	cloudwatchSettings := &CloudWatchSettings{}
-	if err = getMetricWriterSettings(config, WriterTypeCloudwatch, cloudwatchSettings); err != nil {
+	if cloudwatchSettings, err = getMetricWriterSettings[CloudWatchSettings](config, WriterTypeCloudwatch); err != nil {
 		return "", fmt.Errorf("failed to get cloudwatch settings: %w", err)
 	}
 

@@ -29,7 +29,7 @@ redis.default.dialer.timeout: 5s
 redis.default.dialer.read_timeout: 3s
 redis.default.dialer.write_timeout: 3s
 redis.default.naming.address_pattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}"
-redis.default.naming.key_pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}"
+redis.default.naming.key_pattern: "{app.namespace}-{app.name}-{key}"
 ```
 
 ## Address naming pattern
@@ -50,7 +50,7 @@ Redis key naming uses `cfg.NamingTemplate` with AppIdentity macros to build full
 
 ### Configuration
 ```yaml
-redis.default.naming.key_pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}"
+redis.default.naming.key_pattern: "{app.namespace}-{app.name}-{key}"
 ```
 
 ### Supported placeholders
@@ -70,7 +70,7 @@ redis.default.naming.key_pattern: "{app.tags.project}-{app.env}-{app.tags.family
 ### Example patterns
 ```yaml
 # Default pattern (backward-compatible)
-redis.default.naming.key_pattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{key}"
+redis.default.naming.key_pattern: "{app.namespace}-{app.name}-{key}"
 
 # Minimal pattern (no tags required)
 redis.default.naming.key_pattern: "{app.env}-{app.name}-{key}"

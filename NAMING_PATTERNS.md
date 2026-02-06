@@ -11,6 +11,7 @@ Every Gosoline application is identified by its **name**, **environment**, and a
 app:
   name: my-app
   env: dev
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}"
   tags:
     project: my-project
     family: my-family
@@ -25,11 +26,71 @@ The following macros are available in almost all naming patterns. They resolve d
 |-------|---------------|-------------|
 | `{app.name}` | `app.name` | The application name |
 | `{app.env}` | `app.env` | The environment (e.g., dev, prod) |
+| `{app.namespace}` | `app.namespace` | A reusable namespace pattern (see below) |
 | `{app.tags.<tag>}` | `app.tags.<tag>` | Any tag defined in `app.tags` |
 
 *Examples:*
 - `{app.tags.project}` resolves to `my-project`
 - `{app.tags.cost_center}` resolves to the value of `app.tags.cost_center`
+- With namespace `{app.tags.project}.{app.env}.{app.tags.family}` and delimiter `-`, `{app.namespace}` resolves to `my-project-dev-my-family`
+
+### Namespace Pattern
+The `app.namespace` configuration allows you to define a reusable namespace pattern that can be referenced in all resource naming patterns. This is useful for establishing a consistent naming hierarchy across your infrastructure.
+
+**Config Key:** `app.namespace`
+**Default:** Empty (no namespace defined)
+
+**Format:**
+- The namespace is defined as a pattern using dots (`.`) as delimiters between placeholders
+- Any standard `{app.*}` and `{app.tags.*}` placeholders can be used
+- When expanded, the dots are replaced with the service-specific delimiter (usually `-`)
+
+**Example:**
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}"
+  tags:
+    project: logistics
+    family: platform
+  env: production
+
+# When used in patterns with delimiter "-", {app.namespace} becomes: logistics-production-platform
+# When used in patterns with delimiter "/", {app.namespace} becomes: logistics/production/platform
+```
+
+**Benefits:**
+- Define your naming hierarchy once and reuse it everywhere
+- Simplify resource patterns by using `{app.namespace}` instead of repeating the same placeholders
+- Easy to change your naming convention across all resources in one place
+
+### Pattern Resolution and Delimiters
+
+Every resource naming pattern is paired with a **delimiter** configuration that controls how `{app.namespace}` is expanded. There are two resolution mechanisms:
+
+#### Identity.Format (with Delimiter)
+Most services use `identity.Format(pattern, delimiter)`:
+- The delimiter replaces dots in the `{app.namespace}` pattern
+- Examples: SQS, SNS, Kinesis, DynamoDB, S3, Kafka, Redis, CloudWatch
+- Each service has a configurable delimiter (default is usually `-`)
+
+**Example:**
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}"
+  tags:
+    project: myproject
+    family: myfamily
+  env: prod
+
+cloud.aws.sqs.clients.default.naming:
+  pattern: "{app.namespace}-{queueId}"
+  delimiter: "-"  # Dots in namespace become dashes
+  
+# Result for queue "orders": myproject-prod-myfamily-orders
+```
+
+#### Config.FormatString (no Delimiter)
+This resolution method is no longer used by any services in gosoline. All services now use `identity.Format()` with configurable delimiters.
 
 ## Service-Specific Patterns
 
@@ -37,7 +98,10 @@ Different services support additional macros specific to their context. You can 
 
 ### AWS SQS (Queues)
 **Config Key:** `cloud.aws.sqs.clients.<client_name>.naming.pattern`
-**Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{queueId}`
+**Default:** `{app.namespace}-{queueId}`
+
+**Delimiter Config Key:** `cloud.aws.sqs.clients.<client_name>.naming.delimiter`
+**Default Delimiter:** `-` (dashes)
 
 | Macro | Description |
 |-------|-------------|
@@ -45,42 +109,103 @@ Different services support additional macros specific to their context. You can 
 
 ### AWS SNS (Topics)
 **Config Key:** `cloud.aws.sns.clients.<client_name>.naming.pattern`
-**Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}`
+**Default:** `{app.namespace}-{topicId}`
+
+**Delimiter Config Key:** `cloud.aws.sns.clients.<client_name>.naming.delimiter`
+**Default Delimiter:** `-` (dashes)
 
 | Macro | Description |
 |-------|-------------|
 | `{topicId}` | The logical name of the topic provided in code |
 
 ### AWS Kinesis
-Kinesis configuration supports naming for both Streams and the DynamoDB Metadata table used by the Kinsumer.
+Kinesis configuration supports naming for Streams, the DynamoDB Metadata table, and metadata namespace used by the Kinsumer.
+
+#### Stream Naming
 
 **Stream Config Key:** `cloud.aws.kinesis.clients.<client_name>.naming.stream_pattern`
-**Stream Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{streamName}`
+**Stream Default:** `{app.namespace}-{streamName}`
+
+**Stream Delimiter Config Key:** `cloud.aws.kinesis.clients.<client_name>.naming.stream_delimiter`
+**Stream Default Delimiter:** `-` (dashes)
 
 | Macro | Description |
 |-------|-------------|
 | `{streamName}` | The logical name of the stream provided in code |
 
-**Metadata Config Key:** `cloud.aws.kinesis.clients.<client_name>.naming.metadata_pattern`
-**Metadata Default:** `{app.env}-kinsumer-metadata`
+#### Metadata Table Naming
 
-### AWS CloudWatch (Metrics Namespace)
-CloudWatch naming configures the **Namespace** under which metrics are published.
+**Metadata Table Config Key:** `cloud.aws.kinesis.clients.<client_name>.naming.metadata_table_pattern`
+**Metadata Table Default:** `{app.namespace}-kinsumer-metadata`
 
-**Config Key:** `metric.writer_settings.cloudwatch.naming.pattern`
-**Default:** `{app.tags.project}/{app.env}/{app.tags.family}/{app.tags.group}-{app.name}`
+**Metadata Table Delimiter Config Key:** `cloud.aws.kinesis.clients.<client_name>.naming.metadata_table_delimiter`
+**Metadata Table Default Delimiter:** `-` (dashes)
+
+**Note:** This pattern determines the DynamoDB table name used to store Kinsumer checkpoint and client registration data.
+
+#### Metadata Namespace Naming
+
+**Metadata Namespace Config Key:** `cloud.aws.kinesis.clients.<client_name>.naming.metadata_namespace_pattern`
+**Metadata Namespace Default:** `{app.namespace}-{app.name}`
+
+**Metadata Namespace Delimiter Config Key:** `cloud.aws.kinesis.clients.<client_name>.naming.metadata_namespace_delimiter`
+**Metadata Namespace Default Delimiter:** `-` (dashes)
 
 | Macro | Description |
 |-------|-------------|
 | `{app.env}` | Environment |
 | `{app.name}` | Application name |
+| `{app.namespace}` | Your configured namespace pattern |
 | `{app.tags.<tag>}` | Any tag from the identity |
+
+**Note:** This pattern is used as a namespace prefix within the metadata table for organizing client and checkpoint records. It allows multiple applications to share the same metadata table while maintaining isolation.
+
+### Metrics
+
+#### AWS CloudWatch (Metrics Namespace)
+CloudWatch naming configures the **Namespace** under which metrics are published.
+
+**Config Key:** `metric.writer_settings.cloudwatch.naming.pattern`
+**Default:** `{app.namespace}-{app.name}`
+
+**Delimiter Config Key:** `metric.writer_settings.cloudwatch.naming.delimiter`
+**Default Delimiter:** `/` (forward slashes)
+
+| Macro | Description |
+|-------|-------------|
+| `{app.env}` | Environment |
+| `{app.name}` | Application name |
+| `{app.namespace}` | Your configured namespace pattern |
+| `{app.tags.<tag>}` | Any tag from the identity |
+
+**Note:** CloudWatch uses `/` as the default delimiter, which creates hierarchical namespaces in the AWS Console (e.g., `my-project/production/platform/my-app`).
+
+#### Prometheus (Metrics Namespace)
+Prometheus naming configures the **namespace prefix** for all metrics exposed via the Prometheus metrics endpoint.
+
+**Config Key:** `metric.writer_settings.prometheus.naming.namespace_pattern`
+**Default:** `{app.namespace}-{app.name}`
+
+**Delimiter Config Key:** `metric.writer_settings.prometheus.naming.namespace_delimiter`
+**Default Delimiter:** `_` (underscores)
+
+| Macro | Description |
+|-------|-------------|
+| `{app.env}` | Environment |
+| `{app.name}` | Application name |
+| `{app.namespace}` | Your configured namespace pattern |
+| `{app.tags.<tag>}` | Any tag from the identity |
+
+**Note:** Prometheus uses `_` (underscores) as the default delimiter, which is standard for Prometheus metric naming conventions (e.g., `my_project_prod_platform_my_app`).
 
 ### AWS DynamoDB (Tables)
 DynamoDB table naming uses the standard `AppIdentity` macros plus `{name}` for the model name.
 
 **Config Key:** `cloud.aws.dynamodb.clients.<client_name>.naming.pattern`
-**Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{name}`
+**Default:** `{app.namespace}-{name}`
+
+**Delimiter Config Key:** `cloud.aws.dynamodb.clients.<client_name>.naming.delimiter`
+**Default Delimiter:** `-` (dashes)
 
 | Macro | Description |
 |-------|-------------|
@@ -92,17 +217,26 @@ DynamoDB table naming uses the standard `AppIdentity` macros plus `{name}` for t
 **Note:** Unlike the Canonical Model ID, the table name pattern **does not** automatically append the name. You must include `{name}` in the pattern.
 
 ### AWS S3 Buckets
+S3 bucket naming is used by the `blob` package and other S3-dependent components.
+
 **Config Key:** `cloud.aws.s3.clients.<client_name>.naming.bucket_pattern`
-**Default:** `{app.tags.project}-{app.env}-{app.tags.family}`
+**Default:** `{app.namespace}` (uses your configured namespace with the bucket delimiter)
 
 | Macro | Description |
 |-------|-------------|
 | `{app.env}` | Environment |
 | `{app.name}` | Application name |
+| `{app.namespace}` | Your configured namespace pattern |
 | `{app.tags.<tag>}` | Any tag from the identity |
 | `{bucketId}` | The bucket ID (e.g. the blob store name) |
 
-**Note:** For the `blob` package, you can still override the bucket name explicitly using `blob.<store_name>.bucket`.
+**Delimiter Config Key:** `cloud.aws.s3.clients.<client_name>.naming.delimiter`
+**Default Delimiter:** `-` (dashes)
+
+**Notes:** 
+- For the `blob` package, you can still override the bucket name explicitly using `blob.<store_name>.bucket`
+- If no namespace is configured, `{app.namespace}` expands to an empty string
+- The delimiter determines how dots in the namespace pattern are replaced (e.g., `.` → `-`)
 
 ### ModelId Domain Pattern
 Resources that use `ModelId` but are not tied to a specific service client (like canonical message routing keys) use the domain pattern.
@@ -129,14 +263,20 @@ Unlike other naming patterns, the `ModelId` domain pattern **must** use dots (`.
 Kafka supports naming for both Topics and Consumer Groups.
 
 **Topic Config Key:** `kafka.naming.topic_pattern`
-**Topic Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{topicId}`
+**Topic Default:** `{app.namespace}-{topicId}`
+
+**Topic Delimiter Config Key:** `kafka.naming.topic_delimiter`
+**Topic Default Delimiter:** `-` (dashes)
 
 | Macro | Description |
 |-------|-------------|
 | `{topicId}` | The logical topic name |
 
 **Consumer Group Config Key:** `kafka.naming.group_pattern`
-**Group Default:** `{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{groupId}`
+**Group Default:** `{app.namespace}-{app.name}-{groupId}`
+
+**Group Delimiter Config Key:** `kafka.naming.group_delimiter`
+**Group Default Delimiter:** `-` (dashes)
 
 | Macro | Description |
 |-------|-------------|
@@ -148,16 +288,71 @@ Redis has patterns for both the server address (for service discovery) and key n
 **Address Config Key:** `redis.<client_name>.naming.address_pattern`
 **Address Default:** `{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}`
 
+**Address Delimiter Config Key:** `redis.<client_name>.naming.address_delimiter`
+**Address Default Delimiter:** `.` (dots)
+
 | Macro | Description |
 |-------|-------------|
 | `{name}` | The client name (e.g., "default", "cache") |
 
 **Key Config Key:** `redis.<client_name>.naming.key_pattern`
-**Key Default:** `{key}` (often configured to include namespaces like `{app.name}-{key}`)
+**Key Default:** `{key}` (often configured to include namespaces like `{app.namespace}-{app.name}-{key}`)
+
+**Key Delimiter Config Key:** `redis.<client_name>.naming.key_delimiter`
+**Key Default Delimiter:** `-` (dashes)
 
 | Macro | Description |
 |-------|-------------|
 | `{key}` | The specific key being accessed |
+
+### Tracing
+Tracing service naming configures the service name used in distributed tracing systems like AWS X-Ray and OpenTelemetry.
+
+**Service Name Config Key:** `tracing.naming.pattern`
+**Service Name Default:** `{app.namespace}-{app.name}`
+
+**Service Name Delimiter Config Key:** `tracing.naming.delimiter`
+**Service Name Default Delimiter:** `-` (dashes)
+
+| Macro | Description |
+|-------|-------------|
+| `{app.env}` | Environment |
+| `{app.name}` | Application name |
+| `{app.namespace}` | Your configured namespace pattern |
+| `{app.tags.<tag>}` | Any tag from the identity |
+
+#### AWS X-Ray Daemon SRV Lookup
+
+When using AWS X-Ray with DNS SRV-based service discovery (`tracing.xray.addr_type: srv`), you can configure the SRV record name pattern:
+
+**SRV Pattern Config Key:** `tracing.xray.srv_naming.pattern`
+**SRV Pattern Default:** `xray.{app.namespace}`
+
+**SRV Delimiter Config Key:** `tracing.xray.srv_naming.delimiter`
+**SRV Delimiter Default:** `.` (dots)
+
+**Notes:**
+- This pattern is only used when `tracing.xray.addr_type` is set to `srv` (DNS SRV lookup)
+- The delimiter defaults to `.` (dots) which is appropriate for DNS names
+- If `tracing.xray.add_value` is explicitly configured, this pattern is ignored
+
+**Example:**
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}"
+  tags:
+    project: myproject
+  env: prod
+
+tracing:
+  xray:
+    addr_type: srv  # Enable DNS SRV lookup
+    srv_naming:
+      pattern: "xray.{app.namespace}"
+      delimiter: "."
+      
+# SRV lookup will query: xray.myproject.prod
+```
 
 ## Configuration Example
 
@@ -165,11 +360,14 @@ Here is how you might configure these patterns in your `config.yml` to enforce a
 
 ```yaml
 app:
-  project: ordering
+  name: order-service
   env: production
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}"
   tags:
+    project: logistics
+    family: platform
     region: eu-central-1
-    team: logistics
+    team: backend
 
 cloud:
   aws:
@@ -177,6 +375,34 @@ cloud:
       clients:
         default:
           naming:
-            # Result: eu-central-1-logistics-ordering-production-myqueue
-            pattern: "{app.tags.region}-{app.tags.team}-{app.tags.project}-{app.env}-{queueId}"
+            # Using namespace: logistics-production-platform-myqueue
+            pattern: "{app.namespace}-{queueId}"
+            
+    s3:
+      clients:
+        default:
+          naming:
+            # Using namespace with bucketId: logistics-production-platform-documents
+            bucket_pattern: "{app.namespace}-{bucketId}"
+            
+    sns:
+      clients:
+        default:
+          naming:
+            # Custom pattern: eu-central-1-backend-logistics-production-mytopic
+            pattern: "{app.tags.region}-{app.tags.team}-{app.namespace}-{topicId}"
+
+metric:
+  writer_settings:
+    cloudwatch:
+      naming:
+        # Using namespace with slash delimiter: logistics/production/platform-order-service
+        pattern: "{app.namespace}-{app.name}"
+        delimiter: "/"
 ```
+
+**Benefits of using `app.namespace`:**
+- Define your naming hierarchy once (`{app.tags.project}.{app.env}.{app.tags.family}`)
+- Reuse it across all resources with `{app.namespace}`
+- Change the hierarchy in one place to update all resource names
+- Keep resource-specific patterns simple and focused

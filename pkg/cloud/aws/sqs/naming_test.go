@@ -116,7 +116,7 @@ func (s *GetSqsQueueNameTestSuite) TestUnknownPlaceholderReturnsError() {
 
 	_, err := sqs.GetQueueName(s.config, s.settings)
 	s.Error(err)
-	s.Contains(err.Error(), "there is no config setting or default for key \"project\"")
+	s.Contains(err.Error(), "unknown placeholder {project}")
 }
 
 func (s *GetSqsQueueNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
@@ -140,5 +140,5 @@ func (s *GetSqsQueueNameTestSuite) TestMissingRequiredTagReturnsError() {
 
 	_, err := sqs.GetQueueName(s.config, s.settings)
 	s.Error(err)
-	s.Contains(err.Error(), "there is no config setting or default for key \"app.tags.project\"")
+	s.Contains(err.Error(), "unknown placeholder {app.tags.project}")
 }

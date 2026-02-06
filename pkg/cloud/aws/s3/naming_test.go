@@ -21,7 +21,7 @@ func (s *NamingTestSuite) TestGetBucketName() {
 	appConfig := map[string]any{
 		"env":       "test",
 		"name":      "app",
-		"namespace": "{app.env}-{app.tags.project}-{app.tags.family}-{app.tags.group}",
+		"namespace": "{app.tags.project}.{app.env}.{app.tags.family}",
 		"tags": map[string]any{
 			"project": "proj",
 			"family":  "fam",
