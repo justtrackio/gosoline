@@ -19,9 +19,9 @@ func GetTableName(config cfg.Config, settings *Settings) (string, error) {
 	}
 
 	identity := cfg.AppIdentity{
-		Env:       settings.ModelId.Env,
-		Name:      settings.ModelId.Name,
-		Tags:      settings.ModelId.Tags,
+		Env:  settings.ModelId.Env,
+		Name: settings.ModelId.Name,
+		Tags: settings.ModelId.Tags,
 	}
 	if err := identity.PadFromConfig(config); err != nil {
 		return "", fmt.Errorf("failed to pad ModelId from config: %w", err)

@@ -41,7 +41,7 @@ func (s *GetStreamNameTestSuite) SetupTest() {
 	s.NoError(err)
 
 	// Ensure namespaceParts are initialized
-	err = s.settings.AppIdentity.PadFromConfig(s.config)
+	err = s.settings.PadFromConfig(s.config)
 	s.NoError(err)
 }
 
@@ -119,13 +119,13 @@ func (s *GetStreamNameTestSuite) TestUnknownPlaceholderReturnsError() {
 func (s *GetStreamNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
 	// StreamPattern doesn't use tags, so missing tags should not cause error
 	s.settings.Tags = nil
-	s.settings.AppIdentity.Namespace = "{app.env}"
+	s.settings.Namespace = "{app.env}"
 	s.setupConfig(map[string]any{
 		"cloud.aws.kinesis.clients.default.naming.stream_pattern": "{app.env}-{streamName}",
 	})
 
 	// Re-initialize namespaceParts with the new namespace
-	err := s.settings.AppIdentity.PadFromConfig(s.config)
+	err := s.settings.PadFromConfig(s.config)
 	s.NoError(err)
 
 	name, err := kinesis.GetStreamName(s.config, s.settings)

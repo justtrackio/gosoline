@@ -24,8 +24,10 @@ func init() {
 	RegisterWriterFactory(WriterTypePrometheus, ProvidePrometheusWriter)
 }
 
-var _ Writer = &prometheusWriter{}
-var promReplacer = strings.NewReplacer("-", "_")
+var (
+	_            Writer = &prometheusWriter{}
+	promReplacer        = strings.NewReplacer("-", "_")
+)
 
 type (
 	prometheusMetricProcessor func(metric prometheus.Collector)

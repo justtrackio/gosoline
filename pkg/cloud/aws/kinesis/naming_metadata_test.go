@@ -41,7 +41,7 @@ func (s *GetMetadataTableNameTestSuite) SetupTest() {
 	s.NoError(err)
 
 	// Ensure namespaceParts are initialized
-	err = s.settings.AppIdentity.PadFromConfig(s.config)
+	err = s.settings.PadFromConfig(s.config)
 	s.NoError(err)
 }
 
