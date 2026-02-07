@@ -1,13 +1,17 @@
 app:
   env: test
   name: app
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
   tags:
-    project: prj
-    family: fam
+    project: gosoline
+    family: integration-test
     group: grp
   model_id:
-    domain_pattern: "!nodecode {app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+    domain_pattern: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
 
+metric:
+  calculator:
+    enabled: false
 
 test:
   components:

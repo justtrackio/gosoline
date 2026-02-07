@@ -24,8 +24,9 @@ func (s *GetStreamNameTestSuite) SetupTest() {
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = &kinesis.Settings{
 		AppIdentity: cfg.AppIdentity{
-			Name: "producer",
-			Env:  "env",
+			Name:      "producer",
+			Env:       "env",
+			Namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
 			Tags: cfg.AppTags{
 				"project": "justtrack",
 				"family":  "gosoline",
@@ -37,6 +38,10 @@ func (s *GetStreamNameTestSuite) SetupTest() {
 	}
 
 	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
+	s.NoError(err)
+
+	// Ensure namespaceParts are initialized
+	err = s.settings.AppIdentity.PadFromConfig(s.config)
 	s.NoError(err)
 }
 
@@ -114,11 +119,39 @@ func (s *GetStreamNameTestSuite) TestUnknownPlaceholderReturnsError() {
 func (s *GetStreamNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
 	// StreamPattern doesn't use tags, so missing tags should not cause error
 	s.settings.Tags = nil
+	s.settings.AppIdentity.Namespace = "{app.env}"
 	s.setupConfig(map[string]any{
 		"cloud.aws.kinesis.clients.default.naming.stream_pattern": "{app.env}-{streamName}",
 	})
 
+	// Re-initialize namespaceParts with the new namespace
+	err := s.settings.AppIdentity.PadFromConfig(s.config)
+	s.NoError(err)
+
 	name, err := kinesis.GetStreamName(s.config, s.settings)
 	s.NoError(err)
 	s.EqualValues("env-event", name)
+}
+
+func (s *GetStreamNameTestSuite) TestCustomDelimiter() {
+	s.setupConfig(map[string]any{
+		"cloud.aws.kinesis.clients.default.naming.stream_pattern":   "{app.namespace}.{streamName}",
+		"cloud.aws.kinesis.clients.default.naming.stream_delimiter": ".",
+	})
+
+	name, err := kinesis.GetStreamName(s.config, s.settings)
+	s.NoError(err)
+	s.EqualValues("justtrack.env.gosoline.grp.event", name)
+}
+
+func (s *GetStreamNameTestSuite) TestDelimiterFallback() {
+	s.settings.ClientName = "specific"
+	s.setupConfig(map[string]any{
+		"cloud.aws.kinesis.clients.default.naming.stream_delimiter": "_",
+	})
+
+	name, err := kinesis.GetStreamName(s.config, s.settings)
+	s.NoError(err)
+	// Delimiter only affects namespace parts, not literal separators in pattern
+	s.EqualValues("justtrack_env_gosoline_grp-event", name)
 }

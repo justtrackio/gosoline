@@ -23,8 +23,9 @@ type KafkaNamingTestSuite struct {
 func (s *KafkaNamingTestSuite) SetupTest() {
 	s.config = cfg.New(map[string]any{
 		"app": map[string]any{
-			"env":  "env",
-			"name": "appname",
+			"env":       "env",
+			"name":      "appname",
+			"namespace": "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
 			"tags": map[string]any{
 				"project": "project",
 				"family":  "family",
@@ -33,8 +34,9 @@ func (s *KafkaNamingTestSuite) SetupTest() {
 		},
 	})
 	s.appIdentity = cfg.AppIdentity{
-		Name: "producer",
-		Env:  "test",
+		Name:      "producer",
+		Env:       "test",
+		Namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
 		Tags: cfg.AppTags{
 			"project": "justtrack",
 			"family":  "gosoline",
@@ -43,6 +45,10 @@ func (s *KafkaNamingTestSuite) SetupTest() {
 	}
 	s.topicId = "topic_a"
 	s.groupId = "c-group-1"
+
+	// Ensure namespaceParts are initialized for appIdentity
+	err := s.appIdentity.PadFromConfig(s.config)
+	s.NoError(err)
 }
 
 func (s *KafkaNamingTestSuite) setupConfig(settings map[string]any) {
@@ -95,9 +101,14 @@ func (s *KafkaNamingTestSuite) TestUnknownPlaceholderReturnsError() {
 func (s *KafkaNamingTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
 	// Pattern doesn't use tags, so missing tags should not cause error
 	s.appIdentity.Tags = nil
+	s.appIdentity.Namespace = "{app.env}"
 	s.setupConfig(map[string]any{
 		"kafka.naming.topic_pattern": "{app.env}-{topicId}",
 	})
+
+	// Re-initialize namespaceParts with the new namespace
+	err := s.appIdentity.PadFromConfig(s.config)
+	s.NoError(err)
 
 	topic, err := kafka.BuildFullTopicName(s.config, s.appIdentity, s.topicId)
 	s.NoError(err)

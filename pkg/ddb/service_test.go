@@ -48,7 +48,12 @@ type globalModel1 struct {
 
 func TestService_sanitizeSettings(t *testing.T) {
 	ctx := appctx.WithContainer(t.Context())
-	config := cfg.New()
+	config := cfg.New(map[string]any{
+		"app": map[string]any{
+			"name": "test-app",
+			"env":  "test",
+		},
+	})
 	logger := log.NewLogger()
 
 	// Use a static pattern since we don't have app identity configured
