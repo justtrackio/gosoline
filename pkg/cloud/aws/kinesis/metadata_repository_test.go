@@ -45,9 +45,9 @@ func (s *metadataRepositoryTestSuite) SetupTest() {
 	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.stream = "testStream"
 	s.clientId = kinesis.ClientId(uuid.New().NewV4())
-	s.clientNamespace = string("client:gosoline-test-metadata-repository-test-suite:" + s.stream)
+	s.clientNamespace = string("client:gosoline-test-metadata-repository:testStream")
 	s.shardId = kinesis.ShardId(uuid.New().NewV4())
-	s.checkpointNamespace = string("checkpoint:gosoline-test-metadata-repository-test-suite:" + s.stream)
+	s.checkpointNamespace = string("checkpoint:gosoline-test-metadata-repository:testStream")
 	s.repo = ddbMocks.NewRepository(s.T())
 	s.settings = kinesis.Settings{
 		DiscoverFrequency:        time.Minute * 10,
@@ -65,7 +65,12 @@ func (s *metadataRepositoryTestSuite) SetupTest() {
 	}
 	s.clock = clock.NewFakeClock()
 
-	s.metadataRepository = kinesis.NewMetadataRepositoryWithInterfaces(s.logger, s.stream, s.clientId, s.repo, s.settings, s.appIdentity, s.clock)
+	namingSettings := &kinesis.KinsumerNamingSettings{
+		MetadataNamespacePattern:   "gosoline-test-metadata-repository",
+		MetadataNamespaceDelimiter: "-",
+	}
+
+	s.metadataRepository = kinesis.NewMetadataRepositoryWithInterfaces(s.logger, s.stream, s.clientId, s.repo, s.settings, namingSettings, s.appIdentity, s.clock)
 }
 
 func (s *metadataRepositoryTestSuite) TestRegisterClient_PutItemError() {

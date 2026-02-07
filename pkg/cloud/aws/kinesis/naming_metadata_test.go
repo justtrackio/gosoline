@@ -24,8 +24,9 @@ func (s *GetMetadataTableNameTestSuite) SetupTest() {
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = &kinesis.Settings{
 		AppIdentity: cfg.AppIdentity{
-			Name: "producer",
-			Env:  "env",
+			Name:      "producer",
+			Env:       "env",
+			Namespace: "{app.tags.project}.{app.env}.{app.tags.family}",
 			Tags: cfg.AppTags{
 				"project": "justtrack",
 				"family":  "gosoline",
@@ -37,6 +38,10 @@ func (s *GetMetadataTableNameTestSuite) SetupTest() {
 	}
 
 	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
+	s.NoError(err)
+
+	// Ensure namespaceParts are initialized
+	err = s.settings.AppIdentity.PadFromConfig(s.config)
 	s.NoError(err)
 }
 
@@ -55,12 +60,12 @@ func (s *GetMetadataTableNameTestSuite) setupConfigEnv(settings map[string]strin
 func (s *GetMetadataTableNameTestSuite) TestDefault() {
 	name, err := kinesis.GetMetadataTableName(s.config, s.settings)
 	s.NoError(err)
-	s.EqualValues("env-kinsumer-metadata", name)
+	s.EqualValues("justtrack-env-gosoline-kinsumer-metadata", name)
 }
 
 func (s *GetMetadataTableNameTestSuite) TestDefaultWithPattern() {
 	s.setupConfig(map[string]any{
-		"cloud.aws.kinesis.clients.default.naming.metadata_pattern": "{app.name}-metadata",
+		"cloud.aws.kinesis.clients.default.naming.metadata_table_pattern": "{app.name}-metadata",
 	})
 
 	name, err := kinesis.GetMetadataTableName(s.config, s.settings)
@@ -71,7 +76,7 @@ func (s *GetMetadataTableNameTestSuite) TestDefaultWithPattern() {
 func (s *GetMetadataTableNameTestSuite) TestSpecificClientWithPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.kinesis.clients.specific.naming.metadata_pattern": "{app.name}-metadata",
+		"cloud.aws.kinesis.clients.specific.naming.metadata_table_pattern": "{app.name}-metadata",
 	})
 
 	name, err := kinesis.GetMetadataTableName(s.config, s.settings)
@@ -82,7 +87,7 @@ func (s *GetMetadataTableNameTestSuite) TestSpecificClientWithPattern() {
 func (s *GetMetadataTableNameTestSuite) TestSpecificClientWithFallbackPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.kinesis.clients.default.naming.metadata_pattern": "{app.name}-metadata",
+		"cloud.aws.kinesis.clients.default.naming.metadata_table_pattern": "{app.name}-metadata",
 	})
 
 	name, err := kinesis.GetMetadataTableName(s.config, s.settings)
@@ -93,10 +98,33 @@ func (s *GetMetadataTableNameTestSuite) TestSpecificClientWithFallbackPattern() 
 func (s *GetMetadataTableNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
 	s.settings.ClientName = "specific"
 	s.setupConfigEnv(map[string]string{
-		"CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_METADATA_PATTERN": "!nodecode {app.name}-metadata",
+		"CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_METADATA_TABLE_PATTERN": "!nodecode {app.name}-metadata",
 	})
 
 	name, err := kinesis.GetMetadataTableName(s.config, s.settings)
 	s.NoError(err)
 	s.EqualValues("producer-metadata", name)
+}
+
+func (s *GetMetadataTableNameTestSuite) TestCustomDelimiter() {
+	s.setupConfig(map[string]any{
+		"cloud.aws.kinesis.clients.default.naming.metadata_table_pattern":   "{app.namespace}.{app.name}",
+		"cloud.aws.kinesis.clients.default.naming.metadata_table_delimiter": ".",
+	})
+
+	name, err := kinesis.GetMetadataTableName(s.config, s.settings)
+	s.NoError(err)
+	s.EqualValues("justtrack.env.gosoline.producer", name)
+}
+
+func (s *GetMetadataTableNameTestSuite) TestDelimiterFallback() {
+	s.settings.ClientName = "specific"
+	s.setupConfig(map[string]any{
+		"cloud.aws.kinesis.clients.default.naming.metadata_table_delimiter": "_",
+	})
+
+	name, err := kinesis.GetMetadataTableName(s.config, s.settings)
+	s.NoError(err)
+	// Delimiter only affects namespace parts, not literal separators in pattern
+	s.EqualValues("justtrack_env_gosoline-kinsumer-metadata", name)
 }

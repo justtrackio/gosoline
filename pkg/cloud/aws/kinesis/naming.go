@@ -63,11 +63,18 @@ func readNamingSettings(config cfg.Config, settings StreamNameSettingsAware) (*K
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("kinesis", settings.GetClientName()))
 	defaultNamingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("kinesis", "default"))
-	defaultStreamPatternKey := fmt.Sprintf("%s.stream_pattern", defaultNamingKey)
-	defaultMetadataPatternKey := fmt.Sprintf("%s.metadata_pattern", defaultNamingKey)
+
+	defaults := []cfg.UnmarshalDefaults{
+		cfg.UnmarshalWithDefaultsFromKey(fmt.Sprintf("%s.stream_pattern", defaultNamingKey), "stream_pattern"),
+		cfg.UnmarshalWithDefaultsFromKey(fmt.Sprintf("%s.stream_delimiter", defaultNamingKey), "stream_delimiter"),
+		cfg.UnmarshalWithDefaultsFromKey(fmt.Sprintf("%s.metadata_table_pattern", defaultNamingKey), "metadata_table_pattern"),
+		cfg.UnmarshalWithDefaultsFromKey(fmt.Sprintf("%s.metadata_table_delimiter", defaultNamingKey), "metadata_table_delimiter"),
+		cfg.UnmarshalWithDefaultsFromKey(fmt.Sprintf("%s.metadata_namespace_pattern", defaultNamingKey), "metadata_namespace_pattern"),
+		cfg.UnmarshalWithDefaultsFromKey(fmt.Sprintf("%s.metadata_namespace_delimiter", defaultNamingKey), "metadata_namespace_delimiter"),
+	}
 
 	namingSettings := &KinsumerNamingSettings{}
-	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultStreamPatternKey, "stream_pattern"), cfg.UnmarshalWithDefaultsFromKey(defaultMetadataPatternKey, "metadata_pattern")); err != nil {
+	if err := config.UnmarshalKey(namingKey, namingSettings, defaults...); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal kinesis naming settings for %s: %w", namingKey, err)
 	}
 

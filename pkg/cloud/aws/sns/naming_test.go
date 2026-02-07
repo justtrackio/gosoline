@@ -24,8 +24,9 @@ func (s *GetTopicNameTestSuite) SetupTest() {
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = sns.TopicNameSettings{
 		AppIdentity: cfg.AppIdentity{
-			Name: "producer",
-			Env:  "test",
+			Name:      "producer",
+			Env:       "test",
+			Namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
 			Tags: map[string]string{
 				"project": "justtrack",
 				"family":  "gosoline",
@@ -37,6 +38,10 @@ func (s *GetTopicNameTestSuite) SetupTest() {
 	}
 
 	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
+	s.NoError(err)
+
+	// Ensure namespaceParts are initialized
+	err = s.settings.AppIdentity.PadFromConfig(s.config)
 	s.NoError(err)
 }
 
@@ -114,9 +119,14 @@ func (s *GetTopicNameTestSuite) TestUnknownPlaceholderReturnsError() {
 func (s *GetTopicNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
 	// Pattern doesn't use tags, so missing tags should not cause error
 	s.settings.AppIdentity.Tags = nil
+	s.settings.AppIdentity.Namespace = "{app.env}"
 	s.setupConfig(map[string]any{
 		"cloud.aws.sns.clients.default.naming.pattern": "{app.env}-{topicId}",
 	})
+
+	// Re-initialize namespaceParts with the new namespace
+	err := s.settings.AppIdentity.PadFromConfig(s.config)
+	s.NoError(err)
 
 	name, err := sns.GetTopicName(s.config, s.settings)
 	s.NoError(err)

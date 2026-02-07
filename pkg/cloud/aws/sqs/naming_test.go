@@ -24,8 +24,9 @@ func (s *GetSqsQueueNameTestSuite) SetupTest() {
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = sqs.QueueNameSettings{
 		AppIdentity: cfg.AppIdentity{
-			Name: "producer",
-			Env:  "test",
+			Name:      "producer",
+			Env:       "test",
+			Namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
 			Tags: cfg.AppTags{
 				"project": "justtrack",
 				"family":  "gosoline",
@@ -37,6 +38,10 @@ func (s *GetSqsQueueNameTestSuite) SetupTest() {
 	}
 
 	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
+	s.NoError(err)
+
+	// Ensure namespaceParts are initialized
+	err = s.settings.AppIdentity.PadFromConfig(s.config)
 	s.NoError(err)
 }
 
@@ -122,9 +127,14 @@ func (s *GetSqsQueueNameTestSuite) TestUnknownPlaceholderReturnsError() {
 func (s *GetSqsQueueNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
 	// Pattern doesn't use tags, so missing tags should not cause error
 	s.settings.AppIdentity.Tags = nil
+	s.settings.AppIdentity.Namespace = "{app.env}"
 	s.setupConfig(map[string]any{
 		"cloud.aws.sqs.clients.default.naming.pattern": "{app.env}-{queueId}",
 	})
+
+	// Re-initialize namespaceParts with the new namespace
+	err := s.settings.AppIdentity.PadFromConfig(s.config)
+	s.NoError(err)
 
 	name, err := sqs.GetQueueName(s.config, s.settings)
 	s.NoError(err)
