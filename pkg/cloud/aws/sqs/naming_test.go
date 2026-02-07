@@ -23,18 +23,25 @@ func (s *GetSqsQueueNameTestSuite) SetupTest() {
 	s.envProvider = cfg.NewMemoryEnvProvider()
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = sqs.QueueNameSettings{
-		AppId: cfg.AppId{
-			Project:     "justtrack",
-			Environment: "test",
-			Family:      "gosoline",
-			Group:       "group",
-			Application: "producer",
+		AppIdentity: cfg.AppIdentity{
+			Name:      "producer",
+			Env:       "test",
+			Namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
+			Tags: cfg.AppTags{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "group",
+			},
 		},
 		ClientName: "default",
 		QueueId:    "event",
 	}
 
 	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
+	s.NoError(err)
+
+	// Ensure namespaceParts are initialized
+	err = s.settings.AppIdentity.PadFromConfig(s.config)
 	s.NoError(err)
 }
 
@@ -66,7 +73,7 @@ func (s *GetSqsQueueNameTestSuite) TestDefaultFifo() {
 
 func (s *GetSqsQueueNameTestSuite) TestDefaultWithPattern() {
 	s.setupConfig(map[string]any{
-		"cloud.aws.sqs.clients.default.naming.pattern": "{app}-{queueId}",
+		"cloud.aws.sqs.clients.default.naming.pattern": "{app.name}-{queueId}",
 	})
 
 	name, err := sqs.GetQueueName(s.config, s.settings)
@@ -77,7 +84,7 @@ func (s *GetSqsQueueNameTestSuite) TestDefaultWithPattern() {
 func (s *GetSqsQueueNameTestSuite) TestSpecificClientWithPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.sqs.clients.specific.naming.pattern": "{app}-{queueId}",
+		"cloud.aws.sqs.clients.specific.naming.pattern": "{app.name}-{queueId}",
 	})
 
 	name, err := sqs.GetQueueName(s.config, s.settings)
@@ -88,7 +95,7 @@ func (s *GetSqsQueueNameTestSuite) TestSpecificClientWithPattern() {
 func (s *GetSqsQueueNameTestSuite) TestSpecificClientWithFallbackPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.sqs.clients.default.naming.pattern": "{app}-{queueId}",
+		"cloud.aws.sqs.clients.default.naming.pattern": "{app.name}-{queueId}",
 	})
 
 	name, err := sqs.GetQueueName(s.config, s.settings)
@@ -99,10 +106,49 @@ func (s *GetSqsQueueNameTestSuite) TestSpecificClientWithFallbackPattern() {
 func (s *GetSqsQueueNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
 	s.settings.ClientName = "specific"
 	s.setupConfigEnv(map[string]string{
-		"CLOUD_AWS_SQS_CLIENTS_DEFAULT_NAMING_PATTERN": "!nodecode {app}-{queueId}",
+		"CLOUD_AWS_SQS_CLIENTS_DEFAULT_NAMING_PATTERN": "!nodecode {app.name}-{queueId}",
 	})
 
 	name, err := sqs.GetQueueName(s.config, s.settings)
 	s.NoError(err)
 	s.Equal("producer-event", name)
+}
+
+func (s *GetSqsQueueNameTestSuite) TestUnknownPlaceholderReturnsError() {
+	s.setupConfig(map[string]any{
+		"cloud.aws.sqs.clients.default.naming.pattern": "{project}-{queueId}",
+	})
+
+	_, err := sqs.GetQueueName(s.config, s.settings)
+	s.Error(err)
+	s.Contains(err.Error(), "unknown placeholder {project}")
+}
+
+func (s *GetSqsQueueNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
+	// Pattern doesn't use tags, so missing tags should not cause error
+	s.settings.AppIdentity.Tags = nil
+	s.settings.AppIdentity.Namespace = "{app.env}"
+	s.setupConfig(map[string]any{
+		"cloud.aws.sqs.clients.default.naming.pattern": "{app.env}-{queueId}",
+	})
+
+	// Re-initialize namespaceParts with the new namespace
+	err := s.settings.AppIdentity.PadFromConfig(s.config)
+	s.NoError(err)
+
+	name, err := sqs.GetQueueName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("test-event", name)
+}
+
+func (s *GetSqsQueueNameTestSuite) TestMissingRequiredTagReturnsError() {
+	// Pattern uses project tag but it's missing
+	s.settings.AppIdentity.Tags = cfg.AppTags{}
+	s.setupConfig(map[string]any{
+		"cloud.aws.sqs.clients.default.naming.pattern": "{app.tags.project}-{queueId}",
+	})
+
+	_, err := sqs.GetQueueName(s.config, s.settings)
+	s.Error(err)
+	s.Contains(err.Error(), "unknown placeholder {app.tags.project}")
 }

@@ -2,23 +2,36 @@ package ddb
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
 type TableNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{modelId}"`
+	Pattern   string `cfg:"pattern,nodecode" default:"{app.namespace}-{name}"`
+	Delimiter string `cfg:"delimiter" default:"-"`
 }
 
-func TableName(config cfg.Config, settings *Settings) (string, error) {
+func GetTableName(config cfg.Config, settings *Settings) (string, error) {
 	namingSettings, err := GetTableNamingSettings(config, settings.ClientName)
 	if err != nil {
 		return "", fmt.Errorf("failed to get table naming settings for client %s: %w", settings.ClientName, err)
 	}
 
-	return GetTableNameWithSettings(settings, namingSettings), nil
+	identity := cfg.AppIdentity{
+		Env:  settings.ModelId.Env,
+		Name: settings.ModelId.Name,
+		Tags: settings.ModelId.Tags,
+	}
+	if err := identity.PadFromConfig(config); err != nil {
+		return "", fmt.Errorf("failed to pad ModelId from config: %w", err)
+	}
+
+	if settings.TableNamingSettings.Pattern != "" {
+		namingSettings.Pattern = settings.TableNamingSettings.Pattern
+	}
+
+	return identity.Format(namingSettings.Pattern, namingSettings.Delimiter, settings.ModelId.ToMap())
 }
 
 func GetTableNamingSettings(config cfg.Config, clientName string) (*TableNamingSettings, error) {
@@ -34,28 +47,4 @@ func GetTableNamingSettings(config cfg.Config, clientName string) (*TableNamingS
 	}
 
 	return namingSettings, nil
-}
-
-func GetTableNameWithSettings(tableSettings *Settings, namingSettings *TableNamingSettings) string {
-	tableName := namingSettings.Pattern
-
-	if tableSettings.TableNamingSettings.Pattern != "" {
-		tableName = tableSettings.TableNamingSettings.Pattern
-	}
-
-	values := map[string]string{
-		"project": tableSettings.ModelId.Project,
-		"env":     tableSettings.ModelId.Environment,
-		"family":  tableSettings.ModelId.Family,
-		"group":   tableSettings.ModelId.Group,
-		"app":     tableSettings.ModelId.Application,
-		"modelId": tableSettings.ModelId.Name,
-	}
-
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		tableName = strings.ReplaceAll(tableName, templ, val)
-	}
-
-	return tableName
 }

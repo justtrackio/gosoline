@@ -1,8 +1,10 @@
-env: dev
-app_project: gosoline
-app_family: how-to
-app_group: grp
-app_name: api
+app:
+  env: dev
+  name: api
+  tags:
+    project: gosoline
+    family: how-to
+    group: grp
 
 kvstore:
   currency:

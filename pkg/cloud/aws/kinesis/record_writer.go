@@ -34,14 +34,14 @@ type Record struct {
 }
 
 type RecordWriterSettings struct {
-	cfg.AppId
+	cfg.AppIdentity
 	ClientName string
 	StreamName string
 	Backoff    exec.BackoffSettings
 }
 
-func (r RecordWriterSettings) GetAppId() cfg.AppId {
-	return r.AppId
+func (r RecordWriterSettings) GetAppIdentity() cfg.AppIdentity {
+	return r.AppIdentity
 }
 
 func (r RecordWriterSettings) GetClientName() string {

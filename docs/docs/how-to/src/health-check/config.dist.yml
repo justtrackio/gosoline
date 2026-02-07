@@ -1,8 +1,10 @@
-env: dev
-app_project: gosoline
-app_family: how-to
-app_group: health-check
-app_name: hello-world
+app:
+  env: dev
+  name: hello-world
+  tags:
+    project: gosoline
+    family: how-to
+    group: health-check
 
 httpserver:
   // highlight-start

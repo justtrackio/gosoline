@@ -1,41 +1,27 @@
 package redis
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/exec"
-	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type Naming struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{name}.{group}.redis.{env}.{family}"`
+	AddressPattern   string `cfg:"address_pattern,nodecode" default:"{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}"`
+	AddressDelimiter string `cfg:"address_delimiter,nodecode" default:"."`
+	KeyPattern       string `cfg:"key_pattern,nodecode" default:"{key}"` // e.g. {app.namespace}-{app.name}-{key}
+	KeyDelimiter     string `cfg:"key_delimiter,nodecode" default:"-"`
 }
 
 type Settings struct {
-	cfg.AppId
+	cfg.AppIdentity
 	DB              int    `cfg:"db" default:"0"`
 	Name            string `cfg:"name"`
 	Dialer          string `cfg:"dialer" default:"tcp"`
 	Address         string `cfg:"address" default:"127.0.0.1:6379"`
 	Naming          Naming `cfg:"naming"`
 	BackoffSettings exec.BackoffSettings
-}
-
-type redisCacheKey string
-
-func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
-	settings, err := ReadSettings(config, name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read redis settings for name %q in ProvideClient: %w", name, err)
-	}
-	cacheKey := fmt.Sprintf("%s:%s", settings.Address, name)
-
-	return appctx.Provide(ctx, redisCacheKey(cacheKey), func() (Client, error) {
-		return NewClient(ctx, config, logger, name)
-	})
 }
 
 func GetRedisConfigKey(name string) string {
@@ -57,13 +43,26 @@ func ReadSettings(config cfg.Config, name string) (*Settings, error) {
 		return nil, fmt.Errorf("failed to unmarshal redis settings for key %q in ReadSettings: %w", key, err)
 	}
 
+	if settings.Name == "" {
+		settings.Name = name
+	}
+
+	if err = settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad app identity from config for redis %q: %w", key, err)
+	}
+
+	if settings.Address == "" {
+		settings.Address, err = settings.Format(settings.Naming.AddressPattern, settings.Naming.AddressDelimiter, map[string]string{
+			"name": settings.Name,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to format address for redis %q: %w", key, err)
+		}
+	}
+
 	settings.BackoffSettings, err = exec.ReadBackoffSettings(config, key, "redis.default")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read backoff settings for redis %q: %w", key, err)
-	}
-
-	if settings.Name == "" {
-		settings.Name = name
 	}
 
 	return settings, nil

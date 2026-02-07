@@ -1,9 +1,10 @@
-env: test
-
-app_project: goso
-app_family: fam
-app_group: grp
-app_name: name
+app:
+  env: test
+  name: name
+  tags:
+    project: goso
+    family: fam
+    group: grp
 
 fixtures:
   enabled: true

@@ -1424,3 +1424,80 @@ func TestMapStructTimeCaster_Pointer_NonString(t *testing.T) {
 	assert.NotNil(t, source.CreatedAt)
 	assert.Equal(t, now.Unix(), source.CreatedAt.Unix())
 }
+
+func TestMapStructIO_ReadNamedMap(t *testing.T) {
+	type MyMap map[string]string
+	type sourceStruct struct {
+		M MyMap `cfg:"m"`
+	}
+
+	source := &sourceStruct{
+		M: MyMap{
+			"key": "value",
+		},
+	}
+
+	expectedValues := map[string]any{
+		"m": map[string]any{
+			"key": "value",
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
+func TestMapStructIO_ReadNamedMapAny(t *testing.T) {
+	type MyMap map[string]any
+	type sourceStruct struct {
+		M MyMap `cfg:"m"`
+	}
+
+	source := &sourceStruct{
+		M: MyMap{
+			"key": "value",
+			"int": 1,
+		},
+	}
+
+	expectedValues := map[string]any{
+		"m": map[string]any{
+			"key": "value",
+			"int": 1,
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
+func TestMapStructIO_ReadNamedMapSlice(t *testing.T) {
+	type MyMap map[string][]string
+	type sourceStruct struct {
+		M MyMap `cfg:"m"`
+	}
+
+	source := &sourceStruct{
+		M: MyMap{
+			"key": []string{"v1", "v2"},
+		},
+	}
+
+	expectedValues := map[string]any{
+		"m": map[string]any{
+			"key": []any{"v1", "v2"},
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}

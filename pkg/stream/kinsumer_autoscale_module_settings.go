@@ -14,8 +14,8 @@ func init() {
 
 type KinsumerAutoscaleModuleEcsSettings struct {
 	Client  string `cfg:"client" default:"default"`
-	Cluster string `cfg:"cluster" default:"{env}"`
-	Service string `cfg:"service" default:"{app_group}-{app_name}"`
+	Cluster string `cfg:"cluster" default:"{app.env}"`
+	Service string `cfg:"service" default:"{app.tags.group}-{app.name}"`
 }
 
 type KinsumerAutoscaleModuleDynamoDbSettings struct {
@@ -23,7 +23,7 @@ type KinsumerAutoscaleModuleDynamoDbSettings struct {
 }
 
 type KinsumerAutoscaleModuleDynamoDbNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{env}-kinsumer-autoscale-leaders"`
+	Pattern string `cfg:"pattern,nodecode" default:"{app.env}-kinsumer-autoscale-leaders"`
 }
 
 type KinsumerAutoscaleModuleSettings struct {
@@ -73,21 +73,16 @@ func kinsumerAutoscaleConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 		return true, nil
 	}
 
-	appGroup, err := config.GetString("app_group")
+	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
-		return false, fmt.Errorf("could not get app_group: %w", err)
-	}
-
-	appName, err := config.GetString("app_name")
-	if err != nil {
-		return false, fmt.Errorf("could not get app_name: %w", err)
+		return false, fmt.Errorf("could not get app identity: %w", err)
 	}
 
 	leaderElectionSettings := &ddb.DdbLeaderElectionSettings{
 		Naming: ddb.TableNamingSettings{
 			Pattern: settings.DynamoDb.Naming.Pattern,
 		},
-		GroupId:       fmt.Sprintf("%s-%s", appGroup, appName),
+		GroupId:       fmt.Sprintf("%s-%s", identity.Tags["group"], identity.Name),
 		LeaseDuration: time.Minute,
 	}
 

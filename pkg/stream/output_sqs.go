@@ -16,7 +16,7 @@ import (
 const SqsOutputBatchSize = 10
 
 type SqsOutputSettings struct {
-	cfg.AppId
+	cfg.AppIdentity
 	ClientName        string
 	Fifo              sqs.FifoSettings
 	QueueId           string
@@ -24,8 +24,8 @@ type SqsOutputSettings struct {
 	VisibilityTimeout int
 }
 
-func (s SqsOutputSettings) GetAppId() cfg.AppId {
-	return s.AppId
+func (s SqsOutputSettings) GetAppIdentity() cfg.AppIdentity {
+	return s.AppIdentity
 }
 
 func (s SqsOutputSettings) GetClientName() string {

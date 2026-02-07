@@ -22,11 +22,13 @@
 
 ## Required config keys
 ```yaml
-env: dev                    # Environment name
-app_project: myproject      # Project identifier
-app_family: myfamily        # Family grouping
-app_group: mygroup          # Group within family
-app_name: myapp             # Application name
+app:
+  env: dev                    # Environment name (required)
+  name: myapp                 # Application name (required)
+  tags:                       # Tags for resource naming
+    project: myproject        # Project identifier
+    family: myfamily          # Family grouping
+    group: mygroup            # Group within family
 ```
 
 ## Related packages

@@ -39,7 +39,7 @@ type DistributedLock interface {
 }
 
 type DistributedLockSettings struct {
-	cfg.AppId
+	cfg.AppIdentity
 	Backoff         exec.BackoffSettings
 	DefaultLockTime time.Duration
 	Domain          string

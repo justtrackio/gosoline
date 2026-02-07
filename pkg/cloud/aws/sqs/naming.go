@@ -2,28 +2,27 @@ package sqs
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
 type QueueNameSettingsAware interface {
-	GetAppId() cfg.AppId
+	GetAppIdentity() cfg.AppIdentity
 	GetClientName() string
 	GetQueueId() string
 	IsFifoEnabled() bool
 }
 
 type QueueNameSettings struct {
-	AppId       cfg.AppId
+	AppIdentity cfg.AppIdentity
 	ClientName  string
 	FifoEnabled bool
 	QueueId     string
 }
 
-func (s QueueNameSettings) GetAppId() cfg.AppId {
-	return s.AppId
+func (s QueueNameSettings) GetAppIdentity() cfg.AppIdentity {
+	return s.AppIdentity
 }
 
 func (s QueueNameSettings) GetClientName() string {
@@ -39,7 +38,8 @@ func (s QueueNameSettings) GetQueueId() string {
 }
 
 type QueueNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{queueId}"`
+	Pattern   string `cfg:"pattern,nodecode" default:"{app.namespace}-{queueId}"`
+	Delimiter string `cfg:"delimiter" default:"-"`
 }
 
 func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (string, error) {
@@ -54,20 +54,11 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 		return "", fmt.Errorf("failed to unmarshal sqs naming settings for %s: %w", namingKey, err)
 	}
 
-	name := namingSettings.Pattern
-	appId := queueSettings.GetAppId()
-	values := map[string]string{
-		"project": appId.Project,
-		"env":     appId.Environment,
-		"family":  appId.Family,
-		"group":   appId.Group,
-		"app":     appId.Application,
+	name, err := queueSettings.GetAppIdentity().Format(namingSettings.Pattern, namingSettings.Delimiter, map[string]string{
 		"queueId": queueSettings.GetQueueId(),
-	}
-
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		name = strings.ReplaceAll(name, templ, val)
+	})
+	if err != nil {
+		return "", fmt.Errorf("sqs queue naming failed: %w", err)
 	}
 
 	if queueSettings.IsFifoEnabled() {

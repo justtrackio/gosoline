@@ -98,10 +98,11 @@ type CheckpointRecord struct {
 
 type metadataRepository struct {
 	logger            log.Logger
+	namingSettings    *KinsumerNamingSettings
 	stream            Stream
 	clientId          ClientId
 	repo              ddb.Repository
-	appId             cfg.AppId
+	appIdentity       cfg.AppIdentity
 	clientTimeout     time.Duration
 	checkpointTimeout time.Duration
 	releaseDelay      time.Duration
@@ -113,41 +114,49 @@ type metadataRepository struct {
 	finishedLck sync.Mutex
 }
 
-func NewMetadataRepository(
-	ctx context.Context,
-	config cfg.Config,
-	logger log.Logger,
-	stream Stream,
-	clientId ClientId,
-	settings Settings,
-) (MetadataRepository, error) {
+func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Logger, stream Stream, clientId ClientId, settings Settings) (MetadataRepository, error) {
+	var err error
+	var repo ddb.Repository
+	var tableName string
+	var namingSettings *KinsumerNamingSettings
+
+	if tableName, err = GetMetadataTableName(config, settings); err != nil {
+		return nil, fmt.Errorf("can not get metadata table name: %w", err)
+	}
+
 	ddbSettings := &ddb.Settings{
 		ClientName: settings.ClientName,
 		ModelId: mdl.ModelId{
-			Group: "kinsumer",
-			Name:  "metadata",
+			Name: "metadata",
+			Tags: map[string]string{
+				"group": "kinsumer",
+			},
 		},
 		Main: ddb.MainSettings{
 			Model: &FullRecord{},
 		},
+		TableNamingSettings: ddb.TableNamingSettings{
+			Pattern: tableName,
+		},
 		DisableTracing: true,
 	}
-
-	var err error
-	var repo ddb.Repository
 
 	if repo, err = ddb.NewRepository(ctx, config, logger, ddbSettings); err != nil {
 		return nil, fmt.Errorf("can not create ddb repository: %w", err)
 	}
 
-	// we need the app id from the application we are running at, not the app id from the settings as this is the same
+	// we need the app identity from the application we are running at, not the app id from the settings as this is the same
 	// for different kinsumers of the same stream!
-	appId := cfg.AppId{}
-	if err = appId.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("can not pad app id from config: %w", err)
+	appIdentity, err := cfg.GetAppIdentity(config)
+	if err != nil {
+		return nil, fmt.Errorf("can not get app identity from config: %w", err)
 	}
 
-	return NewMetadataRepositoryWithInterfaces(logger, stream, clientId, repo, settings, appId, clock.Provider), nil
+	if namingSettings, err = readNamingSettings(config, settings); err != nil {
+		return nil, fmt.Errorf("failed to read naming settings: %w", err)
+	}
+
+	return NewMetadataRepositoryWithInterfaces(logger, stream, clientId, repo, settings, namingSettings, appIdentity, clock.Provider), nil
 }
 
 func NewMetadataRepositoryWithInterfaces(
@@ -156,7 +165,8 @@ func NewMetadataRepositoryWithInterfaces(
 	clientId ClientId,
 	repo ddb.Repository,
 	settings Settings,
-	appId cfg.AppId,
+	namingSettings *KinsumerNamingSettings,
+	appIdentity cfg.AppIdentity,
 	clock clock.Clock,
 ) MetadataRepository {
 	clientTimeout := settings.DiscoverFrequency * time.Duration(settings.ClientExpirationPeriods)
@@ -171,10 +181,11 @@ func NewMetadataRepositoryWithInterfaces(
 
 	return &metadataRepository{
 		logger:            logger,
+		namingSettings:    namingSettings,
 		stream:            stream,
 		clientId:          clientId,
 		repo:              repo,
-		appId:             appId,
+		appIdentity:       appIdentity,
 		clientTimeout:     clientTimeout,
 		checkpointTimeout: checkpointTimeout,
 		releaseDelay:      settings.ReleaseDelay,
@@ -185,7 +196,12 @@ func NewMetadataRepositoryWithInterfaces(
 }
 
 func (m *metadataRepository) RegisterClient(ctx context.Context) (clientIndex int, totalClients int, err error) {
-	namespace := m.getClientNamespace()
+	var namespace string
+
+	if namespace, err = m.getClientNamespace(); err != nil {
+		return 0, 0, fmt.Errorf("failed to get client namespace: %w", err)
+	}
+
 	_, err = m.repo.PutItem(ctx, m.repo.PutItemBuilder(), &ClientRecord{
 		BaseRecord: BaseRecord{
 			Namespace: namespace,
@@ -215,7 +231,12 @@ func (m *metadataRepository) RegisterClient(ctx context.Context) (clientIndex in
 }
 
 func (m *metadataRepository) DeregisterClient(ctx context.Context) error {
-	namespace := m.getClientNamespace()
+	var err error
+	var namespace string
+
+	if namespace, err = m.getClientNamespace(); err != nil {
+		return fmt.Errorf("failed to get client namespace: %w", err)
+	}
 
 	qb := m.repo.DeleteItemBuilder().
 		WithHash(namespace).
@@ -235,7 +256,13 @@ func (m *metadataRepository) IsShardFinished(ctx context.Context, shardId ShardI
 		return true, nil
 	}
 
-	namespace := m.getCheckpointNamespace()
+	var err error
+	var namespace string
+
+	if namespace, err = m.getCheckpointNamespace(); err != nil {
+		return false, fmt.Errorf("failed to get client namespace: %w", err)
+	}
+
 	getQb := m.repo.GetItemBuilder().
 		WithHash(namespace).
 		WithRange(shardId)
@@ -260,7 +287,13 @@ func (m *metadataRepository) IsShardFinished(ctx context.Context, shardId ShardI
 
 func (m *metadataRepository) AcquireShard(ctx context.Context, shardId ShardId) (Checkpoint, error) {
 	timedOutBefore := m.clock.Now().Add(-m.checkpointTimeout)
-	namespace := m.getCheckpointNamespace()
+
+	var err error
+	var namespace string
+
+	if namespace, err = m.getCheckpointNamespace(); err != nil {
+		return nil, fmt.Errorf("failed to get client namespace: %w", err)
+	}
 
 	getQb := m.repo.GetItemBuilder().
 		WithHash(namespace).
@@ -386,10 +419,24 @@ func (m *metadataRepository) handleExistingRecord(
 	return record, nil
 }
 
-func (m *metadataRepository) getClientNamespace() string {
-	return fmt.Sprintf("client:%s:%s", m.appId.String(), m.stream)
+func (m *metadataRepository) getClientNamespace() (string, error) {
+	var err error
+	var namespace string
+
+	if namespace, err = m.appIdentity.Format(m.namingSettings.MetadataNamespacePattern, m.namingSettings.MetadataNamespaceDelimiter); err != nil {
+		return "", fmt.Errorf("failed to format kinesis metadata namespace: %w", err)
+	}
+
+	return fmt.Sprintf("client:%s:%s", namespace, m.stream), nil
 }
 
-func (m *metadataRepository) getCheckpointNamespace() string {
-	return fmt.Sprintf("checkpoint:%s:%s", m.appId.String(), m.stream)
+func (m *metadataRepository) getCheckpointNamespace() (string, error) {
+	var err error
+	var namespace string
+
+	if namespace, err = m.appIdentity.Format(m.namingSettings.MetadataNamespacePattern, m.namingSettings.MetadataNamespaceDelimiter); err != nil {
+		return "", fmt.Errorf("failed to format kinesis metadata namespace: %w", err)
+	}
+
+	return fmt.Sprintf("checkpoint:%s:%s", namespace, m.stream), nil
 }

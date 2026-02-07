@@ -26,7 +26,7 @@ type TableNamingSettings struct {
 type DdbLeaderElectionSettings struct {
 	Naming        TableNamingSettings `cfg:"naming"`
 	ClientName    string              `cfg:"client_name" default:"default"`
-	GroupId       string              `cfg:"group_id" default:"{app_name}"`
+	GroupId       string              `cfg:"group_id" default:"{app.name}"`
 	LeaseDuration time.Duration       `cfg:"lease_duration" default:"1m"`
 }
 

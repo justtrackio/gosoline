@@ -10,22 +10,30 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type FactoryTestSuite struct {
+func TestFactoryTestSuite(t *testing.T) {
+	suite.Run(t, new(SettingsTestSuite))
+}
+
+type SettingsTestSuite struct {
 	suite.Suite
 	config cfg.GosoConf
 }
 
-func (s *FactoryTestSuite) SetupTest() {
+func (s *SettingsTestSuite) SetupTest() {
 	s.config = cfg.New()
 }
 
-func (s *FactoryTestSuite) initConfig(settings map[string]any) {
+func (s *SettingsTestSuite) initConfig(settings map[string]any) {
 	appIdConfig := cfg.WithConfigMap(map[string]any{
-		"app_project": "gosoline",
-		"app_family":  "fam",
-		"app_group":   "grp",
-		"app_name":    "redis",
-		"env":         "env",
+		"app": map[string]any{
+			"env":  "env",
+			"name": "redis",
+			"tags": map[string]any{
+				"project": "gosoline",
+				"family":  "fam",
+				"group":   "grp",
+			},
+		},
 	})
 
 	if err := s.config.Option(cfg.WithConfigMap(settings), appIdConfig); err != nil {
@@ -33,23 +41,28 @@ func (s *FactoryTestSuite) initConfig(settings map[string]any) {
 	}
 }
 
-func (s *FactoryTestSuite) TestDefault() {
+func (s *SettingsTestSuite) TestDefault() {
 	s.initConfig(map[string]any{})
 
 	settings, err := redis.ReadSettings(s.config, "default")
 	s.NoError(err, "there should be no error reading the settings")
 
 	expected := &redis.Settings{
-		AppId: cfg.AppId{
-			Project:     "gosoline",
-			Environment: "env",
-			Family:      "fam",
-			Group:       "grp",
-			Application: "redis",
+		AppIdentity: cfg.AppIdentity{
+			Name: "redis",
+			Env:  "env",
+			Tags: cfg.AppTags{
+				"project": "gosoline",
+				"family":  "fam",
+				"group":   "grp",
+			},
 		},
 		Name: "default",
 		Naming: redis.Naming{
-			Pattern: "{name}.{group}.redis.{env}.{family}",
+			AddressPattern:   "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}",
+			AddressDelimiter: ".",
+			KeyPattern:       "{key}",
+			KeyDelimiter:     "-",
 		},
 		Dialer:  "tcp",
 		Address: "127.0.0.1:6379",
@@ -64,7 +77,7 @@ func (s *FactoryTestSuite) TestDefault() {
 	s.Equal(expected, settings)
 }
 
-func (s *FactoryTestSuite) TestDedicated() {
+func (s *SettingsTestSuite) TestDedicated() {
 	s.initConfig(map[string]any{
 		"redis": map[string]any{
 			"dedicated": map[string]any{
@@ -81,16 +94,21 @@ func (s *FactoryTestSuite) TestDedicated() {
 	s.NoError(err, "there should be no error reading the settings")
 
 	expected := &redis.Settings{
-		AppId: cfg.AppId{
-			Project:     "gosoline",
-			Environment: "env",
-			Family:      "fam",
-			Group:       "grp",
-			Application: "redis",
+		AppIdentity: cfg.AppIdentity{
+			Name: "redis",
+			Env:  "env",
+			Tags: cfg.AppTags{
+				"project": "gosoline",
+				"family":  "fam",
+				"group":   "grp",
+			},
 		},
 		Name: "dedicated",
 		Naming: redis.Naming{
-			Pattern: "{name}.{group}.redis.{env}.{family}",
+			AddressPattern:   "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}",
+			AddressDelimiter: ".",
+			KeyPattern:       "{key}",
+			KeyDelimiter:     "-",
 		},
 		Dialer:  "srv",
 		Address: "dedicated.address",
@@ -105,7 +123,7 @@ func (s *FactoryTestSuite) TestDedicated() {
 	s.Equal(expected, settings)
 }
 
-func (s *FactoryTestSuite) TestWithDefaults() {
+func (s *SettingsTestSuite) TestWithDefaults() {
 	s.initConfig(map[string]any{
 		"redis": map[string]any{
 			"default": map[string]any{
@@ -124,16 +142,21 @@ func (s *FactoryTestSuite) TestWithDefaults() {
 	s.NoError(err, "there should be no error reading the settings")
 
 	expected := &redis.Settings{
-		AppId: cfg.AppId{
-			Project:     "gosoline",
-			Environment: "env",
-			Family:      "fam",
-			Group:       "grp",
-			Application: "redis",
+		AppIdentity: cfg.AppIdentity{
+			Name: "redis",
+			Env:  "env",
+			Tags: cfg.AppTags{
+				"project": "gosoline",
+				"family":  "fam",
+				"group":   "grp",
+			},
 		},
 		Name: "partial",
 		Naming: redis.Naming{
-			Pattern: "{name}.{group}.redis.{env}.{family}",
+			AddressPattern:   "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}",
+			AddressDelimiter: ".",
+			KeyPattern:       "{key}",
+			KeyDelimiter:     "-",
 		},
 		Dialer:  "srv",
 		Address: "partial.address",
@@ -148,6 +171,26 @@ func (s *FactoryTestSuite) TestWithDefaults() {
 	s.Equal(expected, settings)
 }
 
-func TestFactoryTestSuite(t *testing.T) {
-	suite.Run(t, new(FactoryTestSuite))
+func (s *SettingsTestSuite) TestKeyNamingPattern() {
+	// Test that default key naming pattern is set correctly
+	s.initConfig(map[string]any{})
+
+	settings, err := redis.ReadSettings(s.config, "default")
+	s.NoError(err, "there should be no error reading the settings")
+	s.Equal("{key}", settings.Naming.KeyPattern)
+
+	// Test custom key naming pattern
+	s.initConfig(map[string]any{
+		"redis": map[string]any{
+			"default": map[string]any{
+				"naming": map[string]any{
+					"key_pattern": "{app.env}-{app.name}-{key}",
+				},
+			},
+		},
+	})
+
+	settings, err = redis.ReadSettings(s.config, "default")
+	s.NoError(err, "there should be no error reading the settings")
+	s.Equal("{app.env}-{app.name}-{key}", settings.Naming.KeyPattern)
 }

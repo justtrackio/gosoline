@@ -38,6 +38,7 @@ type Config interface {
 	GetStringMapString(key string, optionalDefault ...map[string]string) (map[string]string, error)
 	GetStringSlice(key string, optionalDefault ...[]string) ([]string, error)
 	GetTime(key string, optionalDefault ...time.Time) (time.Time, error)
+	FormatString(pattern string, args ...map[string]string) (string, error)
 	IsSet(string) bool
 	HasPrefix(prefix string) bool
 	UnmarshalDefaults(val any, additionalDefaults ...UnmarshalDefaults) error
@@ -274,6 +275,10 @@ func (c *config) GetTime(key string, optionalDefault ...time.Time) (tm time.Time
 	return tm, nil
 }
 
+func (c *config) FormatString(pattern string, args ...map[string]string) (string, error) {
+	return c.augmentString(pattern, args...)
+}
+
 func (c *config) IsSet(key string) bool {
 	return c.isSet(key)
 }
@@ -358,7 +363,7 @@ func (c *config) UnmarshalKey(key string, output any, defaults ...UnmarshalDefau
 	return fmt.Errorf("can not unmarshal key %s: output should be a pointer to struct or slice but instead is %T", key, output)
 }
 
-func (c *config) augmentString(str string) (string, error) {
+func (c *config) augmentString(str string, args ...map[string]string) (string, error) {
 	groups := valFlagsRegexp.FindStringSubmatch(str)
 	flags := make([]string, 0)
 
@@ -373,12 +378,23 @@ func (c *config) augmentString(str string) (string, error) {
 	}
 
 	matches := templateRegexp.FindAllStringSubmatch(str, -1)
+	allArgs := funk.MergeMaps(args...)
+
+	var ok bool
+	var err error
+	var replace string
 
 	for _, m := range matches {
-		replace, err := c.getString(m[1])
-		if err != nil {
+		if replace, ok = allArgs[m[1]]; ok {
+			str = strings.ReplaceAll(str, m[0], replace)
+
+			continue
+		}
+
+		if replace, err = c.getString(m[1]); err != nil {
 			return "", err
 		}
+
 		str = strings.ReplaceAll(str, m[0], replace)
 	}
 

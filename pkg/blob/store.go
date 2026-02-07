@@ -65,14 +65,6 @@ type (
 	CopyBatch []*CopyObject
 )
 
-type Settings struct {
-	cfg.AppId
-	Bucket     string `cfg:"bucket"`
-	Region     string `cfg:"region"`
-	ClientName string `cfg:"client_name" default:"default"`
-	Prefix     string `cfg:"prefix"`
-}
-
 //go:generate go run github.com/vektra/mockery/v2 --name Store
 type Store interface {
 	BucketName() string
@@ -378,34 +370,4 @@ func (o *CopyObject) getSource() string {
 	}
 
 	return fmt.Sprintf("%s%s", mdl.EmptyIfNil(o.SourceBucket), sourceKey)
-}
-
-func getConfigKey(name string) string {
-	return fmt.Sprintf("blob.%s", name)
-}
-
-func ReadStoreSettings(config cfg.Config, name string) (*Settings, error) {
-	settings := &Settings{}
-	key := getConfigKey(name)
-	if err := config.UnmarshalKey(key, settings); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal blob store settings for %s: %w", name, err)
-	}
-	if err := settings.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
-	}
-
-	if settings.Bucket == "" {
-		settings.Bucket = fmt.Sprintf("%s-%s-%s", settings.Project, settings.Environment, settings.Family)
-	}
-
-	if settings.Region == "" {
-		s3ClientConfig, err := gosoS3.GetClientConfig(config, settings.ClientName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get s3 client config for %s: %w", settings.ClientName, err)
-		}
-
-		settings.Region = s3ClientConfig.Settings.Region
-	}
-
-	return settings, nil
 }

@@ -47,8 +47,10 @@ func ProvideElasticsearchWriter(ctx context.Context, config cfg.Config, logger l
 }
 
 func NewElasticsearchWriter(_ context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
-	esSettings := &ElasticsearchSettings{}
-	if err := getMetricWriterSettings(config, WriterTypeElasticsearch, esSettings); err != nil {
+	var err error
+	var esSettings *ElasticsearchSettings
+
+	if esSettings, err = getMetricWriterSettings[ElasticsearchSettings](config, WriterTypeElasticsearch); err != nil {
 		return nil, fmt.Errorf("could not get elasticsearch writer settings: %w", err)
 	}
 
@@ -59,11 +61,11 @@ func NewElasticsearchWriter(_ context.Context, config cfg.Config, logger log.Log
 
 	testClock := clock.NewRealClock()
 
-	appId, err := cfg.GetAppIdFromConfig(config)
+	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
-		return nil, fmt.Errorf("can not get app id from config: %w", err)
+		return nil, fmt.Errorf("can not get app identity from config: %w", err)
 	}
-	namespace := fmt.Sprintf("%s/%s/%s/%s-%s", appId.Project, appId.Environment, appId.Family, appId.Group, appId.Application)
+	namespace := fmt.Sprintf("%s/%s/%s/%s-%s", identity.Tags["project"], identity.Env, identity.Tags["family"], identity.Tags["group"], identity.Name)
 
 	return NewElasticsearchWriterWithInterfaces(logger, client, testClock, namespace, esSettings.WriteGraceTime), nil
 }

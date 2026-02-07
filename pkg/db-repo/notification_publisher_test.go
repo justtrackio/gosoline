@@ -36,17 +36,27 @@ func Test_Publish_Notifier(t *testing.T) {
 	publisher.EXPECT().Publish(t.Context(), "CREATE", 1, input).Return(nil).Once()
 
 	modelId := mdl.ModelId{
-		Project:     "testProject",
-		Name:        "myTest",
-		Application: "testApp",
-		Family:      "testFamily",
-		Group:       "grp",
-		Environment: "test",
+		Name: "myTest",
+		Env:  "test",
+		App:  "testApp",
+		Tags: map[string]string{
+			"project": "testProject",
+			"family":  "testFamily",
+			"group":   "grp",
+		},
 	}
+
+	// Create config with required model id pattern
+	// Use !nodecode to prevent config string expansion on the pattern value
+	config := cfg.New()
+	configErr := config.Option(cfg.WithConfigMap(map[string]any{
+		"app.model_id.domain_pattern": "!nodecode {app.tags.project}.{app.tags.family}.{app.tags.group}",
+	}))
+	assert.NoError(t, configErr)
 
 	notifier, err := db_repo.NewPublisherNotifier(
 		t.Context(),
-		cfg.New(),
+		config,
 		&publisher,
 		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
 		modelId,

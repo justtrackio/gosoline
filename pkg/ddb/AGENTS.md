@@ -2,7 +2,7 @@
 
 ## Scope
 - DynamoDB integration layer: metadata modeling, repository abstraction, builders, and fixtures.
-- Aligns naming/macros with `cfg.AppId` and `mdl.ModelId` to ensure realm consistency.
+- Table naming uses `mdl.ModelId` with its own macro system (NOT `cfg.NamingTemplate`).
 - Provides lifecycle helpers and purgers for test environments.
 
 ## Key files
@@ -21,19 +21,26 @@
 - For changes affecting naming/macros, also test `pkg/cloud/aws/kinesis` and `pkg/stream` to ensure shared expectations.
 
 ## Naming with ModelId
-Table names are generated via `ModelId.ReplaceMacros(pattern)`. Default pattern:
+Table names are generated via `config.FormatString` using the ModelId (converted to a map). Default pattern:
 ```yaml
-ddb.default.naming.pattern: "{project}-{env}-{family}-{group}-{modelId}"
+ddb.default.naming.pattern: "{app.namespace}-{name}"
 ```
 
-Available macros:
-- `{project}`, `{env}`, `{family}`, `{group}`, `{app}` - from AppId
-- `{modelId}` - model's string representation
+**Note:** DynamoDB uses `AppIdentity`-style macros. The placeholders are:
+
+| Macro | Description |
+|-------|-------------|
+| `{app.tags.project}` | Project tag |
+| `{app.env}` | Environment |
+| `{app.tags.family}` | Family tag |
+| `{app.tags.group}` | Group tag |
+| `{app.name}` | App name |
+| `{name}` | Model name (from metadata) |
 
 ## Common config keys
 ```yaml
 cloud.aws.dynamodb.clients.default.endpoint: http://localhost:4566
-ddb.default.naming.pattern: "{project}-{env}-{family}-{group}-{modelId}"
+ddb.default.naming.pattern: "{app.namespace}-{name}"
 ```
 
 ## Related packages
@@ -45,3 +52,4 @@ ddb.default.naming.pattern: "{project}-{env}-{family}-{group}-{modelId}"
 - Keep request builders composable—avoid hard-coding table names; always take `Metadata` or `ModelId` input.
 - Fixture writers (`fixture_writer_ddb*.go`) must stay in sync with metadata parsing.
 - Update `.mockery.yml` when adding new interfaces so DynamoDB service mocks stay current.
+- DynamoDB naming is intentionally separate from `cfg.NamingTemplate` to support model-specific identifiers.

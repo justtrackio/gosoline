@@ -25,7 +25,7 @@ const (
 )
 
 type Settings struct {
-	cfg.AppId
+	cfg.AppIdentity
 	Connection string `cfg:"connection" default:"default"`
 
 	TopicId string `cfg:"topic_id" validate:"required"`

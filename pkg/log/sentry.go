@@ -29,16 +29,16 @@ type SentryHubSettings struct {
 
 // NewSentryHub creates a new SentryHub using configuration from the "app_id" settings.
 func NewSentryHub(config cfg.Config) (SentryHub, error) {
-	var appId cfg.AppId
-	if err := appId.PadFromConfig(config); err != nil {
+	var identity cfg.AppIdentity
+	if err := identity.PadFromConfig(config); err != nil {
 		return nil, fmt.Errorf("failed to pad from config: %w", err)
 	}
 
 	settings := &SentryHubSettings{
-		Environment: appId.Environment,
-		AppFamily:   appId.Family,
-		AppName:     appId.Application,
-		AppGroup:    appId.Group,
+		Environment: identity.Env,
+		AppFamily:   identity.Tags["family"],
+		AppName:     identity.Name,
+		AppGroup:    identity.Tags["group"],
 	}
 
 	return NewSentryHubWithSettings(settings)

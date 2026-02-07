@@ -2,26 +2,25 @@ package sns
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
 type TopicNameSettingsAware interface {
-	GetAppId() cfg.AppId
+	GetAppIdentity() cfg.AppIdentity
 	GetClientName() string
 	GetTopicId() string
 }
 
 type TopicNameSettings struct {
-	AppId      cfg.AppId
-	ClientName string
-	TopicId    string
+	AppIdentity cfg.AppIdentity
+	ClientName  string
+	TopicId     string
 }
 
-func (s TopicNameSettings) GetAppId() cfg.AppId {
-	return s.AppId
+func (s TopicNameSettings) GetAppIdentity() cfg.AppIdentity {
+	return s.AppIdentity
 }
 
 func (s TopicNameSettings) GetClientName() string {
@@ -33,7 +32,8 @@ func (s TopicNameSettings) GetTopicId() string {
 }
 
 type TopicNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{topicId}"`
+	Pattern   string `cfg:"pattern,nodecode" default:"{app.namespace}-{topicId}"`
+	Delimiter string `cfg:"delimiter" default:"-"`
 }
 
 func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (string, error) {
@@ -43,26 +43,13 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("sns", topicSettings.GetClientName()))
 	defaultPatternKey := fmt.Sprintf("%s.naming.pattern", aws.GetClientConfigKey("sns", "default"))
+
 	namingSettings := &TopicNamingSettings{}
 	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "pattern")); err != nil {
 		return "", fmt.Errorf("failed to unmarshal sns naming settings for %s: %w", namingKey, err)
 	}
 
-	name := namingSettings.Pattern
-	appId := topicSettings.GetAppId()
-	values := map[string]string{
-		"project": appId.Project,
-		"env":     appId.Environment,
-		"family":  appId.Family,
-		"group":   appId.Group,
-		"app":     appId.Application,
+	return topicSettings.GetAppIdentity().Format(namingSettings.Pattern, namingSettings.Delimiter, map[string]string{
 		"topicId": topicSettings.GetTopicId(),
-	}
-
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		name = strings.ReplaceAll(name, templ, val)
-	}
-
-	return name, nil
+	})
 }

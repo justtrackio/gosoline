@@ -41,21 +41,16 @@ func calculatorConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 		pattern = strings.ReplaceAll(pattern, templ, val)
 	}
 
-	appGroup, err := config.GetString("app_group")
+	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
-		return false, fmt.Errorf("could not get app_group: %w", err)
-	}
-
-	appName, err := config.GetString("app_name")
-	if err != nil {
-		return false, fmt.Errorf("could not get app_name: %w", err)
+		return false, fmt.Errorf("could not get app identity: %w", err)
 	}
 
 	leaderElectionSettings := &ddb.DdbLeaderElectionSettings{
 		Naming: ddb.TableNamingSettings{
 			Pattern: pattern,
 		},
-		GroupId:       fmt.Sprintf("%s-%s", appGroup, appName),
+		GroupId:       fmt.Sprintf("%s-%s", identity.Tags["group"], identity.Name),
 		LeaseDuration: time.Minute,
 	}
 

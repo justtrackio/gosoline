@@ -1,5 +1,7 @@
-env: dev
-app_project: gosoline
-app_family: get-started
-app_group: http-server
-app_name: example
+app:
+  env: dev
+  name: example
+  tags:
+    project: gosoline
+    family: get-started
+    group: http-server

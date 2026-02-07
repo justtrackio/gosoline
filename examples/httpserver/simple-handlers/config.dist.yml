@@ -1,9 +1,10 @@
-env: dev
-
-app_project: project
-app_family: family
-app_group: grp
-app_name: name
+app:
+  env: dev
+  name: name
+  tags:
+    project: project
+    family: family
+    group: grp
 
 httpserver:
   default:
