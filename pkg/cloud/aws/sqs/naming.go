@@ -38,8 +38,8 @@ func (s QueueNameSettings) GetQueueId() string {
 }
 
 type QueueNamingSettings struct {
-	Pattern   string `cfg:"pattern,nodecode" default:"{app.namespace}-{queueId}"`
-	Delimiter string `cfg:"delimiter" default:"-"`
+	QueuePattern   string `cfg:"queue_pattern,nodecode" default:"{app.namespace}-{queueId}"`
+	QueueDelimiter string `cfg:"queue_delimiter" default:"-"`
 }
 
 func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (string, error) {
@@ -48,13 +48,13 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 	}
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("sqs", queueSettings.GetClientName()))
-	defaultPatternKey := fmt.Sprintf("%s.naming.pattern", aws.GetClientConfigKey("sqs", "default"))
+	defaultPatternKey := fmt.Sprintf("%s.naming.queue_pattern", aws.GetClientConfigKey("sqs", "default"))
 	namingSettings := &QueueNamingSettings{}
-	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "pattern")); err != nil {
+	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "queue_pattern")); err != nil {
 		return "", fmt.Errorf("failed to unmarshal sqs naming settings for %s: %w", namingKey, err)
 	}
 
-	name, err := queueSettings.GetAppIdentity().Format(namingSettings.Pattern, namingSettings.Delimiter, map[string]string{
+	name, err := queueSettings.GetAppIdentity().Format(namingSettings.QueuePattern, namingSettings.QueueDelimiter, map[string]string{
 		"queueId": queueSettings.GetQueueId(),
 	})
 	if err != nil {

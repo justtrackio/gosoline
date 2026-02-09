@@ -275,20 +275,26 @@ func WithKinsumerAutoscaleModule(kinsumerInputName string) Option {
 	}
 }
 
-func WithLoggerGroupTag(app *App) {
-	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
-		identity, err := cfg.GetAppIdentity(config)
-		if err != nil {
-			return fmt.Errorf("can not get app identity to set group on logger: %w", err)
-		}
+func WIthLoggerApplicationTag(tag string) Option {
+	return func(app *App) {
+		app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+			identity, err := cfg.GetAppIdentity(config)
+			if err != nil {
+				return fmt.Errorf("can not get app identity to set tag on logger: %w", err)
+			}
 
-		return logger.Option(log.WithFields(map[string]any{
-			"group": identity.Tags["group"],
-		}))
-	})
+			if _, ok := identity.Tags[tag]; !ok {
+				return fmt.Errorf("app identity does not have tag %q to set on logger", tag)
+			}
+
+			return logger.Option(log.WithFields(map[string]any{
+				tag: identity.Tags[tag],
+			}))
+		})
+	}
 }
 
-func WithLoggerApplicationTag(app *App) {
+func WithLoggerApplicationName(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		identity, err := cfg.GetAppIdentity(config)
 		if err != nil {
@@ -299,6 +305,10 @@ func WithLoggerApplicationTag(app *App) {
 			"application": identity.Name,
 		}))
 	})
+}
+
+func WithLoggerGroupTag(app *App) {
+	WIthLoggerApplicationTag("group")(app)
 }
 
 func WithLoggerContextFieldsMessageEncoder(app *App) {

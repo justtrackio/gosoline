@@ -95,7 +95,7 @@ func (s *TableNameTestSuite) TestSpecificClientWithPattern() {
 
 func (s *TableNameTestSuite) TestPatternFromTableSettings() {
 	s.settings.TableNamingSettings = ddb.TableNamingSettings{
-		Pattern: "this-is-an-fqn-overwrite-event",
+		TablePattern: "this-is-an-fqn-overwrite-event",
 	}
 
 	name, err := ddb.GetTableName(s.config, s.settings)

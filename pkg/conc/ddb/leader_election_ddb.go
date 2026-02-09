@@ -51,7 +51,7 @@ func NewDdbLeaderElectionWithSettings(ctx context.Context, config cfg.Config, lo
 	repository, err := ddb.NewRepository(ctx, config, logger, &ddb.Settings{
 		ModelId: mdl.ModelId{},
 		TableNamingSettings: ddb.TableNamingSettings{
-			Pattern: settings.Naming.Pattern,
+			TablePattern: settings.Naming.Pattern,
 		},
 		DisableTracing: true,
 		Main: ddb.MainSettings{

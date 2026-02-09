@@ -32,8 +32,8 @@ func (s TopicNameSettings) GetTopicId() string {
 }
 
 type TopicNamingSettings struct {
-	Pattern   string `cfg:"pattern,nodecode" default:"{app.namespace}-{topicId}"`
-	Delimiter string `cfg:"delimiter" default:"-"`
+	TopicPattern   string `cfg:"topic_pattern,nodecode" default:"{app.namespace}-{topicId}"`
+	TopicDelimiter string `cfg:"topic_delimiter" default:"-"`
 }
 
 func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (string, error) {
@@ -42,14 +42,14 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 	}
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("sns", topicSettings.GetClientName()))
-	defaultPatternKey := fmt.Sprintf("%s.naming.pattern", aws.GetClientConfigKey("sns", "default"))
+	defaultPatternKey := fmt.Sprintf("%s.naming.topic_pattern", aws.GetClientConfigKey("sns", "default"))
 
 	namingSettings := &TopicNamingSettings{}
-	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "pattern")); err != nil {
+	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "topic_pattern")); err != nil {
 		return "", fmt.Errorf("failed to unmarshal sns naming settings for %s: %w", namingKey, err)
 	}
 
-	return topicSettings.GetAppIdentity().Format(namingSettings.Pattern, namingSettings.Delimiter, map[string]string{
+	return topicSettings.GetAppIdentity().Format(namingSettings.TopicPattern, namingSettings.TopicDelimiter, map[string]string{
 		"topicId": topicSettings.GetTopicId(),
 	})
 }

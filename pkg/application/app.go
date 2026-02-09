@@ -49,7 +49,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithMetadataServer,
 		WithMetricsCalculatorModule,
 		WithLoggerGroupTag,
-		WithLoggerApplicationTag,
+		WithLoggerApplicationName,
 		WithLoggerContextFieldsMessageEncoder,
 		WithLoggerContextFieldsResolver(log.ContextFieldsResolver),
 		WithLoggerHandlersFromConfig,

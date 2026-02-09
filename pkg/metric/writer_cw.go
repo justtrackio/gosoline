@@ -42,8 +42,8 @@ type (
 	}
 
 	CloudwatchNamingSettings struct {
-		Pattern   string `cfg:"pattern,nodecode" default:"{app.namespace}-{app.name}"`
-		Delimiter string `cfg:"delimiter" default:"/"`
+		NamespacePattern   string `cfg:"namespacepattern,nodecode" default:"{app.namespace}-{app.name}"`
+		NamespaceDelimiter string `cfg:"namespacedelimiter" default:"/"`
 	}
 
 	cwWriterCtxKey string
@@ -230,7 +230,7 @@ func GetCloudWatchNamespace(config cfg.Config) (string, error) {
 		return "", fmt.Errorf("failed to get cloudwatch settings: %w", err)
 	}
 
-	if namespace, err = identity.Format(cloudwatchSettings.Naming.Pattern, cloudwatchSettings.Naming.Delimiter); err != nil {
+	if namespace, err = identity.Format(cloudwatchSettings.Naming.NamespacePattern, cloudwatchSettings.Naming.NamespaceDelimiter); err != nil {
 		return "", fmt.Errorf("failed to format cloudwatch namespace: %w", err)
 	}
 

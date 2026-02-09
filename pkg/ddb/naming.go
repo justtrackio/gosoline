@@ -8,8 +8,8 @@ import (
 )
 
 type TableNamingSettings struct {
-	Pattern   string `cfg:"pattern,nodecode" default:"{app.namespace}-{name}"`
-	Delimiter string `cfg:"delimiter" default:"-"`
+	TablePattern string `cfg:"table_pattern,nodecode" default:"{app.namespace}-{name}"`
+	Delimiter    string `cfg:"delimiter" default:"-"`
 }
 
 func GetTableName(config cfg.Config, settings *Settings) (string, error) {
@@ -27,11 +27,11 @@ func GetTableName(config cfg.Config, settings *Settings) (string, error) {
 		return "", fmt.Errorf("failed to pad ModelId from config: %w", err)
 	}
 
-	if settings.TableNamingSettings.Pattern != "" {
-		namingSettings.Pattern = settings.TableNamingSettings.Pattern
+	if settings.TableNamingSettings.TablePattern != "" {
+		namingSettings.TablePattern = settings.TableNamingSettings.TablePattern
 	}
 
-	return identity.Format(namingSettings.Pattern, namingSettings.Delimiter, settings.ModelId.ToMap())
+	return identity.Format(namingSettings.TablePattern, namingSettings.Delimiter, settings.ModelId.ToMap())
 }
 
 func GetTableNamingSettings(config cfg.Config, clientName string) (*TableNamingSettings, error) {
@@ -40,9 +40,9 @@ func GetTableNamingSettings(config cfg.Config, clientName string) (*TableNamingS
 	}
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("dynamodb", clientName))
-	defaultPatternKey := fmt.Sprintf("%s.naming.pattern", aws.GetClientConfigKey("dynamodb", "default"))
+	defaultPatternKey := fmt.Sprintf("%s.naming.table_pattern", aws.GetClientConfigKey("dynamodb", "default"))
 	namingSettings := &TableNamingSettings{}
-	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "pattern")); err != nil {
+	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "table_pattern")); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal table naming settings: %w", err)
 	}
 

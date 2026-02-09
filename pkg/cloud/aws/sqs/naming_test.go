@@ -125,7 +125,7 @@ func (s *GetSqsQueueNameTestSuite) TestUnknownPlaceholderReturnsError() {
 }
 
 func (s *GetSqsQueueNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
-	// Pattern doesn't use tags, so missing tags should not cause error
+	// QueuePattern doesn't use tags, so missing tags should not cause error
 	s.settings.AppIdentity.Tags = nil
 	s.settings.AppIdentity.Namespace = "{app.env}"
 	s.setupConfig(map[string]any{
@@ -142,7 +142,7 @@ func (s *GetSqsQueueNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem
 }
 
 func (s *GetSqsQueueNameTestSuite) TestMissingRequiredTagReturnsError() {
-	// Pattern uses project tag but it's missing
+	// QueuePattern uses project tag but it's missing
 	s.settings.AppIdentity.Tags = cfg.AppTags{}
 	s.setupConfig(map[string]any{
 		"cloud.aws.sqs.clients.default.naming.pattern": "{app.tags.project}-{queueId}",

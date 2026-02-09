@@ -9,7 +9,7 @@ import (
 
 type Settings struct {
 	cfg.AppIdentity
-	Name       string
+	BucketId   string
 	Bucket     string `cfg:"bucket"`
 	Region     string `cfg:"region"`
 	ClientName string `cfg:"client_name" default:"default"`
@@ -25,7 +25,7 @@ func (s Settings) GetClientName() string {
 }
 
 func (s Settings) GetBucketId() string {
-	return s.Name
+	return s.BucketId
 }
 
 func getConfigKey(name string) string {
@@ -36,8 +36,10 @@ func ReadStoreSettings(config cfg.Config, name string) (*Settings, error) {
 	var err error
 	var s3ClientConfig *gosoS3.ClientConfig
 
-	settings := &Settings{}
 	key := getConfigKey(name)
+	settings := &Settings{
+		BucketId: name,
+	}
 
 	if err := config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultsFromKey("blob.default", ".")); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal blob store settings for %s: %w", name, err)

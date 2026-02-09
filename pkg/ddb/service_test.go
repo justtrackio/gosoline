@@ -59,7 +59,7 @@ func TestService_sanitizeSettings(t *testing.T) {
 	// Use a static pattern since we don't have app identity configured
 	settings := &ddb.Settings{
 		TableNamingSettings: ddb.TableNamingSettings{
-			Pattern: "test-table",
+			TablePattern: "test-table",
 		},
 	}
 

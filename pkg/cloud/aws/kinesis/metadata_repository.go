@@ -136,7 +136,7 @@ func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Lo
 			Model: &FullRecord{},
 		},
 		TableNamingSettings: ddb.TableNamingSettings{
-			Pattern: tableName,
+			TablePattern: tableName,
 		},
 		DisableTracing: true,
 	}

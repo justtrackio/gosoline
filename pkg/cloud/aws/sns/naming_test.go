@@ -117,7 +117,7 @@ func (s *GetTopicNameTestSuite) TestUnknownPlaceholderReturnsError() {
 }
 
 func (s *GetTopicNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
-	// Pattern doesn't use tags, so missing tags should not cause error
+	// TopicPattern doesn't use tags, so missing tags should not cause error
 	s.settings.AppIdentity.Tags = nil
 	s.settings.AppIdentity.Namespace = "{app.env}"
 	s.setupConfig(map[string]any{
