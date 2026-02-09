@@ -2,14 +2,14 @@
 
 ## Scope
 - DynamoDB integration layer: metadata modeling, repository abstraction, builders, and fixtures.
-- Table naming uses `mdl.ModelId` with its own macro system (NOT `cfg.NamingTemplate`).
+- Table naming uses `cfg.AppIdentity.Format()` with ModelId fields (via `ModelId.ToMap()`).
 - Provides lifecycle helpers and purgers for test environments.
 
 ## Key files
 - `metadata*.go` - model descriptors and attribute mapping.
 - `builder_*.go` - typed request builders for CRUD, query, scan, transact operations.
 - `repository*.go` - high-level repos built on builders/services.
-- `naming.go` - table naming rules (relies on `ModelId.ReplaceMacros`).
+- `naming.go` - table naming rules (uses `cfg.AppIdentity.Format()` with `ModelId.ToMap()`).
 
 ## Common tasks
 - Extend model metadata: update `metadata_factory.go` and add tests covering new annotations.
@@ -21,26 +21,25 @@
 - For changes affecting naming/macros, also test `pkg/cloud/aws/kinesis` and `pkg/stream` to ensure shared expectations.
 
 ## Naming with ModelId
-Table names are generated via `config.FormatString` using the ModelId (converted to a map). Default pattern:
+Table names are generated via `cfg.AppIdentity.Format()` using the ModelId fields. Default pattern:
 ```yaml
-ddb.default.naming.pattern: "{app.namespace}-{name}"
+cloud.aws.dynamodb.clients.default.naming.table_pattern: "{app.namespace}-{name}"
 ```
 
-**Note:** DynamoDB uses `AppIdentity`-style macros. The placeholders are:
+**Note:** DynamoDB table names are built via `cfg.AppIdentity.Format()` with `ModelId.ToMap()`. The placeholders are:
 
 | Macro | Description |
 |-------|-------------|
-| `{app.tags.project}` | Project tag |
 | `{app.env}` | Environment |
-| `{app.tags.family}` | Family tag |
-| `{app.tags.group}` | Group tag |
-| `{app.name}` | App name |
-| `{name}` | Model name (from metadata) |
+| `{app.name}` | Application name |
+| `{app.namespace}` | Pre-configured namespace pattern |
+| `{app.tags.<key>}` | Any tag value (e.g., project, family, group) |
+| `{name}` | Model name (from ModelId.Name) |
 
 ## Common config keys
 ```yaml
 cloud.aws.dynamodb.clients.default.endpoint: http://localhost:4566
-ddb.default.naming.pattern: "{app.namespace}-{name}"
+cloud.aws.dynamodb.clients.default.naming.table_pattern: "{app.namespace}-{name}"
 ```
 
 ## Related packages
@@ -52,4 +51,4 @@ ddb.default.naming.pattern: "{app.namespace}-{name}"
 - Keep request builders composable—avoid hard-coding table names; always take `Metadata` or `ModelId` input.
 - Fixture writers (`fixture_writer_ddb*.go`) must stay in sync with metadata parsing.
 - Update `.mockery.yml` when adding new interfaces so DynamoDB service mocks stay current.
-- DynamoDB naming is intentionally separate from `cfg.NamingTemplate` to support model-specific identifiers.
+- DynamoDB naming uses `cfg.AppIdentity.Format()` but with ModelId fields for model-specific identifiers.

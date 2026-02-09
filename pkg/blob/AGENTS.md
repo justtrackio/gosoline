@@ -6,7 +6,8 @@
 - Handles batch operations, lifecycle management, and fixtures.
 
 ## Key files
-- `store.go` - `Store` interface, S3 implementation, settings loading.
+- `store.go` - `Store` interface and S3 implementation.
+- `settings.go` - settings loading and bucket name resolution.
 - `service.go` - `Service` struct for creating/checking buckets.
 - `runner.go` - `BatchRunner` for asynchronous operations.
 - `url_builder.go` - helper for generating absolute URLs to blobs.
@@ -25,7 +26,7 @@ Bucket naming is handled by the `pkg/cloud/aws/s3` package naming settings. The 
 1. `blob.<name>.bucket` (explicit override)
 2. `cloud.aws.s3.clients.<client>.naming.bucket_pattern`
 3. `cloud.aws.s3.clients.default.naming.bucket_pattern`
-4. Default pattern: `{app.tags.project}-{app.env}-{app.tags.family}`
+4. Default pattern: `{app.namespace}`
 
 **Supported placeholders:**
 - `{app.env}` - Environment

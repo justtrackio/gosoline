@@ -439,6 +439,29 @@ This will result in metric prefixes like: `my_project_production_platform_core_m
 *   **Address Delimiter Default:** `.` (dots)
 *   **Address Delimiter Environment Variable:** `GOSO_REDIS_CLIENTS_DEFAULT_NAMING_ADDRESS_DELIMITER`
 
+### KvStore Redis Key Pattern
+
+The `kvstore` package configures Redis key patterns for each key-value store. The default pattern has changed to use `{app.namespace}`.
+
+*   **Config Key:** `kvstore.<name>.redis.key_pattern` (per-store) or `kvstore.default.redis.key_pattern` (global default)
+*   **Old Default:** `{app.tags.project}-{app.tags.family}-{app.tags.group}-kvstore-{store}-{key}`
+*   **New Default:** `{app.namespace}-kvstore-{store}-{key}` (requires `app.namespace` to be configured for backward compatibility)
+
+| Macro | Description |
+|-------|-------------|
+| `{store}` | The kvstore name (expanded before passing to Redis) |
+| `{key}` | The specific key being accessed |
+
+**Note:** The `{store}` placeholder is resolved by the kvstore config postprocessor before the pattern is passed to the underlying Redis client. The remaining placeholders are resolved by the Redis client's naming system.
+
+**Migration:** To maintain backward compatibility with the previous key format, configure:
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.tags.family}.{app.tags.group}"
+```
+
+This will produce keys like: `my-project-my-family-my-group-kvstore-mystore-somekey` (same as the old default).
+
 ### Tracing Service Name
 
 *   **Config Key:** `tracing.naming.pattern`

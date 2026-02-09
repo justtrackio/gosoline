@@ -6,7 +6,7 @@
 
 ## Key files
 - `server.go`, `definition.go` - server lifecycle and handler registration structures.
-- `middleware_*.go` - logging, metrics, recovery, auth.
+- `middleware_*.go` - logging, metrics, recovery, sampling.
 - `handler.go`, `handler_static.go`, `response.go` - base handlers and response helpers.
 - `auth/`, `crud/`, `sql/` - optional submodules for auth flows and generic CRUD endpoints.
 

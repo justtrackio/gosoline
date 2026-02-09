@@ -8,7 +8,8 @@
 ## Key files
 - `kvstore.go` - `KvStore` interface, `Settings`, and factory definitions.
 - `configurable.go` - Configuration loading and factory for different backend types.
-- `redis.go` - Redis backend implementation using `cfg.NamingTemplate` for key patterns.
+- `config_postprocessor_redis.go` - Expands `{store}` in key patterns and passes them to the Redis client config.
+- `redis.go` - Redis backend implementation.
 - `ddb.go` - DynamoDB backend implementation.
 - `chain.go` - Chained store implementation (e.g., memory cache in front of Redis).
 
@@ -25,9 +26,10 @@ Redis key naming can be configured per store or globally using patterns with `cf
 **Priority:**
 1. `kvstore.<name>.redis.key_pattern` (explicit override)
 2. `kvstore.default.redis.key_pattern`
-3. Default pattern: `{app.tags.project}-{app.tags.family}-{app.tags.group}-kvstore-{store}-{key}`
+3. Default pattern: `{app.namespace}-kvstore-{store}-{key}`
 
 **Supported placeholders:**
+- `{app.namespace}` - Resolved namespace (e.g., `{app.tags.project}.{app.env}.{app.tags.family}`)
 - `{store}` - The name of the kvstore
 - `{key}` - The key being accessed
 - `{app.env}` - Environment
@@ -42,8 +44,8 @@ kvstore.default.redis.key_pattern: "{app.tags.project}:{app.env}:{store}:{key}"
 # Store-specific pattern
 kvstore.cache.redis.key_pattern: "cache:{key}"
 
-# Legacy compatible pattern (default)
-kvstore.default.redis.key_pattern: "{app.tags.project}-{app.tags.family}-{app.tags.group}-kvstore-{store}-{key}"
+# Default pattern (uses app.namespace)
+kvstore.default.redis.key_pattern: "{app.namespace}-kvstore-{store}-{key}"
 ```
 
 ## Testing

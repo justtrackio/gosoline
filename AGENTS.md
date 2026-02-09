@@ -12,7 +12,7 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 - `pkg/`: Core framework packages (50+ packages covering application lifecycle, configuration, logging, AWS integrations, streaming, HTTP server, database, caching, etc.)
 - `docs/`: Docusaurus documentation site. Run `cd docs && yarn build` to verify.
 - `examples/`: Sample applications demonstrating gosoline features and best practices.
-- `test/`: Integration and E2E test suites (blob, cloud, db, db-repo, ddb, fixtures, guard, httpserver, mdlsub, stream, suite). Requires Docker.
+- `test/`: Integration and E2E test suites (blob, cloud, conc, db, db-repo, dbx, ddb, fixtures, guard, httpserver, mdlsub, stream, suite). Requires Docker.
 - `.github/workflows/`: CI pipelines—mockery check, build, golangci-lint, unit tests, race tests, integration tests.
 
 ## Day-to-day workflow for changes
@@ -75,14 +75,22 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 ### AWS integrations (`pkg/cloud/aws/`)
 | Package | AWS Service |
 |---------|-------------|
-| `sqs/` | Simple Queue Service |
-| `sns/` | Simple Notification Service |
-| `kinesis/` | Kinesis Data Streams |
-| `dynamodb/` | DynamoDB |
-| `s3/` | S3 object storage |
+| `athena/` | Athena |
 | `cloudwatch/` | CloudWatch metrics/logs |
+| `dynamodb/` | DynamoDB |
+| `ec2/` | EC2 instance metadata |
+| `ecs/` | ECS container metadata |
+| `glue/` | Glue Data Catalog |
+| `kinesis/` | Kinesis Data Streams |
+| `rds/` | RDS |
+| `resourcegroupstaggingapi/` | Resource Groups Tagging API |
+| `s3/` | S3 object storage |
 | `secretsmanager/` | Secrets Manager |
+| `servicediscovery/` | Cloud Map service discovery |
 | `ses/` | Simple Email Service |
+| `sns/` | Simple Notification Service |
+| `sqs/` | Simple Queue Service |
+| `ssm/` | Systems Manager Parameter Store |
 
 ### Data & persistence
 | Package | Purpose |
@@ -95,15 +103,40 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 | `blob/` | Blob storage abstraction |
 | `fixtures/` | Test fixture loading |
 
+### Networking & APIs
+| Package | Purpose |
+|---------|---------|
+| `http/` | HTTP client utilities |
+| `grpcserver/` | gRPC server support |
+| `kafka/` | Kafka integration (topics, consumer groups) |
+
+### Observability
+| Package | Purpose |
+|---------|---------|
+| `metric/` | Metrics collection and export |
+| `tracing/` | Distributed tracing (X-Ray, OpenTelemetry) |
+
+### Security & access control
+| Package | Purpose |
+|---------|---------|
+| `guard/` | Authorization and access control |
+| `oauth2/` | OAuth2 integration |
+
 ### Utilities
 | Package | Purpose |
 |---------|---------|
+| `appctx/` | Cross-module shared state container |
+| `cache/` | Caching abstraction |
+| `conc/` | Concurrency utilities |
 | `exec/` | Retry, backoff, execution helpers |
 | `clock/` | Time abstraction for testing |
 | `uuid/` | UUID generation |
 | `funk/` | Functional utilities (map, filter, etc.) |
 | `mapx/` | Map utilities |
 | `cast/` | Type casting helpers |
+| `coffin/` | Goroutine lifecycle management |
+| `currency/` | Currency handling |
+| `dbx/` | Database extensions (sqlx-based query helpers) |
 | `encoding/` | Encoding utilities |
 | `validation/` | Input validation |
 
@@ -112,7 +145,7 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 Gosoline uses a macro system for consistent resource naming across AWS services and data stores.
 
 ### AppIdentity macros (cfg package)
-Used in queue/topic/stream/namespace names via `cfg.NamingTemplate`:
+Used in queue/topic/stream/namespace names via `cfg.AppIdentity.Format()`:
 - `{app.env}` - environment from `app.env` config
 - `{app.name}` - application name from `app.name` config
 - `{app.tags.<key>}` - any tag value (fully dynamic)
@@ -143,13 +176,16 @@ Note: DynamoDB table naming uses ModelId-based macros (legacy style), not AppIde
 ### Example configs
 ```yaml
 # SQS queue naming
-cloud.aws.sqs.clients.default.naming.pattern: "{app.namespace}-{queueId}"
+cloud.aws.sqs.clients.default.naming.queue_pattern: "{app.namespace}-{queueId}"
 
 # SNS topic naming
-cloud.aws.sns.clients.default.naming.pattern: "{app.namespace}-{topicId}"
+cloud.aws.sns.clients.default.naming.topic_pattern: "{app.namespace}-{topicId}"
 
 # Kinesis stream naming
-cloud.aws.kinesis.clients.default.naming.pattern: "{app.namespace}-{streamName}"
+cloud.aws.kinesis.clients.default.naming.stream_pattern: "{app.namespace}-{streamName}"
+
+# DynamoDB table naming
+cloud.aws.dynamodb.clients.default.naming.table_pattern: "{app.namespace}-{name}"
 
 # Kafka topic naming
 kafka.naming.topic_pattern: "{app.namespace}-{topicId}"

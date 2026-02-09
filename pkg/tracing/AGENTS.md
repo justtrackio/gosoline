@@ -48,11 +48,11 @@ tracing.otel:
 ```
 
 ## Naming Pattern
-Tracing uses a strict naming pattern system similar to `cfg.NamingTemplate` but implemented specifically for tracing identifiers.
-- Placeholders: `{app.env}`, `{app.name}`, `{app.tags.<key>}`.
+Tracing uses a naming pattern system that delegates to `cfg.AppIdentity.Format()` for placeholder expansion.
+- Placeholders: `{app.env}`, `{app.name}`, `{app.namespace}`, `{app.tags.<key>}`.
 - All referenced tags **must** be present in `app.tags`.
 - If a tag is missing, initialization fails with a clear error.
-- Legacy hardcoded concatenation (project-env-family-group-name) is replaced by the default pattern.
+- Default pattern: `{app.namespace}-{app.name}`.
 
 ## Common tasks
 - Add new provider: implement `Tracer` interface, register in `tracer.go`.

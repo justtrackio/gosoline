@@ -43,7 +43,7 @@ type InMemoryConfiguration struct {
 
 type RedisConfiguration struct {
 	DB         int    `cfg:"db" default:"0"`
-	KeyPattern string `cfg:"key_pattern,nodecode" default:"{app.tags.project}-{app.tags.family}-{app.tags.group}-kvstore-{store}-{key}"`
+	KeyPattern string `cfg:"key_pattern,nodecode" default:"{app.namespace}-kvstore-{store}-{key}"`
 }
 
 type kvStoreAppCtxKey string

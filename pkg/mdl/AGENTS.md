@@ -2,15 +2,16 @@
 
 ## Scope
 - Shared model utilities: `ModelId`, factories, decorators used by DB, DDB, stream, and mdlsub packages.
-- Provides macro interpolation logic for model naming (separate from `cfg.NamingTemplate`).
+- Provides macro interpolation logic for model naming (separate from `cfg.AppIdentity.Format()`).
 
 ## Key files
-- `model.go` - `ModelId`, macros, defaults, and helper methods.
+- `model_id.go` - `ModelId`, macros, defaults, and helper methods.
+- `parse.go` - `ParseModelId` for parsing canonical model ID strings.
 - `factory.go`, `named.go` - builder helpers for typed models.
 - `transform.go` - serializer/deserializer helpers for DTOs.
 
 ## Common tasks
-- Adjust macro behavior or defaults: edit `model.go`, update tests, and check dependent packages (ddb, db-repo, stream).
+- Adjust macro behavior or defaults: edit `model_id.go`, update tests, and check dependent packages (ddb, db-repo, stream).
 - Introduce helper factories: extend `factory.go` for new naming or metadata strategies.
 - Update transforms to support new encoding formats.
 
@@ -42,12 +43,12 @@ name, err := config.FormatString("{app.tags.project}-{name}", modelId.ToMap())
 | `Name` | `name` |
 
 ## Related packages
-- `pkg/cfg` - `NamingTemplate` with AppIdentity macros (for AWS resource naming)
+- `pkg/cfg` - `AppIdentity.Format()` for AWS resource naming
 - `pkg/ddb` - uses ModelId for table naming
 - `pkg/db-repo` - uses ModelId for SQL table metadata
 
 ## Tips
-- DynamoDB and SQL tables use `ModelId` (via `config.FormatString`); AWS resources (SQS, SNS, Kinesis) use `cfg.NamingTemplate`.
+- DynamoDB and SQL tables use `ModelId` (via `cfg.AppIdentity.Format()` with `ModelId.ToMap()`); AWS resources (SQS, SNS, Kinesis) use `cfg.AppIdentity.Format()`.
 - Document any new `ModelId` fields in root AGENT so downstream contributors know how to configure them.
 
 ## Canonical Model IDs

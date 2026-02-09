@@ -305,6 +305,26 @@ Redis has patterns for both the server address (for service discovery) and key n
 |-------|-------------|
 | `{key}` | The specific key being accessed |
 
+### KvStore (Redis Key Pattern)
+The `kvstore` package uses a key pattern to namespace Redis keys for each key-value store. The `{store}` placeholder is expanded by `config_postprocessor_redis.go` before the pattern is passed to the underlying Redis client configuration.
+
+**Config Key:** `kvstore.<name>.redis.key_pattern` (per-store) or `kvstore.default.redis.key_pattern` (global default)
+**Default:** `{app.namespace}-kvstore-{store}-{key}`
+
+**Delimiter Config Key:** Inherits from the underlying Redis client's `naming.key_delimiter`
+**Default Delimiter:** `-` (dashes)
+
+| Macro | Description |
+|-------|-------------|
+| `{store}` | The name of the kvstore (expanded before passing to Redis) |
+| `{key}` | The specific key being accessed |
+| `{app.env}` | Environment |
+| `{app.name}` | Application name |
+| `{app.namespace}` | Your configured namespace pattern |
+| `{app.tags.<tag>}` | Any tag from the identity |
+
+**Note:** The `{store}` placeholder is resolved by the kvstore config postprocessor, not by `AppIdentity.Format()`. The remaining placeholders (`{key}`, `{app.*}`) are resolved by the Redis client's naming system.
+
 ### Tracing
 Tracing service naming configures the service name used in distributed tracing systems like AWS X-Ray and OpenTelemetry.
 
