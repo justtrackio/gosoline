@@ -50,6 +50,17 @@ func (i AppIdentity) Format(pattern string, delimiter string, args ...map[string
 	return i.format(pattern, values)
 }
 
+func (i AppIdentity) FormatNamespace(delimiter string, args ...map[string]string) (string, error) {
+	var err error
+	var values map[string]string
+
+	if values, err = i.ToPlaceholders(delimiter, args...); err != nil {
+		return "", fmt.Errorf("failed to get placeholders: %w", err)
+	}
+
+	return values["app.namespace"], nil
+}
+
 func (i AppIdentity) format(pattern string, args map[string]string) (string, error) {
 	result := pattern
 	matches := patternRegex.FindAllStringSubmatch(pattern, -1)
