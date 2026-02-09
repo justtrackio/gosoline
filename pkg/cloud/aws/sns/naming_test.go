@@ -65,7 +65,7 @@ func (s *GetTopicNameTestSuite) setupConfigEnv(settings map[string]string) {
 
 func (s *GetTopicNameTestSuite) TestDefaultWithPattern() {
 	s.setupConfig(map[string]any{
-		"cloud.aws.sns.clients.default.naming.pattern": "{app.name}-{topicId}",
+		"cloud.aws.sns.clients.default.naming.topic_pattern": "{app.name}-{topicId}",
 	})
 
 	name, err := sns.GetTopicName(s.config, s.settings)
@@ -76,7 +76,7 @@ func (s *GetTopicNameTestSuite) TestDefaultWithPattern() {
 func (s *GetTopicNameTestSuite) TestSpecificClientWithPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.sns.clients.specific.naming.pattern": "{app.name}-{topicId}",
+		"cloud.aws.sns.clients.specific.naming.topic_pattern": "{app.name}-{topicId}",
 	})
 
 	name, err := sns.GetTopicName(s.config, s.settings)
@@ -87,7 +87,7 @@ func (s *GetTopicNameTestSuite) TestSpecificClientWithPattern() {
 func (s *GetTopicNameTestSuite) TestSpecificClientWithFallbackPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.sns.clients.default.naming.pattern": "{app.name}-{topicId}",
+		"cloud.aws.sns.clients.default.naming.topic_pattern": "{app.name}-{topicId}",
 	})
 
 	name, err := sns.GetTopicName(s.config, s.settings)
@@ -98,7 +98,7 @@ func (s *GetTopicNameTestSuite) TestSpecificClientWithFallbackPattern() {
 func (s *GetTopicNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
 	s.settings.ClientName = "specific"
 	s.setupConfigEnv(map[string]string{
-		"CLOUD_AWS_SNS_CLIENTS_SPECIFIC_NAMING_PATTERN": "!nodecode {app.name}-{topicId}",
+		"CLOUD_AWS_SNS_CLIENTS_SPECIFIC_NAMING_TOPIC_PATTERN": "!nodecode {app.name}-{topicId}",
 	})
 
 	name, err := sns.GetTopicName(s.config, s.settings)
@@ -108,7 +108,7 @@ func (s *GetTopicNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
 
 func (s *GetTopicNameTestSuite) TestUnknownPlaceholderReturnsError() {
 	s.setupConfig(map[string]any{
-		"cloud.aws.sns.clients.default.naming.pattern": "{project}-{topicId}",
+		"cloud.aws.sns.clients.default.naming.topic_pattern": "{project}-{topicId}",
 	})
 
 	_, err := sns.GetTopicName(s.config, s.settings)
@@ -121,7 +121,7 @@ func (s *GetTopicNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() 
 	s.settings.AppIdentity.Tags = nil
 	s.settings.AppIdentity.Namespace = "{app.env}"
 	s.setupConfig(map[string]any{
-		"cloud.aws.sns.clients.default.naming.pattern": "{app.env}-{topicId}",
+		"cloud.aws.sns.clients.default.naming.topic_pattern": "{app.env}-{topicId}",
 	})
 
 	// Re-initialize namespaceParts with the new namespace

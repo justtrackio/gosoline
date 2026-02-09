@@ -307,10 +307,6 @@ func WithLoggerApplicationName(app *App) {
 	})
 }
 
-func WithLoggerGroupTag(app *App) {
-	WIthLoggerApplicationTag("group")(app)
-}
-
 func WithLoggerContextFieldsMessageEncoder(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		stream.AddDefaultEncodeHandler(log.NewMessageWithLoggingFieldsEncoder(config, logger))

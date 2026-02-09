@@ -42,8 +42,8 @@ type (
 	}
 
 	CloudwatchNamingSettings struct {
-		NamespacePattern   string `cfg:"namespacepattern,nodecode" default:"{app.namespace}-{app.name}"`
-		NamespaceDelimiter string `cfg:"namespacedelimiter" default:"/"`
+		NamespacePattern   string `cfg:"namespace_pattern,nodecode" default:"{app.namespace}-{app.name}"`
+		NamespaceDelimiter string `cfg:"namespace_delimiter" default:"/"`
 	}
 
 	cwWriterCtxKey string

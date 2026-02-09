@@ -68,7 +68,7 @@ func (s *TableNameTestSuite) TestDefault() {
 
 func (s *TableNameTestSuite) TestDefaultWithPattern() {
 	s.setupConfig(map[string]any{
-		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app.name}-{name}",
+		"cloud.aws.dynamodb.clients.default.naming.table_pattern": "{app.name}-{name}",
 	})
 
 	name, err := ddb.GetTableName(s.config, s.settings)
@@ -82,7 +82,7 @@ func (s *TableNameTestSuite) TestDefaultWithPattern() {
 func (s *TableNameTestSuite) TestSpecificClientWithPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.dynamodb.clients.specific.naming.pattern": "{app.name}-{name}",
+		"cloud.aws.dynamodb.clients.specific.naming.table_pattern": "{app.name}-{name}",
 	})
 
 	name, err := ddb.GetTableName(s.config, s.settings)
@@ -109,7 +109,7 @@ func (s *TableNameTestSuite) TestPatternFromTableSettings() {
 func (s *TableNameTestSuite) TestSpecificClientWithFallbackPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]any{
-		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app.name}-{name}",
+		"cloud.aws.dynamodb.clients.default.naming.table_pattern": "{app.name}-{name}",
 	})
 
 	name, err := ddb.GetTableName(s.config, s.settings)
@@ -123,7 +123,7 @@ func (s *TableNameTestSuite) TestSpecificClientWithFallbackPattern() {
 func (s *TableNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
 	s.settings.ClientName = "specific"
 	s.setupConfigEnv(map[string]string{
-		"CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_PATTERN": "!nodecode {app.name}-{name}",
+		"CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_TABLE_PATTERN": "!nodecode {app.name}-{name}",
 	})
 
 	name, err := ddb.GetTableName(s.config, s.settings)

@@ -83,8 +83,8 @@ app:
   env: prod
 
 cloud.aws.sqs.clients.default.naming:
-  pattern: "{app.namespace}-{queueId}"
-  delimiter: "-"  # Dots in namespace become dashes
+  queue_pattern: "{app.namespace}-{queueId}"
+  queue_delimiter: "-"  # Dots in namespace become dashes
   
 # Result for queue "orders": myproject-prod-myfamily-orders
 ```
@@ -97,10 +97,10 @@ This resolution method is no longer used by any services in gosoline. All servic
 Different services support additional macros specific to their context. You can customize the naming pattern for each service in your configuration.
 
 ### AWS SQS (Queues)
-**Config Key:** `cloud.aws.sqs.clients.<client_name>.naming.pattern`
+**Config Key:** `cloud.aws.sqs.clients.<client_name>.naming.queue_pattern`
 **Default:** `{app.namespace}-{queueId}`
 
-**Delimiter Config Key:** `cloud.aws.sqs.clients.<client_name>.naming.delimiter`
+**Delimiter Config Key:** `cloud.aws.sqs.clients.<client_name>.naming.queue_delimiter`
 **Default Delimiter:** `-` (dashes)
 
 | Macro | Description |
@@ -108,10 +108,10 @@ Different services support additional macros specific to their context. You can 
 | `{queueId}` | The logical name of the queue provided in code |
 
 ### AWS SNS (Topics)
-**Config Key:** `cloud.aws.sns.clients.<client_name>.naming.pattern`
+**Config Key:** `cloud.aws.sns.clients.<client_name>.naming.topic_pattern`
 **Default:** `{app.namespace}-{topicId}`
 
-**Delimiter Config Key:** `cloud.aws.sns.clients.<client_name>.naming.delimiter`
+**Delimiter Config Key:** `cloud.aws.sns.clients.<client_name>.naming.topic_delimiter`
 **Default Delimiter:** `-` (dashes)
 
 | Macro | Description |
@@ -165,10 +165,10 @@ Kinesis configuration supports naming for Streams, the DynamoDB Metadata table, 
 #### AWS CloudWatch (Metrics Namespace)
 CloudWatch naming configures the **Namespace** under which metrics are published.
 
-**Config Key:** `metric.writer_settings.cloudwatch.naming.pattern`
+**Config Key:** `metric.writer_settings.cloudwatch.naming.namespace_pattern`
 **Default:** `{app.namespace}-{app.name}`
 
-**Delimiter Config Key:** `metric.writer_settings.cloudwatch.naming.delimiter`
+**Delimiter Config Key:** `metric.writer_settings.cloudwatch.naming.namespace_delimiter`
 **Default Delimiter:** `/` (forward slashes)
 
 | Macro | Description |
@@ -201,7 +201,7 @@ Prometheus naming configures the **namespace prefix** for all metrics exposed vi
 ### AWS DynamoDB (Tables)
 DynamoDB table naming uses the standard `AppIdentity` macros plus `{name}` for the model name.
 
-**Config Key:** `cloud.aws.dynamodb.clients.<client_name>.naming.pattern`
+**Config Key:** `cloud.aws.dynamodb.clients.<client_name>.naming.table_pattern`
 **Default:** `{app.namespace}-{name}`
 
 **Delimiter Config Key:** `cloud.aws.dynamodb.clients.<client_name>.naming.delimiter`
@@ -376,7 +376,7 @@ cloud:
         default:
           naming:
             # Using namespace: logistics-production-platform-myqueue
-            pattern: "{app.namespace}-{queueId}"
+            queue_pattern: "{app.namespace}-{queueId}"
             
     s3:
       clients:
@@ -390,15 +390,15 @@ cloud:
         default:
           naming:
             # Custom pattern: eu-central-1-backend-logistics-production-mytopic
-            pattern: "{app.tags.region}-{app.tags.team}-{app.namespace}-{topicId}"
+            topic_pattern: "{app.tags.region}-{app.tags.team}-{app.namespace}-{topicId}"
 
 metric:
   writer_settings:
     cloudwatch:
       naming:
         # Using namespace with slash delimiter: logistics/production/platform-order-service
-        pattern: "{app.namespace}-{app.name}"
-        delimiter: "/"
+        namespace_pattern: "{app.namespace}-{app.name}"
+        namespace_delimiter: "/"
 ```
 
 **Benefits of using `app.namespace`:**

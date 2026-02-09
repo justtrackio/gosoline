@@ -82,7 +82,7 @@ cloud:
         default:
           naming:
             # {app.namespace} expands to: justtrack-production-platform-core
-            pattern: "{app.namespace}-{queueId}"
+            queue_pattern: "{app.namespace}-{queueId}"
 ```
 
 **Benefits:**
@@ -135,7 +135,7 @@ cloud:
       clients:
         default:
           naming:
-            pattern: "{app.tags.project}-{app.env}-{queueId}"
+            queue_pattern: "{app.tags.project}-{app.env}-{queueId}"
 ```
 
 ### Special Case: DynamoDB Table Naming
@@ -238,14 +238,14 @@ This section lists the configuration keys, their old and new defaults, and the c
 
 ### SQS Queue Naming
 
-*   **Config Key:** `cloud.aws.sqs.clients.default.naming.pattern`
+*   **Config Key:** `cloud.aws.sqs.clients.default.naming.queue_pattern`
 *   **Old Default:** `{project}-{env}-{family}-{group}-{queueId}`
 *   **New Default:** `{app.namespace}-{queueId}` (requires `app.namespace` to be configured for backward compatibility)
-*   **Environment Variable:** `GOSO_CLOUD_AWS_SQS_CLIENTS_DEFAULT_NAMING_PATTERN`
+*   **Environment Variable:** `GOSO_CLOUD_AWS_SQS_CLIENTS_DEFAULT_NAMING_QUEUE_PATTERN`
 
-*   **Delimiter Config Key:** `cloud.aws.sqs.clients.default.naming.delimiter`
+*   **Delimiter Config Key:** `cloud.aws.sqs.clients.default.naming.queue_delimiter`
 *   **Delimiter Default:** `-`
-*   **Delimiter Environment Variable:** `GOSO_CLOUD_AWS_SQS_CLIENTS_DEFAULT_NAMING_DELIMITER`
+*   **Delimiter Environment Variable:** `GOSO_CLOUD_AWS_SQS_CLIENTS_DEFAULT_NAMING_QUEUE_DELIMITER`
 
 **Note:** The new default uses `{app.namespace}`. To maintain backward compatibility, configure:
 ```yaml
@@ -255,14 +255,14 @@ app:
 
 ### SNS Topic Naming
 
-*   **Config Key:** `cloud.aws.sns.clients.default.naming.pattern`
+*   **Config Key:** `cloud.aws.sns.clients.default.naming.topic_pattern`
 *   **Old Default:** `{project}-{env}-{family}-{group}-{topicId}`
 *   **New Default:** `{app.namespace}-{topicId}` (requires `app.namespace` to be configured for backward compatibility)
-*   **Environment Variable:** `GOSO_CLOUD_AWS_SNS_CLIENTS_DEFAULT_NAMING_PATTERN`
+*   **Environment Variable:** `GOSO_CLOUD_AWS_SNS_CLIENTS_DEFAULT_NAMING_TOPIC_PATTERN`
 
-*   **Delimiter Config Key:** `cloud.aws.sns.clients.default.naming.delimiter`
+*   **Delimiter Config Key:** `cloud.aws.sns.clients.default.naming.topic_delimiter`
 *   **Delimiter Default:** `-`
-*   **Delimiter Environment Variable:** `GOSO_CLOUD_AWS_SNS_CLIENTS_DEFAULT_NAMING_DELIMITER`
+*   **Delimiter Environment Variable:** `GOSO_CLOUD_AWS_SNS_CLIENTS_DEFAULT_NAMING_TOPIC_DELIMITER`
 
 **Note:** The new default uses `{app.namespace}`. To maintain backward compatibility, configure:
 ```yaml
@@ -365,10 +365,10 @@ app:
 
 ### DynamoDB Table Naming
 
-*   **Config Key:** `cloud.aws.dynamodb.clients.default.naming.pattern`
+*   **Config Key:** `cloud.aws.dynamodb.clients.default.naming.table_pattern`
 *   **Old Default:** `{project}-{env}-{family}-{group}-{modelId}`
 *   **New Default:** `{app.namespace}-{name}` (requires `app.namespace` to be configured for backward compatibility)
-*   **Environment Variable:** `GOSO_CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_PATTERN`
+*   **Environment Variable:** `GOSO_CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_TABLE_PATTERN`
 
 *   **Delimiter Config Key:** `cloud.aws.dynamodb.clients.default.naming.delimiter`
 *   **Delimiter Default:** `-`
@@ -384,14 +384,14 @@ app:
 
 #### CloudWatch Namespace
 
-*   **Config Key:** `metric.writer_settings.cloudwatch.naming.pattern`
+*   **Config Key:** `metric.writer_settings.cloudwatch.naming.namespace_pattern`
 *   **Old Default:** `{project}/{env}/{family}/{group}-{app}`
 *   **New Default:** `{app.namespace}-{app.name}` (requires `app.namespace` to be configured for backward compatibility)
-*   **Environment Variable:** `GOSO_METRIC_WRITER_SETTINGS_CLOUDWATCH_NAMING_PATTERN`
+*   **Environment Variable:** `GOSO_METRIC_WRITER_SETTINGS_CLOUDWATCH_NAMING_NAMESPACE_PATTERN`
 
-*   **Delimiter Config Key:** `metric.writer_settings.cloudwatch.naming.delimiter`
+*   **Delimiter Config Key:** `metric.writer_settings.cloudwatch.naming.namespace_delimiter`
 *   **Delimiter Default:** `/`
-*   **Delimiter Environment Variable:** `GOSO_METRIC_WRITER_SETTINGS_CLOUDWATCH_NAMING_DELIMITER`
+*   **Delimiter Environment Variable:** `GOSO_METRIC_WRITER_SETTINGS_CLOUDWATCH_NAMING_NAMESPACE_DELIMITER`
 
 **Important:** CloudWatch uses `/` as the delimiter (not `-`), creating hierarchical namespaces in AWS Console.
 
@@ -524,7 +524,7 @@ cloud:
 
 ```bash
 # Override SQS naming to just use env and queueId
-export GOSO_CLOUD_AWS_SQS_CLIENTS_DEFAULT_NAMING_PATTERN="{app.env}-{queueId}"
+export GOSO_CLOUD_AWS_SQS_CLIENTS_DEFAULT_NAMING_QUEUE_PATTERN="{app.env}-{queueId}"
 
 # Set a redis key prefix
 export GOSO_REDIS_CLIENTS_DEFAULT_NAMING_KEY_PATTERN="{app.name}:{key}"
