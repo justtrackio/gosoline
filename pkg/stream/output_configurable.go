@@ -175,7 +175,7 @@ func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log
 	}
 
 	output, err := NewKafkaOutput(ctx, config, logger, &kafkaProducer.Settings{
-		AppIdentity:    configuration.Identity,
+		Identity:       configuration.Identity,
 		Connection:     configuration.Connection,
 		TopicId:        configuration.TopicId,
 		Compression:    compression,
@@ -220,9 +220,9 @@ func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger l
 	}
 
 	output, err := NewKinesisOutput(ctx, config, logger, &KinesisOutputSettings{
-		AppIdentity: configuration.Identity,
-		ClientName:  configuration.ClientName,
-		StreamName:  configuration.StreamName,
+		Identity:   configuration.Identity,
+		ClientName: configuration.ClientName,
+		StreamName: configuration.StreamName,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("can not create kinesis output %s: %w", name, err)

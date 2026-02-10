@@ -159,8 +159,8 @@ func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, s
 		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting), nil
 	}
 
-	inputSettings.Tags = sourceModel.Tags
-	inputSettings.Name = sourceModel.App
+	inputSettings.Identity.Tags = sourceModel.Tags
+	inputSettings.Identity.Name = sourceModel.App
 	inputSettings.GroupId = topicId
 	inputSettings.TopicId = topicId
 
@@ -186,7 +186,7 @@ func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string,
 		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting), nil
 	}
 
-	inputSettings.Tags = sourceModel.Tags
+	inputSettings.Identity.Tags = sourceModel.Tags
 	inputSettings.Name = sourceModel.Name
 	inputSettings.StreamName = streamName
 

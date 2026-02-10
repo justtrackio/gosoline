@@ -23,7 +23,7 @@ func (s *GetMetadataTableNameTestSuite) SetupTest() {
 	s.envProvider = cfg.NewMemoryEnvProvider()
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = &kinesis.Settings{
-		AppIdentity: cfg.AppIdentity{
+		Identity: cfg.AppIdentity{
 			Name:      "producer",
 			Env:       "env",
 			Namespace: "{app.tags.project}.{app.env}.{app.tags.family}",
@@ -41,7 +41,7 @@ func (s *GetMetadataTableNameTestSuite) SetupTest() {
 	s.NoError(err)
 
 	// Ensure namespaceParts are initialized
-	err = s.settings.PadFromConfig(s.config)
+	err = s.settings.Identity.PadFromConfig(s.config)
 	s.NoError(err)
 }
 

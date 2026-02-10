@@ -19,13 +19,13 @@ const (
 )
 
 type KinesisOutputSettings struct {
-	cfg.AppIdentity
+	Identity   cfg.AppIdentity
 	ClientName string
 	StreamName string
 }
 
 func (s KinesisOutputSettings) GetAppIdentity() cfg.AppIdentity {
-	return s.AppIdentity
+	return s.Identity
 }
 
 func (s KinesisOutputSettings) GetClientName() string {
@@ -41,7 +41,7 @@ type kinesisOutput struct {
 }
 
 func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *KinesisOutputSettings) (Output, error) {
-	if err := settings.PadFromConfig(config); err != nil {
+	if err := settings.Identity.PadFromConfig(config); err != nil {
 		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
 	}
 
@@ -60,10 +60,10 @@ func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger,
 	backoffSettings.InitialInterval = time.Second
 
 	recordWriterSettings := &gosoKinesis.RecordWriterSettings{
-		AppIdentity: settings.AppIdentity,
-		ClientName:  settings.ClientName,
-		StreamName:  settings.GetStreamName(),
-		Backoff:     backoffSettings,
+		Identity:   settings.Identity,
+		ClientName: settings.ClientName,
+		StreamName: settings.GetStreamName(),
+		Backoff:    backoffSettings,
 	}
 
 	if recordWriter, err = gosoKinesis.NewRecordWriter(ctx, config, logger, recordWriterSettings); err != nil {

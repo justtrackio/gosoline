@@ -760,3 +760,71 @@ stream:
               group: target-group
           topic_id: target-topic
 ```
+
+### Kafka and Kinesis Inputs
+
+Kafka and Kinesis inputs now also use the `identity:` block pattern, bringing them in line with other stream transports.
+
+**Old (Kafka input):**
+```yaml
+stream:
+  input:
+    my-kafka-input:
+      type: kafka
+      env: production
+      name: my-app
+      tags:
+        project: my-project
+        family: my-family
+        group: my-group
+      topic_id: my-topic
+```
+
+**New (Kafka input):**
+```yaml
+stream:
+  input:
+    my-kafka-input:
+      type: kafka
+      identity:
+        env: production
+        name: my-app
+        tags:
+          project: my-project
+          family: my-family
+          group: my-group
+      topic_id: my-topic
+```
+
+**Old (Kinesis input):**
+```yaml
+stream:
+  input:
+    my-kinesis-input:
+      type: kinesis
+      env: production
+      name: my-app
+      tags:
+        project: my-project
+        family: my-family
+        group: my-group
+      stream_name: my-stream
+```
+
+**New (Kinesis input):**
+```yaml
+stream:
+  input:
+    my-kinesis-input:
+      type: kinesis
+      identity:
+        env: production
+        name: my-app
+        tags:
+          project: my-project
+          family: my-family
+          group: my-group
+      stream_name: my-stream
+```
+
+The same pattern applies to Kafka and Kinesis outputs, as well as Redis inputs and outputs.

@@ -78,7 +78,7 @@ func (s *kinsumerTestSuite) SetupTest() {
 	s.remainingForCancel = 0
 
 	settings := gosoKinesis.Settings{
-		AppIdentity: cfg.AppIdentity{
+		Identity: cfg.AppIdentity{
 			Name: "kinesisTest",
 			Env:  "test",
 			Tags: cfg.AppTags{
