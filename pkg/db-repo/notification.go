@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
@@ -26,21 +27,21 @@ type (
 )
 
 type notifier struct {
-	logger        log.Logger
-	metric        metric.Writer
-	modelIdString string
-	version       int
+	logger  log.Logger
+	metric  metric.Writer
+	modelId mdl.ModelId
+	version int
 }
 
-func newNotifier(logger log.Logger, modelIdString string, version int) notifier {
-	defaults := getDefaultNotifierMetrics(modelIdString)
+func newNotifier(logger log.Logger, modelId mdl.ModelId, version int) notifier {
+	defaults := getDefaultNotifierMetrics(modelId)
 	mtr := metric.NewWriter(defaults...)
 
 	return notifier{
-		logger:        logger,
-		metric:        mtr,
-		modelIdString: modelIdString,
-		version:       version,
+		logger:  logger,
+		metric:  mtr,
+		modelId: modelId,
+		version: version,
 	}
 }
 
@@ -56,20 +57,20 @@ func (n *notifier) writeMetric(ctx context.Context, err error) {
 		Timestamp:  time.Now(),
 		MetricName: metricName,
 		Dimensions: map[string]string{
-			"ModelId": n.modelIdString,
+			"ModelId": n.modelId.String(),
 		},
 		Unit:  metric.UnitCount,
 		Value: 1.0,
 	})
 }
 
-func getDefaultNotifierMetrics(modelIdString string) []*metric.Datum {
+func getDefaultNotifierMetrics(modelId mdl.ModelId) []*metric.Datum {
 	return []*metric.Datum{
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameNotifySuccess,
 			Dimensions: map[string]string{
-				"ModelId": modelIdString,
+				"ModelId": modelId.String(),
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
@@ -78,7 +79,7 @@ func getDefaultNotifierMetrics(modelIdString string) []*metric.Datum {
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameNotifyFailure,
 			Dimensions: map[string]string{
-				"ModelId": modelIdString,
+				"ModelId": modelId.String(),
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,

@@ -25,13 +25,15 @@ type basicAuthAuthenticator struct {
 }
 
 func NewBasicAuthHandler(config cfg.Config, logger log.Logger) (gin.HandlerFunc, error) {
-	auth, err := NewBasicAuthAuthenticator(config, logger)
-	if err != nil {
+	var err error
+	var auth Authenticator
+	var identity cfg.AppIdentity
+
+	if auth, err = NewBasicAuthAuthenticator(config, logger); err != nil {
 		return nil, fmt.Errorf("can not create basicAuthAuthenticator: %w", err)
 	}
 
-	identity, err := cfg.GetAppIdentity(config)
-	if err != nil {
+	if identity, err = cfg.GetAppIdentity(config); err != nil {
 		return nil, fmt.Errorf("can not get app identity: %w", err)
 	}
 

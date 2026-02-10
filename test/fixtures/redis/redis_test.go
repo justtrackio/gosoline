@@ -72,6 +72,10 @@ func (s *RedisTestSuite) TestRedisKvStore() {
 		s.FailNow(err.Error())
 	}
 
+	cmd := redisClient.Exists(ctx, "prj-fam-grp-kvstore-testModel-kvstore_entry_1")
+	s.NoError(cmd.Err(), "failed to check existence of key in redis")
+	s.Equal(int64(1), cmd.Val(), "key prj-fam-grp-kvstore-testModel-kvstore_entry_1 should exist")
+
 	// should have created the item
 	res, err := redisClient.Get(ctx, "prj-fam-grp-kvstore-testModel-kvstore_entry_1").Result()
 	s.NoError(err)

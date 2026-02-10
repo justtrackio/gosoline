@@ -66,7 +66,6 @@ type repository struct {
 	orm             *gorm.DB
 	clock           clock.Clock
 	metadata        Metadata
-	modelIdString   string
 	noDeleteRefresh bool
 }
 
@@ -93,9 +92,7 @@ func New(ctx context.Context, config cfg.Config, logger log.Logger, settings Set
 		return nil, fmt.Errorf("can not pad model id from config: %w", err)
 	}
 
-	modelIdString := settings.Metadata.ModelId.String()
-
-	return NewWithInterfaces(logger, tracer, orm, clk, settings.Metadata, modelIdString), nil
+	return NewWithInterfaces(logger, tracer, orm, clk, settings.Metadata), nil
 }
 
 func NewWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger, dbSettings *db.Settings, repoSettings Settings) (*repository, error) {
@@ -120,19 +117,16 @@ func NewWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("can not pad model id from config: %w", err)
 	}
 
-	modelIdString := repoSettings.Metadata.ModelId.String()
-
-	return NewWithInterfaces(logger, tracer, orm, clk, repoSettings.Metadata, modelIdString), nil
+	return NewWithInterfaces(logger, tracer, orm, clk, repoSettings.Metadata), nil
 }
 
-func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, orm *gorm.DB, clock clock.Clock, metadata Metadata, modelIdString string) *repository {
+func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, orm *gorm.DB, clock clock.Clock, metadata Metadata) *repository {
 	return &repository{
-		logger:        logger,
-		tracer:        tracer,
-		orm:           orm,
-		clock:         clock,
-		metadata:      metadata,
-		modelIdString: modelIdString,
+		logger:   logger,
+		tracer:   tracer,
+		orm:      orm,
+		clock:    clock,
+		metadata: metadata,
 	}
 }
 
@@ -475,7 +469,7 @@ func (r *repository) refreshAssociationsDelete(model any, field reflect.StructFi
 }
 
 func (r *repository) GetModelId() string {
-	return r.modelIdString
+	return r.metadata.ModelId.String()
 }
 
 func (r *repository) GetModelName() string {

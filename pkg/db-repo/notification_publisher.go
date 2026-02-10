@@ -14,7 +14,6 @@ type publisherNotifier struct {
 	notifier
 	publisher   Publisher
 	transformer mdl.TransformerResolver
-	modelId     mdl.ModelId
 }
 
 func NewPublisherNotifier(_ context.Context, config cfg.Config, publisher Publisher, logger log.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) (*publisherNotifier, error) {
@@ -22,15 +21,12 @@ func NewPublisherNotifier(_ context.Context, config cfg.Config, publisher Publis
 		return nil, fmt.Errorf("can not pad model id from config: %w", err)
 	}
 
-	modelIdString := modelId.String()
-
-	notifier := newNotifier(logger, modelIdString, version)
+	notifier := newNotifier(logger, modelId, version)
 
 	return &publisherNotifier{
 		notifier:    notifier,
 		publisher:   publisher,
 		transformer: transformer,
-		modelId:     modelId,
 	}, nil
 }
 
@@ -39,7 +35,7 @@ func (n *publisherNotifier) Send(ctx context.Context, notificationType string, v
 	err := n.publisher.Publish(ctx, notificationType, n.version, out)
 
 	if exec.IsRequestCanceled(err) {
-		n.logger.Info(ctx, "request canceled while executing notification publish on %s for model %s with id %d", notificationType, n.modelId.String(), value.GetId())
+		n.logger.Info(ctx, "request canceled while executing notification publish on %s for model %s with id %d", notificationType, n.modelId, value.GetId())
 		n.writeMetric(ctx, err)
 
 		return err
@@ -48,10 +44,10 @@ func (n *publisherNotifier) Send(ctx context.Context, notificationType string, v
 	if err != nil {
 		n.writeMetric(ctx, err)
 
-		return fmt.Errorf("error executing notification on %s for model %s with id %d: %w", notificationType, n.modelId.String(), *value.GetId(), err)
+		return fmt.Errorf("error executing notification on %s for model %s with id %d: %w", notificationType, n.modelId, *value.GetId(), err)
 	}
 
-	n.logger.Info(ctx, "published on %s successful, for model %s with id %d", notificationType, n.modelId.String(), *value.GetId())
+	n.logger.Info(ctx, "published on %s successful, for model %s with id %d", notificationType, n.modelId, *value.GetId())
 	n.writeMetric(ctx, nil)
 
 	return nil

@@ -64,13 +64,7 @@ func (s *metadataRepositoryTestSuite) SetupTest() {
 		},
 	}
 	s.clock = clock.NewFakeClock()
-
-	namingSettings := &kinesis.KinsumerNamingSettings{
-		MetadataNamespacePattern:   "gosoline-test-metadata-repository",
-		MetadataNamespaceDelimiter: "-",
-	}
-
-	s.metadataRepository = kinesis.NewMetadataRepositoryWithInterfaces(s.logger, s.stream, s.clientId, s.repo, s.settings, namingSettings, s.appIdentity, s.clock)
+	s.metadataRepository = kinesis.NewMetadataRepositoryWithInterfaces(s.logger, s.stream, s.clientId, s.repo, s.settings, "gosoline-test-metadata-repository", s.clock)
 }
 
 func (s *metadataRepositoryTestSuite) TestRegisterClient_PutItemError() {
