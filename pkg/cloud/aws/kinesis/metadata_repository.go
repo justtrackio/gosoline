@@ -128,9 +128,6 @@ func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Lo
 		ClientName: settings.ClientName,
 		ModelId: mdl.ModelId{
 			Name: "metadata",
-			Tags: map[string]string{
-				"group": "kinsumer",
-			},
 		},
 		Main: ddb.MainSettings{
 			Model: &FullRecord{},

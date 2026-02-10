@@ -44,19 +44,12 @@ func Test_Publish_Notifier(t *testing.T) {
 			"family":  "testFamily",
 			"group":   "grp",
 		},
+		DomainPattern: "{app.tags.project}.{app.tags.family}.{app.tags.group}",
 	}
-
-	// Create config with required model id pattern
-	// Use !nodecode to prevent config string expansion on the pattern value
-	config := cfg.New()
-	configErr := config.Option(cfg.WithConfigMap(map[string]any{
-		"app.model_id.domain_pattern": "!nodecode {app.tags.project}.{app.tags.family}.{app.tags.group}",
-	}))
-	assert.NoError(t, configErr)
 
 	notifier, err := db_repo.NewPublisherNotifier(
 		t.Context(),
-		config,
+		cfg.New(),
 		&publisher,
 		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
 		modelId,
