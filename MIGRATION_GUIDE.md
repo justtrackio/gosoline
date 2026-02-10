@@ -315,7 +315,7 @@ app:
 #### Metadata Namespace Pattern (New Feature)
 
 *   **Config Key:** `cloud.aws.kinesis.clients.default.naming.metadata_namespace_pattern`
-*   **Old Default:** Not configurable (hardcoded based on app identity)
+*   **Old Default:** `{project}-{env}-{family}-{group}-{app}`
 *   **New Default:** `{app.namespace}-{app.name}`
 *   **Environment Variable:** `GOSO_CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_METADATA_NAMESPACE_PATTERN`
 
@@ -370,15 +370,69 @@ app:
 *   **New Default:** `{app.namespace}-{name}` (requires `app.namespace` to be configured for backward compatibility)
 *   **Environment Variable:** `GOSO_CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_TABLE_PATTERN`
 
-*   **Delimiter Config Key:** `cloud.aws.dynamodb.clients.default.naming.delimiter`
+*   **Delimiter Config Key:** `cloud.aws.dynamodb.clients.default.naming.table_delimiter`
 *   **Delimiter Default:** `-`
-*   **Delimiter Environment Variable:** `GOSO_CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_DELIMITER`
+*   **Delimiter Environment Variable:** `GOSO_CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_TABLE_DELIMITER`
 
 **Note:** The new default uses `{app.namespace}`. To maintain backward compatibility, configure:
 ```yaml
 app:
   namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
 ```
+
+### DynamoDB Leader Election Table
+
+The DDB leader election table naming has been updated to use the new placeholder style.
+
+*   **Config Key:** `conc.ddb.leader_election.<name>.naming.table_pattern` (Renamed from `naming.pattern`)
+*   **Old Default:** `{project}-{env}-{family}-leader-elections`
+*   **New Default:** `{app.tags.project}-{app.env}-{app.tags.family}-leader-elections`
+*   **New Config Key:** `conc.ddb.leader_election.<name>.naming.table_delimiter` (new)
+*   **Delimiter Default:** `-`
+
+**Migration:**
+1. Rename `naming.pattern` to `naming.table_pattern` in your config.
+2. Replace old-style placeholders (`{project}`, `{env}`, `{family}`) with new-style (`{app.tags.project}`, `{app.env}`, `{app.tags.family}`).
+3. If you need a custom delimiter, set `naming.table_delimiter`.
+
+### Metric Calculator DynamoDB Table
+
+The metric calculator's DynamoDB leader election table naming has been updated.
+
+*   **Config Key:** `metric.calculator.dynamodb.naming.table_pattern` (Renamed from `naming.pattern`)
+*   **Old Default:** `{project}-{env}-{family}`
+*   **New Default:** `{app.env}-metric-calculator-leaders`
+*   **New Config Key:** `metric.calculator.dynamodb.naming.table_delimiter` (new)
+*   **Delimiter Default:** `-`
+
+**Important Change:** The default pattern has changed significantly. It no longer uses `{project}` or `{family}` and now includes a descriptive suffix. The old default generated a generic name (e.g., `myproject-prod-myfamily`) while the new default generates `prod-metric-calculator-leaders`.
+
+**Migration:** If you relied on the old default, explicitly set the pattern to preserve your existing table name:
+```yaml
+metric:
+  calculator:
+    dynamodb:
+      naming:
+        table_pattern: "{app.tags.project}-{app.env}-{app.tags.family}-metric-calculator-leaders"
+```
+
+Additionally, the GroupId for metric calculator leader election now uses `{namespace}-{app.name}` (via `identity.FormatNamespace("-")`) instead of `{group}-{app.name}` (via `identity.Tags["group"]`). This means the group ID depends on your configured `app.namespace` instead of just the `group` tag.
+
+### Kinsumer Autoscale DynamoDB Table
+
+The kinsumer autoscale module's DynamoDB leader election table naming settings have been updated.
+
+*   **Config Key:** `kinsumer.autoscale.dynamodb.naming.pattern`
+*   **Old Default:** `{app.env}-kinsumer-autoscale-leaders` (unchanged)
+
+**Note:** The GroupId for kinsumer autoscale leader election now uses `{namespace}-{app.name}` (via `identity.FormatNamespace("-")`) instead of `{group}-{app.name}` (via `identity.Tags["group"]`). This means the group ID depends on your configured `app.namespace` instead of just the `group` tag.
+
+**Migration:** If your `app.namespace` is configured as `{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}`, the new group ID will be `myproject-prod-myfamily-mygroup-myapp` instead of the old `mygroup-myapp`. To preserve the old behavior, you can set:
+```yaml
+app:
+  namespace: "{app.tags.group}"
+```
+However, this affects all services using `{app.namespace}`, so it's recommended to update your infrastructure to use the new group IDs instead.
 
 ### Metrics Naming
 
@@ -406,7 +460,7 @@ This will result in namespaces like: `my-project/production/platform/core-my-app
 #### Prometheus Namespace
 
 *   **Config Key:** `metric.writer_settings.prometheus.naming.namespace_pattern`
-*   **Old Default:** Not explicitly documented (likely followed similar pattern)
+*   **Old Default:** `{project}-{env}-{family}-{group}-{app}`
 *   **New Default:** `{app.namespace}-{app.name}` (requires `app.namespace` to be configured for backward compatibility)
 *   **Environment Variable:** `GOSO_METRIC_WRITER_SETTINGS_PROMETHEUS_NAMING_NAMESPACE_PATTERN`
 

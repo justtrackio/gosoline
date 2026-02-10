@@ -20,7 +20,8 @@ type DdbLeaderElectionItem struct {
 }
 
 type TableNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-leader-elections"`
+	TablePattern   string `cfg:"table_pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-leader-elections"`
+	TableDelimiter string `cfg:"table_delimiter" default:"-"`
 }
 
 type DdbLeaderElectionSettings struct {
@@ -51,7 +52,8 @@ func NewDdbLeaderElectionWithSettings(ctx context.Context, config cfg.Config, lo
 	repository, err := ddb.NewRepository(ctx, config, logger, &ddb.Settings{
 		ModelId: mdl.ModelId{},
 		TableNamingSettings: ddb.TableNamingSettings{
-			TablePattern: settings.Naming.Pattern,
+			TablePattern:   settings.Naming.TablePattern,
+			TableDelimiter: settings.Naming.TableDelimiter,
 		},
 		DisableTracing: true,
 		Main: ddb.MainSettings{

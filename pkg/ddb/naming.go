@@ -8,8 +8,8 @@ import (
 )
 
 type TableNamingSettings struct {
-	TablePattern string `cfg:"table_pattern,nodecode" default:"{app.namespace}-{name}"`
-	Delimiter    string `cfg:"delimiter" default:"-"`
+	TablePattern   string `cfg:"table_pattern,nodecode" default:"{app.namespace}-{name}"`
+	TableDelimiter string `cfg:"table_delimiter" default:"-"`
 }
 
 func GetTableName(config cfg.Config, settings *Settings) (string, error) {
@@ -30,8 +30,11 @@ func GetTableName(config cfg.Config, settings *Settings) (string, error) {
 	if settings.TableNamingSettings.TablePattern != "" {
 		namingSettings.TablePattern = settings.TableNamingSettings.TablePattern
 	}
+	if settings.TableNamingSettings.TableDelimiter != "" {
+		namingSettings.TableDelimiter = settings.TableNamingSettings.TableDelimiter
+	}
 
-	return identity.Format(namingSettings.TablePattern, namingSettings.Delimiter, settings.ModelId.ToMap())
+	return identity.Format(namingSettings.TablePattern, namingSettings.TableDelimiter, settings.ModelId.ToMap())
 }
 
 func GetTableNamingSettings(config cfg.Config, clientName string) (*TableNamingSettings, error) {
@@ -40,9 +43,15 @@ func GetTableNamingSettings(config cfg.Config, clientName string) (*TableNamingS
 	}
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("dynamodb", clientName))
-	defaultPatternKey := fmt.Sprintf("%s.naming.table_pattern", aws.GetClientConfigKey("dynamodb", "default"))
+	defaultTablePatternKey := fmt.Sprintf("%s.naming.table_pattern", aws.GetClientConfigKey("dynamodb", "default"))
+	defaultTableDelimiterKey := fmt.Sprintf("%s.naming.table_delimiter", aws.GetClientConfigKey("dynamodb", "default"))
+
 	namingSettings := &TableNamingSettings{}
-	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "table_pattern")); err != nil {
+	err := config.UnmarshalKey(namingKey, namingSettings, []cfg.UnmarshalDefaults{
+		cfg.UnmarshalWithDefaultsFromKey(defaultTablePatternKey, "table_pattern"),
+		cfg.UnmarshalWithDefaultsFromKey(defaultTableDelimiterKey, "table_delimiter"),
+	}...)
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal table naming settings: %w", err)
 	}
 

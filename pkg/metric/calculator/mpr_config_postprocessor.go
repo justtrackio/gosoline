@@ -2,7 +2,6 @@ package calculator
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -14,8 +13,12 @@ func init() {
 }
 
 func calculatorConfigPostprocessor(config cfg.GosoConf) (bool, error) {
-	settings, err := readCalculatorSettings(config)
-	if err != nil {
+	var err error
+	var settings *CalculatorSettings
+	var identity cfg.AppIdentity
+	var namespace string
+
+	if settings, err = readCalculatorSettings(config); err != nil {
 		return false, fmt.Errorf("can not read calculator settings: %w", err)
 	}
 
@@ -30,27 +33,20 @@ func calculatorConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 		return true, nil
 	}
 
-	pattern := settings.DynamoDb.Naming.Pattern
-
-	values := map[string]string{
-		"modelId": "metric-calculator-leaders",
-	}
-
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		pattern = strings.ReplaceAll(pattern, templ, val)
-	}
-
-	identity, err := cfg.GetAppIdentity(config)
-	if err != nil {
+	if identity, err = cfg.GetAppIdentity(config); err != nil {
 		return false, fmt.Errorf("could not get app identity: %w", err)
+	}
+
+	if namespace, err = identity.FormatNamespace("-"); err != nil {
+		return false, fmt.Errorf("could not format app namespace: %w", err)
 	}
 
 	leaderElectionSettings := &ddb.DdbLeaderElectionSettings{
 		Naming: ddb.TableNamingSettings{
-			Pattern: pattern,
+			TablePattern:   settings.DynamoDb.Naming.TablePattern,
+			TableDelimiter: settings.DynamoDb.Naming.TableDelimiter,
 		},
-		GroupId:       fmt.Sprintf("%s-%s", identity.Tags["group"], identity.Name),
+		GroupId:       fmt.Sprintf("%s-%s", namespace, identity.Name),
 		LeaseDuration: time.Minute,
 	}
 

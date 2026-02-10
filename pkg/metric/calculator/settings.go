@@ -18,7 +18,8 @@ type DynamoDbSettings struct {
 }
 
 type DynamoDbNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}"`
+	TablePattern   string `cfg:"table_pattern,nodecode" default:"{app.env}-metric-calculator-leaders"`
+	TableDelimiter string `cfg:"table_delimiter" default:"-"`
 }
 
 type CloudWatchSettings struct {

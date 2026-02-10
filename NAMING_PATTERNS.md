@@ -204,7 +204,7 @@ DynamoDB table naming uses the standard `AppIdentity` macros plus `{name}` for t
 **Config Key:** `cloud.aws.dynamodb.clients.<client_name>.naming.table_pattern`
 **Default:** `{app.namespace}-{name}`
 
-**Delimiter Config Key:** `cloud.aws.dynamodb.clients.<client_name>.naming.delimiter`
+**Delimiter Config Key:** `cloud.aws.dynamodb.clients.<client_name>.naming.table_delimiter`
 **Default Delimiter:** `-` (dashes)
 
 | Macro | Description |
@@ -215,6 +215,57 @@ DynamoDB table naming uses the standard `AppIdentity` macros plus `{name}` for t
 | `{name}` | The model name |
 
 **Note:** Unlike the Canonical Model ID, the table name pattern **does not** automatically append the name. You must include `{name}` in the pattern.
+
+### DynamoDB Leader Election Table
+The `conc/ddb` package uses a DynamoDB table for distributed leader election. It has its own naming pattern that is independent of the main DynamoDB table naming.
+
+**Config Key:** `conc.ddb.leader_election.<name>.naming.table_pattern`
+**Default:** `{app.tags.project}-{app.env}-{app.tags.family}-leader-elections`
+
+**Delimiter Config Key:** `conc.ddb.leader_election.<name>.naming.table_delimiter`
+**Default Delimiter:** `-` (dashes)
+
+| Macro | Description |
+|-------|-------------|
+| `{app.env}` | Environment |
+| `{app.name}` | Application name |
+| `{app.namespace}` | Your configured namespace pattern |
+| `{app.tags.<tag>}` | Any tag from the identity |
+
+**Note:** This table stores leader election state (group ID, member ID, and lease expiration). The table is shared across modules that use DDB-based leader election (e.g., metric calculator, kinsumer autoscale).
+
+### Metric Calculator DynamoDB Table
+The metric calculator module uses a DynamoDB table for leader election among calculator instances. It has its own naming pattern.
+
+**Config Key:** `metric.calculator.dynamodb.naming.table_pattern`
+**Default:** `{app.env}-metric-calculator-leaders`
+
+**Delimiter Config Key:** `metric.calculator.dynamodb.naming.table_delimiter`
+**Default Delimiter:** `-` (dashes)
+
+| Macro | Description |
+|-------|-------------|
+| `{app.env}` | Environment |
+| `{app.name}` | Application name |
+| `{app.namespace}` | Your configured namespace pattern |
+| `{app.tags.<tag>}` | Any tag from the identity |
+
+**Note:** This pattern is passed to the DDB leader election module. The group ID for metric calculator leader election is constructed as `{namespace}-{app.name}`, where `{namespace}` is the expanded `app.namespace` with `-` as delimiter.
+
+### Kinsumer Autoscale DynamoDB Table
+The kinsumer autoscale module uses a DynamoDB table for leader election. It has its own naming pattern.
+
+**Config Key:** `kinsumer.autoscale.dynamodb.naming.pattern`
+**Default:** `{app.env}-kinsumer-autoscale-leaders`
+
+| Macro | Description |
+|-------|-------------|
+| `{app.env}` | Environment |
+| `{app.name}` | Application name |
+| `{app.namespace}` | Your configured namespace pattern |
+| `{app.tags.<tag>}` | Any tag from the identity |
+
+**Note:** This pattern is passed to the DDB leader election module. The group ID for kinsumer autoscale leader election is constructed as `{namespace}-{app.name}`, where `{namespace}` is the expanded `app.namespace` with `-` as delimiter.
 
 ### AWS S3 Buckets
 S3 bucket naming is used by the `blob` package and other S3-dependent components.

@@ -57,8 +57,12 @@ func readKinsumerInputSettings(config cfg.Config, kinsumerInputName string) (Kin
 }
 
 func kinsumerAutoscaleConfigPostprocessor(config cfg.GosoConf) (bool, error) {
-	settings, err := readKinsumerAutoscaleSettings(config)
-	if err != nil {
+	var err error
+	var settings KinsumerAutoscaleModuleSettings
+	var identity cfg.AppIdentity
+	var namespace string
+
+	if settings, err = readKinsumerAutoscaleSettings(config); err != nil {
 		return false, fmt.Errorf("failed to read kinsumer autoscale settings in kinsumerAutoscaleConfigPostprocessor: %w", err)
 	}
 
@@ -73,16 +77,19 @@ func kinsumerAutoscaleConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 		return true, nil
 	}
 
-	identity, err := cfg.GetAppIdentity(config)
-	if err != nil {
+	if identity, err = cfg.GetAppIdentity(config); err != nil {
 		return false, fmt.Errorf("could not get app identity: %w", err)
+	}
+
+	if namespace, err = identity.FormatNamespace("-"); err != nil {
+		return false, fmt.Errorf("could not format app namespace: %w", err)
 	}
 
 	leaderElectionSettings := &ddb.DdbLeaderElectionSettings{
 		Naming: ddb.TableNamingSettings{
-			Pattern: settings.DynamoDb.Naming.Pattern,
+			TablePattern: settings.DynamoDb.Naming.Pattern,
 		},
-		GroupId:       fmt.Sprintf("%s-%s", identity.Tags["group"], identity.Name),
+		GroupId:       fmt.Sprintf("%s-%s", namespace, identity.Name),
 		LeaseDuration: time.Minute,
 	}
 
