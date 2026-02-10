@@ -10,13 +10,13 @@ import (
 )
 
 type SnsOutputSettings struct {
-	cfg.AppIdentity
+	Identity   cfg.AppIdentity
 	TopicId    string
 	ClientName string
 }
 
 func (s SnsOutputSettings) GetAppIdentity() cfg.AppIdentity {
-	return s.AppIdentity
+	return s.Identity
 }
 
 func (s SnsOutputSettings) GetClientName() string {
@@ -33,7 +33,7 @@ type snsOutput struct {
 }
 
 func NewSnsOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SnsOutputSettings) (Output, error) {
-	if err := settings.PadFromConfig(config); err != nil {
+	if err := settings.Identity.PadFromConfig(config); err != nil {
 		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
 	}
 

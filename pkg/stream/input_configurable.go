@@ -131,7 +131,6 @@ func newKinesisInputFromConfig(ctx context.Context, config cfg.Config, logger lo
 }
 
 type redisInputConfiguration struct {
-	Identity    cfg.AppIdentity            `cfg:"identity"`
 	ServerName  string                     `cfg:"server_name" default:"default" validate:"min=1"`
 	Key         string                     `cfg:"key" validate:"required,min=1"`
 	WaitTime    time.Duration              `cfg:"wait_time" default:"3s"`
@@ -147,15 +146,10 @@ func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.
 	}
 
 	settings := &RedisListInputSettings{
-		AppIdentity:        configuration.Identity,
 		ServerName:         configuration.ServerName,
 		Key:                configuration.Key,
 		WaitTime:           configuration.WaitTime,
 		HealthcheckTimeout: configuration.Healthcheck.Timeout,
-	}
-
-	if err := settings.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("failed to pad redis input settings from config: %w", err)
 	}
 
 	return NewRedisListInput(ctx, config, logger, settings)
@@ -191,7 +185,7 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 	}
 
 	settings := &SnsInputSettings{
-		AppIdentity:         configuration.Identity,
+		Identity:            configuration.Identity,
 		QueueId:             configuration.ConsumerId,
 		MaxNumberOfMessages: configuration.MaxNumberOfMessages,
 		WaitTime:            configuration.WaitTime,
@@ -202,7 +196,7 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 		Healthcheck:         configuration.Healthcheck,
 	}
 
-	if err := settings.PadFromConfig(config); err != nil {
+	if err := settings.Identity.PadFromConfig(config); err != nil {
 		return nil, nil, fmt.Errorf("failed to pad sns input settings from config: %w", err)
 	}
 
@@ -220,10 +214,10 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 		}
 
 		targets[i] = SnsInputTarget{
-			AppIdentity: targetIdentity,
-			TopicId:     t.TopicId,
-			Attributes:  t.Attributes,
-			ClientName:  clientName,
+			Identity:   targetIdentity,
+			TopicId:    t.TopicId,
+			Attributes: t.Attributes,
+			ClientName: clientName,
 		}
 	}
 
@@ -262,7 +256,7 @@ func readSqsInputSettings(config cfg.Config, name string) (*SqsInputSettings, er
 	}
 
 	settings := &SqsInputSettings{
-		AppIdentity:         configuration.TargetIdentity,
+		Identity:            configuration.TargetIdentity,
 		QueueId:             configuration.QueueId,
 		MaxNumberOfMessages: configuration.MaxNumberOfMessages,
 		WaitTime:            configuration.WaitTime,
@@ -275,7 +269,7 @@ func readSqsInputSettings(config cfg.Config, name string) (*SqsInputSettings, er
 		Unmarshaller:        configuration.Unmarshaller,
 	}
 
-	if err := settings.PadFromConfig(config); err != nil {
+	if err := settings.Identity.PadFromConfig(config); err != nil {
 		return nil, fmt.Errorf("failed to pad sqs input settings from config: %w", err)
 	}
 

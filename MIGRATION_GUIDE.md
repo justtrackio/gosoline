@@ -827,4 +827,6 @@ stream:
       stream_name: my-stream
 ```
 
-The same pattern applies to Kafka and Kinesis outputs, as well as Redis inputs and outputs.
+The same pattern applies to Kafka and Kinesis outputs.
+
+**Note:** Redis list inputs and outputs do **not** use the `identity:` block. They only require `server_name`, `key`, and transport-specific settings. The Redis client's naming configuration (configured under `redis.<client_name>.naming`) handles key and address naming independently.

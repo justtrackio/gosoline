@@ -20,7 +20,7 @@ var (
 )
 
 type SqsInputSettings struct {
-	cfg.AppIdentity
+	Identity            cfg.AppIdentity            `cfg:"identity"`
 	QueueId             string                     `cfg:"queue_id"`
 	MaxNumberOfMessages int32                      `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
 	WaitTime            int32                      `cfg:"wait_time"`
@@ -34,7 +34,7 @@ type SqsInputSettings struct {
 }
 
 func (s SqsInputSettings) GetAppIdentity() cfg.AppIdentity {
-	return s.AppIdentity
+	return s.Identity
 }
 
 func (s SqsInputSettings) GetClientName() string {
@@ -64,7 +64,7 @@ type sqsInput struct {
 
 func NewSqsInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsInputSettings) (*sqsInput, error) {
 	var err error
-	if err = settings.PadFromConfig(config); err != nil {
+	if err = settings.Identity.PadFromConfig(config); err != nil {
 		return nil, fmt.Errorf("can not pad settings from config: %w", err)
 	}
 
@@ -269,7 +269,7 @@ func (i *sqsInput) AckBatch(ctx context.Context, msgs []*Message, acks []bool) e
 
 func (i *sqsInput) GetRetryHandler() (Input, RetryHandler) {
 	retryHandler := NewManualSqsRetryHandler(i.logger, i.queue, &SqsOutputSettings{
-		AppIdentity:       i.settings.AppIdentity,
+		Identity:          i.settings.Identity,
 		ClientName:        i.settings.ClientName,
 		Fifo:              i.settings.Fifo,
 		QueueId:           i.settings.QueueId,

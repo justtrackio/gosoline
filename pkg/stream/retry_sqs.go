@@ -49,7 +49,7 @@ func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logge
 	}
 
 	inputSettings := &SqsInputSettings{
-		AppIdentity:         settings.AppIdentity,
+		Identity:            settings.AppIdentity,
 		QueueId:             settings.QueueId,
 		MaxNumberOfMessages: settings.MaxNumberOfMessages,
 		WaitTime:            settings.WaitTime,
@@ -69,7 +69,7 @@ func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logge
 	}
 
 	outputSettings := &SqsOutputSettings{
-		AppIdentity:       inputSettings.AppIdentity,
+		Identity:          inputSettings.Identity,
 		QueueId:           inputSettings.QueueId,
 		VisibilityTimeout: inputSettings.VisibilityTimeout,
 		RedrivePolicy:     inputSettings.RedrivePolicy,

@@ -232,10 +232,9 @@ func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger l
 }
 
 type redisListOutputConfiguration struct {
-	Identity   cfg.AppIdentity `cfg:"identity"`
-	ServerName string          `cfg:"server_name" default:"default" validate:"required,min=1"`
-	Key        string          `cfg:"key" validate:"required,min=1"`
-	BatchSize  int             `cfg:"batch_size" default:"100"`
+	ServerName string `cfg:"server_name" default:"default" validate:"required,min=1"`
+	Key        string `cfg:"key" validate:"required,min=1"`
+	BatchSize  int    `cfg:"batch_size" default:"100"`
 }
 
 func newRedisListOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
@@ -246,15 +245,10 @@ func newRedisListOutputFromConfig(ctx context.Context, config cfg.Config, logger
 		return nil, nil, fmt.Errorf("failed to unmarshal redis list output settings for key %q in newRedisListOutputFromConfig: %w", key, err)
 	}
 
-	if err := configuration.Identity.PadFromConfig(config); err != nil {
-		return nil, nil, fmt.Errorf("failed to pad redis list output identity from config: %w", err)
-	}
-
 	output, err := NewRedisListOutput(ctx, config, logger, &RedisListOutputSettings{
-		AppIdentity: configuration.Identity,
-		ServerName:  configuration.ServerName,
-		Key:         configuration.Key,
-		BatchSize:   configuration.BatchSize,
+		ServerName: configuration.ServerName,
+		Key:        configuration.Key,
+		BatchSize:  configuration.BatchSize,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("can not create redis output %s: %w", name, err)
@@ -292,9 +286,9 @@ func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 	}
 
 	output, err := NewSnsOutput(ctx, config, logger, &SnsOutputSettings{
-		AppIdentity: configuration.Identity,
-		TopicId:     configuration.TopicId,
-		ClientName:  configuration.ClientName,
+		Identity:   configuration.Identity,
+		TopicId:    configuration.TopicId,
+		ClientName: configuration.ClientName,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("can not create sns output %s: %w", name, err)
@@ -335,7 +329,7 @@ func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 	}
 
 	output, err := NewSqsOutput(ctx, config, logger, &SqsOutputSettings{
-		AppIdentity:       configuration.Identity,
+		Identity:          configuration.Identity,
 		QueueId:           configuration.QueueId,
 		VisibilityTimeout: configuration.VisibilityTimeout,
 		RedrivePolicy:     configuration.RedrivePolicy,

@@ -65,15 +65,6 @@ func setup(batchSize int, t *testing.T) (context.Context, stream.Output, *redisM
 
 func getSettings(batchSize int) *stream.RedisListOutputSettings {
 	return &stream.RedisListOutputSettings{
-		AppIdentity: cfg.AppIdentity{
-			Name: "app",
-			Env:  "test",
-			Tags: cfg.AppTags{
-				"project": "mcoins",
-				"family":  "fam",
-				"group":   "grp",
-			},
-		},
 		Key:       "my-list",
 		BatchSize: batchSize,
 	}

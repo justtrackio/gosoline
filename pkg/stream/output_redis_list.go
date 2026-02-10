@@ -16,7 +16,6 @@ const (
 )
 
 type RedisListOutputSettings struct {
-	cfg.AppIdentity
 	ServerName string
 	Key        string
 	BatchSize  int
@@ -30,14 +29,10 @@ type redisListOutput struct {
 }
 
 func NewRedisListOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *RedisListOutputSettings) (Output, error) {
-	err := settings.PadFromConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("can not pad settings from config: %w", err)
-	}
-
+	var err error
 	var client redis.Client
-	client, err = redis.ProvideClient(ctx, config, logger, settings.ServerName)
-	if err != nil {
+
+	if client, err = redis.ProvideClient(ctx, config, logger, settings.ServerName); err != nil {
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 

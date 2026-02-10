@@ -33,9 +33,11 @@
 
 ## Config keys
 
-Stream inputs and outputs use an `identity` block for application identity configuration.
+Most stream inputs and outputs (SQS, SNS, Kinesis, Kafka) use an `identity` block for application identity configuration.
 The `identity.name` is optional and defaults to the global `app.name` if not specified.
 The `identity.tags` are required only if referenced by the configured naming patterns.
+
+**Exception:** Redis list inputs and outputs do **not** use the `identity` block. They only require `server_name`, `key`, and transport-specific settings. Redis naming is handled by the Redis client's own naming configuration (`redis.<client_name>.naming`).
 
 ### Output example (SQS)
 ```yaml
