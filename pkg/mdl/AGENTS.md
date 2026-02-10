@@ -55,5 +55,11 @@ name, err := config.FormatString("{app.tags.project}-{name}", modelId.ToMap())
 For canonical model IDs (used in message routing, etc.), the pattern works differently and is configured via `app.model_id.domain_pattern`.
 
 - It supports standard `{app.env}`, `{app.name}`, and `{app.tags.*}` placeholders
-- `{modelId}` is **NOT** used; the model name is automatically appended as the last segment
-- Example pattern: `{app.tags.project}.{app.env}` -> `myProject.production.myModel`
+- `{modelId}` is **NOT** used; the model name is automatically appended as the last segment (dot-separated)
+- Patterns may freely mix placeholders with static text and use any delimiter between placeholders
+- Example patterns:
+  - `{app.tags.project}.{app.env}` -> `myProject.production.myModel`
+  - `prefix-{app.env}` -> `prefix-production.myModel`
+  - `{app.tags.project}-{app.env}` -> `myProject-production.myModel`
+  - `ns-{app.tags.project}.{app.env}-live` -> `ns-myProject.production-live.myModel`
+- Parsing uses regex-based matching: each placeholder matches non-dot characters (`[^.]+`), and the model name is everything after the final dot

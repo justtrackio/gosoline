@@ -25,10 +25,6 @@ type CloudWatchSettings struct {
 	Client string `cfg:"client"`
 }
 
-type CloudWatchNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{app.tags.project}/{app.env}/{app.tags.family}/{app.tags.group}-{app.name}"`
-}
-
 type CalculatorSettings struct {
 	Cloudwatch          CloudWatchSettings `cfg:"cloudwatch"`
 	DynamoDb            DynamoDbSettings   `cfg:"dynamodb"`

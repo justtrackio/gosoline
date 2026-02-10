@@ -168,8 +168,12 @@ Used in DynamoDB table names via `mdl.ModelId.ReplaceMacros(pattern)`:
 **Canonical Model IDs (`app.model_id.domain_pattern`):**
 For canonical model IDs (used in message routing, etc.), the pattern works differently:
 - It supports standard `{app.env}`, `{app.name}`, and `{app.tags.*}` placeholders
-- `{modelId}` is **NOT** used; the model name is automatically appended as the last segment
-- Example pattern: `{app.tags.project}.{app.env}` -> `myProject.production.myModel`
+- `{modelId}` is **NOT** used; the model name is automatically appended as the last segment (dot-separated)
+- Patterns may freely mix placeholders with static text and use any delimiter between placeholders
+- Example patterns:
+  - `{app.tags.project}.{app.env}` -> `myProject.production.myModel`
+  - `prefix-{app.env}` -> `prefix-production.myModel`
+  - `{app.tags.project}-{app.env}` -> `myProject-production.myModel`
 
 Note: DynamoDB table naming uses ModelId-based macros (legacy style), not AppIdentity macros.
 

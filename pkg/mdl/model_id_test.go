@@ -61,6 +61,36 @@ func (s *ModelIdTestSuite) TestString() {
 			pattern:  "static.domain",
 			expected: "static.domain.testEvent",
 		},
+		{
+			name:     "static prefix with placeholder",
+			tags:     map[string]any{},
+			pattern:  "prefix-{app.env}",
+			expected: "prefix-test.testEvent",
+		},
+		{
+			name:     "placeholders with dash delimiter",
+			tags:     map[string]any{"project": "myProject"},
+			pattern:  "{app.tags.project}-{app.env}",
+			expected: "myProject-test.testEvent",
+		},
+		{
+			name:     "placeholder with underscore delimiter",
+			tags:     map[string]any{"project": "myProject"},
+			pattern:  "{app.tags.project}_{app.name}",
+			expected: "myProject_myApp.testEvent",
+		},
+		{
+			name:     "static prefix and suffix with placeholder",
+			tags:     map[string]any{},
+			pattern:  "pre-{app.env}-suf",
+			expected: "pre-test-suf.testEvent",
+		},
+		{
+			name:     "mixed static and multiple placeholders",
+			tags:     map[string]any{"project": "myProject"},
+			pattern:  "ns-{app.tags.project}.{app.env}-live",
+			expected: "ns-myProject.test-live.testEvent",
+		},
 	}
 
 	for _, tc := range cases {

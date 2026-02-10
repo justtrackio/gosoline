@@ -9,7 +9,6 @@ import (
 // Placeholder constants for ModelId patterns.
 const (
 	delimiterDot       = "."
-	PlaceholderModelId = "modelId"
 	PlaceholderAppEnv  = "app.env"
 	PlaceholderAppName = "app.name"
 	PlaceholderAppTags = "app.tags."
@@ -64,6 +63,30 @@ func (i ModelId) ToMap() map[string]string {
 	return mss
 }
 
+// String returns the canonical string representation of the ModelId.
+//
+// This method requires that the DomainPattern has been set via PadFromConfig.
+// If no DomainPattern is set, String returns an error.
+//
+// Returns an error if:
+//   - the DomainPattern is not set (call PadFromConfig first)
+//   - the DomainPattern references fields/tags that are missing from the ModelId
+func (m ModelId) String() string {
+	return m.format(m.DomainPattern)
+}
+
+// DomainString returns the canonical domain string representation of the ModelId (without the model name).
+//
+// This method requires that the DomainPattern has been set via PadFromConfig.
+// If no DomainPattern is set, DomainString returns an error.
+//
+// Returns an error if:
+//   - the DomainPattern is not set (call PadFromConfig first)
+//   - the DomainPattern references fields/tags that are missing from the ModelId
+func (m ModelId) DomainString() string {
+	return m.formatDomain(m.DomainPattern)
+}
+
 // format expands placeholders in the given pattern using ModelId values.
 // This is an internal method - call PadFromConfig once, then use String() for public API.
 //
@@ -113,30 +136,6 @@ func (m *ModelId) formatDomain(domainPattern string) string {
 	}
 
 	return result
-}
-
-// String returns the canonical string representation of the ModelId.
-//
-// This method requires that the DomainPattern has been set via PadFromConfig.
-// If no DomainPattern is set, String returns an error.
-//
-// Returns an error if:
-//   - the DomainPattern is not set (call PadFromConfig first)
-//   - the DomainPattern references fields/tags that are missing from the ModelId
-func (m ModelId) String() string {
-	return m.format(m.DomainPattern)
-}
-
-// DomainString returns the canonical domain string representation of the ModelId (without the model name).
-//
-// This method requires that the DomainPattern has been set via PadFromConfig.
-// If no DomainPattern is set, DomainString returns an error.
-//
-// Returns an error if:
-//   - the DomainPattern is not set (call PadFromConfig first)
-//   - the DomainPattern references fields/tags that are missing from the ModelId
-func (m ModelId) DomainString() string {
-	return m.formatDomain(m.DomainPattern)
 }
 
 // PadFromConfig fills in empty fields of ModelId from config.
@@ -210,8 +209,7 @@ func (m *ModelId) loadDomainPatternFromConfig(config ConfigProvider) error {
 
 	domainPattern, err := config.GetString(ConfigKeyModelIdDomainPattern)
 	if err != nil {
-		// If app.model_id.domain_pattern is not in config, leave DomainPattern empty - String() will error when called
-		return nil
+		return fmt.Errorf("failed to read %s from config: %w", ConfigKeyModelIdDomainPattern, err)
 	}
 
 	if domainPattern == "" {
@@ -232,8 +230,7 @@ func (m *ModelId) loadDomainPatternFromConfig(config ConfigProvider) error {
 // A valid pattern:
 //   - is a non-empty string
 //   - if it contains placeholders, they must be recognized placeholders
-//   - for multiple placeholders, they must be separated by a single dot "." delimiter
-//   - no static text between placeholders (except the dot delimiter)
+//   - static text may appear anywhere in the pattern (prefixes, suffixes, delimiters between placeholders)
 //
 // A pattern with no placeholders is valid and will be returned as-is.
 func validateModelIdDomainPattern(domainPattern string) error {
@@ -249,20 +246,7 @@ func validateModelIdDomainPattern(domainPattern string) error {
 	}
 
 	// Validate each placeholder
-	if err := validatePlaceholders(placeholders); err != nil {
-		return err
-	}
-
-	// Check that pattern is parseable (placeholders + dot delimiter only)
-	return validatePatternFormat(domainPattern, placeholders)
-}
-
-func validatePlaceholders(placeholders []string) error {
 	for _, ph := range placeholders {
-		if ph == PlaceholderModelId {
-			return fmt.Errorf("{modelId} placeholder is no longer allowed in patterns; the model name is automatically appended as the last segment")
-		}
-
 		if !isAllowedModelIdPlaceholder(ph) {
 			return fmt.Errorf("unknown placeholder {%s} in pattern", ph)
 		}
@@ -271,81 +255,16 @@ func validatePlaceholders(placeholders []string) error {
 	return nil
 }
 
-func validatePatternFormat(domainPattern string, placeholders []string) error {
-	if len(placeholders) == 1 {
-		// Single placeholder - must be the entire pattern
-		if domainPattern != "{"+placeholders[0]+"}" {
-			return fmt.Errorf("pattern contains static text which makes it unparseable")
-		}
-
-		return nil
-	}
-
-	// Multiple placeholders - ensure they are joined by dot
-	expectedPattern := buildExpectedPattern(placeholders)
-
-	if domainPattern != expectedPattern {
-		return validateDelimiterError(domainPattern, expectedPattern, placeholders)
-	}
-
-	return nil
-}
-
-func buildExpectedPattern(placeholders []string) string {
-	var expectedParts []string
-	for _, ph := range placeholders {
-		expectedParts = append(expectedParts, "{"+ph+"}")
-	}
-
-	return strings.Join(expectedParts, ".")
-}
-
-func validateDelimiterError(domainPattern, expectedPattern string, placeholders []string) error {
-	// Provide a more specific error message if the only difference is the delimiter
-	if len(domainPattern) == len(expectedPattern) && hasMatchingPlaceholders(domainPattern, placeholders) {
-		return fmt.Errorf("pattern must consist of placeholders separated by dots (.), got %q", domainPattern)
-	}
-
-	return fmt.Errorf("pattern contains static text which makes it unparseable")
-}
-
-func hasMatchingPlaceholders(domainPattern string, placeholders []string) bool {
-	currentIdx := 0
-	for _, ph := range placeholders {
-		part := "{" + ph + "}"
-		idx := strings.Index(domainPattern[currentIdx:], part)
-		if idx == -1 {
-			return false
-		}
-		currentIdx += idx + len(part)
-	}
-
-	return true
-}
-
 // extractPlaceholders returns all placeholder names from a pattern.
 // For "{app.tags.project}.{modelId}", returns ["app.tags.project", "modelId"].
 func extractPlaceholders(pattern string) []string {
-	var placeholders []string
-	remaining := pattern
+	matches := domainRegex.FindAllStringSubmatch(pattern, -1)
+	placeholders := make([]string, 0, len(matches))
 
-	for {
-		start := strings.Index(remaining, "{")
-		if start == -1 {
-			break
+	for _, match := range matches {
+		if len(match) > 1 && match[1] != "" {
+			placeholders = append(placeholders, match[1])
 		}
-
-		end := strings.Index(remaining[start:], "}")
-		if end == -1 {
-			break
-		}
-
-		ph := remaining[start+1 : start+end]
-		if ph != "" {
-			placeholders = append(placeholders, ph)
-		}
-
-		remaining = remaining[start+end+1:]
 	}
 
 	return placeholders

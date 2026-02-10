@@ -613,6 +613,63 @@ stream:
       target_queue_id: my-queue
 ```
 
+### mdlsub Publisher Configuration
+
+The `PublisherSettings` struct has changed: `mdl.ModelId` is no longer an **embedded** (anonymous) field — it is now a **named field** with the config tag `model_id`. This means all ModelId-related configuration keys must be nested under a `model_id` key.
+
+**Old:**
+```yaml
+mdlsub:
+  publishers:
+    my-model:
+      name: my-model
+      project: my-project
+      family: my-family
+      group: my-group
+      output_type: sns
+```
+
+**New:**
+```yaml
+mdlsub:
+  publishers:
+    my-model:
+      model_id:
+        name: my-model          # optional: defaults to the publisher map key
+        tags:
+          project: my-project
+          family: my-family
+          group: my-group
+      output_type: sns
+```
+
+**Key differences:**
+1. Fields like `project`, `family`, `group` that were previously top-level under the publisher are now nested under `model_id.tags`.
+2. The `name` field moves under `model_id.name` (still defaults to the publisher key name if omitted).
+3. If you construct `PublisherSettings` in Go code, update from the embedded style to the named field:
+
+```go
+// OLD
+settings := &mdlsub.PublisherSettings{
+    ModelId: mdl.ModelId{
+        Project: "my-project",
+        Name:    "my-model",
+    },
+    OutputType: "sns",
+}
+
+// NEW
+settings := &mdlsub.PublisherSettings{
+    ModelId: mdl.ModelId{
+        Name: "my-model",
+        Tags: map[string]string{
+            "project": "my-project",
+        },
+    },
+    OutputType: "sns",
+}
+```
+
 ### SNS Input
 For SNS inputs, the consumer identity and the target topic identities have been updated.
 
