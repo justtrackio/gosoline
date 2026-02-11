@@ -28,7 +28,7 @@ type KinsumerAutoscaleModuleDynamoDbNamingSettings struct {
 
 type KinsumerAutoscaleModuleSettings struct {
 	Ecs            KinsumerAutoscaleModuleEcsSettings      `cfg:"ecs"`
-	Enabled        bool                                    `cfg:"enabled" default:"true"`
+	Enabled        bool                                    `cfg:"enabled" default:"false"`
 	DynamoDb       KinsumerAutoscaleModuleDynamoDbSettings `cfg:"dynamodb"`
 	LeaderElection string                                  `cfg:"leader_election" default:"kinsumer-autoscale"`
 	Orchestrator   string                                  `cfg:"orchestrator" default:"ecs"`

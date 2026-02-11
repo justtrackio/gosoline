@@ -1,7 +1,0 @@
-app:
-  env: dev
-  name: application
-  tags:
-    project: gosoline
-    family: example
-    group: grp

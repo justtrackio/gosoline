@@ -56,7 +56,12 @@ func New(options ...Option) kernel.Kernel {
 	var ker kernel.Kernel
 
 	ctx := appctx.WithContainer(context.Background())
-	config := cfg.New()
+	config := cfg.New(map[string]any{
+		"app": map[string]any{
+			"env":  "dev",
+			"name": "gosoline",
+		},
+	})
 	logger := log.NewLogger()
 
 	if ker, err = NewWithInterfaces(ctx, config, logger, options...); err != nil {
