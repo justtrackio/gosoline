@@ -1,0 +1,663 @@
+---
+sidebar_position: 1
+title: App Identity and Naming Patterns
+---
+
+# Migrating to AppIdentity and Naming Patterns
+
+This guide details how to migrate your gosoline application to the new `AppIdentity` system and dynamic resource naming.
+
+## 1. Update Configuration
+
+The flat application hierarchy (`project`, `family`, `group`) has been replaced with a flexible tagging system. Move these keys into the `app.tags` structure.
+
+### Basic Identity
+
+**Old `config.yml`:**
+```yaml
+env: production
+app_project: justtrack
+app_family: platform
+app_group: core
+app_name: my-service
+```
+
+**New `config.yml`:**
+```yaml
+app:
+  env: production
+  name: my-service
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+  tags:
+    project: justtrack
+    family: platform
+    group: core
+```
+
+:::info
+The `app.namespace` configuration is optional but recommended. It defines a reusable namespace pattern that can be referenced as `{app.namespace}` in all resource naming patterns. See the [Namespace Pattern](#namespace-pattern) section for details.
+:::
+
+### Environment Variables
+
+If you configure your app via environment variables, update the keys:
+
+| Old Variable | New Variable |
+| :--- | :--- |
+| `GOSO_APP_PROJECT` | `GOSO_APP_TAGS_PROJECT` |
+| `GOSO_APP_FAMILY` | `GOSO_APP_TAGS_FAMILY` |
+| `GOSO_APP_GROUP` | `GOSO_APP_TAGS_GROUP` |
+| `GOSO_APP_NAME` | `GOSO_APP_NAME` (no change) |
+| `GOSO_ENV` | `GOSO_APP_ENV` |
+| N/A (new feature) | `GOSO_APP_NAMESPACE` |
+
+## 2. Update Resource Naming Patterns
+
+:::warning
+The default naming patterns for most services have changed to use `{app.namespace}` instead of explicit tag placeholders. If you don't configure `app.namespace`, your resource names will be missing the project/family/group prefix. For backward compatibility, configure:
+
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+```
+:::
+
+### Namespace Pattern
+
+A new `app.namespace` configuration option allows you to define a reusable namespace pattern referenced in all resource naming patterns.
+
+- **Config Key:** `app.namespace`
+- **Format:** A pattern using dots (`.`) as delimiters, with standard `{app.*}` and `{app.tags.*}` placeholders
+- **Usage:** Reference as `{app.namespace}` in any resource naming pattern
+
+**Example:**
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+  tags:
+    project: justtrack
+    family: platform
+    group: core
+  env: production
+
+cloud:
+  aws:
+    sqs:
+      clients:
+        default:
+          naming:
+            # {app.namespace} expands to: justtrack-production-platform-core
+            queue_pattern: "{app.namespace}-{queueId}"
+```
+
+**Benefits:**
+- Define your naming hierarchy once and reuse it everywhere
+- Simplify resource patterns by using `{app.namespace}` instead of repeating the same placeholders
+- Easy to change your naming convention across all resources in one place
+
+When expanded, dots in the namespace pattern are replaced with the service-specific delimiter (usually `-`). If no namespace is configured, `{app.namespace}` expands to an empty string.
+
+### Delimiter Configuration
+
+Each resource naming pattern has a paired **delimiter** configuration that controls how `{app.namespace}` is expanded:
+
+- Most services use `identity.Format()` with a configurable delimiter (default is usually `-`)
+- The delimiter replaces dots in the `{app.namespace}` pattern during expansion
+- Example: namespace `{app.tags.project}.{app.env}` with delimiter `-` becomes `myproject-prod`
+- Each service's delimiter can be customized via its `naming.delimiter` configuration key
+
+### Placeholder Mapping
+
+| Old Placeholder | New Placeholder | Notes |
+| :--- | :--- | :--- |
+| `{project}` | `{app.tags.project}` | Requires `project` tag |
+| `{family}` | `{app.tags.family}` | Requires `family` tag |
+| `{group}` | `{app.tags.group}` | Requires `group` tag |
+| `{env}` | `{app.env}` | Built-in field |
+| `{app}` | `{app.name}` | Built-in field |
+| `{modelId}` | **REMOVED** | See [DynamoDB](#dynamodb-table-naming) section |
+
+### Example: SQS Pattern Update
+
+**Old:**
+```yaml
+cloud:
+  aws:
+    sqs:
+      clients:
+        default:
+          naming:
+            pattern: "{project}-{env}-{queueId}"
+```
+
+**New:**
+```yaml
+cloud:
+  aws:
+    sqs:
+      clients:
+        default:
+          naming:
+            queue_pattern: "{app.tags.project}-{app.env}-{queueId}"
+```
+
+### DynamoDB Table Naming
+
+For DynamoDB tables, the naming logic has been aligned with other AWS resources.
+
+- **Placeholder Change:** Use `{name}` instead of `{modelId}` to refer to the model name.
+- **No Auto-Append:** Unlike the canonical Model ID, the table name pattern **does not** automatically append the model name. You must explicitly include `{name}` in your pattern.
+
+| | Pattern |
+|---|---|
+| Old | `{project}-{env}-{modelId}` |
+| New | `{app.tags.project}-{app.env}-{name}` |
+
+**Steps:**
+1. Replace `{modelId}` with `{name}`.
+2. Ensure `{name}` is present in your pattern.
+
+## 3. Update Go Code
+
+### `cfg.AppId` is now `cfg.AppIdentity`
+
+The `AppId` struct and its getters have been removed.
+
+```go
+// OLD
+appId, _ := cfg.GetAppIdFromConfig(config)
+fmt.Println(appId.Project)
+
+// NEW
+identity, _ := cfg.GetAppIdentityFromConfig(config)
+fmt.Println(identity.Tags["project"])
+```
+
+### `mdl.ModelId` Refactoring
+
+The `mdl.ModelId` struct no longer has explicit hierarchy fields.
+
+```go
+// OLD
+modelId := mdl.ModelId{
+    Project: "my-project",
+    Family:  "my-family",
+    Name:    "my-model",
+}
+
+// NEW
+modelId := mdl.ModelId{
+    Name: "my-model",
+    Tags: map[string]string{
+        "project": "my-project",
+        "family":  "my-family",
+    },
+}
+```
+
+### ModelId Domain Pattern
+
+The string representation of a `ModelId` (used for message routing attributes, etc.) is now configurable via `app.model_id.domain_pattern`.
+
+- **Config Key:** `app.model_id.domain_pattern`
+- **Recommended Value:** `{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}`
+
+If this pattern is missing, calling `modelId.String()` will return an error.
+
+:::caution
+1. The `{modelId}` placeholder is **NOT** used in this pattern. The model name is automatically appended as the last segment.
+2. The pattern must consist *only* of placeholders separated by **single dots (`.`)**. No other characters or delimiters (like dashes) are allowed between placeholders.
+
+**Valid:** `{app.tags.project}.{app.env}`
+
+**Invalid:** `{app.tags.project}-{app.env}` (dashes not allowed)
+
+**Invalid:** `prefix.{app.tags.project}` (static text not allowed)
+:::
+
+**Example:**
+- Pattern: `{app.tags.project}.{app.env}`
+- Model Name: `myModel`
+- Result: `myProject.production.myModel`
+
+### `pkg/parquet` Removed
+
+The `pkg/parquet` package has been deleted. Remove any imports or usage of this package from your codebase.
+
+## 4. Redis Key Prefixing
+
+A new feature allows automatic key prefixing for Redis. If you were manually prefixing keys in your application code, you can now move this to configuration:
+
+```yaml
+redis:
+  clients:
+    default:
+      naming:
+        key_pattern: "{app.tags.project}:{app.name}:{key}"
+```
+
+## 5. Stream Input/Output Configuration
+
+The configuration for stream inputs and outputs has been updated to use the new `AppIdentity` structure.
+
+### General Change
+
+For most inputs (Redis) and outputs (Kafka, Kinesis, Redis, SNS, SQS), the flat fields `project`, `family`, `group`, and `application` have been replaced by an `identity` block.
+
+**Old output config:**
+```yaml
+stream:
+  output:
+    my-output:
+      type: sqs
+      project: my-project
+      family: my-family
+      group: my-group
+      queue_id: my-queue
+```
+
+**New output config:**
+```yaml
+stream:
+  output:
+    my-output:
+      type: sqs
+      identity:
+        tags:
+          project: my-project
+          family: my-family
+          group: my-group
+      queue_id: my-queue
+```
+
+### SQS Input
+
+For SQS inputs, the `target_*` fields for identity have been grouped into `target_identity`.
+
+**Old:**
+```yaml
+stream:
+  input:
+    my-input:
+      type: sqs
+      target_family: my-family
+      target_group: my-group
+      target_queue_id: my-queue
+```
+
+**New:**
+```yaml
+stream:
+  input:
+    my-input:
+      type: sqs
+      target_identity:
+        tags:
+          family: my-family
+          group: my-group
+      target_queue_id: my-queue
+```
+
+### SNS Input
+
+For SNS inputs, the consumer identity and target topic identities have been updated.
+
+**Old:**
+```yaml
+stream:
+  input:
+    my-sns-input:
+      type: sns
+      id: my-consumer
+      family: my-family
+      group: my-group
+      targets:
+        - family: target-family
+          group: target-group
+          topic_id: target-topic
+```
+
+**New:**
+```yaml
+stream:
+  input:
+    my-sns-input:
+      type: sns
+      id: my-consumer
+      identity:
+        tags:
+          family: my-family
+          group: my-group
+      targets:
+        - identity:
+            tags:
+              family: target-family
+              group: target-group
+          topic_id: target-topic
+```
+
+### Kafka and Kinesis Inputs
+
+Kafka and Kinesis inputs now also use the `identity:` block pattern:
+
+**Old (Kafka input):**
+```yaml
+stream:
+  input:
+    my-kafka-input:
+      type: kafka
+      env: production
+      name: my-app
+      tags:
+        project: my-project
+        family: my-family
+        group: my-group
+      topic_id: my-topic
+```
+
+**New (Kafka input):**
+```yaml
+stream:
+  input:
+    my-kafka-input:
+      type: kafka
+      identity:
+        env: production
+        name: my-app
+        tags:
+          project: my-project
+          family: my-family
+          group: my-group
+      topic_id: my-topic
+```
+
+The same pattern applies to Kinesis inputs and outputs.
+
+:::note
+Redis list inputs and outputs do **not** use the `identity:` block. They only require `server_name`, `key`, and transport-specific settings. The Redis client's naming configuration handles key and address naming independently.
+:::
+
+### mdlsub Publisher Configuration
+
+The `PublisherSettings` struct has changed: `mdl.ModelId` is no longer an embedded (anonymous) field -- it is now a named field with the config tag `model_id`. All ModelId-related configuration keys must be nested under a `model_id` key.
+
+**Old:**
+```yaml
+mdlsub:
+  publishers:
+    my-model:
+      name: my-model
+      project: my-project
+      family: my-family
+      group: my-group
+      output_type: sns
+```
+
+**New:**
+```yaml
+mdlsub:
+  publishers:
+    my-model:
+      model_id:
+        name: my-model          # optional: defaults to the publisher map key
+        tags:
+          project: my-project
+          family: my-family
+          group: my-group
+      output_type: sns
+```
+
+**In Go code:**
+```go
+// OLD
+settings := &mdlsub.PublisherSettings{
+    ModelId: mdl.ModelId{
+        Project: "my-project",
+        Name:    "my-model",
+    },
+    OutputType: "sns",
+}
+
+// NEW
+settings := &mdlsub.PublisherSettings{
+    ModelId: mdl.ModelId{
+        Name: "my-model",
+        Tags: map[string]string{
+            "project": "my-project",
+        },
+    },
+    OutputType: "sns",
+}
+```
+
+## 6. Reference: Naming Patterns per Service
+
+This section lists the configuration keys, their old and new defaults, and the corresponding environment variables.
+
+### SQS Queue Naming
+
+| | Value |
+|---|---|
+| **Config Key** | `cloud.aws.sqs.clients.default.naming.queue_pattern` |
+| **Old Default** | `{project}-{env}-{family}-{group}-{queueId}` |
+| **New Default** | `{app.namespace}-{queueId}` |
+| **Env Var** | `GOSO_CLOUD_AWS_SQS_CLIENTS_DEFAULT_NAMING_QUEUE_PATTERN` |
+| **Delimiter Config** | `cloud.aws.sqs.clients.default.naming.queue_delimiter` |
+| **Delimiter Default** | `-` |
+
+### SNS Topic Naming
+
+| | Value |
+|---|---|
+| **Config Key** | `cloud.aws.sns.clients.default.naming.topic_pattern` |
+| **Old Default** | `{project}-{env}-{family}-{group}-{topicId}` |
+| **New Default** | `{app.namespace}-{topicId}` |
+| **Env Var** | `GOSO_CLOUD_AWS_SNS_CLIENTS_DEFAULT_NAMING_TOPIC_PATTERN` |
+| **Delimiter Config** | `cloud.aws.sns.clients.default.naming.topic_delimiter` |
+| **Delimiter Default** | `-` |
+
+### Kinesis Stream Naming
+
+| | Value |
+|---|---|
+| **Config Key** | `cloud.aws.kinesis.clients.default.naming.stream_pattern` |
+| **Old Default** | `{project}-{env}-{family}-{group}-{streamName}` |
+| **New Default** | `{app.namespace}-{streamName}` |
+| **Env Var** | `GOSO_CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_STREAM_PATTERN` |
+| **Delimiter Config** | `cloud.aws.kinesis.clients.default.naming.stream_delimiter` |
+| **Delimiter Default** | `-` |
+
+#### Kinesis Metadata Table
+
+| | Value |
+|---|---|
+| **Config Key** | `cloud.aws.kinesis.clients.default.naming.metadata_table_pattern` |
+| **Old Default** | `{app.env}-kinsumer-metadata` |
+| **New Default** | `{app.namespace}-kinsumer-metadata` |
+| **Delimiter Config** | `cloud.aws.kinesis.clients.default.naming.metadata_table_delimiter` |
+| **Delimiter Default** | `-` |
+
+#### Kinesis Metadata Namespace
+
+| | Value |
+|---|---|
+| **Config Key** | `cloud.aws.kinesis.clients.default.naming.metadata_namespace_pattern` |
+| **Old Default** | `{project}-{env}-{family}-{group}-{app}` |
+| **New Default** | `{app.namespace}-{app.name}` |
+| **Delimiter Config** | `cloud.aws.kinesis.clients.default.naming.metadata_namespace_delimiter` |
+| **Delimiter Default** | `-` |
+
+### Kafka Naming
+
+**Topic Pattern:**
+
+| | Value |
+|---|---|
+| **Config Key** | `kafka.naming.topic_pattern` |
+| **Old Default** | `{project}-{env}-{family}-{group}-{topicId}` |
+| **New Default** | `{app.namespace}-{topicId}` |
+| **Env Var** | `GOSO_KAFKA_NAMING_TOPIC_PATTERN` |
+| **Delimiter Config** | `kafka.naming.topic_delimiter` |
+| **Delimiter Default** | `-` |
+
+**Consumer Group Pattern:**
+
+| | Value |
+|---|---|
+| **Config Key** | `kafka.naming.group_pattern` |
+| **Old Default** | `{project}-{env}-{family}-{group}-{app}-{groupId}` |
+| **New Default** | `{app.namespace}-{app.name}-{groupId}` |
+| **Env Var** | `GOSO_KAFKA_NAMING_GROUP_PATTERN` |
+| **Delimiter Config** | `kafka.naming.group_delimiter` |
+| **Delimiter Default** | `-` |
+
+### DynamoDB Table Naming
+
+| | Value |
+|---|---|
+| **Config Key** | `cloud.aws.dynamodb.clients.default.naming.table_pattern` |
+| **Old Default** | `{project}-{env}-{family}-{group}-{modelId}` |
+| **New Default** | `{app.namespace}-{name}` |
+| **Env Var** | `GOSO_CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_TABLE_PATTERN` |
+| **Delimiter Config** | `cloud.aws.dynamodb.clients.default.naming.table_delimiter` |
+| **Delimiter Default** | `-` |
+
+### DynamoDB Leader Election Table
+
+| | Value |
+|---|---|
+| **Config Key** | `conc.ddb.leader_election.<name>.naming.table_pattern` (renamed from `naming.pattern`) |
+| **Old Default** | `{project}-{env}-{family}-leader-elections` |
+| **New Default** | `{app.tags.project}-{app.env}-{app.tags.family}-leader-elections` |
+| **Delimiter Config** | `conc.ddb.leader_election.<name>.naming.table_delimiter` |
+| **Delimiter Default** | `-` |
+
+**Steps:**
+1. Rename `naming.pattern` to `naming.table_pattern` in your config.
+2. Replace old-style placeholders with new-style ones.
+3. If you need a custom delimiter, set `naming.table_delimiter`.
+
+### Metric Calculator DynamoDB Table
+
+| | Value |
+|---|---|
+| **Config Key** | `metric.calculator.dynamodb.naming.table_pattern` (renamed from `naming.pattern`) |
+| **Old Default** | `{project}-{env}-{family}` |
+| **New Default** | `{app.env}-metric-calculator-leaders` |
+
+:::warning
+The default pattern has changed significantly. It no longer uses `{project}` or `{family}` and now includes a descriptive suffix. If you relied on the old default, explicitly set the pattern:
+```yaml
+metric:
+  calculator:
+    dynamodb:
+      naming:
+        table_pattern: "{app.tags.project}-{app.env}-{app.tags.family}-metric-calculator-leaders"
+```
+:::
+
+### CloudWatch Namespace
+
+| | Value |
+|---|---|
+| **Config Key** | `metric.writer_settings.cloudwatch.naming.namespace_pattern` |
+| **Old Default** | `{project}/{env}/{family}/{group}-{app}` |
+| **New Default** | `{app.namespace}-{app.name}` |
+| **Delimiter Config** | `metric.writer_settings.cloudwatch.naming.namespace_delimiter` |
+| **Delimiter Default** | `/` |
+
+CloudWatch uses `/` as the delimiter, creating hierarchical namespaces in AWS Console.
+
+### Prometheus Namespace
+
+| | Value |
+|---|---|
+| **Config Key** | `metric.writer_settings.prometheus.naming.namespace_pattern` |
+| **Old Default** | `{project}-{env}-{family}-{group}-{app}` |
+| **New Default** | `{app.namespace}-{app.name}` |
+| **Delimiter Config** | `metric.writer_settings.prometheus.naming.namespace_delimiter` |
+| **Delimiter Default** | `_` (underscores, following Prometheus naming conventions) |
+
+### Redis Key Prefix
+
+| | Value |
+|---|---|
+| **Config Key** | `redis.clients.default.naming.key_pattern` |
+| **Old Default** | N/A (feature did not exist) |
+| **New Default** | `{key}` (no prefix) |
+| **Delimiter Config** | `redis.clients.default.naming.key_delimiter` |
+| **Delimiter Default** | `-` |
+
+### KvStore Redis Key Pattern
+
+| | Value |
+|---|---|
+| **Config Key** | `kvstore.<name>.redis.key_pattern` or `kvstore.default.redis.key_pattern` |
+| **Old Default** | `{app.tags.project}-{app.tags.family}-{app.tags.group}-kvstore-{store}-{key}` |
+| **New Default** | `{app.namespace}-kvstore-{store}-{key}` |
+
+The `{store}` placeholder is resolved by the kvstore config postprocessor before the pattern is passed to the underlying Redis client.
+
+### Tracing Service Name
+
+| | Value |
+|---|---|
+| **Config Key** | `tracing.naming.pattern` |
+| **Old Default** | `{project}-{env}-{family}-{group}-{app}` |
+| **New Default** | `{app.namespace}-{app.name}` |
+| **Delimiter Config** | `tracing.naming.delimiter` |
+| **Delimiter Default** | `-` |
+
+### Blob / S3 Bucket Patterns
+
+The `blob` package now delegates bucket naming to the `cloud.aws.s3` package. The configuration keys `blob.<store_name>.bucket_pattern` and `blob.default.bucket_pattern` have been **removed**.
+
+| | Value |
+|---|---|
+| **Config Key** | `cloud.aws.s3.clients.<client_name>.naming.bucket_pattern` |
+| **Old Default** | `{app.tags.project}-{app.env}-{app.tags.family}` |
+| **New Default** | `{app.namespace}` |
+| **New Placeholder** | `{bucketId}` (resolves to the blob store name) |
+| **Delimiter Config** | `cloud.aws.s3.clients.<client_name>.naming.delimiter` |
+| **Delimiter Default** | `-` |
+
+**Migration:**
+1. Move any custom bucket patterns to the new S3 naming config key.
+2. Configure `app.namespace` to match your previous naming structure:
+
+```yaml
+app:
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}"
+
+cloud:
+  aws:
+    s3:
+      clients:
+        default:
+          naming:
+            # Option 1: Use namespace (results in same pattern as before)
+            bucket_pattern: "{app.namespace}-data"
+
+            # Option 2: Define pattern explicitly
+            bucket_pattern: "{app.tags.project}-{app.env}-data"
+```
+
+## Quick Start: Minimal Backward-Compatible Configuration
+
+If you want the fastest migration path with minimal risk, add this to your configuration to preserve existing resource names:
+
+```yaml
+app:
+  env: production              # was: env
+  name: my-service             # was: app_name
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+  tags:
+    project: justtrack         # was: app_project
+    family: platform           # was: app_family
+    group: core                # was: app_group
+
+  model_id:
+    domain_pattern: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+```
+
+This configuration ensures all resource names resolve identically to the old defaults while using the new configuration structure.

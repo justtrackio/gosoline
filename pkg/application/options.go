@@ -275,7 +275,7 @@ func WithKinsumerAutoscaleModule(kinsumerInputName string) Option {
 	}
 }
 
-func WIthLoggerApplicationTag(tag string) Option {
+func WithLoggerApplicationTag(tag string) Option {
 	return func(app *App) {
 		app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 			identity, err := cfg.GetAppIdentity(config)
