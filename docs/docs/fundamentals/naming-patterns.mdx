@@ -1,0 +1,263 @@
+---
+sidebar_position: 1
+---
+
+# Naming Patterns
+
+Gosoline uses a unified, configuration-driven approach for naming infrastructure resources like SQS queues, SNS topics, DynamoDB tables, and more. This system ensures consistent, predictable resource names across your entire application ecosystem.
+
+## Why Naming Patterns Matter
+
+In cloud environments, especially AWS, you often need to manage hundreds or thousands of resources across multiple applications, environments, and teams. Without a consistent naming strategy:
+
+- Resources become difficult to identify and organize
+- Access control policies are harder to maintain
+- Debugging and operational tasks require manual lookups
+
+Gosoline's naming pattern system solves these problems by providing:
+
+- **Consistency**: All resources follow the same naming conventions
+- **Flexibility**: Customize patterns to match your organization's standards
+- **Configuration-driven**: Change naming schemes without code changes
+- **Hierarchical organization**: Build meaningful resource hierarchies with tags
+- **Single source of truth**: Define your naming hierarchy once and reuse it everywhere
+
+## Core Concepts
+
+### Application Identity
+
+Every Gosoline application has an **AppIdentity** consisting of:
+
+- **Name** (`app.name`): The application name (e.g., `order-service`)
+- **Environment** (`app.env`): The deployment environment (e.g., `dev`, `staging`, `production`)
+- **Tags** (`app.tags`): Key-value pairs for organizational hierarchy (e.g., `project`, `group`, `team`)
+
+```yaml
+app:
+  name: order-service
+  env: production
+  tags:
+    project: logistics
+    group: platform
+    team: backend
+```
+
+### Global Macros
+
+Naming patterns use macro placeholders that are automatically resolved from your AppIdentity:
+
+| Macro | Description | Example |
+|-------|-------------|---------|
+| `{app.name}` | Application name | `order-service` |
+| `{app.env}` | Environment | `production` |
+| `{app.namespace}` | Reusable namespace pattern (see below) | `logistics-production-platform` |
+| `{app.tags.<key>}` | Any tag value | `{app.tags.project}` → `logistics` |
+
+Tags are fully dynamic—you can use any tag key that makes sense for your organization. Common examples include `project`, `group`, and `team`, but you're free to define whatever tags fit your needs.
+
+### The Namespace Pattern
+
+The `app.namespace` configuration is the cornerstone of Gosoline's naming system. It allows you to define a reusable naming hierarchy once and reference it across all your resources.
+
+**Configuration:**
+
+```yaml
+app:
+  name: order-service
+  env: production
+  namespace: "{app.tags.project}.{app.env}.{app.tags.group}"
+  tags:
+    project: logistics
+    group: platform
+```
+
+**How it works:**
+
+1. Define the pattern using dot-separated placeholders
+2. When expanded, dots are replaced with the service-specific delimiter
+3. Reference it in resource patterns using `{app.namespace}`
+
+**Example expansion with different delimiters:**
+
+```yaml
+# With delimiter "-": logistics-production-platform
+# With delimiter "/": logistics/production/platform
+# With delimiter "_": logistics_production_platform
+```
+
+**Benefits:**
+
+- **Define once, use everywhere**: Set your hierarchy in one place
+- **Easy updates**: Change your naming convention globally by updating one config value
+- **Simplified patterns**: Use `{app.namespace}` instead of repeating the same placeholders
+- **Delimiter flexibility**: Different services can use appropriate delimiters (CloudWatch uses `/`, Prometheus uses `_`, most AWS services use `-`)
+
+## How Naming Patterns Work
+
+### Pattern Resolution
+
+Each service in Gosoline has configurable naming patterns. Here's how they're resolved:
+
+1. **Define the pattern** in your configuration with placeholders
+2. **Gosoline resolves placeholders** from AppIdentity and service-specific context
+3. **Delimiters are applied** to format the namespace appropriately
+4. **Validation ensures** all placeholders are valid (unknown placeholders cause errors)
+
+### Service-Specific Placeholders
+
+While global macros work everywhere, services add their own context-specific placeholders. Let's look at AWS SQS as an example.
+
+**SQS Queue Naming:**
+
+SQS adds the `{queueId}` placeholder, which represents the logical queue name you use in your code:
+
+```yaml
+cloud:
+  aws:
+    sqs:
+      clients:
+        default:
+          naming:
+            queue_pattern: "{app.namespace}-{queueId}"
+            queue_delimiter: "-"  # Default delimiter
+```
+
+When you create a queue with ID `orders`, the pattern resolves to:
+```
+logistics-production-platform-orders
+```
+
+**How it works:**
+
+1. `{app.namespace}` expands to `logistics.production.platform` from your namespace pattern
+2. The dots (`.`) are replaced with the `queue_delimiter` (`-`)
+3. The `{queueId}` is appended: `orders`
+4. Final result: `logistics-production-platform-orders`
+
+**Customizing the pattern:**
+
+You can customize the pattern to include additional tags or change the structure:
+
+```yaml
+cloud:
+  aws:
+    sqs:
+      clients:
+        default:
+          naming:
+            # Include team tag before the namespace
+            queue_pattern: "{app.tags.team}-{app.namespace}-{queueId}"
+            queue_delimiter: "-"
+
+# Result for queue "orders": backend-logistics-production-platform-orders
+```
+
+Other services follow similar patterns with their own service-specific placeholders (SNS uses `{topicId}`, DynamoDB uses `{name}`, etc.).
+
+## Complete Example: SQS Queue Naming
+
+Here's a complete example showing how to configure SQS queue naming for an order processing service:
+
+```yaml
+app:
+  name: order-service
+  env: production
+  namespace: "{app.tags.project}.{app.env}.{app.tags.group}"
+  tags:
+    project: logistics
+    group: platform
+    team: backend
+
+cloud:
+  aws:
+    sqs:
+      clients:
+        default:
+          naming:
+            queue_pattern: "{app.namespace}-{queueId}"
+            queue_delimiter: "-"
+```
+
+**What happens when you create queues:**
+
+| Queue ID in Code | Resolved Queue Name |
+|------------------|---------------------|
+| `orders` | `logistics-production-platform-orders` |
+| `shipments` | `logistics-production-platform-shipments` |
+| `notifications` | `logistics-production-platform-notifications` |
+
+**Benefits of this approach:**
+
+- **One namespace definition** controls naming for all queues
+- **Consistent hierarchy** (project → environment → group) appears in all queue names
+- **Easy to update**: Change `app.namespace` once to update all queue names
+- **Clear ownership**: Queues clearly belong to the logistics project, production environment, platform group
+- **Environment isolation**: Production queues are separate from dev/staging queues
+
+**Switching environments:**
+
+When you deploy to a different environment, just change the `app.env` value:
+
+```yaml
+app:
+  name: order-service
+  env: dev  # Changed from production
+  # ... rest stays the same
+```
+
+Now the same queue IDs resolve to:
+- `orders` → `logistics-dev-platform-orders`
+- `shipments` → `logistics-dev-platform-shipments`
+
+This ensures complete isolation between environments without changing any queue-specific configuration.
+
+## Pattern-Driven Tag Requirements
+
+Tags are only required if your naming patterns use them. For example:
+
+- Pattern `{app.env}-{queueId}` → No tags required
+- Pattern `{app.tags.project}-{app.env}-{queueId}` → Only `project` tag required
+- Pattern `{app.tags.project}-{app.tags.team}-{app.env}` → Both `project` and `team` tags required
+
+This means you can start simple and add complexity only when needed.
+
+## Best Practices
+
+### Start with a Clear Hierarchy
+
+Define your organizational hierarchy upfront:
+
+```yaml
+app:
+  name: order-service
+  env: production
+  namespace: "{app.tags.organization}.{app.tags.project}.{app.env}.{app.tags.group}"
+  tags:
+    organization: mycompany
+    project: logistics
+    group: platform
+```
+
+### Use Meaningful Tag Names
+
+Choose tag names that reflect your organization's structure:
+
+- `project` or `product` for product lines
+- `group` or `domain` for service groups
+- `team` for ownership
+
+### Keep Patterns Simple
+
+Use `{app.namespace}` instead of repeating placeholders:
+
+```yaml
+# Good: Simple and reusable
+queue_pattern: "{app.namespace}-{queueId}"
+
+# Less ideal: Repetitive and harder to maintain
+queue_pattern: "{app.tags.project}-{app.env}-{app.tags.group}-{queueId}"
+```
+
+### Be Consistent Across Services
+
+Use similar patterns across different services for consistency. For example, if you use `{app.namespace}-{queueId}` for SQS, consider using `{app.namespace}-{topicId}` for SNS, `{app.namespace}-{name}` for DynamoDB, etc.
