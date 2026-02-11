@@ -10,7 +10,7 @@
 
 
 <link rel="search" type="application/opensearchdescription+xml" title="Gosoline Docs" href="/gosoline/pr-1359/opensearch.xml"><link rel="stylesheet" href="/gosoline/pr-1359/assets/css/styles.4b55bacf.css">
-<script src="/gosoline/pr-1359/assets/js/runtime~main.c179ebc9.js" defer="defer"></script>
+<script src="/gosoline/pr-1359/assets/js/runtime~main.f98e7e77.js" defer="defer"></script>
 <script src="/gosoline/pr-1359/assets/js/main.37234519.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -90,9 +90,10 @@
 </ul>
 <p>If this pattern is missing, calling <code>modelId.String()</code> will return an error.</p>
 <div class="theme-admonition theme-admonition-caution admonition_xJq3 alert alert--warning"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"></path></svg></span>caution</div><div class="admonitionContent_BuS1"><ol>
-<li class="">The <code>{modelId}</code> placeholder is <strong>NOT</strong> used in this pattern. The model name is automatically appended as the last segment.</li>
-<li class="">The pattern must consist <em>only</em> of placeholders separated by <strong>single dots (<code>.</code>)</strong>. No other characters or delimiters (like dashes) are allowed between placeholders.</li>
-</ol><p><strong>Valid:</strong> <code>{app.tags.project}.{app.env}</code></p><p><strong>Invalid:</strong> <code>{app.tags.project}-{app.env}</code> (dashes not allowed)</p><p><strong>Invalid:</strong> <code>prefix.{app.tags.project}</code> (static text not allowed)</p></div></div>
+<li class="">The <code>{modelId}</code> placeholder is <strong>NOT</strong> used in this pattern. The model name is automatically appended as the last dot-separated segment.</li>
+<li class="">Patterns may freely mix placeholders with static text and use any delimiter between placeholders. Only <code>{app.env}</code>, <code>{app.name}</code>, and <code>{app.tags.&lt;key&gt;}</code> placeholders are allowed.</li>
+<li class="">When parsing, each placeholder matches non-dot characters (<code>[^.]+</code>), and the model name is everything after the final dot.</li>
+</ol><p><strong>Valid:</strong> <code>{app.tags.project}.{app.env}</code></p><p><strong>Valid:</strong> <code>{app.tags.project}-{app.env}</code> (non-dot delimiters allowed)</p><p><strong>Valid:</strong> <code>prefix-{app.env}</code> (static text allowed)</p></div></div>
 <p><strong>Example:</strong></p>
 <ul>
 <li class="">Pattern: <code>{app.tags.project}.{app.env}</code></li>
@@ -160,7 +161,7 @@
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="dynamodb-table-naming-1">DynamoDB Table Naming<a href="#dynamodb-table-naming-1" class="hash-link" aria-label="Direct link to DynamoDB Table Naming" title="Direct link to DynamoDB Table Naming" translate="no">​</a></h3>
 <table><thead><tr><th></th><th>Value</th></tr></thead><tbody><tr><td><strong>Config Key</strong></td><td><code>cloud.aws.dynamodb.clients.default.naming.table_pattern</code></td></tr><tr><td><strong>Old Default</strong></td><td><code>{project}-{env}-{family}-{group}-{modelId}</code></td></tr><tr><td><strong>New Default</strong></td><td><code>{app.namespace}-{name}</code></td></tr><tr><td><strong>Env Var</strong></td><td><code>GOSO_CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_TABLE_PATTERN</code></td></tr><tr><td><strong>Delimiter Config</strong></td><td><code>cloud.aws.dynamodb.clients.default.naming.table_delimiter</code></td></tr><tr><td><strong>Delimiter Default</strong></td><td><code>-</code></td></tr></tbody></table>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="dynamodb-leader-election-table">DynamoDB Leader Election Table<a href="#dynamodb-leader-election-table" class="hash-link" aria-label="Direct link to DynamoDB Leader Election Table" title="Direct link to DynamoDB Leader Election Table" translate="no">​</a></h3>
-<table><thead><tr><th></th><th>Value</th></tr></thead><tbody><tr><td><strong>Config Key</strong></td><td><code>conc.ddb.leader_election.&lt;name&gt;.naming.table_pattern</code> (renamed from <code>naming.pattern</code>)</td></tr><tr><td><strong>Old Default</strong></td><td><code>{project}-{env}-{family}-leader-elections</code></td></tr><tr><td><strong>New Default</strong></td><td><code>{app.tags.project}-{app.env}-{app.tags.family}-leader-elections</code></td></tr><tr><td><strong>Delimiter Config</strong></td><td><code>conc.ddb.leader_election.&lt;name&gt;.naming.table_delimiter</code></td></tr><tr><td><strong>Delimiter Default</strong></td><td><code>-</code></td></tr></tbody></table>
+<table><thead><tr><th></th><th>Value</th></tr></thead><tbody><tr><td><strong>Config Key</strong></td><td><code>conc.leader_election.&lt;name&gt;.naming.table_pattern</code> (renamed from <code>naming.pattern</code>)</td></tr><tr><td><strong>Old Default</strong></td><td><code>{project}-{env}-{family}-leader-elections</code></td></tr><tr><td><strong>New Default</strong></td><td><code>{app.tags.project}-{app.env}-{app.tags.family}-leader-elections</code></td></tr><tr><td><strong>Delimiter Config</strong></td><td><code>conc.leader_election.&lt;name&gt;.naming.table_delimiter</code></td></tr><tr><td><strong>Delimiter Default</strong></td><td><code>-</code></td></tr></tbody></table>
 <p><strong>Steps:</strong></p>
 <ol>
 <li class="">Rename <code>naming.pattern</code> to <code>naming.table_pattern</code> in your config.</li>
