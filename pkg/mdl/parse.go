@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/spf13/cast"
 )
 
 // ParseModelId parses a string into a ModelId using the required domain pattern from config.
@@ -14,11 +16,16 @@ import (
 //   - the string doesn't match the expected domain pattern structure
 func ParseModelId(config ConfigProvider, s string) (ModelId, error) {
 	var err error
+	var val any
 	var domainPattern string
 	var id ModelId
 
-	if domainPattern, err = config.GetString(ConfigKeyModelIdDomainPattern); err != nil {
+	if val, err = config.Get(ConfigKeyModelIdDomainPattern); err != nil {
 		return ModelId{}, fmt.Errorf("%s must be set: %w", ConfigKeyModelIdDomainPattern, err)
+	}
+
+	if domainPattern, err = cast.ToStringE(val); err != nil {
+		return ModelId{}, fmt.Errorf("failed to cast %s to string: %w", ConfigKeyModelIdDomainPattern, err)
 	}
 
 	if domainPattern == "" {

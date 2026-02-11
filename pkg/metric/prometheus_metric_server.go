@@ -72,7 +72,7 @@ func NewPrometheusMetricsServerModule(ctx context.Context, config cfg.Config, lo
 		return nil, fmt.Errorf("could not get prometheus writer settings: %w", err)
 	}
 
-	if settings, err = getMetricSettings(config); err != nil {
+	if settings, err = GetMetricSettings(config); err != nil {
 		return nil, fmt.Errorf("could not get metric settings: %w", err)
 	}
 

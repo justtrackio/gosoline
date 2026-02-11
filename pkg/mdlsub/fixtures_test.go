@@ -48,7 +48,7 @@ func (s *FixtureSetTestSuite) SetupTest() {
 	config.EXPECT().GetString("app.env").Return("test", nil)
 	config.EXPECT().GetString("app.name").Return("my-app", nil)
 	config.EXPECT().GetStringMap("app.tags").Return(map[string]any{}, nil)
-	config.EXPECT().GetString("app.model_id.domain_pattern").Return("{app.tags.project}.{app.tags.family}.{app.tags.group}", nil)
+	config.EXPECT().Get("app.model_id.domain_pattern").Return("{app.tags.project}.{app.tags.family}.{app.tags.group}", nil)
 
 	err := s.source.PadFromConfig(config)
 	s.NoError(err)

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/spf13/cast"
 )
 
 // Placeholder constants for ModelId patterns.
@@ -22,6 +24,7 @@ const ConfigKeyModelIdDomainPattern = "app.model_id.domain_pattern"
 // ConfigProvider is an interface for reading config values.
 // It is implemented by cfg.Config.
 type ConfigProvider interface {
+	Get(key string, optionalDefault ...any) (any, error)
 	GetString(key string, optionalDefault ...string) (string, error)
 	GetStringMap(key string, optionalDefault ...map[string]any) (map[string]any, error)
 }
@@ -207,9 +210,16 @@ func (m *ModelId) loadDomainPatternFromConfig(config ConfigProvider) error {
 		return nil
 	}
 
-	domainPattern, err := config.GetString(ConfigKeyModelIdDomainPattern)
-	if err != nil {
+	var err error
+	var val any
+	var domainPattern string
+
+	if val, err = config.Get(ConfigKeyModelIdDomainPattern); err != nil {
 		return fmt.Errorf("failed to read %s from config: %w", ConfigKeyModelIdDomainPattern, err)
+	}
+
+	if domainPattern, err = cast.ToStringE(val); err != nil {
+		return fmt.Errorf("failed to cast %s to string: %w", ConfigKeyModelIdDomainPattern, err)
 	}
 
 	if domainPattern == "" {

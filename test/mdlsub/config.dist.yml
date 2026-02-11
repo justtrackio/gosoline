@@ -6,7 +6,7 @@ app:
     family: gosoline
     group: mdlsub
   model_id:
-    domain_pattern: "!nodecode {app.tags.project}.{app.tags.family}.{app.tags.group}"
+    domain_pattern: "{app.tags.project}.{app.tags.family}.{app.tags.group}"
 
 cloud:
   aws:

@@ -42,7 +42,7 @@ func (s *ConsumerTestSuite) SetupSuite() []suite.Option {
 		suite.WithConfigMap(map[string]any{
 			"app": map[string]any{
 				"model_id": map[string]any{
-					"domain_pattern": "!nodecode {app.tags.project}.{app.tags.family}.{app.tags.group}",
+					"domain_pattern": "{app.tags.project}.{app.tags.family}.{app.tags.group}",
 				},
 			},
 			"mdlsub": map[string]any{

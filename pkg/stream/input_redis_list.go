@@ -41,7 +41,6 @@ func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger
 	var err error
 	var client redis.Client
 
-
 	if client, err = redis.ProvideClient(ctx, config, logger, settings.ServerName); err != nil {
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}

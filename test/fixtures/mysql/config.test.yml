@@ -6,7 +6,7 @@ app:
     family: integration-test
     group: grp
   model_id:
-    domain_pattern: "!nodecode {app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+    domain_pattern: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
 
 db:
   default:

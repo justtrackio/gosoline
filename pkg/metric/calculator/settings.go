@@ -9,8 +9,8 @@ import (
 )
 
 type EcsSettings struct {
-	Cluster string `cfg:"cluster" default:"{app.tags.project}-{app.env}-{app.tags.family}"`
-	Service string `cfg:"service" default:"{app.tags.group}-{app.name}"`
+	Cluster string `cfg:"cluster" default:"{app.env}"`
+	Service string `cfg:"service" default:"{app.name}"`
 }
 
 type DynamoDbSettings struct {

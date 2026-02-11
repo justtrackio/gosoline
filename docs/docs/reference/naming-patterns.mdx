@@ -60,6 +60,40 @@ app:
 
 When `{app.namespace}` is used in a naming pattern, the service-specific delimiter replaces the dots.
 
+## ModelId domain pattern (canonical IDs)
+
+The canonical `mdl.ModelId` string form is configured via:
+
+- **Config key:** `app.model_id.domain_pattern`
+
+Rules:
+
+- Only `{app.env}`, `{app.name}`, and `{app.tags.<key>}` placeholders are allowed
+- Patterns may freely mix placeholders with static text and use any delimiter between placeholders
+- The model name is appended automatically as the last dot-separated segment
+
+:::info
+When parsing a canonical model ID string back into a `ModelId`, each placeholder matches non-dot characters (`[^.]+`), and the model name is everything after the final dot. This means dots in the pattern separate the final model name segment from the domain.
+:::
+
+Examples:
+
+```yaml
+app:
+  model_id:
+    # dot-separated placeholders
+    domain_pattern: "{app.tags.project}.{app.env}"
+    # Result: myProject.production.myModel
+
+    # mixed delimiters
+    domain_pattern: "{app.tags.project}-{app.env}"
+    # Result: myProject-production.myModel
+
+    # static text prefix
+    domain_pattern: "prefix-{app.env}"
+    # Result: prefix-production.myModel
+```
+
 ## Available naming patterns
 
 ### App identity
@@ -235,23 +269,3 @@ Kinsumer autoscale provides a table pattern which is used to configure the under
 - **Default:** `{app.env}-kinsumer-autoscale-leaders`
 
 If you need to adjust the delimiter, configure the leader election settings (e.g. `conc.leader_election.<name>.naming.table_delimiter`).
-
-## ModelId domain pattern (canonical IDs)
-
-The canonical `mdl.ModelId` string form is configured via:
-
-- **Config key:** `app.model_id.domain_pattern`
-
-Rules:
-
-- Placeholders must be separated by dots (`.`)
-- No static text is allowed
-- The model name is appended automatically as the last segment
-
-Example:
-
-```yaml
-app:
-  model_id:
-    domain_pattern: "{app.tags.project}.{app.env}"
-```

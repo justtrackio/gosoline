@@ -157,7 +157,7 @@ func (s *ParseModelIdTestSuite) TestParseModelId_Success() {
 	for _, tc := range cases {
 		s.Run(tc.name, func() {
 			config := mocks.NewConfig(s.T())
-			config.EXPECT().GetString(mdl.ConfigKeyModelIdDomainPattern).Return(tc.domainPattern, nil)
+			config.EXPECT().Get(mdl.ConfigKeyModelIdDomainPattern).Return(tc.domainPattern, nil)
 
 			modelId, err := mdl.ParseModelId(config, tc.input)
 
@@ -173,7 +173,7 @@ func (s *ParseModelIdTestSuite) TestParseModelId_Success() {
 
 func (s *ParseModelIdTestSuite) TestParseModelId_ErrorMissingConfig() {
 	config := mocks.NewConfig(s.T())
-	config.EXPECT().GetString(mdl.ConfigKeyModelIdDomainPattern).Return("", fmt.Errorf("config key not found"))
+	config.EXPECT().Get(mdl.ConfigKeyModelIdDomainPattern).Return(nil, fmt.Errorf("config key not found"))
 
 	_, err := mdl.ParseModelId(config, "production.users")
 
@@ -183,7 +183,7 @@ func (s *ParseModelIdTestSuite) TestParseModelId_ErrorMissingConfig() {
 
 func (s *ParseModelIdTestSuite) TestParseModelId_ErrorEmptyPattern() {
 	config := mocks.NewConfig(s.T())
-	config.EXPECT().GetString(mdl.ConfigKeyModelIdDomainPattern).Return("", nil)
+	config.EXPECT().Get(mdl.ConfigKeyModelIdDomainPattern).Return("", nil)
 
 	_, err := mdl.ParseModelId(config, "production.users")
 
@@ -214,7 +214,7 @@ func (s *ParseModelIdTestSuite) TestParseModelId_ErrorInvalidPattern() {
 	for _, tc := range cases {
 		s.Run(tc.name, func() {
 			config := mocks.NewConfig(s.T())
-			config.EXPECT().GetString(mdl.ConfigKeyModelIdDomainPattern).Return(tc.domainPattern, nil)
+			config.EXPECT().Get(mdl.ConfigKeyModelIdDomainPattern).Return(tc.domainPattern, nil)
 
 			_, err := mdl.ParseModelId(config, "production.users")
 
@@ -262,7 +262,7 @@ func (s *ParseModelIdTestSuite) TestParseModelId_ErrorInputMismatch() {
 	for _, tc := range cases {
 		s.Run(tc.name, func() {
 			config := mocks.NewConfig(s.T())
-			config.EXPECT().GetString(mdl.ConfigKeyModelIdDomainPattern).Return(tc.domainPattern, nil)
+			config.EXPECT().Get(mdl.ConfigKeyModelIdDomainPattern).Return(tc.domainPattern, nil)
 
 			_, err := mdl.ParseModelId(config, tc.input)
 
@@ -360,7 +360,7 @@ func (s *ParseModelIdTestSuite) TestParseModelId_RoundTrip() {
 
 			// Parse it back
 			config := mocks.NewConfig(s.T())
-			config.EXPECT().GetString(mdl.ConfigKeyModelIdDomainPattern).Return(tc.domainPattern, nil)
+			config.EXPECT().Get(mdl.ConfigKeyModelIdDomainPattern).Return(tc.domainPattern, nil)
 
 			parsedId, err := mdl.ParseModelId(config, originalString)
 
@@ -418,7 +418,7 @@ func (s *ParseModelIdTestSuite) TestParseModelId_EdgeCases() {
 	for _, tc := range cases {
 		s.Run(tc.name, func() {
 			config := mocks.NewConfig(s.T())
-			config.EXPECT().GetString(mdl.ConfigKeyModelIdDomainPattern).Return(tc.domainPattern, nil)
+			config.EXPECT().Get(mdl.ConfigKeyModelIdDomainPattern).Return(tc.domainPattern, nil)
 
 			modelId, err := mdl.ParseModelId(config, tc.input)
 
@@ -441,7 +441,7 @@ func (s *ParseModelIdTestSuite) TestParseModelId_StaticPattern() {
 	// Note: Static patterns expect the input to be a single segment (just the model name)
 	// because they have 0 placeholders, so expected parts = 0 + 1 = 1
 	config := mocks.NewConfig(s.T())
-	config.EXPECT().GetString(mdl.ConfigKeyModelIdDomainPattern).Return("staticdomain", nil)
+	config.EXPECT().Get(mdl.ConfigKeyModelIdDomainPattern).Return("staticdomain", nil)
 
 	modelId, err := mdl.ParseModelId(config, "users")
 
@@ -461,7 +461,7 @@ func (s *ParseModelIdTestSuite) TestParseModelId_PreservesUnusedFields() {
 	// Test that parsing only sets fields referenced in the pattern,
 	// leaving other fields at their zero values
 	config := mocks.NewConfig(s.T())
-	config.EXPECT().GetString(mdl.ConfigKeyModelIdDomainPattern).Return("{app.env}", nil)
+	config.EXPECT().Get(mdl.ConfigKeyModelIdDomainPattern).Return("{app.env}", nil)
 
 	modelId, err := mdl.ParseModelId(config, "production.users")
 

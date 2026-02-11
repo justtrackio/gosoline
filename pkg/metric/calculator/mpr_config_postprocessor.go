@@ -6,6 +6,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/conc/ddb"
+	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
 func init() {
@@ -14,20 +15,29 @@ func init() {
 
 func calculatorConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 	var err error
-	var settings *CalculatorSettings
+	var metricSettings *metric.Settings
+	var calculatorSettings *CalculatorSettings
 	var identity cfg.AppIdentity
 	var namespace string
 
-	if settings, err = readCalculatorSettings(config); err != nil {
-		return false, fmt.Errorf("can not read calculator settings: %w", err)
+	if metricSettings, err = metric.GetMetricSettings(config); err != nil {
+		return false, fmt.Errorf("can not read metric settings: %w", err)
 	}
 
-	if !settings.Enabled {
+	if !metricSettings.Enabled {
 		return false, nil
 	}
 
-	electionKey := ddb.GetLeaderElectionConfigKey(settings.LeaderElection)
-	electionKeyType := ddb.GetLeaderElectionConfigKeyType(settings.LeaderElection)
+	if calculatorSettings, err = readCalculatorSettings(config); err != nil {
+		return false, fmt.Errorf("can not read calculator settings: %w", err)
+	}
+
+	if !calculatorSettings.Enabled {
+		return false, nil
+	}
+
+	electionKey := ddb.GetLeaderElectionConfigKey(calculatorSettings.LeaderElection)
+	electionKeyType := ddb.GetLeaderElectionConfigKeyType(calculatorSettings.LeaderElection)
 
 	if config.IsSet(electionKey) {
 		return true, nil
@@ -43,8 +53,8 @@ func calculatorConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 
 	leaderElectionSettings := &ddb.DdbLeaderElectionSettings{
 		Naming: ddb.TableNamingSettings{
-			TablePattern:   settings.DynamoDb.Naming.TablePattern,
-			TableDelimiter: settings.DynamoDb.Naming.TableDelimiter,
+			TablePattern:   calculatorSettings.DynamoDb.Naming.TablePattern,
+			TableDelimiter: calculatorSettings.DynamoDb.Naming.TableDelimiter,
 		},
 		GroupId:       fmt.Sprintf("%s-%s", namespace, identity.Name),
 		LeaseDuration: time.Minute,

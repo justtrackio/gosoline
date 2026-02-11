@@ -205,14 +205,15 @@ The string representation of a `ModelId` (used for message routing attributes, e
 If this pattern is missing, calling `modelId.String()` will return an error.
 
 :::caution
-1. The `{modelId}` placeholder is **NOT** used in this pattern. The model name is automatically appended as the last segment.
-2. The pattern must consist *only* of placeholders separated by **single dots (`.`)**. No other characters or delimiters (like dashes) are allowed between placeholders.
+1. The `{modelId}` placeholder is **NOT** used in this pattern. The model name is automatically appended as the last dot-separated segment.
+2. Patterns may freely mix placeholders with static text and use any delimiter between placeholders. Only `{app.env}`, `{app.name}`, and `{app.tags.<key>}` placeholders are allowed.
+3. When parsing, each placeholder matches non-dot characters (`[^.]+`), and the model name is everything after the final dot.
 
 **Valid:** `{app.tags.project}.{app.env}`
 
-**Invalid:** `{app.tags.project}-{app.env}` (dashes not allowed)
+**Valid:** `{app.tags.project}-{app.env}` (non-dot delimiters allowed)
 
-**Invalid:** `prefix.{app.tags.project}` (static text not allowed)
+**Valid:** `prefix-{app.env}` (static text allowed)
 :::
 
 **Example:**
@@ -526,10 +527,10 @@ This section lists the configuration keys, their old and new defaults, and the c
 
 | | Value |
 |---|---|
-| **Config Key** | `conc.ddb.leader_election.<name>.naming.table_pattern` (renamed from `naming.pattern`) |
+| **Config Key** | `conc.leader_election.<name>.naming.table_pattern` (renamed from `naming.pattern`) |
 | **Old Default** | `{project}-{env}-{family}-leader-elections` |
 | **New Default** | `{app.tags.project}-{app.env}-{app.tags.family}-leader-elections` |
-| **Delimiter Config** | `conc.ddb.leader_election.<name>.naming.table_delimiter` |
+| **Delimiter Config** | `conc.leader_election.<name>.naming.table_delimiter` |
 | **Delimiter Default** | `-` |
 
 **Steps:**

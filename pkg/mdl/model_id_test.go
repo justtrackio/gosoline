@@ -99,7 +99,7 @@ func (s *ModelIdTestSuite) TestString() {
 			config.EXPECT().GetString("app.env").Return("test", nil)
 			config.EXPECT().GetString("app.name").Return("myApp", nil)
 			config.EXPECT().GetStringMap("app.tags").Return(tc.tags, nil)
-			config.EXPECT().GetString("app.model_id.domain_pattern").Return(tc.pattern, nil)
+			config.EXPECT().Get("app.model_id.domain_pattern").Return(tc.pattern, nil)
 
 			modelId := &mdl.ModelId{
 				Name: "testEvent",

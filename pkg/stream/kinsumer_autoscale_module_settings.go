@@ -15,7 +15,7 @@ func init() {
 type KinsumerAutoscaleModuleEcsSettings struct {
 	Client  string `cfg:"client" default:"default"`
 	Cluster string `cfg:"cluster" default:"{app.env}"`
-	Service string `cfg:"service" default:"{app.tags.group}-{app.name}"`
+	Service string `cfg:"service" default:"{app.name}"`
 }
 
 type KinsumerAutoscaleModuleDynamoDbSettings struct {
