@@ -31,8 +31,8 @@ In the main function, we're running the application by adding the `HelloWorldMod
 <CodeBlock showLineNumbers language="go" title="main.go">{Main}</CodeBlock>
 
 ## Create the config file
-The last missing piece for a minimal gosoline application is the default config file which is distributed with the
-application. For a minimal version it has at least the application identifiers and enviroment value.
+The last missing piece for a minimal gosoline application is the config file. You load it explicitly using
+`application.WithConfigFile("config.dist.yml", "yml")`. For a minimal version it has at least the application identifiers and enviroment value.
 
 <CodeBlock showLineNumbers language="yaml" title="config.dist.yml">{ConfigDist}</CodeBlock>
 

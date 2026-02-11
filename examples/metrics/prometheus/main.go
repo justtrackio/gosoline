@@ -25,6 +25,8 @@ func apiDefiner(context.Context, cfg.Config, log.Logger) (*httpserver.Definition
 
 func main() {
 	app := application.Default(
+		application.WithConfigFile("config.dist.yml", "yml"),
+		application.WithMetrics,
 		application.WithModuleFactory("api", httpserver.New("default", apiDefiner)),
 	)
 	app.Run()

@@ -30,6 +30,7 @@ func (h HelloWorldModule) Run(ctx context.Context) error {
 
 func main() {
 	application.Run(
+		application.WithConfigFile("config.dist.yml", "yml"),
 		application.WithModuleFactory("hello-world", NewHelloWorldModule),
 	)
 }

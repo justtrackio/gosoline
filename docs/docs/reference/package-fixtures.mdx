@@ -91,6 +91,7 @@ and a fixture sets factory as arguments of type `fixtures.WithFixtureSetsFactory
 ```go
 func main() {
 	app := application.Default(
+		application.WithConfigFile("config.dist.yml", "yml"),
 		application.WithFixtureSetFactory("default", fixtureSetsFactory),
 	)
 
@@ -114,6 +115,7 @@ You can also generate a locally unique identifier for your fixtures via `fixture
 ```go
 func main() {
 	app := application.Default(
+		application.WithConfigFile("config.dist.yml", "yml"),
 		application.WithFixtureSetFactory(fixtureSetsFactory),
 	)
 
@@ -329,6 +331,7 @@ func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logge
 
 func main() {
 	app := application.Default(
+		application.WithConfigFile("config.dist.yml", "yml"),
 		application.WithFixtureSetFactory(fixtureSetsFactory),
 	)
 

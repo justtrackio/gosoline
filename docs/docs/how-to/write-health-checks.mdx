@@ -39,6 +39,8 @@ Therefore, to check the health of your application once it's running, you need t
 
 ## Check your app's health manually
 
+To use the health-check endpoint, you need to explicitly enable it by passing `application.WithHttpHealthCheck` as an option when creating your application.
+
 Once your application is running, you can perform a health check with a simple HTTP request to its health-check endpoint:
 
 ```http

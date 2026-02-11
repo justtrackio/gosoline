@@ -37,7 +37,9 @@ func main() {
 	}
 
 	// Run your server with the definitions.
-	application.RunHttpDefaultServer(definer)
+	application.RunHttpDefaultServer(definer,
+		application.WithConfigFile("config.dist.yml", "yml"),
+	)
 }
 
 // snippet-end: main
