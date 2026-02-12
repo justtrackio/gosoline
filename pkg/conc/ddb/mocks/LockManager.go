@@ -72,21 +72,31 @@ func (_c *LockManager_ReleaseLock_Call) RunAndReturn(run func(context.Context, s
 }
 
 // RenewLock provides a mock function with given fields: ctx, lockTime, resource, token
-func (_m *LockManager) RenewLock(ctx context.Context, lockTime time.Duration, resource string, token string) error {
+func (_m *LockManager) RenewLock(ctx context.Context, lockTime time.Duration, resource string, token string) (time.Time, error) {
 	ret := _m.Called(ctx, lockTime, resource, token)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RenewLock")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, time.Duration, string, string) error); ok {
+	var r0 time.Time
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Duration, string, string) (time.Time, error)); ok {
+		return rf(ctx, lockTime, resource, token)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, time.Duration, string, string) time.Time); ok {
 		r0 = rf(ctx, lockTime, resource, token)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(time.Time)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, time.Duration, string, string) error); ok {
+		r1 = rf(ctx, lockTime, resource, token)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // LockManager_RenewLock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RenewLock'
@@ -110,12 +120,12 @@ func (_c *LockManager_RenewLock_Call) Run(run func(ctx context.Context, lockTime
 	return _c
 }
 
-func (_c *LockManager_RenewLock_Call) Return(_a0 error) *LockManager_RenewLock_Call {
-	_c.Call.Return(_a0)
+func (_c *LockManager_RenewLock_Call) Return(expiry time.Time, err error) *LockManager_RenewLock_Call {
+	_c.Call.Return(expiry, err)
 	return _c
 }
 
-func (_c *LockManager_RenewLock_Call) RunAndReturn(run func(context.Context, time.Duration, string, string) error) *LockManager_RenewLock_Call {
+func (_c *LockManager_RenewLock_Call) RunAndReturn(run func(context.Context, time.Duration, string, string) (time.Time, error)) *LockManager_RenewLock_Call {
 	_c.Call.Return(run)
 	return _c
 }

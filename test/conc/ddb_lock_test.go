@@ -5,6 +5,7 @@ package conc_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -26,17 +27,21 @@ func (s *DdbLockTestSuite) SetupSuite() []suite.Option {
 		suite.WithClockProvider(clock.NewRealClock()),
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("./config.dist.yml"),
+		suite.WithSharedEnvironment(),
 	}
 }
 
 func (s *DdbLockTestSuite) SetupTest() (err error) {
 	s.provider, err = ddb.NewDdbLockProvider(s.Env().Context(), s.Env().Config(), s.Env().Logger(), conc.DistributedLockSettings{
 		Backoff: exec.BackoffSettings{
-			MaxAttempts:    0,
-			MaxElapsedTime: 0,
+			CancelDelay:     0,
+			InitialInterval: time.Millisecond * 25,
+			MaxAttempts:     0,
+			MaxElapsedTime:  0,
+			MaxInterval:     time.Millisecond * 100,
 		},
 		DefaultLockTime: time.Minute * 10,
-		Domain:          fmt.Sprintf("test%d", time.Now().Unix()),
+		Domain:          fmt.Sprintf("test%d", time.Now().UnixNano()),
 	})
 
 	return
@@ -47,7 +52,7 @@ func (s *DdbLockTestSuite) TestLockAndRelease() {
 	ctx, cancel := context.WithTimeout(s.T().Context(), time.Minute)
 	defer cancel()
 
-	l, err := s.provider.Acquire(ctx, "a")
+	l, err := s.provider.Acquire(ctx, s.T().Name())
 	s.NoError(err)
 	err = l.Release()
 	s.NoError(err)
@@ -58,15 +63,15 @@ func (s *DdbLockTestSuite) TestAcquireTwiceFails() {
 	ctx, cancel := context.WithTimeout(s.T().Context(), time.Minute)
 	defer cancel()
 
-	l, err := s.provider.Acquire(ctx, "a")
+	l, err := s.provider.Acquire(ctx, s.T().Name())
 	s.NoError(err)
 
 	ctx2, cancel2 := context.WithTimeout(s.T().Context(), time.Second)
 	defer cancel2()
 
-	_, err = s.provider.Acquire(ctx2, "a")
+	_, err = s.provider.Acquire(ctx2, s.T().Name())
 	s.Error(err)
-	s.True(exec.IsRequestCanceled(err))
+	s.True(exec.IsRequestCanceled(err) || errors.Is(err, conc.ErrLockOwned), "Error is: %v", err)
 	err = l.Release()
 	s.NoError(err)
 }
@@ -76,7 +81,7 @@ func (s *DdbLockTestSuite) TestAcquireRenewWorks() {
 	ctx, cancel := context.WithTimeout(s.T().Context(), time.Minute)
 	defer cancel()
 
-	l, err := s.provider.Acquire(ctx, "a")
+	l, err := s.provider.Acquire(ctx, s.T().Name())
 	s.NoError(err)
 	err = l.Renew(ctx, time.Hour)
 	s.NoError(err)
@@ -84,9 +89,9 @@ func (s *DdbLockTestSuite) TestAcquireRenewWorks() {
 	ctx2, cancel2 := context.WithTimeout(s.T().Context(), time.Second)
 	defer cancel2()
 
-	_, err = s.provider.Acquire(ctx2, "a")
+	_, err = s.provider.Acquire(ctx2, s.T().Name())
 	s.Error(err)
-	s.True(exec.IsRequestCanceled(err))
+	s.EqualError(err, conc.ErrLockOwned.Error())
 	err = l.Release()
 	s.NoError(err)
 }
@@ -96,13 +101,13 @@ func (s *DdbLockTestSuite) TestReleaseTwiceFails() {
 	ctx, cancel := context.WithTimeout(s.T().Context(), time.Minute)
 	defer cancel()
 
-	l, err := s.provider.Acquire(ctx, "a")
+	l, err := s.provider.Acquire(ctx, s.T().Name())
 	s.NoError(err)
 	err = l.Release()
 	s.NoError(err)
 	err = l.Release()
 	s.Error(err)
-	s.Equal(conc.ErrNotOwned, err)
+	s.Equal(conc.ErrLockNotOwned, err)
 }
 
 func (s *DdbLockTestSuite) TestRenewAfterReleaseFails() {
@@ -110,13 +115,13 @@ func (s *DdbLockTestSuite) TestRenewAfterReleaseFails() {
 	ctx, cancel := context.WithTimeout(s.T().Context(), time.Minute)
 	defer cancel()
 
-	l, err := s.provider.Acquire(ctx, "a")
+	l, err := s.provider.Acquire(ctx, s.T().Name())
 	s.NoError(err)
 	err = l.Release()
 	s.NoError(err)
 	err = l.Renew(ctx, time.Hour)
 	s.Error(err)
-	s.Equal(conc.ErrNotOwned, err)
+	s.Equal(conc.ErrLockNotOwned, err)
 }
 
 func (s *DdbLockTestSuite) TestAcquireDifferentResources() {
@@ -124,9 +129,9 @@ func (s *DdbLockTestSuite) TestAcquireDifferentResources() {
 	ctx, cancel := context.WithTimeout(s.T().Context(), time.Minute)
 	defer cancel()
 
-	l1, err := s.provider.Acquire(ctx, "a")
+	l1, err := s.provider.Acquire(ctx, s.T().Name())
 	s.NoError(err)
-	l2, err := s.provider.Acquire(ctx, "b")
+	l2, err := s.provider.Acquire(ctx, s.T().Name()+"-other")
 	s.NoError(err)
 	err = l1.Release()
 	s.NoError(err)

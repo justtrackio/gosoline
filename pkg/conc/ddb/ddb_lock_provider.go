@@ -2,10 +2,10 @@ package ddb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/cenkalti/backoff"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
@@ -29,7 +29,7 @@ type DdbLockItem struct {
 type ddbLockProvider struct {
 	logger          log.Logger
 	repo            ddb.Repository
-	backOff         backoff.BackOff
+	executor        exec.Executor
 	clock           clock.Clock
 	uuidSource      uuid.Uuid
 	defaultLockTime time.Duration
@@ -52,9 +52,7 @@ func NewDdbLockProvider(
 			Name:        "locks",
 		},
 		Main: ddb.MainSettings{
-			Model:              &DdbLockItem{},
-			ReadCapacityUnits:  1,
-			WriteCapacityUnits: 1,
+			Model: &DdbLockItem{},
 		},
 	}
 
@@ -69,11 +67,17 @@ func NewDdbLockProvider(
 		return nil, fmt.Errorf("can not create ddb repository: %w", err)
 	}
 
+	res := &exec.ExecutableResource{
+		Type: "ddbLock",
+		Name: settings.Domain,
+	}
+	executor := exec.NewBackoffExecutor(logger, res, &settings.Backoff, []exec.ErrorChecker{CheckDdbLockError})
+
 	return NewDdbLockProviderWithInterfaces(
 		logger,
 		repo,
-		backoff.NewExponentialBackOff(),
-		clock.NewRealClock(),
+		executor,
+		clock.Provider,
 		uuid.New(),
 		settings,
 	), nil
@@ -82,7 +86,7 @@ func NewDdbLockProvider(
 func NewDdbLockProviderWithInterfaces(
 	logger log.Logger,
 	repo ddb.Repository,
-	backOff backoff.BackOff,
+	executor exec.Executor,
 	clock clock.Clock,
 	uuidSource uuid.Uuid,
 	settings conc.DistributedLockSettings,
@@ -90,7 +94,7 @@ func NewDdbLockProviderWithInterfaces(
 	return &ddbLockProvider{
 		logger:          logger.WithChannel("ddbLock"),
 		repo:            repo,
-		backOff:         backOff,
+		executor:        executor,
 		clock:           clock,
 		uuidSource:      uuidSource,
 		defaultLockTime: settings.DefaultLockTime,
@@ -103,31 +107,27 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.Di
 	token := m.uuidSource.NewV4()
 
 	var lock *ddbLock
-	err := backoff.Retry(func() error {
+	_, err := m.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 		now := m.clock.Now()
 		// ddb does return expired items if they have not yet been deleted
-		// to account for potential clock skew, we treat items that have been expired by at least a minute as deleted
-		ttlThreshold := now.Unix() - 60
-		expires := now.Add(m.defaultLockTime).Unix()
+		// to account for potential clock skew, we treat items that have been expired by at least five seconds as deleted
+		ttlThreshold := now.Unix() - 5
+		expires := now.Add(m.defaultLockTime)
 		qb := m.repo.PutItemBuilder().
 			WithCondition(ddb.AttributeNotExists("resource").Or(ddb.Lt("ttl", ttlThreshold)))
 
 		result, err := m.repo.PutItem(ctx, qb, &DdbLockItem{
 			Resource: resource,
 			Token:    token,
-			Ttl:      expires,
+			Ttl:      expires.Unix(),
 		})
 
-		if exec.IsRequestCanceled(err) {
-			return backoff.Permanent(err)
-		}
-
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if result.ConditionalCheckFailed {
-			return conc.ErrOwnedLock
+			return nil, conc.ErrLockOwned
 		}
 
 		m.logger.WithFields(log.Fields{
@@ -138,34 +138,31 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.Di
 		lock = NewDdbLockFromInterfaces(m, m.clock, m.logger, ctx, resource, token, expires)
 		go lock.runWatcher()
 
-		return nil
-	}, m.backOff)
+		return nil, nil
+	})
 
 	return lock, err
 }
 
-func (m *ddbLockProvider) RenewLock(ctx context.Context, lockTime time.Duration, resource string, token string) error {
-	return backoff.Retry(func() error {
+func (m *ddbLockProvider) RenewLock(ctx context.Context, lockTime time.Duration, resource string, token string) (expiry time.Time, err error) {
+	_, err = m.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 		qb := m.repo.UpdateItemBuilder().
 			WithHash(resource).
 			WithCondition(ddb.AttributeExists("resource").And(ddb.Eq("token", token)))
 
+		expiry = m.clock.Now().Add(lockTime)
 		result, err := m.repo.UpdateItem(ctx, qb, &DdbLockItem{
 			Resource: resource,
 			Token:    token,
-			Ttl:      m.clock.Now().Add(lockTime).Unix(),
+			Ttl:      expiry.Unix(),
 		})
 
-		if exec.IsRequestCanceled(err) {
-			return backoff.Permanent(err)
-		}
-
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("failed to renew lock: %w", err)
 		}
 
 		if result.ConditionalCheckFailed {
-			return backoff.Permanent(conc.ErrNotOwned)
+			return nil, conc.ErrLockNotOwned
 		}
 
 		m.logger.WithFields(log.Fields{
@@ -173,8 +170,10 @@ func (m *ddbLockProvider) RenewLock(ctx context.Context, lockTime time.Duration,
 			"ddb_lock_resource": resource,
 		}).Debug(ctx, "renewed lock")
 
-		return nil
-	}, m.backOff)
+		return nil, nil
+	})
+
+	return expiry, err
 }
 
 func (m *ddbLockProvider) ReleaseLock(ctx context.Context, resource string, token string) error {
@@ -191,7 +190,7 @@ func (m *ddbLockProvider) ReleaseLock(ctx context.Context, resource string, toke
 	}
 
 	if result.ConditionalCheckFailed {
-		return conc.ErrNotOwned
+		return conc.ErrLockNotOwned
 	}
 
 	m.logger.WithFields(log.Fields{
@@ -200,4 +199,12 @@ func (m *ddbLockProvider) ReleaseLock(ctx context.Context, resource string, toke
 	}).Debug(ctx, "released lock")
 
 	return nil
+}
+
+func CheckDdbLockError(_ any, err error) exec.ErrorType {
+	if exec.IsRequestCanceled(err) || errors.Is(err, conc.ErrLockNotOwned) {
+		return exec.ErrorTypePermanent
+	}
+
+	return exec.ErrorTypeRetryable
 }
