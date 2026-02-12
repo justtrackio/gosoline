@@ -94,6 +94,16 @@ func TestCheckKafkaRetryableError(t *testing.T) {
 			err:      &net.DNSError{Err: "no such host", IsNotFound: true},
 			expected: exec.ErrorTypeRetryable,
 		},
+		{
+			name:     "no route to host",
+			err:      unix.EHOSTUNREACH,
+			expected: exec.ErrorTypeRetryable,
+		},
+		{
+			name:     "network unreachable",
+			err:      unix.ENETUNREACH,
+			expected: exec.ErrorTypeRetryable,
+		},
 	}
 
 	for _, tt := range tests {
