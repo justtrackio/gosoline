@@ -39,10 +39,6 @@ func (s *GetTopicNameTestSuite) SetupTest() {
 
 	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
 	s.NoError(err)
-
-	// Ensure namespaceParts are initialized
-	err = s.settings.AppIdentity.PadFromConfig(s.config)
-	s.NoError(err)
 }
 
 func (s *GetTopicNameTestSuite) setupConfig(settings map[string]any) {
@@ -123,10 +119,6 @@ func (s *GetTopicNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() 
 	s.setupConfig(map[string]any{
 		"cloud.aws.sns.clients.default.naming.topic_pattern": "{app.env}-{topicId}",
 	})
-
-	// Re-initialize namespaceParts with the new namespace
-	err := s.settings.AppIdentity.PadFromConfig(s.config)
-	s.NoError(err)
 
 	name, err := sns.GetTopicName(s.config, s.settings)
 	s.NoError(err)

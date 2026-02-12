@@ -119,9 +119,6 @@ type runtimeContext struct {
 
 func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (Kinsumer, error) {
 	var err error
-	if err = settings.Identity.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("can not pad settings from config: %w", err)
-	}
 	clientId := ClientId(uuid.New().NewV4())
 
 	var fullStreamName Stream

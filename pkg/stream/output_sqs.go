@@ -48,10 +48,6 @@ type sqsOutput struct {
 
 func NewSqsOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsOutputSettings) (Output, error) {
 	var err error
-	if err = settings.Identity.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("can not pad settings from config: %w", err)
-	}
-
 	var queueName string
 	var queue sqs.Queue
 

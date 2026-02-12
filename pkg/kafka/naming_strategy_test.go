@@ -45,10 +45,6 @@ func (s *KafkaNamingTestSuite) SetupTest() {
 	}
 	s.topicId = "topic_a"
 	s.groupId = "c-group-1"
-
-	// Ensure namespaceParts are initialized for appIdentity
-	err := s.appIdentity.PadFromConfig(s.config)
-	s.NoError(err)
 }
 
 func (s *KafkaNamingTestSuite) setupConfig(settings map[string]any) {
@@ -105,10 +101,6 @@ func (s *KafkaNamingTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
 	s.setupConfig(map[string]any{
 		"kafka.naming.topic_pattern": "{app.env}-{topicId}",
 	})
-
-	// Re-initialize namespaceParts with the new namespace
-	err := s.appIdentity.PadFromConfig(s.config)
-	s.NoError(err)
 
 	topic, err := kafka.BuildFullTopicName(s.config, s.appIdentity, s.topicId)
 	s.NoError(err)

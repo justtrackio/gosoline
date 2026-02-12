@@ -24,6 +24,10 @@ func BuildFullTopicName(config cfg.Config, identity cfg.AppIdentity, topicId str
 		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' to build kafka topic name: %w", err)
 	}
 
+	if err := identity.PadFromConfig(config); err != nil {
+		return "", fmt.Errorf("failed to pad app identity from config: %w", err)
+	}
+
 	name, err := identity.Format(namingSettings.TopicPattern, namingSettings.TopicDelimiter, map[string]string{
 		"topicId": topicId,
 	})

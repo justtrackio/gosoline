@@ -64,10 +64,6 @@ type sqsInput struct {
 
 func NewSqsInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsInputSettings) (*sqsInput, error) {
 	var err error
-	if err = settings.Identity.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("can not pad settings from config: %w", err)
-	}
-
 	var ok bool
 	var queue sqs.Queue
 	var queueName string

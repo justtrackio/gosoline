@@ -70,10 +70,6 @@ type recordWriter struct {
 
 func NewRecordWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *RecordWriterSettings) (RecordWriter, error) {
 	var err error
-	if err = settings.Identity.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("can not pad settings from config: %w", err)
-	}
-
 	var fullStreamName Stream
 	var client *kinesis.Client
 

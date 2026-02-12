@@ -30,7 +30,12 @@ func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream,
 		return "", fmt.Errorf("failed to read naming settings: %w", err)
 	}
 
-	name, err := settings.GetAppIdentity().Format(namingSettings.StreamPattern, namingSettings.StreamDelimiter, map[string]string{
+	identity := settings.GetAppIdentity()
+	if err := identity.PadFromConfig(config); err != nil {
+		return "", fmt.Errorf("failed to pad app identity from config: %w", err)
+	}
+
+	name, err := identity.Format(namingSettings.StreamPattern, namingSettings.StreamDelimiter, map[string]string{
 		"streamName": settings.GetStreamName(),
 	})
 	if err != nil {
@@ -48,7 +53,12 @@ func GetMetadataTableName(config cfg.Config, settings StreamNameSettingsAware) (
 		return "", fmt.Errorf("failed to read naming settings: %w", err)
 	}
 
-	name, err := settings.GetAppIdentity().Format(namingSettings.MetadataTablePattern, namingSettings.MetadataTableDelimiter)
+	identity := settings.GetAppIdentity()
+	if err := identity.PadFromConfig(config); err != nil {
+		return "", fmt.Errorf("failed to pad app identity from config: %w", err)
+	}
+
+	name, err := identity.Format(namingSettings.MetadataTablePattern, namingSettings.MetadataTableDelimiter)
 	if err != nil {
 		return "", fmt.Errorf("failed to format kinesis metadata table naming settings: %w", err)
 	}

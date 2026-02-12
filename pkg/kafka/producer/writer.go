@@ -19,10 +19,6 @@ type Writer interface {
 }
 
 func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (Writer, error) {
-	if err := settings.Identity.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("failed to pad app id from config: %w", err)
-	}
-
 	topic, err := kafka.BuildFullTopicName(config, settings.Identity, settings.TopicId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build full topic name for topic id %q: %w", settings.TopicId, err)

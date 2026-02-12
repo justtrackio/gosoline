@@ -46,7 +46,7 @@ func ReadStoreSettings(config cfg.Config, name string) (*Settings, error) {
 	}
 
 	if err := settings.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
+		return nil, fmt.Errorf("failed to pad blob store identity from config: %w", err)
 	}
 
 	if settings.Bucket == "" {

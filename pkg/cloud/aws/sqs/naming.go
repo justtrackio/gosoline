@@ -54,7 +54,12 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 		return "", fmt.Errorf("failed to unmarshal sqs naming settings for %s: %w", namingKey, err)
 	}
 
-	name, err := queueSettings.GetAppIdentity().Format(namingSettings.QueuePattern, namingSettings.QueueDelimiter, map[string]string{
+	identity := queueSettings.GetAppIdentity()
+	if err := identity.PadFromConfig(config); err != nil {
+		return "", fmt.Errorf("failed to pad app identity from config: %w", err)
+	}
+
+	name, err := identity.Format(namingSettings.QueuePattern, namingSettings.QueueDelimiter, map[string]string{
 		"queueId": queueSettings.GetQueueId(),
 	})
 	if err != nil {

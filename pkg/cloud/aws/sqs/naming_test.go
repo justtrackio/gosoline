@@ -39,10 +39,6 @@ func (s *GetSqsQueueNameTestSuite) SetupTest() {
 
 	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
 	s.NoError(err)
-
-	// Ensure namespaceParts are initialized
-	err = s.settings.AppIdentity.PadFromConfig(s.config)
-	s.NoError(err)
 }
 
 func (s *GetSqsQueueNameTestSuite) setupConfig(settings map[string]any) {
@@ -131,10 +127,6 @@ func (s *GetSqsQueueNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem
 	s.setupConfig(map[string]any{
 		"cloud.aws.sqs.clients.default.naming.queue_pattern": "{app.env}-{queueId}",
 	})
-
-	// Re-initialize namespaceParts with the new namespace
-	err := s.settings.AppIdentity.PadFromConfig(s.config)
-	s.NoError(err)
 
 	name, err := sqs.GetQueueName(s.config, s.settings)
 	s.NoError(err)

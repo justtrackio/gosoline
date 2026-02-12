@@ -196,17 +196,9 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 		Healthcheck:         configuration.Healthcheck,
 	}
 
-	if err := settings.Identity.PadFromConfig(config); err != nil {
-		return nil, nil, fmt.Errorf("failed to pad sns input settings from config: %w", err)
-	}
-
 	targets := make([]SnsInputTarget, len(configuration.Targets))
 	for i, t := range configuration.Targets {
 		targetIdentity := t.Identity
-
-		if err := targetIdentity.PadFromConfig(config); err != nil {
-			return nil, nil, fmt.Errorf("failed to pad target app identity from config: %w", err)
-		}
 
 		clientName := t.ClientName
 		if clientName == "" {
@@ -267,10 +259,6 @@ func readSqsInputSettings(config cfg.Config, name string) (*SqsInputSettings, er
 		ClientName:          configuration.ClientName,
 		Healthcheck:         configuration.Healthcheck,
 		Unmarshaller:        configuration.Unmarshaller,
-	}
-
-	if err := settings.Identity.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("failed to pad sqs input settings from config: %w", err)
 	}
 
 	return settings, nil

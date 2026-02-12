@@ -41,10 +41,6 @@ type kinesisOutput struct {
 }
 
 func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *KinesisOutputSettings) (Output, error) {
-	if err := settings.Identity.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("failed to pad settings from config: %w", err)
-	}
-
 	var err error
 	var recordWriter gosoKinesis.RecordWriter
 

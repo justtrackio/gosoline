@@ -133,10 +133,6 @@ func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log
 		return nil, nil, fmt.Errorf("failed to unmarshal kafka output settings for key %q in newKafkaOutputFromConfig: %w", key, err)
 	}
 
-	if err := configuration.Identity.PadFromConfig(config); err != nil {
-		return nil, nil, fmt.Errorf("failed to pad kafka output identity from config: %w", err)
-	}
-
 	producerSettings, err := readProducerSettings(config, name)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read producer settings for %q: %w", name, err)
@@ -206,10 +202,6 @@ func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger l
 		return nil, nil, fmt.Errorf("failed to unmarshal kinesis output settings for key %q in newKinesisOutputFromConfig: %w", key, err)
 	}
 
-	if err := configuration.Identity.PadFromConfig(config); err != nil {
-		return nil, nil, fmt.Errorf("failed to pad kinesis output identity from config: %w", err)
-	}
-
 	outputCapabilities := &OutputCapabilities{
 		IsPartitionedOutput:               true,
 		ProvidesCompression:               false,
@@ -272,10 +264,6 @@ func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 		return nil, nil, fmt.Errorf("failed to unmarshal sns output settings for key %q in newSnsOutputFromConfig: %w", key, err)
 	}
 
-	if err := configuration.Identity.PadFromConfig(config); err != nil {
-		return nil, nil, fmt.Errorf("failed to pad sns output identity from config: %w", err)
-	}
-
 	outputCapabilities := &OutputCapabilities{
 		IsPartitionedOutput:               false,
 		ProvidesCompression:               false,
@@ -313,10 +301,6 @@ func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 	configuration := SqsOutputConfiguration{}
 	if err := config.UnmarshalKey(key, &configuration); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal sqs output settings for key %q in newSqsOutputFromConfig: %w", key, err)
-	}
-
-	if err := configuration.Identity.PadFromConfig(config); err != nil {
-		return nil, nil, fmt.Errorf("failed to pad sqs output identity from config: %w", err)
 	}
 
 	outputCapabilities := &OutputCapabilities{
