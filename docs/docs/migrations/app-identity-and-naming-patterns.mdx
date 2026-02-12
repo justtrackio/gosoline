@@ -643,6 +643,100 @@ cloud:
             bucket_pattern: "{app.tags.project}-{app.env}-data"
 ```
 
+## 7. `application.Default()` Slimmed Down
+
+:::warning
+`application.Default()` has been reduced from ~22 default options to 7 basic options. Applications relying on the old defaults will silently lose functionality unless the removed options are added back explicitly.
+:::
+
+### What Changed
+
+The new `Default()` only includes these options:
+
+```go
+application.Default(
+    // These 7 options are still included by default:
+    // - WithConfigDebug
+    // - WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer)
+    // - WithConfigSanitizers(cfg.TimeSanitizer)
+    // - WithLoggerApplicationName
+    // - WithLoggerContextFieldsMessageEncoder
+    // - WithLoggerContextFieldsResolver(log.ContextFieldsResolver)
+    // - WithLoggerHandlersFromConfig
+)
+```
+
+### Removed Options
+
+The following options were removed from `Default()` and must now be added explicitly if needed:
+
+| Removed Option | Capability Lost |
+| :--- | :--- |
+| `WithConfigFile("./config.dist.yml", "yml")` | Automatic loading of `config.dist.yml` |
+| `WithConfigFileFlag` | `--config` CLI flag for specifying config files |
+| `WithHttpHealthCheck` | HTTP health check endpoint |
+| `WithMetadataServer` | HTTP server exposing build info and module metadata |
+| `WithMetricsCalculatorModule` | Metrics calculator module |
+| `WithLoggerApplicationTag("group")` | `group` tag added to all log entries |
+| `WithLoggerMetricHandler` | Logger metric handler (counts log entries by level) |
+| `WithLoggerSentryHandler(...)` | Sentry error reporting integration |
+| `WithMetrics` | Metrics collection and export |
+| `WithProducerDaemon` | Background producer daemon for stream batching |
+| `WithTaskRunner` | Task runner module |
+| `WithProfiling` | Profiling module (pprof) |
+| `WithTracing` | Distributed tracing (X-Ray / OpenTelemetry) |
+| `WithUTCClock(true)` | UTC clock as default time source |
+| `WithMiddlewareFactory(reslife.LifeCycleManagerMiddleware, ...)` | Resource lifecycle management middleware |
+
+### How to Migrate
+
+Add the options your application needs back explicitly. For a full backward-compatible setup that restores the old `Default()` behavior:
+
+```go
+import (
+    "github.com/justtrackio/gosoline/pkg/application"
+    "github.com/justtrackio/gosoline/pkg/kernel"
+    "github.com/justtrackio/gosoline/pkg/log"
+    "github.com/justtrackio/gosoline/pkg/reslife"
+)
+
+func main() {
+    application.Run(
+        // Config
+        application.WithConfigFile("./config.dist.yml", "yml"),
+        application.WithConfigFileFlag,
+
+        // Health & metadata
+        application.WithHttpHealthCheck,
+        application.WithMetadataServer,
+
+        // Logging
+        application.WithLoggerApplicationTag("group"),
+        application.WithLoggerMetricHandler,
+        application.WithLoggerSentryHandler(log.SentryContextConfigProvider, log.SentryContextEcsMetadataProvider),
+
+        // Metrics & observability
+        application.WithMetrics,
+        application.WithMetricsCalculatorModule,
+        application.WithTracing,
+        application.WithProfiling,
+
+        // Runtime
+        application.WithProducerDaemon,
+        application.WithTaskRunner,
+        application.WithUTCClock(true),
+        application.WithMiddlewareFactory(reslife.LifeCycleManagerMiddleware, kernel.PositionBeginning),
+
+        // Your modules
+        application.WithModuleFactory("my-module", NewMyModule),
+    )
+}
+```
+
+:::caution
+At a minimum, most applications will need to add back `WithConfigFile` since without it gosoline will not load any configuration file. If your application previously relied on the `--config` flag, you must also add `WithConfigFileFlag`.
+:::
+
 ## Quick Start: Minimal Backward-Compatible Configuration
 
 If you want the fastest migration path with minimal risk, add this to your configuration to preserve existing resource names:
