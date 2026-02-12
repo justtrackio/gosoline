@@ -68,3 +68,33 @@ func TestGoogleService_GetAuthRefresh_Error(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func TestGoogleService_GetAuthRefresh_OAuthError(t *testing.T) {
+	googleAuthRequest := &GoogleAuthRequest{
+		ClientId:     "ClientId",
+		ClientSecret: "ClientSecret",
+		GrantType:    "GrantType",
+		RefreshToken: "ExpiredRefreshToken",
+	}
+	errorResponse := &GoogleAuthResponse{
+		Error:            "invalid_grant",
+		ErrorDescription: "Token has been expired or revoked",
+	}
+	httpResponse, err := json.Marshal(errorResponse)
+	assert.NoError(t, err)
+
+	response := &http.Response{
+		Body: httpResponse,
+	}
+
+	httpClient := httpMocks.NewClient(t)
+	httpClient.EXPECT().NewRequest().Return(http.NewRequest(nil))
+	httpClient.EXPECT().Post(t.Context(), mock.AnythingOfType("*http.Request")).Return(response, nil)
+
+	service := NewGoogleServiceWithInterfaces(httpClient)
+	_, err = service.GetAuthRefresh(t.Context(), googleAuthRequest)
+
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "invalid_grant")
+	assert.ErrorContains(t, err, "Token has been expired or revoked")
+}

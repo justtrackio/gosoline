@@ -25,9 +25,11 @@ type GoogleTokenInfoResponse struct {
 }
 
 type GoogleAuthResponse struct {
-	AccessToken string `json:"access_token"`
-	ExpiresIn   uint   `json:"expires_in"`
-	TokenType   string `json:"token_type"`
+	AccessToken      string `json:"access_token"`
+	ExpiresIn        uint   `json:"expires_in"`
+	TokenType        string `json:"token_type"`
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
 }
 
 type GoogleAuthRequest struct {
@@ -78,9 +80,15 @@ func (service *GoogleService) GetAuthRefresh(ctx context.Context, authRequest *G
 	}
 
 	authResponse := &GoogleAuthResponse{}
-	err = json.Unmarshal(response.Body, authResponse)
+	if err = json.Unmarshal(response.Body, authResponse); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal oauth2 response: %w", err)
+	}
 
-	return authResponse, err
+	if authResponse.Error != "" {
+		return nil, fmt.Errorf("oauth2 token refresh failed: %s: %s", authResponse.Error, authResponse.ErrorDescription)
+	}
+
+	return authResponse, nil
 }
 
 func (service *GoogleService) TokenInfo(ctx context.Context, accessToken string) (*GoogleTokenInfoResponse, error) {
