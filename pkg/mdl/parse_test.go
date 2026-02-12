@@ -207,7 +207,7 @@ func (s *ParseModelIdTestSuite) TestParseModelId_ErrorInvalidPattern() {
 		{
 			name:          "empty tag key",
 			domainPattern: "{app.tags.}",
-			expectedError: "unknown placeholder",
+			expectedError: "invalid app.model_id.domain_pattern: tag key is empty for placeholder {app.tags.}",
 		},
 	}
 

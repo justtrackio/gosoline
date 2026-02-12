@@ -49,7 +49,13 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 		return "", fmt.Errorf("failed to unmarshal sns naming settings for %s: %w", namingKey, err)
 	}
 
-	return topicSettings.GetAppIdentity().Format(namingSettings.TopicPattern, namingSettings.TopicDelimiter, map[string]string{
+	name, err := topicSettings.GetAppIdentity().Format(namingSettings.TopicPattern, namingSettings.TopicDelimiter, map[string]string{
 		"topicId": topicSettings.GetTopicId(),
 	})
+
+	if err != nil {
+		return "", fmt.Errorf("sns topic naming failed: %w", err)
+	}
+
+	return name, nil
 }

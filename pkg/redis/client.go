@@ -225,9 +225,9 @@ func (c *redisClient) GetBaseClient(ctx context.Context) baseRedis.Cmdable {
 }
 
 func (c *redisClient) Exists(ctx context.Context, keys ...string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
 		return c.base.Exists(ctx, keys...)
-	})
+	}, keys...)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
@@ -268,7 +268,7 @@ func (c *redisClient) SetNX(ctx context.Context, key string, value any, expirati
 
 func (c *redisClient) MSet(ctx context.Context, pairs ...any) error {
 	_, err := c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
-		prefixedPairs, err := c.prefixInterleavedKeys(pairs)
+		prefixedPairs, err := c.prefixInterleavedKeys(pairs...)
 		if err != nil {
 			return nil, err
 		}

@@ -48,7 +48,6 @@ type ModelId struct {
 	Tags map[string]string `cfg:"tags"`
 
 	// DomainPattern is the formatting pattern read from config during PadFromConfig.
-	// This is private and not serialized; it is set by PadFromConfig.
 	DomainPattern string
 }
 
@@ -156,37 +155,80 @@ func (m *ModelId) formatDomain(domainPattern string) string {
 // All identity fields (env, app, tags) are optional. If a config key is not found,
 // the corresponding field is left unchanged. This allows patterns to determine
 // what's required (enforced at format time).
+//
+// After loading the domain pattern, this method validates that all {app.tags.<key>}
+// placeholders referenced in the pattern have corresponding entries in the merged
+// Tags map. This prevents formatDomain from silently replacing missing tags with
+// empty strings, which would produce malformed canonical IDs.
 func (m *ModelId) PadFromConfig(config ConfigProvider) error {
-	m.padEnvFromConfig(config)
-	m.padAppFromConfig(config)
-	m.mergeTagsFromConfig(config)
+	if err := m.padEnvFromConfig(config); err != nil {
+		return err
+	}
 
-	return m.loadDomainPatternFromConfig(config)
+	if err := m.padAppFromConfig(config); err != nil {
+		return err
+	}
+
+	if err := m.mergeTagsFromConfig(config); err != nil {
+		return err
+	}
+
+	if err := m.loadDomainPatternFromConfig(config); err != nil {
+		return err
+	}
+
+	if err := validatePatternTagsPresent(m.DomainPattern, m.Tags); err != nil {
+		return fmt.Errorf("invalid %s: %w", ConfigKeyModelIdDomainPattern, err)
+	}
+
+	return nil
 }
 
-func (m *ModelId) padEnvFromConfig(config ConfigProvider) {
+func (m *ModelId) padEnvFromConfig(config ConfigProvider) error {
+	var err error
+
 	if m.Env != "" {
-		return
+		return nil
 	}
 
-	if env, err := config.GetString("app.env"); err == nil {
-		m.Env = env
+	if m.Env, err = config.GetString("app.env"); err != nil {
+		return fmt.Errorf("failed to read app.env from config: %w", err)
 	}
+
+	m.Env = strings.TrimSpace(m.Env)
+
+	if m.Env == "" {
+		return fmt.Errorf("environment (app.env) is required to be not empty")
+	}
+
+	return nil
 }
 
-func (m *ModelId) padAppFromConfig(config ConfigProvider) {
+func (m *ModelId) padAppFromConfig(config ConfigProvider) error {
+	var err error
+
 	if m.App != "" {
-		return
+		return nil
 	}
 
-	if app, err := config.GetString("app.name"); err == nil {
-		m.App = app
+	if m.App, err = config.GetString("app.name"); err != nil {
+		return fmt.Errorf("failed to read app.name from config: %w", err)
 	}
+
+	m.App = strings.TrimSpace(m.App)
+
+	if m.App == "" {
+		return fmt.Errorf("app name (app.name) is required to be not empty")
+	}
+
+	return nil
 }
 
-func (m *ModelId) mergeTagsFromConfig(config ConfigProvider) {
-	configTags, err := config.GetStringMap("app.tags")
-	if err != nil {
+func (m *ModelId) mergeTagsFromConfig(config ConfigProvider) error {
+	var err error
+	var configTags map[string]any
+
+	if configTags, err = config.GetStringMap("app.tags"); err != nil {
 		configTags = make(map[string]any)
 	}
 
@@ -199,10 +241,12 @@ func (m *ModelId) mergeTagsFromConfig(config ConfigProvider) {
 			continue
 		}
 
-		if strVal, ok := v.(string); ok {
-			m.Tags[k] = strVal
+		if m.Tags[k], err = cast.ToStringE(v); err != nil {
+			return fmt.Errorf("failed to cast app.tags.%s to string: %w", k, err)
 		}
 	}
+
+	return nil
 }
 
 func (m *ModelId) loadDomainPatternFromConfig(config ConfigProvider) error {
@@ -224,10 +268,6 @@ func (m *ModelId) loadDomainPatternFromConfig(config ConfigProvider) error {
 
 	if domainPattern == "" {
 		return fmt.Errorf("model id domain pattern is empty")
-	}
-
-	if err := validateModelIdDomainPattern(domainPattern); err != nil {
-		return fmt.Errorf("invalid %s: %w", ConfigKeyModelIdDomainPattern, err)
 	}
 
 	m.DomainPattern = domainPattern
@@ -257,8 +297,18 @@ func validateModelIdDomainPattern(domainPattern string) error {
 
 	// Validate each placeholder
 	for _, ph := range placeholders {
-		if !isAllowedModelIdPlaceholder(ph) {
-			return fmt.Errorf("unknown placeholder {%s} in pattern", ph)
+		switch {
+		case ph == PlaceholderAppEnv:
+		case ph == PlaceholderAppName:
+			continue
+
+		case strings.HasPrefix(ph, PlaceholderAppTags):
+			tagKey := strings.TrimPrefix(ph, PlaceholderAppTags)
+			if tagKey == "" {
+				return fmt.Errorf("tag key is empty for placeholder {%s}", ph)
+			}
+		default:
+			return fmt.Errorf("unknown placeholder {%s} in domain pattern", ph)
 		}
 	}
 
@@ -280,21 +330,24 @@ func extractPlaceholders(pattern string) []string {
 	return placeholders
 }
 
-// isAllowedModelIdPlaceholder checks if a placeholder name is valid for ModelId patterns.
-func isAllowedModelIdPlaceholder(placeholder string) bool {
-	switch {
-	case placeholder == PlaceholderAppEnv:
-		return true
-	case placeholder == PlaceholderAppName:
-		return true
-	case strings.HasPrefix(placeholder, PlaceholderAppTags):
-		// Ensure there's actually a tag key after the prefix
-		tagKey := strings.TrimPrefix(placeholder, PlaceholderAppTags)
+// validatePatternTagsPresent checks that all {app.tags.<key>} placeholders
+// referenced in the domain pattern have corresponding entries in the tags map.
+// This prevents formatDomain from silently replacing missing tags with empty strings.
+func validatePatternTagsPresent(domainPattern string, tags map[string]string) error {
+	placeholders := extractPlaceholders(domainPattern)
 
-		return tagKey != ""
-	default:
-		return false
+	for _, ph := range placeholders {
+		if !strings.HasPrefix(ph, PlaceholderAppTags) {
+			continue
+		}
+
+		tagKey := strings.TrimPrefix(ph, PlaceholderAppTags)
+		if _, exists := tags[tagKey]; !exists {
+			return fmt.Errorf("tag %q is required by domain pattern %q but not set in tags", tagKey, domainPattern)
+		}
 	}
+
+	return nil
 }
 
 type Identifiable interface {

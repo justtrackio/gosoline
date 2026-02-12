@@ -139,7 +139,9 @@ func (i *AppIdentity) PadFromConfig(config Config) error {
 			return fmt.Errorf("app.name: %w", err)
 		}
 
-		if strings.TrimSpace(i.Name) == "" {
+		i.Name = strings.TrimSpace(i.Name)
+
+		if i.Name == "" {
 			return errors.New("app.name: value is empty")
 		}
 	}
@@ -149,7 +151,9 @@ func (i *AppIdentity) PadFromConfig(config Config) error {
 			return fmt.Errorf("app.env: %w", err)
 		}
 
-		if strings.TrimSpace(i.Env) == "" {
+		i.Env = strings.TrimSpace(i.Env)
+
+		if i.Env == "" {
 			return errors.New("app.env: value is empty")
 		}
 	}
