@@ -1,13 +1,13 @@
 app:
   env: test
   name: app
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
   tags:
     project: prj
     family: fam
     group: grp
   model_id:
     domain_pattern: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
-  namespace: "{app.tags.project}.{app.tags.family}.{app.tags.group}"
 
 
 fixtures:

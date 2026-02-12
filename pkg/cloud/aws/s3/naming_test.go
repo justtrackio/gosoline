@@ -5,90 +5,133 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
-type NamingTestSuite struct {
+func TestGetBucketNameTestSuite(t *testing.T) {
+	suite.Run(t, new(GetBucketNameTestSuite))
+}
+
+type GetBucketNameTestSuite struct {
 	suite.Suite
+	config      cfg.GosoConf
+	envProvider cfg.EnvProvider
+	settings    s3.BucketNameSettings
 }
 
-func TestNamingTestSuite(t *testing.T) {
-	suite.Run(t, new(NamingTestSuite))
+func (s *GetBucketNameTestSuite) SetupTest() {
+	s.envProvider = cfg.NewMemoryEnvProvider()
+	s.config = cfg.NewWithInterfaces(s.envProvider)
+	s.settings = s3.BucketNameSettings{
+		AppIdentity: cfg.AppIdentity{
+			Name:      "producer",
+			Env:       "test",
+			Namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
+			Tags: cfg.AppTags{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "group",
+			},
+		},
+		ClientName: "default",
+		BucketId:   "my-bucket",
+	}
+
+	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
+	s.NoError(err)
 }
 
-func (s *NamingTestSuite) TestGetBucketName() {
-	appConfig := map[string]any{
-		"env":       "test",
-		"name":      "app",
-		"namespace": "{app.tags.project}.{app.env}.{app.tags.family}",
-		"tags": map[string]any{
-			"project": "proj",
-			"family":  "fam",
-			"group":   "grp",
-		},
-	}
+func (s *GetBucketNameTestSuite) setupConfig(settings map[string]any) {
+	err := s.config.Option(cfg.WithConfigMap(settings))
+	s.NoError(err, "there should be no error on setting up the config")
+}
 
-	tests := []struct {
-		name     string
-		config   map[string]any
-		settings *s3.BucketNameSettings
-		expected string
-	}{
-		{
-			name: "default",
-			config: map[string]any{
-				"app": appConfig,
-			},
-			settings: &s3.BucketNameSettings{
-				AppIdentity: cfg.AppIdentity{},
-				ClientName:  "default",
-				BucketId:    "bucketId",
-			},
-			expected: "proj-test-fam",
-		},
-		{
-			name: "specific client",
-			config: map[string]any{
-				"app": appConfig,
-				"cloud.aws.s3.clients.specific.naming.bucket_pattern": "{app.name}-{bucketId}",
-			},
-			settings: &s3.BucketNameSettings{
-				AppIdentity: cfg.AppIdentity{
-					Env:  "test",
-					Name: "app",
-				},
-				ClientName: "specific",
-				BucketId:   "my_bucket",
-			},
-			expected: "app-my_bucket",
-		},
-		{
-			name: "default pattern override",
-			config: map[string]any{
-				"app": appConfig,
-				"cloud.aws.s3.clients.default.naming.bucket_pattern": "{app.env}-{bucketId}",
-			},
-			settings: &s3.BucketNameSettings{
-				AppIdentity: cfg.AppIdentity{
-					Env: "test",
-				},
-				ClientName: "default",
-				BucketId:   "bucketId",
-			},
-			expected: "test-bucketId",
-		},
+func (s *GetBucketNameTestSuite) setupConfigEnv(settings map[string]string) {
+	for k, v := range settings {
+		err := s.envProvider.SetEnv(k, v)
+		s.NoError(err, "there should be no error on setting up the config")
 	}
+}
 
-	for _, test := range tests {
-		s.Run(test.name, func() {
-			config := cfg.New()
-			err := config.Option(cfg.WithConfigMap(test.config))
-			assert.NoError(s.T(), err)
+func (s *GetBucketNameTestSuite) TestDefault() {
+	name, err := s3.GetBucketName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack-test-gosoline-group", name)
+}
 
-			name, err := s3.GetBucketName(config, test.settings)
-			assert.NoError(s.T(), err)
-			assert.Equal(s.T(), test.expected, name)
-		})
-	}
+func (s *GetBucketNameTestSuite) TestDefaultWithPattern() {
+	s.setupConfig(map[string]any{
+		"cloud.aws.s3.clients.default.naming.bucket_pattern": "{app.name}-{bucketId}",
+	})
+
+	name, err := s3.GetBucketName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("producer-my-bucket", name)
+}
+
+func (s *GetBucketNameTestSuite) TestSpecificClientWithPattern() {
+	s.settings.ClientName = "specific"
+	s.setupConfig(map[string]any{
+		"cloud.aws.s3.clients.specific.naming.bucket_pattern": "{app.name}-{bucketId}",
+	})
+
+	name, err := s3.GetBucketName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("producer-my-bucket", name)
+}
+
+func (s *GetBucketNameTestSuite) TestSpecificClientWithFallbackPattern() {
+	s.settings.ClientName = "specific"
+	s.setupConfig(map[string]any{
+		"cloud.aws.s3.clients.default.naming.bucket_pattern": "{app.name}-{bucketId}",
+	})
+
+	name, err := s3.GetBucketName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("producer-my-bucket", name)
+}
+
+func (s *GetBucketNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
+	s.settings.ClientName = "specific"
+	s.setupConfigEnv(map[string]string{
+		"CLOUD_AWS_S3_CLIENTS_SPECIFIC_NAMING_BUCKET_PATTERN": "!nodecode {app.name}-{bucketId}",
+	})
+
+	name, err := s3.GetBucketName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("producer-my-bucket", name)
+}
+
+func (s *GetBucketNameTestSuite) TestUnknownPlaceholderReturnsError() {
+	s.setupConfig(map[string]any{
+		"cloud.aws.s3.clients.default.naming.bucket_pattern": "{project}-{bucketId}",
+	})
+
+	_, err := s3.GetBucketName(s.config, s.settings)
+	s.Error(err)
+	s.Contains(err.Error(), "unknown placeholder {project}")
+}
+
+func (s *GetBucketNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
+	// BucketPattern doesn't use tags, so missing tags should not cause error
+	s.settings.AppIdentity.Tags = nil
+	s.settings.AppIdentity.Namespace = "{app.env}"
+	s.setupConfig(map[string]any{
+		"cloud.aws.s3.clients.default.naming.bucket_pattern": "{app.env}-{bucketId}",
+	})
+
+	name, err := s3.GetBucketName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("test-my-bucket", name)
+}
+
+func (s *GetBucketNameTestSuite) TestCustomDelimiter() {
+	s.setupConfig(map[string]any{
+		"cloud.aws.s3.clients.default.naming.bucket_pattern": "{app.namespace}.{bucketId}",
+		"cloud.aws.s3.clients.default.naming.delimiter":      ".",
+	})
+
+	name, err := s3.GetBucketName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack.test.gosoline.group.my-bucket", name)
 }

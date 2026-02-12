@@ -42,12 +42,23 @@ type AppIdentity struct {
 func (i AppIdentity) Format(pattern string, delimiter string, args ...map[string]string) (string, error) {
 	var err error
 	var values map[string]string
+	var result string
 
 	if values, err = i.ToPlaceholders(delimiter, args...); err != nil {
 		return "", fmt.Errorf("failed to get placeholders: %w", err)
 	}
 
-	return i.format(pattern, values)
+	if result, err = i.format(pattern, values); err != nil {
+		return "", err
+	}
+
+	result = strings.TrimSpace(result)
+
+	if result == "" {
+		return "", fmt.Errorf("formatted result is empty for pattern %q", pattern)
+	}
+
+	return result, nil
 }
 
 func (i AppIdentity) FormatNamespace(delimiter string, args ...map[string]string) (string, error) {
@@ -71,6 +82,10 @@ func (i AppIdentity) format(pattern string, args map[string]string) (string, err
 
 		if !ok {
 			return "", fmt.Errorf("unknown placeholder {%s} in pattern %q", key, pattern)
+		}
+
+		if value == "" {
+			return "", fmt.Errorf("placeholder {%s} resolved to an empty value in pattern %q", key, pattern)
 		}
 
 		result = strings.ReplaceAll(result, match[0], value)
@@ -163,15 +178,7 @@ func (i *AppIdentity) PadFromConfig(config Config) error {
 		return fmt.Errorf("app.tags: %w", err)
 	}
 
-	if i.Tags == nil {
-		i.Tags = make(AppTags)
-	}
-
-	for key, value := range tags {
-		if _, exists := i.Tags[key]; !exists {
-			i.Tags[key] = value
-		}
-	}
+	i.Tags = funk.MergeMaps(tags, i.Tags)
 
 	if i.Namespace == "" {
 		if namespace, err = config.Get("app.namespace", ""); err != nil {

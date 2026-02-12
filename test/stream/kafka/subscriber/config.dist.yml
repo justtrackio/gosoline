@@ -1,6 +1,7 @@
 app:
   env: test
   name: subscriber
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
   tags:
     project: justtrack
     family: gosoline

@@ -106,12 +106,12 @@ func (c *subscriberCore) GetTransformer(spec *ModelSpecification) (ModelTransfor
 }
 
 func (c *subscriberCore) GetTransformersForModel(modelId mdl.ModelId) (VersionedModelTransformers, error) {
-	str := modelId.String()
-	if _, ok := c.transformers[str]; !ok {
-		return nil, fmt.Errorf("there is no transformer for modelId %s", str)
+	modelIdString := modelId.String()
+	if _, ok := c.transformers[modelIdString]; !ok {
+		return nil, fmt.Errorf("there is no transformer for modelId %s", modelIdString)
 	}
 
-	return c.transformers[str], nil
+	return c.transformers[modelIdString], nil
 }
 
 func (c *subscriberCore) Persist(ctx context.Context, spec *ModelSpecification, model Model) error {

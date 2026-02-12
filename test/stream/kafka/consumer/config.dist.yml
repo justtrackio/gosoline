@@ -1,6 +1,7 @@
 app:
   env: test
   name: kafka-consumer-test
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
   tags:
     project: gosoline
     family: test

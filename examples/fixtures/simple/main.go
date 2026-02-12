@@ -220,13 +220,11 @@ func (m *mod) Run(ctx context.Context) error {
 }
 
 func main() {
-	app := application.Default(
+	application.Run(
 		application.WithConfigFile("config.dist.yml", "yml"),
 		application.WithFixtureSetFactory("default", fixtureSetsFactory),
 		application.WithModuleFactory("main", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return &mod{}, nil
 		}),
 	)
-
-	app.Run()
 }

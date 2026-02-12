@@ -37,6 +37,7 @@ func (s *SubscriberTestSuite) SetupSuite() []suite.Option {
 				"model_id": map[string]any{
 					"domain_pattern": "{app.tags.project}.{app.tags.family}.{app.tags.group}",
 				},
+				"namespace": "{app.tags.project}.{app.tags.family}.{app.tags.group}",
 			},
 			"cloud": map[string]any{
 				"aws": map[string]any{

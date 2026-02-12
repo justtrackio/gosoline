@@ -144,3 +144,14 @@ func (s *GetSqsQueueNameTestSuite) TestMissingRequiredTagReturnsError() {
 	s.Error(err)
 	s.Contains(err.Error(), "unknown placeholder {app.tags.project}")
 }
+
+func (s *GetSqsQueueNameTestSuite) TestCustomDelimiter() {
+	s.setupConfig(map[string]any{
+		"cloud.aws.sqs.clients.default.naming.queue_pattern":   "{app.namespace}.{queueId}",
+		"cloud.aws.sqs.clients.default.naming.queue_delimiter": ".",
+	})
+
+	name, err := sqs.GetQueueName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack.test.gosoline.group.event", name)
+}

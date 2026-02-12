@@ -144,6 +144,13 @@ func (s *AppIdentityTestSuite) TestFormatIdentifier() {
 			want:      "static-string",
 			wantErr:   false,
 		},
+		{
+			name:      "empty pattern",
+			pattern:   "",
+			delimiter: "-",
+			want:      "",
+			wantErr:   true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -206,4 +213,43 @@ func (s *AppIdentityTestSuite) TestToPlaceholders_EmptyNamespace() {
 	s.Equal("my-app", placeholders["app.name"])
 	s.Equal("dev", placeholders["app.env"])
 	s.Equal("", placeholders["app.namespace"])
+}
+
+func (s *AppIdentityTestSuite) TestFormat_EmptyTagValue() {
+	config := cfg.New(map[string]any{
+		"app": map[string]any{
+			"name": "my-app",
+			"env":  "dev",
+			"tags": map[string]any{
+				"project": "",
+			},
+		},
+	})
+
+	identity := cfg.AppIdentity{}
+	err := identity.PadFromConfig(config)
+	s.NoError(err)
+
+	_, err = identity.Format("{app.tags.project}-{app.name}", "-")
+	s.Error(err)
+	s.ErrorContains(err, "resolved to an empty value")
+}
+
+func (s *AppIdentityTestSuite) TestFormat_EmptyNamespaceInPattern() {
+	config := cfg.New(map[string]any{
+		"app": map[string]any{
+			"name": "my-app",
+			"env":  "dev",
+		},
+	})
+
+	identity := cfg.AppIdentity{}
+	err := identity.PadFromConfig(config)
+	s.NoError(err)
+
+	// When namespace is not configured and the pattern uses {app.namespace},
+	// Format should return an error because the namespace placeholder resolves to empty.
+	_, err = identity.Format("{app.namespace}-{app.name}", "-")
+	s.Error(err)
+	s.ErrorContains(err, "resolved to an empty value")
 }

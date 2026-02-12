@@ -1,6 +1,7 @@
 app:
   env: test
   name: ddb-test
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
   tags:
     project: gosoline
     family: test

@@ -13,7 +13,7 @@
 - `url_builder.go` - helper for generating absolute URLs to blobs.
 
 ## Common tasks
-- Adding a new store: configure `blob.<name>` settings.
+- Adding a new store: configure `blob.<name>` settings and register a `blob.ProvideBatchRunner("<name>")` kernel module. The store sends all operations (read, write, copy, delete) through shared channels that the `BatchRunner` drains — without it, operations deadlock.
 - Adjusting bucket naming: configure `blob.default.bucket_pattern` or `blob.<name>.bucket_pattern`.
 - Implementing new storage backend: implement `Store` interface.
 

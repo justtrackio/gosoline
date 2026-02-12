@@ -124,3 +124,14 @@ func (s *GetTopicNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() 
 	s.NoError(err)
 	s.Equal("test-event", name)
 }
+
+func (s *GetTopicNameTestSuite) TestCustomDelimiter() {
+	s.setupConfig(map[string]any{
+		"cloud.aws.sns.clients.default.naming.topic_pattern":   "{app.namespace}.{topicId}",
+		"cloud.aws.sns.clients.default.naming.topic_delimiter": ".",
+	})
+
+	name, err := sns.GetTopicName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack.test.gosoline.group.event", name)
+}

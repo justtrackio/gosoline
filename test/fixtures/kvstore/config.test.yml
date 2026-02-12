@@ -1,6 +1,7 @@
 app:
   env: test
   name: app
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
   tags:
     project: prj
     family: fam

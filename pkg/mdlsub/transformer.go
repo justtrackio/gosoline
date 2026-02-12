@@ -88,9 +88,9 @@ func initTransformers(ctx context.Context, config cfg.Config, logger log.Logger,
 			return nil, fmt.Errorf("can not create transformers: failed to pad source model for subscriber %s: %w", name, err)
 		}
 
-		modelId := settings.SourceModel.String()
-		if _, ok := transformerFactories[modelId]; !ok {
-			return nil, fmt.Errorf("can not create transformers: there is no transformer for subscriber %s with modelId %q", name, modelId)
+		modelIdString := settings.SourceModel.String()
+		if _, ok := transformerFactories[modelIdString]; !ok {
+			return nil, fmt.Errorf("can not create transformers: there is no transformer for subscriber %s with modelId %q", name, modelIdString)
 		}
 	}
 
