@@ -218,8 +218,12 @@ func GetSubscriberFQN(config cfg.Config, name string, sourceModel SubscriberMode
 		return fmt.Sprintf("subscriber-%s", name), nil
 	}
 
+	if err := sourceModel.PadFromConfig(config); err != nil {
+		return "", fmt.Errorf("failed to pad source model from config: %w", err)
+	}
+
 	domain := sourceModel.DomainString()
-	domain = strings.ReplaceAll(domain, ".", "_")
+	domain = strings.ReplaceAll(domain, ".", "-")
 
 	return fmt.Sprintf("subscriber-%s-%s", domain, sharedName), nil
 }
