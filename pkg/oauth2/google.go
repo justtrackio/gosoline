@@ -32,6 +32,20 @@ type GoogleAuthResponse struct {
 	ErrorDescription string `json:"error_description"`
 }
 
+// GoogleAuthError represents an OAuth error response from Google.
+type GoogleAuthError struct {
+	ErrorCode        string
+	ErrorDescription string
+}
+
+func (e *GoogleAuthError) Error() string {
+	if e.ErrorDescription == "" {
+		return fmt.Sprintf("oauth2 token refresh failed: %s", e.ErrorCode)
+	}
+
+	return fmt.Sprintf("oauth2 token refresh failed: %s: %s", e.ErrorCode, e.ErrorDescription)
+}
+
 type GoogleAuthRequest struct {
 	ClientId     string
 	ClientSecret string
@@ -85,7 +99,10 @@ func (service *GoogleService) GetAuthRefresh(ctx context.Context, authRequest *G
 	}
 
 	if authResponse.Error != "" {
-		return nil, fmt.Errorf("oauth2 token refresh failed: %s: %s", authResponse.Error, authResponse.ErrorDescription)
+		return nil, &GoogleAuthError{
+			ErrorCode:        authResponse.Error,
+			ErrorDescription: authResponse.ErrorDescription,
+		}
 	}
 
 	return authResponse, nil

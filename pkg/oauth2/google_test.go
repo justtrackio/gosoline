@@ -97,4 +97,9 @@ func TestGoogleService_GetAuthRefresh_OAuthError(t *testing.T) {
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "invalid_grant")
 	assert.ErrorContains(t, err, "Token has been expired or revoked")
+
+	var authError *GoogleAuthError
+	assert.ErrorAs(t, err, &authError)
+	assert.Equal(t, "invalid_grant", authError.ErrorCode)
+	assert.Equal(t, "Token has been expired or revoked", authError.ErrorDescription)
 }
