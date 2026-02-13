@@ -30,18 +30,19 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 7. Update AGENTS.md files if your changes affect package structure, APIs, or workflows documented there. Check both the root `AGENTS.md` and any package-specific `AGENTS.md` (e.g., `pkg/<package>/AGENTS.md`).
 8. Summarize work with requirement coverage, commands executed, and pending follow-ups. Never stage or commit; CI and reviewers expect clean diffs only.
 
-## GitHub MCP server workflow
-- **Repository:** `justtrackio/gosoline`. Pass owner `justtrackio` and name `gosoline` to GitHub MCP tools.
-- **Search issues/PRs:** Use `github-pull-request_formSearchQuery` to convert natural language to GitHub search syntax, then execute with `github-pull-request_doSearch`. Filter by state, labels, or assignees as needed.
-- **Inspect an issue:** Fetch issue details with `github-pull-request_issue_fetch` by supplying `repo: {owner: "justtrackio", name: "gosoline"}` and the `issueNumber`.
-- **Active PR context:** Use `github-pull-request_activePullRequest` to get details about the currently checked-out PR, including title, description, changed files, review comments, and CI status.
-- **Suggest fixes:** Use `github-pull-request_suggest-fix` to analyze an issue and propose implementation approaches.
-- **Pull requests:** Do not create PRs yourself. Use `github-pull-request_openPullRequest` to inspect the currently visible PR if needed for review context.
+## GitHub CLI workflow (gh)
+- **Repository:** `justtrackio/gosoline`.
+- **Auth & status:** `gh auth status` to confirm login.
+- **Search issues/PRs:** `gh search issues "<query>" --repo justtrackio/gosoline` and `gh search prs "<query>" --repo justtrackio/gosoline`.
+- **Inspect an issue:** `gh issue view <number> --repo justtrackio/gosoline`.
+- **Inspect a PR:** `gh pr view <number> --repo justtrackio/gosoline --web` or `--json` for structured output.
+- **CI status:** `gh pr checks <number> --repo justtrackio/gosoline`.
+- **Pull requests:** Only create PRs when asked to; prefer `gh pr create` with a summary and checklist.
 
 ## Git contribution rules
-- **Branch creation:** Never create branches manually. Let maintainers handle branch creation.
-- **Commits:** Do not run `git commit` locally. Keep your workspace uncommitted so CI and reviewers can inspect the full diff without extra history.
-- **Pull requests:** Do not create PRs yourself. Ask a maintainer to open the PR and check the branch out locally.
+- **Branch creation:** Only create branches when asked to. Else let maintainers handle branch creation.
+- **Commits:** Only commit on feature branches, never main or master.
+- **Pull requests:** Only create PRs when asked to.
 - **Merging:** Never merge PRs yourself. Leave merges to maintainers or automated pipelines.
 
 ## Command reference
