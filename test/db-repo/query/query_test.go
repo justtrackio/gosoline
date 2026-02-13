@@ -15,8 +15,8 @@ import (
 
 var TestModelMetadata = db_repo.Metadata{
 	ModelId: mdl.ModelId{
-		Application: "application",
-		Name:        "testModel",
+		App:  "application",
+		Name: "testModel",
 	},
 	TableName:  "test_models",
 	PrimaryKey: "test_models.id",

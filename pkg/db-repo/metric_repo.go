@@ -6,7 +6,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
@@ -22,7 +21,8 @@ type metricRepository struct {
 }
 
 func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRepository {
-	defaults := getDefaultRepositoryMetrics(repo.GetMetadata().ModelId)
+	modelIdString := repo.GetModelId()
+	defaults := getDefaultRepositoryMetrics(modelIdString)
 	output := metric.NewWriter(defaults...)
 
 	return &metricRepository{
@@ -105,7 +105,7 @@ func (r metricRepository) writeMetric(ctx context.Context, op string, err error,
 	})
 }
 
-func getDefaultRepositoryMetrics(modelId mdl.ModelId) []*metric.Datum {
+func getDefaultRepositoryMetrics(modelIdString string) []*metric.Datum {
 	defaults := make([]*metric.Datum, 0)
 
 	for _, op := range operations {
@@ -115,7 +115,7 @@ func getDefaultRepositoryMetrics(modelId mdl.ModelId) []*metric.Datum {
 				MetricName: name,
 				Dimensions: map[string]string{
 					"Operation": op,
-					"ModelId":   modelId.String(),
+					"ModelId":   modelIdString,
 				},
 				Unit:  metric.UnitCount,
 				Value: 0.0,
@@ -127,7 +127,7 @@ func getDefaultRepositoryMetrics(modelId mdl.ModelId) []*metric.Datum {
 			MetricName: MetricNameDbAccessLatency,
 			Dimensions: map[string]string{
 				"Operation": op,
-				"ModelId":   modelId.String(),
+				"ModelId":   modelIdString,
 			},
 			Unit:  metric.UnitMillisecondsAverage,
 			Value: 0.0,

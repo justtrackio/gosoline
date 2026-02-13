@@ -123,7 +123,7 @@ func NewClientWithSettings(ctx context.Context, config cfg.Config, logger log.Lo
 	var (
 		err        error
 		connection *sqlx.DB
-		executor   exec.Executor = exec.NewDefaultExecutor()
+		executor   = exec.NewDefaultExecutor()
 	)
 
 	if connection, err = ProvideConnectionFromSettings(ctx, logger, name, settings); err != nil {

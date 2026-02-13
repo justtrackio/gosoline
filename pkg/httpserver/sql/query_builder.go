@@ -261,7 +261,7 @@ func (qb baseQueryBuilder) buildFilterMatches(filterMatches []FilterMatch) (wher
 	args = make([]any, 0)
 
 	for _, m := range filterMatches {
-		if len(m.Dimension) == 0 {
+		if m.Dimension == "" {
 			continue
 		}
 
@@ -323,7 +323,7 @@ func (qb baseQueryBuilder) buildFilterColumn(match FilterMatch, column db_repo.F
 	args = make([]any, 0, len(match.Values))
 
 	for _, v := range match.Values {
-		switch true {
+		switch {
 		case strings.EqualFold(OpIs, match.Operator):
 			stmts = append(stmts, fmt.Sprintf("%s IS %s", column.Name(), v))
 
@@ -397,21 +397,18 @@ func (qb baseQueryBuilder) buildSetFilterColumn(match FilterMatch, column db_rep
 
 	placeholders, filteredValues, hasNull := qb.buildSetPlaceholders(match, distinctNull)
 
-	if distinctNull {
-		if hasNull {
-			if eq {
-				filter = fmt.Sprintf("(%s IN (%s) OR %s IS NULL)", column.Name(), placeholders, column.Name())
-			} else {
-				filter = fmt.Sprintf("(%s NOT IN (%s) AND %s IS NOT NULL)", column.Name(), placeholders, column.Name())
-			}
-		} else if eq {
-			filter = fmt.Sprintf("(%s IN (%s))", column.Name(), placeholders)
-		} else {
-			filter = fmt.Sprintf("(%s NOT IN (%s) OR %s IS NULL)", column.Name(), placeholders, column.Name())
-		}
-	} else if eq {
+	switch {
+	case distinctNull && hasNull && eq:
+		filter = fmt.Sprintf("(%s IN (%s) OR %s IS NULL)", column.Name(), placeholders, column.Name())
+	case distinctNull && hasNull && !eq:
+		filter = fmt.Sprintf("(%s NOT IN (%s) AND %s IS NOT NULL)", column.Name(), placeholders, column.Name())
+	case distinctNull && !hasNull && eq:
 		filter = fmt.Sprintf("(%s IN (%s))", column.Name(), placeholders)
-	} else {
+	case distinctNull && !hasNull && !eq:
+		filter = fmt.Sprintf("(%s NOT IN (%s) OR %s IS NULL)", column.Name(), placeholders, column.Name())
+	case eq:
+		filter = fmt.Sprintf("(%s IN (%s))", column.Name(), placeholders)
+	default:
 		filter = fmt.Sprintf("(%s NOT IN (%s))", column.Name(), placeholders)
 	}
 

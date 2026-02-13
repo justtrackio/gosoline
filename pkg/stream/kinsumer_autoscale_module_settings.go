@@ -14,8 +14,8 @@ func init() {
 
 type KinsumerAutoscaleModuleEcsSettings struct {
 	Client  string `cfg:"client" default:"default"`
-	Cluster string `cfg:"cluster" default:"{env}"`
-	Service string `cfg:"service" default:"{app_group}-{app_name}"`
+	Cluster string `cfg:"cluster" default:"{app.env}"`
+	Service string `cfg:"service" default:"{app.name}"`
 }
 
 type KinsumerAutoscaleModuleDynamoDbSettings struct {
@@ -23,12 +23,12 @@ type KinsumerAutoscaleModuleDynamoDbSettings struct {
 }
 
 type KinsumerAutoscaleModuleDynamoDbNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{env}-kinsumer-autoscale-leaders"`
+	Pattern string `cfg:"pattern,nodecode" default:"{app.env}-kinsumer-autoscale-leaders"`
 }
 
 type KinsumerAutoscaleModuleSettings struct {
 	Ecs            KinsumerAutoscaleModuleEcsSettings      `cfg:"ecs"`
-	Enabled        bool                                    `cfg:"enabled" default:"true"`
+	Enabled        bool                                    `cfg:"enabled" default:"false"`
 	DynamoDb       KinsumerAutoscaleModuleDynamoDbSettings `cfg:"dynamodb"`
 	LeaderElection string                                  `cfg:"leader_election" default:"kinsumer-autoscale"`
 	Orchestrator   string                                  `cfg:"orchestrator" default:"ecs"`
@@ -57,8 +57,12 @@ func readKinsumerInputSettings(config cfg.Config, kinsumerInputName string) (Kin
 }
 
 func kinsumerAutoscaleConfigPostprocessor(config cfg.GosoConf) (bool, error) {
-	settings, err := readKinsumerAutoscaleSettings(config)
-	if err != nil {
+	var err error
+	var settings KinsumerAutoscaleModuleSettings
+	var identity cfg.Identity
+	var namespace string
+
+	if settings, err = readKinsumerAutoscaleSettings(config); err != nil {
 		return false, fmt.Errorf("failed to read kinsumer autoscale settings in kinsumerAutoscaleConfigPostprocessor: %w", err)
 	}
 
@@ -73,21 +77,19 @@ func kinsumerAutoscaleConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 		return true, nil
 	}
 
-	appGroup, err := config.GetString("app_group")
-	if err != nil {
-		return false, fmt.Errorf("could not get app_group: %w", err)
+	if identity, err = cfg.GetAppIdentity(config); err != nil {
+		return false, fmt.Errorf("could not get app identity: %w", err)
 	}
 
-	appName, err := config.GetString("app_name")
-	if err != nil {
-		return false, fmt.Errorf("could not get app_name: %w", err)
+	if namespace, err = identity.FormatNamespace("-"); err != nil {
+		return false, fmt.Errorf("could not format app namespace: %w", err)
 	}
 
 	leaderElectionSettings := &ddb.DdbLeaderElectionSettings{
 		Naming: ddb.TableNamingSettings{
-			Pattern: settings.DynamoDb.Naming.Pattern,
+			TablePattern: settings.DynamoDb.Naming.Pattern,
 		},
-		GroupId:       fmt.Sprintf("%s-%s", appGroup, appName),
+		GroupId:       fmt.Sprintf("%s-%s", namespace, identity.Name),
 		LeaseDuration: time.Minute,
 	}
 

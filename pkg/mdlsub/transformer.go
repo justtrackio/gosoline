@@ -79,21 +79,18 @@ type (
 	VersionedModelTransformers              map[int]ModelTransformer
 )
 
-func initTransformers(
-	ctx context.Context,
-	config cfg.Config,
-	logger log.Logger,
-	subscriberSettings map[string]*SubscriberSettings,
-	transformerFactories TransformerMapTypeVersionFactories,
-) (ModelTransformers, error) {
+func initTransformers(ctx context.Context, config cfg.Config, logger log.Logger, subscriberSettings map[string]*SubscriberSettings, transformerFactories TransformerMapTypeVersionFactories) (ModelTransformers, error) {
 	var err error
 	transformers := make(ModelTransformers)
 
 	for name, settings := range subscriberSettings {
-		modelId := settings.SourceModel.String()
+		if err = settings.SourceModel.PadFromConfig(config); err != nil {
+			return nil, fmt.Errorf("can not create transformers: failed to pad source model for subscriber %s: %w", name, err)
+		}
 
-		if _, ok := transformerFactories[modelId]; !ok {
-			return nil, fmt.Errorf("can not create transformers: there is no transformer for subscriber %s with modelId %s", name, modelId)
+		modelIdString := settings.SourceModel.String()
+		if _, ok := transformerFactories[modelIdString]; !ok {
+			return nil, fmt.Errorf("can not create transformers: there is no transformer for subscriber %s with modelId %q", name, modelIdString)
 		}
 	}
 
@@ -102,7 +99,7 @@ func initTransformers(
 
 		for version, factory := range versionedFactories {
 			if transformers[modelId][version], err = factory(ctx, config, logger); err != nil {
-				return nil, fmt.Errorf("can not create transformer for modelId %s in version %d: %w", modelId, version, err)
+				return nil, fmt.Errorf("can not create transformer for modelId %q version %d: %w", modelId, version, err)
 			}
 		}
 	}

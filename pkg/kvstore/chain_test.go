@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
 	kvStoreMocks "github.com/justtrackio/gosoline/pkg/kvstore/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/assert"
 )
@@ -463,14 +463,15 @@ func buildTestableChainStore[T any](t *testing.T, missingCacheEnabled bool) (
 	element1 = kvStoreMocks.NewKvStore[T](t)
 
 	settings := &kvstore.Settings{
-		AppId: cfg.AppId{
-			Project:     "applike",
-			Environment: "test",
-			Family:      "gosoline",
-			Group:       "grp",
-			Application: "kvstore",
+		ModelId: mdl.ModelId{
+			Name: "test",
+			App:  "kvstore",
+			Tags: map[string]string{
+				"project": "applike",
+				"family":  "gosoline",
+				"group":   "grp",
+			},
 		},
-		Name:      "test",
 		BatchSize: 100,
 	}
 

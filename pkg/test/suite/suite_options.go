@@ -51,6 +51,12 @@ func WithComponent(settings env.ComponentBaseSettingsAware) Option {
 	}
 }
 
+func WithConfigBytes(bytes []byte, format string) Option {
+	return func(s *SuiteConfiguration) {
+		s.addEnvOption(env.WithConfigBytes(bytes, format))
+	}
+}
+
 func WithConfigDebug(s *SuiteConfiguration) {
 	s.addAppOption(application.WithConfigDebug)
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -194,7 +193,7 @@ func (s *redisKvStore[T]) flushChunk(ctx context.Context, pairs []any) error {
 	}
 
 	pipe := s.client.Pipeline().TxPipeline()
-	pipe.MSet(ctx, pairs)
+	pipe.MSet(ctx, pairs...)
 
 	// setting ttl
 	if s.settings.Ttl != 0 {
@@ -265,15 +264,6 @@ func (s *redisKvStore[T]) key(key any) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("can not cast key %T %v to string: %w", key, key, err)
 	}
-
-	keyStr = strings.Join([]string{
-		s.settings.Project,
-		s.settings.Family,
-		s.settings.Group,
-		"kvstore",
-		s.settings.Name,
-		keyStr,
-	}, "-")
 
 	return keyStr, nil
 }

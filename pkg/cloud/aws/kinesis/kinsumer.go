@@ -46,7 +46,7 @@ type SettingsInitialPosition struct {
 }
 
 type Settings struct {
-	cfg.AppId
+	Identity cfg.Identity `cfg:"identity"`
 	// Name of the kinesis client to use
 	ClientName string `cfg:"client_name" default:"default"`
 	// Name of the kinsumer
@@ -77,8 +77,8 @@ type Settings struct {
 	Healthcheck health.HealthCheckSettings `cfg:"healthcheck"`
 }
 
-func (s Settings) GetAppId() cfg.AppId {
-	return s.AppId
+func (s Settings) GetIdentity() cfg.Identity {
+	return s.Identity
 }
 
 func (s Settings) GetClientName() string {
@@ -119,9 +119,6 @@ type runtimeContext struct {
 
 func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (Kinsumer, error) {
 	var err error
-	if err = settings.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("can not pad settings from config: %w", err)
-	}
 	clientId := ClientId(uuid.New().NewV4())
 
 	var fullStreamName Stream

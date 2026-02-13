@@ -13,7 +13,7 @@ type countingBodyWriter struct {
 	writtenBytes int
 }
 
-func NewCountingBodyWriter(writer gin.ResponseWriter) (gin.ResponseWriter, *int) {
+func NewCountingBodyWriter(writer gin.ResponseWriter) (countingWriter gin.ResponseWriter, writtenBytes *int) {
 	result := &countingBodyWriter{
 		ResponseWriter: writer,
 		writtenBytes:   0,
@@ -41,7 +41,7 @@ type countingBodyReader struct {
 	readBytes int
 }
 
-func NewCountingBodyReader(reader io.ReadCloser) (io.ReadCloser, *int) {
+func NewCountingBodyReader(reader io.ReadCloser) (countingReader io.ReadCloser, readBytes *int) {
 	result := &countingBodyReader{
 		ReadCloser: reader,
 		readBytes:  0,

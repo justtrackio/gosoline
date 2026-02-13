@@ -12,7 +12,7 @@ import (
 func TestContext(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
-	tracer, err := tracing.NewAwsTracerWithInterfaces(logger, cfg.AppId{}, &tracing.XRaySettings{})
+	tracer, err := tracing.NewAwsTracerWithInterfaces(logger, cfg.Identity{}, &tracing.XRaySettings{}, "appId")
 	assert.NoError(t, err, "we should be able to get a tracer")
 
 	ctx, span := tracer.StartSpan("test")

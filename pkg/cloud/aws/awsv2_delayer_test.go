@@ -30,32 +30,7 @@ func TestBackoffDelayer_Concurrent(t *testing.T) {
 
 		for i := 0; i < 100; i++ {
 			cfn.Go(func() error {
-				delays := make([]time.Duration, 0)
-				defer func() {
-					for _, delay := range delays {
-						assert.GreaterOrEqual(t, delay, time.Duration(0))
-						assert.LessOrEqual(t, delay, time.Second*10)
-					}
-				}()
-
-				for {
-					select {
-					case <-timeout:
-						return nil
-					default:
-						for j := 0; j < 100; j++ {
-							delay, err := delayer.BackoffDelay(j, nil)
-							// we must not call any asserts here! if we do so, we lock a mutex on t, causing us to
-							// synchronize this code which should expose possible races. So instead do a cheap error
-							// check and add the delay to a local list to be checked later
-							if err != nil {
-								return err
-							}
-
-							delays = append(delays, delay)
-						}
-					}
-				}
+				return runConcurrentDelayerWorker(t, delayer, timeout)
 			})
 		}
 
@@ -70,4 +45,33 @@ func TestBackoffDelayer_Concurrent(t *testing.T) {
 	})
 
 	assert.NoError(t, cfn.Wait())
+}
+
+func runConcurrentDelayerWorker(t *testing.T, delayer *aws.BackoffDelayer, timeout <-chan struct{}) error {
+	delays := make([]time.Duration, 0)
+	defer func() {
+		for _, delay := range delays {
+			assert.GreaterOrEqual(t, delay, time.Duration(0))
+			assert.LessOrEqual(t, delay, time.Second*10)
+		}
+	}()
+
+	for {
+		select {
+		case <-timeout:
+			return nil
+		default:
+			for j := 0; j < 100; j++ {
+				delay, err := delayer.BackoffDelay(j, nil)
+				// we must not call any asserts here! if we do so, we lock a mutex on t, causing us to
+				// synchronize this code which should expose possible races. So instead do a cheap error
+				// check and add the delay to a local list to be checked later
+				if err != nil {
+					return err
+				}
+
+				delays = append(delays, delay)
+			}
+		}
+	}
 }

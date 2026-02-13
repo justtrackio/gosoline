@@ -17,12 +17,11 @@ import (
 
 type localstackComponent struct {
 	baseComponent
-	config            cfg.Config
-	logger            log.Logger
-	endpointAddress   string
-	region            string
-	ddbNamingSettings *ddb.TableNamingSettings
-	toxiproxy         *toxiproxy.Proxy
+	config          cfg.Config
+	logger          log.Logger
+	endpointAddress string
+	region          string
+	toxiproxy       *toxiproxy.Proxy
 }
 
 func (c *localstackComponent) CfgOptions() []cfg.Option {
@@ -76,8 +75,10 @@ func (c *localstackComponent) DdbRepository(settings *ddb.Settings) (ddb.Reposit
 		return nil, fmt.Errorf("failed to pad model id from config: %w", err)
 	}
 
-	tableName := ddb.GetTableNameWithSettings(settings, c.ddbNamingSettings)
-	metadataFactory := ddb.NewMetadataFactoryWithInterfaces(settings, tableName)
+	metadataFactory, err := ddb.NewMetadataFactory(c.config, settings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ddb metadata factory: %w", err)
+	}
 
 	return ddb.NewWithInterfaces(c.logger, tracer, client, metadataFactory)
 }

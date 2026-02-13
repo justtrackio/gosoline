@@ -48,10 +48,20 @@ type globalModel1 struct {
 
 func TestService_sanitizeSettings(t *testing.T) {
 	ctx := appctx.WithContainer(t.Context())
-	config := cfg.New()
+	config := cfg.New(map[string]any{
+		"app": map[string]any{
+			"name": "test-app",
+			"env":  "test",
+		},
+	})
 	logger := log.NewLogger()
 
-	settings := &ddb.Settings{}
+	// Use a static pattern since we don't have app identity configured
+	settings := &ddb.Settings{
+		TableNamingSettings: ddb.TableNamingSettings{
+			TablePattern: "test-table",
+		},
+	}
 
 	_, err := ddb.NewService(ctx, config, logger, settings)
 	assert.NoError(t, err)
@@ -228,11 +238,13 @@ func TestService_CreateTable(t *testing.T) {
 
 	settings := &ddb.Settings{
 		ModelId: mdl.ModelId{
-			Project:     "applike",
-			Environment: "test",
-			Family:      "gosoline",
-			Application: "ddb",
-			Name:        "myModel",
+			Name: "myModel",
+			Env:  "test",
+			App:  "ddb",
+			Tags: map[string]string{
+				"project": "applike",
+				"family":  "gosoline",
+			},
 		},
 		Main: ddb.MainSettings{
 			Model:              createModel{},
