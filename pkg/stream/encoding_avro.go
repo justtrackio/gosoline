@@ -28,3 +28,27 @@ func (e avroEncoder) Encode(data any) ([]byte, error) {
 func (e avroEncoder) Decode(data []byte, out any) error {
 	return avro.Unmarshal(e.schema, data, out)
 }
+
+type avroSchemaCarrierEncoder struct{}
+
+type SchemaCarrier interface {
+	Schema() avro.Schema
+}
+
+func (e avroSchemaCarrierEncoder) Encode(data any) ([]byte, error) {
+	avroData, ok := data.(SchemaCarrier)
+	if !ok {
+		return nil, fmt.Errorf("%T does not implement SchemaCarrier", data)
+	}
+
+	return avro.Marshal(avroData.Schema(), data)
+}
+
+func (e avroSchemaCarrierEncoder) Decode(data []byte, out any) error {
+	avroData, ok := out.(SchemaCarrier)
+	if !ok {
+		return fmt.Errorf("%T does not implement SchemaCarrier", data)
+	}
+
+	return avro.Unmarshal(avroData.Schema(), data, out)
+}

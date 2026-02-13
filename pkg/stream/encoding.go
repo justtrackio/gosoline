@@ -30,6 +30,7 @@ type MessageBodyEncoder interface {
 }
 
 var messageBodyEncoders = map[EncodingType]MessageBodyEncoder{
+	EncodingAvro:     new(avroSchemaCarrierEncoder),
 	EncodingJson:     new(jsonEncoder),
 	EncodingProtobuf: new(base64LayeredProtobufEncoder),
 }

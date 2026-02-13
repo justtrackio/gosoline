@@ -807,7 +807,7 @@ func (s *Struct) decodeAndCastValue(tag *StructTag, targetType reflect.Type, sou
 
 	if !tag.NoCast {
 		if sourceValue, err = s.cast(targetType, sourceValue); err != nil {
-			return nil, fmt.Errorf("provided value %v (type %T) doesn't match target type %v", sourceValue, sourceValue, targetType)
+			return nil, fmt.Errorf("provided value %v (type %T) doesn't match target type %v: %w", sourceValue, sourceValue, targetType, err)
 		}
 	}
 
