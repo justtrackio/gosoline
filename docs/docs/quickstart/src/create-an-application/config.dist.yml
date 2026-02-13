@@ -1,7 +1,0 @@
-app:
-  env: dev
-  name: hello-world
-  tags:
-    project: gosoline
-    family: get-started
-    group: grp

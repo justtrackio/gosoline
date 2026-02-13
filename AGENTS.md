@@ -10,7 +10,6 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 
 ## Repository layout
 - `pkg/`: Core framework packages (50+ packages covering application lifecycle, configuration, logging, AWS integrations, streaming, HTTP server, database, caching, etc.)
-- `docs/`: Docusaurus documentation site. Run `cd docs && yarn build` to verify.
 - `examples/`: Sample applications demonstrating gosoline features and best practices.
 - `test/`: Integration and E2E test suites (blob, cloud, conc, db, db-repo, dbx, ddb, fixtures, guard, httpserver, mdlsub, stream, suite). Requires Docker.
 - `.github/workflows/`: CI pipelines—mockery check, build, golangci-lint, unit tests, race tests, integration tests.
@@ -56,7 +55,6 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 | Lint | `golangci-lint run --build-tags integration,fixtures ./...` |
 | Mock generation | `go generate -run='mockery' ./...` |
 | Targeted test | `go test -tags fixtures,integration ./test/<package>/... -run <TestName>` |
-| Docs build | `cd docs && yarn install && yarn build` |
 
 ## Domain map
 

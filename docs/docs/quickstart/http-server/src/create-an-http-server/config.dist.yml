@@ -1,7 +1,0 @@
-app:
-  env: dev
-  name: example
-  tags:
-    project: gosoline
-    family: get-started
-    group: http-server
