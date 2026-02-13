@@ -18,7 +18,7 @@ func GetTableName(config cfg.Config, settings *Settings) (string, error) {
 		return "", fmt.Errorf("failed to get table naming settings for client %s: %w", settings.ClientName, err)
 	}
 
-	identity := cfg.AppIdentity{
+	identity := cfg.Identity{
 		Env:  settings.ModelId.Env,
 		Name: settings.ModelId.Name,
 		Tags: settings.ModelId.Tags,

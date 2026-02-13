@@ -18,7 +18,7 @@ func NormalizeKafkaName(name string) string {
 	return strings.ReplaceAll(name, "_", "-")
 }
 
-func BuildFullTopicName(config cfg.Config, identity cfg.AppIdentity, topicId string) (string, error) {
+func BuildFullTopicName(config cfg.Config, identity cfg.Identity, topicId string) (string, error) {
 	namingSettings := &KafkaNamingSettings{}
 	if err := config.UnmarshalKey("kafka.naming", namingSettings); err != nil {
 		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' to build kafka topic name: %w", err)

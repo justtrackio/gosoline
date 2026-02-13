@@ -8,7 +8,7 @@
 ## Key areas
 - Client factories live beside each service (e.g., `sqs/`, `sns/`, `kinesis/`).
 - Shared helpers (middleware, retry, credentials) at package root: `awsv2*.go`, `credentials*.go`, `error.go`.
-- Naming uses `cfg.AppIdentity.Format()` with pattern-based macros; service tests assert patterns under each subpackage's `*_test.go`.
+- Naming uses `cfg.Identity.Format()` with pattern-based macros; service tests assert patterns under each subpackage's `*_test.go`.
 
 ## Common tasks
 - Adding a service: create `pkg/cloud/aws/<service>` with client settings struct, factory, naming helpers, and unit tests following SQS/SNS patterns.
@@ -41,7 +41,7 @@
 | `ssm/` | Parameter store | `cloud.aws.ssm` |
 
 ## Naming patterns
-AWS services (SQS, SNS, Kinesis) use `cfg.AppIdentity.Format()` with pattern-based macros:
+AWS services (SQS, SNS, Kinesis) use `cfg.Identity.Format()` with pattern-based macros:
 
 | Placeholder | Description |
 |-------------|-------------|
@@ -52,9 +52,9 @@ AWS services (SQS, SNS, Kinesis) use `cfg.AppIdentity.Format()` with pattern-bas
 | `{topicId}` | SNS topic identifier |
 | `{streamName}` | Kinesis stream name |
 
-**Note:** DynamoDB table naming uses `ModelId` (from `pkg/ddb`), not `cfg.AppIdentity.Format()` directly.
+**Note:** DynamoDB table naming uses `ModelId` (from `pkg/ddb`), not `cfg.Identity.Format()` directly.
 
 ## Tips
-- Keep naming patterns using `cfg.AppIdentity.Format()` macros (`{app.tags.<key>}`, etc.)—never introduce new placeholder names without updating documentation.
+- Keep naming patterns using `cfg.Identity.Format()` macros (`{app.tags.<key>}`, etc.)—never introduce new placeholder names without updating documentation.
 - Each service subpackage usually needs fixture-backed tests; mock AWS SDK clients with generated mocks from `.mockery.yml`.
 - Avoid hard-coding regions or account IDs; rely on config keys documented in root `AGENTS.md`.

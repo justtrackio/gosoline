@@ -26,7 +26,7 @@ Gosoline's naming pattern system solves these problems by providing:
 
 ### Application Identity
 
-Every Gosoline application has an **AppIdentity** consisting of:
+Every Gosoline application has an **Identity** consisting of:
 
 - **Name** (`app.name`): The application name (e.g., `order-service`)
 - **Environment** (`app.env`): The deployment environment (e.g., `dev`, `staging`, `production`)
@@ -44,7 +44,7 @@ app:
 
 ### Global Macros
 
-Naming patterns use macro placeholders that are automatically resolved from your AppIdentity:
+Naming patterns use macro placeholders that are automatically resolved from your Identity:
 
 | Macro | Description | Example |
 |-------|-------------|---------|
@@ -99,7 +99,7 @@ app:
 Each service in Gosoline has configurable naming patterns. Here's how they're resolved:
 
 1. **Define the pattern** in your configuration with placeholders
-2. **Gosoline resolves placeholders** from AppIdentity and service-specific context
+2. **Gosoline resolves placeholders** from Identity and service-specific context
 3. **Delimiters are applied** to format the namespace appropriately
 4. **Validation ensures** all placeholders are valid (unknown placeholders cause errors)
 

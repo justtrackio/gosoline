@@ -3,10 +3,10 @@
 ## Scope
 - Provides Redis client factory, lifecycle hooks, fixtures, and helper exec functions used by cache/stream modules.
 - Wraps go-redis with gosoline config, logging, and metrics.
-- Address naming uses `cfg.AppIdentity.Format()` with pattern-based macros.
+- Address naming uses `cfg.Identity.Format()` with pattern-based macros.
 
 ## Key files
-- `settings.go` - client settings, naming patterns, and address resolution via `cfg.AppIdentity.Format()`.
+- `settings.go` - client settings, naming patterns, and address resolution via `cfg.Identity.Format()`.
 - `client.go`, `client_pipeliner.go` - construct clients from config and expose helper interfaces.
 - `dialer.go` - handles Redis connection dialing (SRV lookup and TCP).
 - `lifecycle.go`, `lifecycle_purger.go` - ensure clean startup/shutdown per module/test.
@@ -35,7 +35,7 @@ redis.default.naming.key_pattern: "{key}"
 ```
 
 ## Address naming pattern
-Redis address naming uses `cfg.AppIdentity.Format()` with pattern-based macros (resolved in `settings.go`):
+Redis address naming uses `cfg.Identity.Format()` with pattern-based macros (resolved in `settings.go`):
 ```yaml
 redis.default.naming.address_pattern: "{name}.{app.tags.group}.redis.{app.env}.{app.tags.family}"
 ```
@@ -48,7 +48,7 @@ redis.default.naming.address_pattern: "{name}.{app.tags.group}.redis.{app.env}.{
 | `{app.tags.group}` | Group tag |
 
 ## Key naming pattern
-Redis key naming uses `cfg.AppIdentity.Format()` with pattern-based macros to build a key prefix. The pattern is processed in `client.go` by stripping the `{key}` placeholder to extract a prefix, which is then expanded via `Format()` and prepended to all keys.
+Redis key naming uses `cfg.Identity.Format()` with pattern-based macros to build a key prefix. The pattern is processed in `client.go` by stripping the `{key}` placeholder to extract a prefix, which is then expanded via `Format()` and prepended to all keys.
 
 ### Configuration
 ```yaml
@@ -90,7 +90,7 @@ redis.default.naming.key_pattern: "{app.tags.region}-{app.tags.team}-{app.env}-{
 ```
 
 ### How it works in code
-The key pattern is processed in `client.go` during client initialization. The `{key}` placeholder is stripped to extract a prefix pattern, which is expanded via `AppIdentity.Format()`:
+The key pattern is processed in `client.go` during client initialization. The `{key}` placeholder is stripped to extract a prefix pattern, which is expanded via `Identity.Format()`:
 
 ```go
 // The prefix is derived from the key pattern by removing the {key} suffix.

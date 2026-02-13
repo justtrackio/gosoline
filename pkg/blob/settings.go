@@ -8,7 +8,7 @@ import (
 )
 
 type Settings struct {
-	cfg.AppIdentity
+	cfg.Identity
 	BucketId   string
 	Bucket     string `cfg:"bucket"`
 	Region     string `cfg:"region"`
@@ -16,8 +16,8 @@ type Settings struct {
 	Prefix     string `cfg:"prefix"`
 }
 
-func (s Settings) GetAppIdentity() cfg.AppIdentity {
-	return s.AppIdentity
+func (s Settings) GetIdentity() cfg.Identity {
+	return s.Identity
 }
 
 func (s Settings) GetClientName() string {

@@ -23,11 +23,11 @@ func (s *GetStreamNameTestSuite) SetupTest() {
 	s.envProvider = cfg.NewMemoryEnvProvider()
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = &kinesis.Settings{
-		Identity: cfg.AppIdentity{
+		Identity: cfg.Identity{
 			Name:      "producer",
 			Env:       "env",
 			Namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
-			Tags: cfg.AppTags{
+			Tags: cfg.Tags{
 				"project": "justtrack",
 				"family":  "gosoline",
 				"group":   "grp",

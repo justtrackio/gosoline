@@ -20,7 +20,7 @@ func init() {
 }
 
 type otelInstrumentor struct {
-	cfg.AppIdentity
+	cfg.Identity
 	name string
 }
 
@@ -44,10 +44,10 @@ func NewOtelInstrumentor(ctx context.Context, config cfg.Config, logger log.Logg
 	return NewOtelInstrumentorWithInterfaces(identity, name), nil
 }
 
-func NewOtelInstrumentorWithInterfaces(identity cfg.AppIdentity, name string) *otelInstrumentor {
+func NewOtelInstrumentorWithInterfaces(identity cfg.Identity, name string) *otelInstrumentor {
 	return &otelInstrumentor{
-		AppIdentity: identity,
-		name:        name,
+		Identity: identity,
+		name:     name,
 	}
 }
 

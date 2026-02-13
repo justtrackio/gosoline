@@ -48,10 +48,10 @@ func (s *SettingsTestSuite) TestDefault() {
 	s.NoError(err, "there should be no error reading the settings")
 
 	expected := &redis.Settings{
-		AppIdentity: cfg.AppIdentity{
+		Identity: cfg.Identity{
 			Name: "redis",
 			Env:  "env",
-			Tags: cfg.AppTags{
+			Tags: cfg.Tags{
 				"project": "gosoline",
 				"family":  "fam",
 				"group":   "grp",
@@ -94,10 +94,10 @@ func (s *SettingsTestSuite) TestDedicated() {
 	s.NoError(err, "there should be no error reading the settings")
 
 	expected := &redis.Settings{
-		AppIdentity: cfg.AppIdentity{
+		Identity: cfg.Identity{
 			Name: "redis",
 			Env:  "env",
-			Tags: cfg.AppTags{
+			Tags: cfg.Tags{
 				"project": "gosoline",
 				"family":  "fam",
 				"group":   "grp",
@@ -142,10 +142,10 @@ func (s *SettingsTestSuite) TestWithDefaults() {
 	s.NoError(err, "there should be no error reading the settings")
 
 	expected := &redis.Settings{
-		AppIdentity: cfg.AppIdentity{
+		Identity: cfg.Identity{
 			Name: "redis",
 			Env:  "env",
-			Tags: cfg.AppTags{
+			Tags: cfg.Tags{
 				"project": "gosoline",
 				"family":  "fam",
 				"group":   "grp",

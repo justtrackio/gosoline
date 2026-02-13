@@ -48,7 +48,7 @@ tracing.otel:
 ```
 
 ## Naming Pattern
-Tracing uses a naming pattern system that delegates to `cfg.AppIdentity.Format()` for placeholder expansion.
+Tracing uses a naming pattern system that delegates to `cfg.Identity.Format()` for placeholder expansion.
 - Placeholders: `{app.env}`, `{app.name}`, `{app.namespace}`, `{app.tags.<key>}`.
 - All referenced tags **must** be present in `app.tags`.
 - If a tag is missing, initialization fails with a clear error.

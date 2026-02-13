@@ -15,7 +15,7 @@ type Naming struct {
 }
 
 type Settings struct {
-	cfg.AppIdentity
+	cfg.Identity
 	DB              int    `cfg:"db" default:"0"`
 	Name            string `cfg:"name"`
 	Dialer          string `cfg:"dialer" default:"tcp"`

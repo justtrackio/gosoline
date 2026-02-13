@@ -144,8 +144,8 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 
 Gosoline uses a macro system for consistent resource naming across AWS services and data stores.
 
-### AppIdentity macros (cfg package)
-Used in queue/topic/stream/namespace names via `cfg.AppIdentity.Format()`:
+### Identity macros (cfg package)
+Used in queue/topic/stream/namespace names via `cfg.Identity.Format()`:
 - `{app.env}` - environment from `app.env` config
 - `{app.name}` - application name from `app.name` config
 - `{app.tags.<key>}` - any tag value (fully dynamic)
@@ -175,7 +175,7 @@ For canonical model IDs (used in message routing, etc.), the pattern works diffe
   - `prefix-{app.env}` -> `prefix-production.myModel`
   - `{app.tags.project}-{app.env}` -> `myProject-production.myModel`
 
-Note: DynamoDB table naming uses ModelId-based macros (legacy style), not AppIdentity macros.
+Note: DynamoDB table naming uses ModelId-based macros (legacy style), not Identity macros.
 
 ### Example configs
 ```yaml

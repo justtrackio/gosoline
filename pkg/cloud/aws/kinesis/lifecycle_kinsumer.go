@@ -14,14 +14,14 @@ const (
 )
 
 type KinsumerMetadata struct {
-	AwsClientName  string          `json:"aws_client_name"`
-	ClientId       ClientId        `json:"client_id"`
-	Name           string          `json:"name"`
-	OpenShardCount int             `json:"open_shard_count"`
-	StreamAppId    cfg.AppIdentity `json:"stream_app_id"`
-	StreamArn      string          `json:"stream_arn"`
-	StreamName     string          `json:"stream_name"`
-	StreamNameFull Stream          `json:"stream_name_full"`
+	AwsClientName  string       `json:"aws_client_name"`
+	ClientId       ClientId     `json:"client_id"`
+	Name           string       `json:"name"`
+	OpenShardCount int          `json:"open_shard_count"`
+	StreamAppId    cfg.Identity `json:"stream_app_id"`
+	StreamArn      string       `json:"stream_arn"`
+	StreamName     string       `json:"stream_name"`
+	StreamNameFull Stream       `json:"stream_name_full"`
 }
 
 type lifecycleManagerKinsumer struct {

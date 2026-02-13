@@ -2,12 +2,12 @@
 
 ## Scope
 - Central configuration loader/merger used by every package.
-- Provides `AppIdentity` handling + naming template expansion.
+- Provides `Identity` handling + naming template expansion.
 - Exposes decoding helpers and merge strategies for YAML/JSON/env sources.
 
 ## Key files
 - `config.go`, `read.go` - provider interfaces, load & merge process.
-- `application_identifiers.go` - `AppIdentity`, `Tags`, identity loading, validation, and `Format()` method for pattern expansion.
+- `application_identifiers.go` - `Identity`, `Tags`, identity loading, validation, and `Format()` method for pattern expansion.
 - `merge*.go`, `options.go` - precedence rules and customization points.
 - `postprocessor.go`, `sanitizer.go` - value normalization and validation hooks.
 
@@ -21,9 +21,9 @@
 - `go test ./pkg/cfg` is mandatory after any change.
 - For naming work, ensure downstream packages pass: `go test ./pkg/{cloud/aws/sqs,cloud/aws/sns,cloud/aws/kinesis,kafka,redis,...}`.
 
-## AppIdentity
+## Identity
 
-`AppIdentity` replaces the legacy `AppId` struct with a dynamic tag-based system.
+`Identity` replaces the legacy `AppId` struct with a dynamic tag-based system.
 
 ### Fields
 | Field | Config Key | Required | Description |
@@ -34,19 +34,19 @@
 
 ### Loading identity
 ```go
-identity, err := cfg.GetAppIdentity(config)
+identity, err := cfg.GetIdentity(config)
 ```
 
 ### Padding identity from config
 ```go
-// Fill empty fields of AppIdentity from config
-// Useful when you have a partially populated AppIdentity
+// Fill empty fields of Identity from config
+// Useful when you have a partially populated Identity
 err := identity.PadFromConfig(config)
 ```
 
-## NamingTemplate via AppIdentity.Format()
+## NamingTemplate via Identity.Format()
 
-`AppIdentity.Format()` provides placeholder validation and expansion for resource naming patterns.
+`Identity.Format()` provides placeholder validation and expansion for resource naming patterns.
 
 ### Identity placeholders
 | Placeholder | Source | Description |
@@ -89,15 +89,15 @@ Tags are only required if the naming pattern uses them:
 
 ## Related packages
 - `pkg/mdl` - ModelId with its own macro system for data model naming
-- `pkg/ddb` - DynamoDB table naming uses AppIdentity.Format() with ModelId.ToMap()
-- `pkg/cloud/aws/sqs` - SQS queue naming uses AppIdentity.Format()
-- `pkg/cloud/aws/sns` - SNS topic naming uses AppIdentity.Format()
-- `pkg/cloud/aws/kinesis` - Kinesis stream naming uses AppIdentity.Format()
-- `pkg/kafka` - Kafka topic/group naming uses AppIdentity.Format()
-- `pkg/redis` - Redis address/key naming uses AppIdentity.Format()
+- `pkg/ddb` - DynamoDB table naming uses Identity.Format() with ModelId.ToMap()
+- `pkg/cloud/aws/sqs` - SQS queue naming uses Identity.Format()
+- `pkg/cloud/aws/sns` - SNS topic naming uses Identity.Format()
+- `pkg/cloud/aws/kinesis` - Kinesis stream naming uses Identity.Format()
+- `pkg/kafka` - Kafka topic/group naming uses Identity.Format()
+- `pkg/redis` - Redis address/key naming uses Identity.Format()
 
 ## Tips
 - Never call `Config.GetString` when you need raw template values; prefer `Get` + type conversion.
 - Document new config keys in package-level README or parent AGENT so other agents can discover them.
 - When adding interfaces, update `.mockery.yml` before running `go generate -run='mockery' ./...`.
-- Old placeholders like `{env}`, `{project}`, `{family}`, `{group}`, `{app}` are NOT supported in AppIdentity.Format().
+- Old placeholders like `{env}`, `{project}`, `{family}`, `{group}`, `{app}` are NOT supported in Identity.Format().

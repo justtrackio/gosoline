@@ -29,7 +29,7 @@ type SentryHubSettings struct {
 // NewSentryHub creates a new SentryHub using configuration from the "app_id" settings.
 func NewSentryHub(config cfg.Config) (SentryHub, error) {
 	var err error
-	var identity cfg.AppIdentity
+	var identity cfg.Identity
 	var namespace string
 
 	if identity, err = cfg.GetAppIdentity(config); err != nil {

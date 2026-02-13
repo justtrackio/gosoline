@@ -17,7 +17,7 @@ func calculatorConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 	var err error
 	var metricSettings *metric.Settings
 	var calculatorSettings *CalculatorSettings
-	var identity cfg.AppIdentity
+	var identity cfg.Identity
 	var namespace string
 
 	if metricSettings, err = metric.GetMetricSettings(config); err != nil {

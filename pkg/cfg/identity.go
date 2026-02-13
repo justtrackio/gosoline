@@ -15,10 +15,10 @@ var (
 	namespaceRegex = regexp.MustCompile(`\{[^}]+\}|[^.]+`)
 )
 
-// AppTags is a map of tag key-value pairs with helper methods.
-type AppTags map[string]string
+// Tags is a map of tag key-value pairs with helper methods.
+type Tags map[string]string
 
-// AppIdentity represents the resolved application identity.
+// Identity represents the resolved application identity.
 // It is used throughout gosoline for resource naming and identification.
 //
 // Configuration structure:
@@ -31,15 +31,15 @@ type AppTags map[string]string
 //	    family: ...
 //	    group: ...
 //	    custom: ...      # any additional tags
-type AppIdentity struct {
-	Env            string  `cfg:"env" json:"env" yaml:"env"`
-	Name           string  `cfg:"name" json:"name" yaml:"name"`
-	Tags           AppTags `cfg:"tags" json:"tags" yaml:"tags"`
-	Namespace      string  `cfg:"namespace,nodecode" json:"-" yaml:"-"`
+type Identity struct {
+	Env            string `cfg:"env" json:"env" yaml:"env"`
+	Name           string `cfg:"name" json:"name" yaml:"name"`
+	Tags           Tags   `cfg:"tags" json:"tags" yaml:"tags"`
+	Namespace      string `cfg:"namespace,nodecode" json:"-" yaml:"-"`
 	namespaceParts []string
 }
 
-func (i AppIdentity) Format(pattern string, delimiter string, args ...map[string]string) (string, error) {
+func (i Identity) Format(pattern string, delimiter string, args ...map[string]string) (string, error) {
 	var err error
 	var values map[string]string
 	var result string
@@ -61,7 +61,7 @@ func (i AppIdentity) Format(pattern string, delimiter string, args ...map[string
 	return result, nil
 }
 
-func (i AppIdentity) FormatNamespace(delimiter string, args ...map[string]string) (string, error) {
+func (i Identity) FormatNamespace(delimiter string, args ...map[string]string) (string, error) {
 	var err error
 	var values map[string]string
 
@@ -72,7 +72,7 @@ func (i AppIdentity) FormatNamespace(delimiter string, args ...map[string]string
 	return values["app.namespace"], nil
 }
 
-func (i AppIdentity) format(pattern string, args map[string]string) (string, error) {
+func (i Identity) format(pattern string, args map[string]string) (string, error) {
 	result := pattern
 	matches := patternRegex.FindAllStringSubmatch(pattern, -1)
 
@@ -94,7 +94,7 @@ func (i AppIdentity) format(pattern string, args map[string]string) (string, err
 	return result, nil
 }
 
-func (i AppIdentity) ToPlaceholders(delimiter string, args ...map[string]string) (map[string]string, error) {
+func (i Identity) ToPlaceholders(delimiter string, args ...map[string]string) (map[string]string, error) {
 	var err error
 
 	values := map[string]string{
@@ -123,17 +123,17 @@ func (i AppIdentity) ToPlaceholders(delimiter string, args ...map[string]string)
 // This function requires:
 //   - "app.name" to be present and non-empty
 //   - "app.env" to be present and non-empty
-func GetAppIdentity(config Config) (AppIdentity, error) {
-	identity := &AppIdentity{}
+func GetAppIdentity(config Config) (Identity, error) {
+	identity := &Identity{}
 
 	if err := identity.PadFromConfig(config); err != nil {
-		return AppIdentity{}, fmt.Errorf("failed to pad app identity from config: %w", err)
+		return Identity{}, fmt.Errorf("failed to pad app identity from config: %w", err)
 	}
 
 	return *identity, nil
 }
 
-// PadFromConfig fills in empty fields of AppIdentity from config.
+// PadFromConfig fills in empty fields of Identity from config.
 //
 // Behavior:
 //   - If Name is empty, fills from app.name
@@ -141,9 +141,9 @@ func GetAppIdentity(config Config) (AppIdentity, error) {
 //   - If Tags is nil or empty, fills from app.tags
 //   - Existing tag keys are NOT overwritten; only missing keys are added
 //
-// This method is useful when you have a partially populated AppIdentity
+// This method is useful when you have a partially populated Identity
 // (e.g., from struct tag defaults) and want to fill remaining fields.
-func (i *AppIdentity) PadFromConfig(config Config) error {
+func (i *Identity) PadFromConfig(config Config) error {
 	var err error
 	var tags map[string]string
 	var namespace any

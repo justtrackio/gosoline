@@ -14,7 +14,7 @@ import (
 var _ AcknowledgeableInput = &snsInput{}
 
 type SnsInputSettings struct {
-	Identity            cfg.AppIdentity            `cfg:"identity"`
+	Identity            cfg.Identity               `cfg:"identity"`
 	QueueId             string                     `cfg:"queue_id"`
 	MaxNumberOfMessages int32                      `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
 	WaitTime            int32                      `cfg:"wait_time"`
@@ -25,7 +25,7 @@ type SnsInputSettings struct {
 	Healthcheck         health.HealthCheckSettings `cfg:"healthcheck"`
 }
 
-func (s SnsInputSettings) GetAppIdentity() cfg.AppIdentity {
+func (s SnsInputSettings) GetIdentity() cfg.Identity {
 	return s.Identity
 }
 
@@ -42,13 +42,13 @@ func (s SnsInputSettings) IsFifoEnabled() bool {
 }
 
 type SnsInputTarget struct {
-	Identity   cfg.AppIdentity
+	Identity   cfg.Identity
 	TopicId    string
 	Attributes map[string]string
 	ClientName string
 }
 
-func (t SnsInputTarget) GetAppIdentity() cfg.AppIdentity {
+func (t SnsInputTarget) GetIdentity() cfg.Identity {
 	return t.Identity
 }
 

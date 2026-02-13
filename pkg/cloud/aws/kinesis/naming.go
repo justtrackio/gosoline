@@ -8,7 +8,7 @@ import (
 )
 
 type StreamNameSettingsAware interface {
-	GetAppIdentity() cfg.AppIdentity
+	GetIdentity() cfg.Identity
 	GetClientName() string
 	GetStreamName() string
 }
@@ -30,7 +30,7 @@ func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream,
 		return "", fmt.Errorf("failed to read naming settings: %w", err)
 	}
 
-	identity := settings.GetAppIdentity()
+	identity := settings.GetIdentity()
 	if err := identity.PadFromConfig(config); err != nil {
 		return "", fmt.Errorf("failed to pad app identity from config: %w", err)
 	}
@@ -53,7 +53,7 @@ func GetMetadataTableName(config cfg.Config, settings StreamNameSettingsAware) (
 		return "", fmt.Errorf("failed to read naming settings: %w", err)
 	}
 
-	identity := settings.GetAppIdentity()
+	identity := settings.GetIdentity()
 	if err := identity.PadFromConfig(config); err != nil {
 		return "", fmt.Errorf("failed to pad app identity from config: %w", err)
 	}

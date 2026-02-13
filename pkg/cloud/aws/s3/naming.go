@@ -8,19 +8,19 @@ import (
 )
 
 type BucketNameSettingsAware interface {
-	GetAppIdentity() cfg.AppIdentity
+	GetIdentity() cfg.Identity
 	GetClientName() string
 	GetBucketId() string
 }
 
 type BucketNameSettings struct {
-	AppIdentity cfg.AppIdentity
-	ClientName  string
-	BucketId    string
+	Identity   cfg.Identity
+	ClientName string
+	BucketId   string
 }
 
-func (s BucketNameSettings) GetAppIdentity() cfg.AppIdentity {
-	return s.AppIdentity
+func (s BucketNameSettings) GetIdentity() cfg.Identity {
+	return s.Identity
 }
 
 func (s BucketNameSettings) GetClientName() string {
@@ -49,7 +49,7 @@ func GetBucketName(config cfg.Config, settings BucketNameSettingsAware) (string,
 		return "", fmt.Errorf("failed to unmarshal s3 naming settings for %s: %w", namingKey, err)
 	}
 
-	identity := settings.GetAppIdentity()
+	identity := settings.GetIdentity()
 	if err := identity.PadFromConfig(config); err != nil {
 		return "", fmt.Errorf("failed to pad app identity from config: %w", err)
 	}

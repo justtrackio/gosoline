@@ -20,7 +20,7 @@ var (
 )
 
 type SqsInputSettings struct {
-	Identity            cfg.AppIdentity            `cfg:"identity"`
+	Identity            cfg.Identity               `cfg:"identity"`
 	QueueId             string                     `cfg:"queue_id"`
 	MaxNumberOfMessages int32                      `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
 	WaitTime            int32                      `cfg:"wait_time"`
@@ -33,7 +33,7 @@ type SqsInputSettings struct {
 	Healthcheck         health.HealthCheckSettings `cfg:"healthcheck"`
 }
 
-func (s SqsInputSettings) GetAppIdentity() cfg.AppIdentity {
+func (s SqsInputSettings) GetIdentity() cfg.Identity {
 	return s.Identity
 }
 

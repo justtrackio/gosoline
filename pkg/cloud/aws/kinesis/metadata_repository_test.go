@@ -31,7 +31,7 @@ type metadataRepositoryTestSuite struct {
 	checkpointNamespace string
 	repo                *ddbMocks.Repository
 	settings            kinesis.Settings
-	appIdentity         cfg.AppIdentity
+	identity            cfg.Identity
 	clock               clock.FakeClock
 	metadataRepository  kinesis.MetadataRepository
 }
@@ -55,10 +55,10 @@ func (s *metadataRepositoryTestSuite) SetupTest() {
 		PersistFrequency:         time.Second * 10,
 		ClientExpirationPeriods:  5,
 	}
-	s.appIdentity = cfg.AppIdentity{
+	s.identity = cfg.Identity{
 		Name: "test-suite",
 		Env:  "test",
-		Tags: cfg.AppTags{
+		Tags: cfg.Tags{
 			"project": "gosoline",
 			"family":  "metadata-repository",
 		},

@@ -8,21 +8,21 @@ import (
 )
 
 type QueueNameSettingsAware interface {
-	GetAppIdentity() cfg.AppIdentity
+	GetIdentity() cfg.Identity
 	GetClientName() string
 	GetQueueId() string
 	IsFifoEnabled() bool
 }
 
 type QueueNameSettings struct {
-	AppIdentity cfg.AppIdentity
+	Identity    cfg.Identity
 	ClientName  string
 	FifoEnabled bool
 	QueueId     string
 }
 
-func (s QueueNameSettings) GetAppIdentity() cfg.AppIdentity {
-	return s.AppIdentity
+func (s QueueNameSettings) GetIdentity() cfg.Identity {
+	return s.Identity
 }
 
 func (s QueueNameSettings) GetClientName() string {
@@ -54,7 +54,7 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 		return "", fmt.Errorf("failed to unmarshal sqs naming settings for %s: %w", namingKey, err)
 	}
 
-	identity := queueSettings.GetAppIdentity()
+	identity := queueSettings.GetIdentity()
 	if err := identity.PadFromConfig(config); err != nil {
 		return "", fmt.Errorf("failed to pad app identity from config: %w", err)
 	}

@@ -269,7 +269,7 @@ func (s *ReadStoreSettingsTestSuite) TestReadStoreSettings_GettersWork() {
 	s.Equal("my_store", settings.GetBucketId())
 	s.Equal("test_client", settings.GetClientName())
 
-	appIdentity := settings.GetAppIdentity()
-	s.Equal("test", appIdentity.Env)
-	s.Equal("blob-app", appIdentity.Name)
+	identity := settings.GetIdentity()
+	s.Equal("test", identity.Env)
+	s.Equal("blob-app", identity.Name)
 }

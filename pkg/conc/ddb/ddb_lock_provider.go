@@ -40,9 +40,9 @@ func NewDdbLockProvider(ctx context.Context, config cfg.Config, logger log.Logge
 	ddbSettings := &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Name: "locks",
-			Env:  settings.Env,
-			App:  settings.Name,
-			Tags: settings.Tags,
+			Env:  settings.Identity.Env,
+			App:  settings.Identity.Name,
+			Tags: settings.Identity.Tags,
 		},
 		Main: ddb.MainSettings{
 			Model:              &DdbLockItem{},

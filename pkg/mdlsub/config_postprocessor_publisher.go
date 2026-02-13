@@ -146,10 +146,10 @@ func handlePublisherOutputTypeKafka(config cfg.Config, publisherSettings *Publis
 		return nil, fmt.Errorf("can not unmarshal kafka output settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
 	}
 
-	outputSettings.Identity = cfg.AppIdentity{
+	outputSettings.Identity = cfg.Identity{
 		Env:  publisherSettings.ModelId.Env,
 		Name: publisherSettings.ModelId.App,
-		Tags: cfg.AppTags(publisherSettings.ModelId.Tags),
+		Tags: cfg.Tags(publisherSettings.ModelId.Tags),
 	}
 	outputSettings.TopicId = publisherSettings.ModelId.Name
 	outputSettings.Tracing.Enabled = false
@@ -172,10 +172,10 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 		return nil, fmt.Errorf("can not unmarshal kinesis output settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
 	}
 
-	outputSettings.Identity = cfg.AppIdentity{
+	outputSettings.Identity = cfg.Identity{
 		Env:  publisherSettings.ModelId.Env,
 		Name: publisherSettings.ModelId.App,
-		Tags: cfg.AppTags(publisherSettings.ModelId.Tags),
+		Tags: cfg.Tags(publisherSettings.ModelId.Tags),
 	}
 	outputSettings.ClientName = clientName
 	outputSettings.StreamName = publisherSettings.ModelId.Name
@@ -190,10 +190,10 @@ func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *Publishe
 		return nil, fmt.Errorf("can not unmarshal sns output settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
 	}
 
-	outputSettings.Identity = cfg.AppIdentity{
+	outputSettings.Identity = cfg.Identity{
 		Env:  publisherSettings.ModelId.Env,
 		Name: publisherSettings.ModelId.App,
-		Tags: cfg.AppTags(publisherSettings.ModelId.Tags),
+		Tags: cfg.Tags(publisherSettings.ModelId.Tags),
 	}
 	outputSettings.TopicId = publisherSettings.ModelId.Name
 	outputSettings.ClientName = clientName
@@ -211,10 +211,10 @@ func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *Publishe
 		return nil, fmt.Errorf("can not unmarshal sqs output settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
 	}
 
-	outputSettings.Identity = cfg.AppIdentity{
+	outputSettings.Identity = cfg.Identity{
 		Env:  publisherSettings.ModelId.Env,
 		Name: publisherSettings.ModelId.App,
-		Tags: cfg.AppTags(publisherSettings.ModelId.Tags),
+		Tags: cfg.Tags(publisherSettings.ModelId.Tags),
 	}
 	outputSettings.QueueId = publisherSettings.ModelId.Name
 	outputSettings.ClientName = clientName

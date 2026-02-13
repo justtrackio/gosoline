@@ -21,7 +21,7 @@ var dialers = map[string]Dialer{
 
 type (
 	Dialer           func(logger log.Logger, settings *Settings) func(context.Context, string, string) (net.Conn, error)
-	SrvNamingFactory func(identity cfg.AppIdentity, name string) string
+	SrvNamingFactory func(identity cfg.Identity, name string) string
 )
 
 func dialerSrv(logger log.Logger, settings *Settings) func(ctx context.Context, network, addr string) (net.Conn, error) {

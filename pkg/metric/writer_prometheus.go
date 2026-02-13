@@ -69,7 +69,7 @@ func ProvidePrometheusWriter(ctx context.Context, config cfg.Config, logger log.
 func NewPrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	var err error
 	var settings *PrometheusSettings
-	var identity cfg.AppIdentity
+	var identity cfg.Identity
 	var namespace string
 	var registry *prometheus.Registry
 

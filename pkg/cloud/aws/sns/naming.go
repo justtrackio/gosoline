@@ -8,19 +8,19 @@ import (
 )
 
 type TopicNameSettingsAware interface {
-	GetAppIdentity() cfg.AppIdentity
+	GetIdentity() cfg.Identity
 	GetClientName() string
 	GetTopicId() string
 }
 
 type TopicNameSettings struct {
-	AppIdentity cfg.AppIdentity
-	ClientName  string
-	TopicId     string
+	Identity   cfg.Identity
+	ClientName string
+	TopicId    string
 }
 
-func (s TopicNameSettings) GetAppIdentity() cfg.AppIdentity {
-	return s.AppIdentity
+func (s TopicNameSettings) GetIdentity() cfg.Identity {
+	return s.Identity
 }
 
 func (s TopicNameSettings) GetClientName() string {
@@ -49,7 +49,7 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 		return "", fmt.Errorf("failed to unmarshal sns naming settings for %s: %w", namingKey, err)
 	}
 
-	identity := topicSettings.GetAppIdentity()
+	identity := topicSettings.GetIdentity()
 	if err := identity.PadFromConfig(config); err != nil {
 		return "", fmt.Errorf("failed to pad app identity from config: %w", err)
 	}

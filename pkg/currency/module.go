@@ -43,13 +43,13 @@ func NewCurrencyModule() kernel.ModuleFactory {
 			return nil, fmt.Errorf("can not create updater: %w", err)
 		}
 
-		appIdentity, err := cfg.GetAppIdentity(config)
+		identity, err := cfg.GetAppIdentity(config)
 		if err != nil {
 			return nil, fmt.Errorf("can not get app identity from config: %w", err)
 		}
 
 		lockProvider, err := ddb.NewDdbLockProvider(ctx, config, logger, conc.DistributedLockSettings{
-			AppIdentity:     appIdentity,
+			Identity:        identity,
 			DefaultLockTime: 3 * time.Minute,
 			Domain:          "currency",
 		})

@@ -111,10 +111,10 @@ func newInMemoryOutputFromConfig(_ context.Context, _ cfg.Config, _ log.Logger, 
 
 type KafkaOutputConfiguration struct {
 	BaseOutputConfiguration
-	Type       string          `cfg:"type" default:"kafka"`
-	Identity   cfg.AppIdentity `cfg:"identity"`
-	TopicId    string          `cfg:"topic_id"`
-	Connection string          `cfg:"connection" default:"default"`
+	Type       string       `cfg:"type" default:"kafka"`
+	Identity   cfg.Identity `cfg:"identity"`
+	TopicId    string       `cfg:"topic_id"`
+	Connection string       `cfg:"connection" default:"default"`
 
 	// LingerTimeout is the max time the producer will wait for new records before flushing the current batch.
 	// When set to 0s, batches will be sent out as fast as possible (or when the size limits are reached with enough back pressure).
@@ -189,10 +189,10 @@ func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log
 
 type KinesisOutputConfiguration struct {
 	BaseOutputConfiguration
-	Type       string          `cfg:"type" default:"kinesis"`
-	Identity   cfg.AppIdentity `cfg:"identity"`
-	ClientName string          `cfg:"client_name" default:"default"`
-	StreamName string          `cfg:"stream_name"`
+	Type       string       `cfg:"type" default:"kinesis"`
+	Identity   cfg.Identity `cfg:"identity"`
+	ClientName string       `cfg:"client_name" default:"default"`
+	StreamName string       `cfg:"stream_name"`
 }
 
 func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
@@ -251,10 +251,10 @@ func newRedisListOutputFromConfig(ctx context.Context, config cfg.Config, logger
 
 type SnsOutputConfiguration struct {
 	BaseOutputConfiguration
-	Type       string          `cfg:"type" default:"sns"`
-	Identity   cfg.AppIdentity `cfg:"identity"`
-	TopicId    string          `cfg:"topic_id" validate:"required"`
-	ClientName string          `cfg:"client_name" default:"default"`
+	Type       string       `cfg:"type" default:"sns"`
+	Identity   cfg.Identity `cfg:"identity"`
+	TopicId    string       `cfg:"topic_id" validate:"required"`
+	ClientName string       `cfg:"client_name" default:"default"`
 }
 
 func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
@@ -288,7 +288,7 @@ func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 type SqsOutputConfiguration struct {
 	BaseOutputConfiguration
 	Type              string            `cfg:"type" default:"sqs"`
-	Identity          cfg.AppIdentity   `cfg:"identity"`
+	Identity          cfg.Identity      `cfg:"identity"`
 	QueueId           string            `cfg:"queue_id" validate:"required"`
 	VisibilityTimeout int               `cfg:"visibility_timeout" default:"30" validate:"gt=0"`
 	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`

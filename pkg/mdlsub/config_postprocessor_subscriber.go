@@ -128,10 +128,10 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 	inputSettings.ConsumerId = consumerId
 	inputSettings.Targets = []stream.SnsInputTargetConfiguration{
 		{
-			Identity: cfg.AppIdentity{
+			Identity: cfg.Identity{
 				Env:  sourceModel.Env,
 				Name: sourceModel.App,
-				Tags: cfg.AppTags(sourceModel.Tags),
+				Tags: cfg.Tags(sourceModel.Tags),
 			},
 			TopicId: topicId,
 		},

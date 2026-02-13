@@ -23,7 +23,7 @@ func (s *GetTopicNameTestSuite) SetupTest() {
 	s.envProvider = cfg.NewMemoryEnvProvider()
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = sns.TopicNameSettings{
-		AppIdentity: cfg.AppIdentity{
+		Identity: cfg.Identity{
 			Name:      "producer",
 			Env:       "test",
 			Namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
@@ -114,8 +114,8 @@ func (s *GetTopicNameTestSuite) TestUnknownPlaceholderReturnsError() {
 
 func (s *GetTopicNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
 	// TopicPattern doesn't use tags, so missing tags should not cause error
-	s.settings.AppIdentity.Tags = nil
-	s.settings.AppIdentity.Namespace = "{app.env}"
+	s.settings.Identity.Tags = nil
+	s.settings.Identity.Namespace = "{app.env}"
 	s.setupConfig(map[string]any{
 		"cloud.aws.sns.clients.default.naming.topic_pattern": "{app.env}-{topicId}",
 	})

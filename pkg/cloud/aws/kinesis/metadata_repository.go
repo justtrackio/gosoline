@@ -144,7 +144,7 @@ func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Lo
 
 	// we need the app identity from the application we are running at, not the app id from the settings as this is the same
 	// for different kinsumers of the same stream!
-	appIdentity, err := cfg.GetAppIdentity(config)
+	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
 		return nil, fmt.Errorf("can not get app identity from config: %w", err)
 	}
@@ -153,7 +153,7 @@ func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Lo
 		return nil, fmt.Errorf("failed to read naming settings: %w", err)
 	}
 
-	if namespace, err = appIdentity.Format(namingSettings.MetadataNamespacePattern, namingSettings.MetadataNamespaceDelimiter); err != nil {
+	if namespace, err = identity.Format(namingSettings.MetadataNamespacePattern, namingSettings.MetadataNamespaceDelimiter); err != nil {
 		return nil, fmt.Errorf("failed to format kinesis metadata namespace: %w", err)
 	}
 

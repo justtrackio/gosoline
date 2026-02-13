@@ -59,7 +59,7 @@ func readKinsumerInputSettings(config cfg.Config, kinsumerInputName string) (Kin
 func kinsumerAutoscaleConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 	var err error
 	var settings KinsumerAutoscaleModuleSettings
-	var identity cfg.AppIdentity
+	var identity cfg.Identity
 	var namespace string
 
 	if settings, err = readKinsumerAutoscaleSettings(config); err != nil {

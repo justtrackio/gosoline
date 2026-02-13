@@ -23,11 +23,11 @@ func (s *GetBucketNameTestSuite) SetupTest() {
 	s.envProvider = cfg.NewMemoryEnvProvider()
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = s3.BucketNameSettings{
-		AppIdentity: cfg.AppIdentity{
+		Identity: cfg.Identity{
 			Name:      "producer",
 			Env:       "test",
 			Namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
-			Tags: cfg.AppTags{
+			Tags: cfg.Tags{
 				"project": "justtrack",
 				"family":  "gosoline",
 				"group":   "group",
@@ -114,8 +114,8 @@ func (s *GetBucketNameTestSuite) TestUnknownPlaceholderReturnsError() {
 
 func (s *GetBucketNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
 	// BucketPattern doesn't use tags, so missing tags should not cause error
-	s.settings.AppIdentity.Tags = nil
-	s.settings.AppIdentity.Namespace = "{app.env}"
+	s.settings.Identity.Tags = nil
+	s.settings.Identity.Namespace = "{app.env}"
 	s.setupConfig(map[string]any{
 		"cloud.aws.s3.clients.default.naming.bucket_pattern": "{app.env}-{bucketId}",
 	})

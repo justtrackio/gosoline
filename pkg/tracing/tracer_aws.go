@@ -43,7 +43,7 @@ type XRaySettings struct {
 }
 
 type awsTracer struct {
-	cfg.AppIdentity
+	cfg.Identity
 	appId string
 }
 
@@ -84,7 +84,7 @@ func NewAwsTracer(_ context.Context, config cfg.Config, logger log.Logger) (Trac
 	return NewAwsTracerWithInterfaces(logger, identity, xRaySettings, appId)
 }
 
-func NewAwsTracerWithInterfaces(logger log.Logger, identity cfg.AppIdentity, settings *XRaySettings, appId string) (*awsTracer, error) {
+func NewAwsTracerWithInterfaces(logger log.Logger, identity cfg.Identity, settings *XRaySettings, appId string) (*awsTracer, error) {
 	if settings.StreamingMaxSubsegmentCount == 0 {
 		settings.StreamingMaxSubsegmentCount = xrayDefaultMaxSubsegmentCount
 	}
@@ -108,8 +108,8 @@ func NewAwsTracerWithInterfaces(logger log.Logger, identity cfg.AppIdentity, set
 	setGlobalXRayLogger(logger)
 
 	return &awsTracer{
-		AppIdentity: identity,
-		appId:       appId,
+		Identity: identity,
+		appId:    appId,
 	}, nil
 }
 
@@ -121,16 +121,16 @@ func (t *awsTracer) StartSubSpan(ctx context.Context, name string) (context.Cont
 		return ctx, disabledSpan()
 	}
 
-	return newSpan(ctxWithSegment, segment, t.AppIdentity, t.appId)
+	return newSpan(ctxWithSegment, segment, t.Identity, t.appId)
 }
 
 func (t *awsTracer) StartSpan(name string) (context.Context, Span) {
-	return newRootSpan(context.Background(), name, t.AppIdentity, t.appId)
+	return newRootSpan(context.Background(), name, t.Identity, t.appId)
 }
 
 func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (context.Context, Span) {
 	parentSpan := GetSpanFromContext(ctx)
-	ctx, transaction := newRootSpan(ctx, name, t.AppIdentity, t.appId)
+	ctx, transaction := newRootSpan(ctx, name, t.Identity, t.appId)
 
 	if parentSpan != nil {
 		parentTrace := parentSpan.GetTrace()
@@ -154,7 +154,7 @@ func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (cont
 	return ctx, transaction
 }
 
-func lookupAddr(config cfg.Config, identity cfg.AppIdentity, settings *XrayTracerSettings) (string, error) {
+func lookupAddr(config cfg.Config, identity cfg.Identity, settings *XrayTracerSettings) (string, error) {
 	addressValue := settings.AddressValue
 
 	if settings.AddressType != dnsSrv {

@@ -14,10 +14,10 @@ func TestKafkaNamingTestSuite(t *testing.T) {
 
 type KafkaNamingTestSuite struct {
 	suite.Suite
-	config      cfg.GosoConf
-	appIdentity cfg.AppIdentity
-	topicId     string
-	groupId     string
+	config   cfg.GosoConf
+	identity cfg.Identity
+	topicId  string
+	groupId  string
 }
 
 func (s *KafkaNamingTestSuite) SetupTest() {
@@ -33,11 +33,11 @@ func (s *KafkaNamingTestSuite) SetupTest() {
 			},
 		},
 	})
-	s.appIdentity = cfg.AppIdentity{
+	s.identity = cfg.Identity{
 		Name:      "producer",
 		Env:       "test",
 		Namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
-		Tags: cfg.AppTags{
+		Tags: cfg.Tags{
 			"project": "justtrack",
 			"family":  "gosoline",
 			"group":   "group",
@@ -53,7 +53,7 @@ func (s *KafkaNamingTestSuite) setupConfig(settings map[string]any) {
 }
 
 func (s *KafkaNamingTestSuite) TestDefaultTopicId() {
-	topic, err := kafka.BuildFullTopicName(s.config, s.appIdentity, s.topicId)
+	topic, err := kafka.BuildFullTopicName(s.config, s.identity, s.topicId)
 	s.NoError(err, "there should be no error")
 	s.Equal("justtrack-test-gosoline-group-topic-a", topic)
 }
@@ -69,7 +69,7 @@ func (s *KafkaNamingTestSuite) TestTopicIdWithPattern() {
 		"kafka.naming.topic_pattern": "{app.name}-{topicId}",
 	})
 
-	topic, err := kafka.BuildFullTopicName(s.config, s.appIdentity, s.topicId)
+	topic, err := kafka.BuildFullTopicName(s.config, s.identity, s.topicId)
 	s.NoError(err, "there should be no error")
 	s.Equal("producer-topic-a", topic)
 }
@@ -89,20 +89,20 @@ func (s *KafkaNamingTestSuite) TestUnknownPlaceholderReturnsError() {
 		"kafka.naming.topic_pattern": "{project}-{topicId}",
 	})
 
-	_, err := kafka.BuildFullTopicName(s.config, s.appIdentity, s.topicId)
+	_, err := kafka.BuildFullTopicName(s.config, s.identity, s.topicId)
 	s.Error(err)
 	s.Contains(err.Error(), "unknown placeholder {project}")
 }
 
 func (s *KafkaNamingTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
 	// Pattern doesn't use tags, so missing tags should not cause error
-	s.appIdentity.Tags = nil
-	s.appIdentity.Namespace = "{app.env}"
+	s.identity.Tags = nil
+	s.identity.Namespace = "{app.env}"
 	s.setupConfig(map[string]any{
 		"kafka.naming.topic_pattern": "{app.env}-{topicId}",
 	})
 
-	topic, err := kafka.BuildFullTopicName(s.config, s.appIdentity, s.topicId)
+	topic, err := kafka.BuildFullTopicName(s.config, s.identity, s.topicId)
 	s.NoError(err)
 	s.Equal("test-topic-a", topic)
 }

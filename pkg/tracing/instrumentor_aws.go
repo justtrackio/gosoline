@@ -17,7 +17,7 @@ func init() {
 }
 
 type awsInstrumentor struct {
-	cfg.AppIdentity
+	cfg.Identity
 	appId string
 }
 
@@ -35,10 +35,10 @@ func NewAwsInstrumentor(_ context.Context, config cfg.Config, _ log.Logger) (Ins
 	return NewAwsInstrumentorWithInterfaces(identity, appId), nil
 }
 
-func NewAwsInstrumentorWithInterfaces(identity cfg.AppIdentity, appId string) *awsInstrumentor {
+func NewAwsInstrumentorWithInterfaces(identity cfg.Identity, appId string) *awsInstrumentor {
 	return &awsInstrumentor{
-		AppIdentity: identity,
-		appId:       appId,
+		Identity: identity,
+		appId:    appId,
 	}
 }
 
@@ -47,7 +47,7 @@ func (t *awsInstrumentor) HttpHandler(h http.Handler) http.Handler {
 		ctx := r.Context()
 		seg := xray.GetSegment(ctx)
 
-		ctx, _ = newSpan(ctx, seg, t.AppIdentity, t.appId)
+		ctx, _ = newSpan(ctx, seg, t.Identity, t.appId)
 		r = r.WithContext(ctx)
 
 		h.ServeHTTP(w, r)

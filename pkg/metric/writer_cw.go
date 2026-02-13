@@ -218,7 +218,7 @@ func (w *cloudwatchWriter) buildMetricData(ctx context.Context, batch Data) ([]t
 
 func GetCloudWatchNamespace(config cfg.Config) (string, error) {
 	var err error
-	var identity cfg.AppIdentity
+	var identity cfg.Identity
 	var cloudwatchSettings *CloudWatchSettings
 	var namespace string
 

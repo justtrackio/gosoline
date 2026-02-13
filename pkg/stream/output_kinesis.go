@@ -19,12 +19,12 @@ const (
 )
 
 type KinesisOutputSettings struct {
-	Identity   cfg.AppIdentity
+	Identity   cfg.Identity
 	ClientName string
 	StreamName string
 }
 
-func (s KinesisOutputSettings) GetAppIdentity() cfg.AppIdentity {
+func (s KinesisOutputSettings) GetIdentity() cfg.Identity {
 	return s.Identity
 }
 

@@ -8,15 +8,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type AppIdentityTestSuite struct {
+type IdentityTestSuite struct {
 	suite.Suite
 }
 
-func TestAppIdentityTestSuite(t *testing.T) {
-	suite.Run(t, new(AppIdentityTestSuite))
+func TestIdentityTestSuite(t *testing.T) {
+	suite.Run(t, new(IdentityTestSuite))
 }
 
-func (s *AppIdentityTestSuite) TestGetAppIdentityFromConfig() {
+func (s *IdentityTestSuite) TestGetIdentityFromConfig() {
 	config := cfg.New(map[string]any{
 		"app": map[string]any{
 			"name": "name",
@@ -32,7 +32,7 @@ func (s *AppIdentityTestSuite) TestGetAppIdentityFromConfig() {
 	identity, err := cfg.GetAppIdentity(config)
 	s.NoError(err)
 
-	expected := cfg.AppIdentity{
+	expected := cfg.Identity{
 		Name: "name",
 		Env:  "test",
 		Tags: map[string]string{
@@ -47,7 +47,7 @@ func (s *AppIdentityTestSuite) TestGetAppIdentityFromConfig() {
 	s.Equal(expected.Tags, identity.Tags)
 }
 
-func (s *AppIdentityTestSuite) TestPadFromConfig() {
+func (s *IdentityTestSuite) TestPadFromConfig() {
 	config := cfg.New(map[string]any{
 		"app": map[string]any{
 			"name": "name",
@@ -60,11 +60,11 @@ func (s *AppIdentityTestSuite) TestPadFromConfig() {
 		},
 	})
 
-	identity := cfg.AppIdentity{}
+	identity := cfg.Identity{}
 	err := identity.PadFromConfig(config)
 	s.NoError(err)
 
-	expected := cfg.AppIdentity{
+	expected := cfg.Identity{
 		Name: "name",
 		Env:  "test",
 		Tags: map[string]string{
@@ -79,7 +79,7 @@ func (s *AppIdentityTestSuite) TestPadFromConfig() {
 	s.Equal(expected.Tags, identity.Tags)
 }
 
-func (s *AppIdentityTestSuite) TestFormatIdentifier() {
+func (s *IdentityTestSuite) TestFormatIdentifier() {
 	config := cfg.New(map[string]any{
 		"app": map[string]any{
 			"name": "my-app",
@@ -91,7 +91,7 @@ func (s *AppIdentityTestSuite) TestFormatIdentifier() {
 		},
 	})
 
-	identity := cfg.AppIdentity{}
+	identity := cfg.Identity{}
 	err := identity.PadFromConfig(config)
 	s.NoError(err)
 
@@ -166,7 +166,7 @@ func (s *AppIdentityTestSuite) TestFormatIdentifier() {
 	}
 }
 
-func (s *AppIdentityTestSuite) TestToPlaceholders() {
+func (s *IdentityTestSuite) TestToPlaceholders() {
 	config := cfg.New(map[string]any{
 		"app": map[string]any{
 			"name": "my-app",
@@ -178,7 +178,7 @@ func (s *AppIdentityTestSuite) TestToPlaceholders() {
 		},
 	})
 
-	identity := cfg.AppIdentity{}
+	identity := cfg.Identity{}
 	err := identity.PadFromConfig(config)
 	s.NoError(err)
 
@@ -195,7 +195,7 @@ func (s *AppIdentityTestSuite) TestToPlaceholders() {
 	s.Equal(expected, placeholders)
 }
 
-func (s *AppIdentityTestSuite) TestToPlaceholders_EmptyNamespace() {
+func (s *IdentityTestSuite) TestToPlaceholders_EmptyNamespace() {
 	config := cfg.New(map[string]any{
 		"app": map[string]any{
 			"name": "my-app",
@@ -203,7 +203,7 @@ func (s *AppIdentityTestSuite) TestToPlaceholders_EmptyNamespace() {
 		},
 	})
 
-	identity := cfg.AppIdentity{}
+	identity := cfg.Identity{}
 	err := identity.PadFromConfig(config)
 	assert.NoError(s.T(), err)
 
@@ -215,7 +215,7 @@ func (s *AppIdentityTestSuite) TestToPlaceholders_EmptyNamespace() {
 	s.Equal("", placeholders["app.namespace"])
 }
 
-func (s *AppIdentityTestSuite) TestFormat_EmptyTagValue() {
+func (s *IdentityTestSuite) TestFormat_EmptyTagValue() {
 	config := cfg.New(map[string]any{
 		"app": map[string]any{
 			"name": "my-app",
@@ -226,7 +226,7 @@ func (s *AppIdentityTestSuite) TestFormat_EmptyTagValue() {
 		},
 	})
 
-	identity := cfg.AppIdentity{}
+	identity := cfg.Identity{}
 	err := identity.PadFromConfig(config)
 	s.NoError(err)
 
@@ -235,7 +235,7 @@ func (s *AppIdentityTestSuite) TestFormat_EmptyTagValue() {
 	s.ErrorContains(err, "resolved to an empty value")
 }
 
-func (s *AppIdentityTestSuite) TestFormat_EmptyNamespaceInPattern() {
+func (s *IdentityTestSuite) TestFormat_EmptyNamespaceInPattern() {
 	config := cfg.New(map[string]any{
 		"app": map[string]any{
 			"name": "my-app",
@@ -243,7 +243,7 @@ func (s *AppIdentityTestSuite) TestFormat_EmptyNamespaceInPattern() {
 		},
 	})
 
-	identity := cfg.AppIdentity{}
+	identity := cfg.Identity{}
 	err := identity.PadFromConfig(config)
 	s.NoError(err)
 

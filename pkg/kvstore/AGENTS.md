@@ -21,7 +21,7 @@
 ## Configuration
 
 ### Redis Key Naming
-Redis key naming can be configured per store or globally using patterns with `cfg.AppIdentity` placeholders.
+Redis key naming can be configured per store or globally using patterns with `cfg.Identity` placeholders.
 
 **Priority:**
 1. `kvstore.<name>.redis.key_pattern` (explicit override)

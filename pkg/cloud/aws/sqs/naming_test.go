@@ -23,11 +23,11 @@ func (s *GetSqsQueueNameTestSuite) SetupTest() {
 	s.envProvider = cfg.NewMemoryEnvProvider()
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = sqs.QueueNameSettings{
-		AppIdentity: cfg.AppIdentity{
+		Identity: cfg.Identity{
 			Name:      "producer",
 			Env:       "test",
 			Namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
-			Tags: cfg.AppTags{
+			Tags: cfg.Tags{
 				"project": "justtrack",
 				"family":  "gosoline",
 				"group":   "group",
@@ -122,8 +122,8 @@ func (s *GetSqsQueueNameTestSuite) TestUnknownPlaceholderReturnsError() {
 
 func (s *GetSqsQueueNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
 	// QueuePattern doesn't use tags, so missing tags should not cause error
-	s.settings.AppIdentity.Tags = nil
-	s.settings.AppIdentity.Namespace = "{app.env}"
+	s.settings.Identity.Tags = nil
+	s.settings.Identity.Namespace = "{app.env}"
 	s.setupConfig(map[string]any{
 		"cloud.aws.sqs.clients.default.naming.queue_pattern": "{app.env}-{queueId}",
 	})
@@ -135,7 +135,7 @@ func (s *GetSqsQueueNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem
 
 func (s *GetSqsQueueNameTestSuite) TestMissingRequiredTagReturnsError() {
 	// QueuePattern uses project tag but it's missing
-	s.settings.AppIdentity.Tags = cfg.AppTags{}
+	s.settings.Identity.Tags = cfg.Tags{}
 	s.setupConfig(map[string]any{
 		"cloud.aws.sqs.clients.default.naming.queue_pattern": "{app.tags.project}-{queueId}",
 	})

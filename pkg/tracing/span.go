@@ -76,7 +76,7 @@ func (s awsSpan) Finish() {
 	s.segment.Close(nil)
 }
 
-func newSpan(ctx context.Context, seg *xray.Segment, identity cfg.AppIdentity, appId string) (context.Context, *awsSpan) {
+func newSpan(ctx context.Context, seg *xray.Segment, identity cfg.Identity, appId string) (context.Context, *awsSpan) {
 	span := &awsSpan{
 		enabled: true,
 		segment: seg,

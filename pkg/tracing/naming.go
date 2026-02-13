@@ -13,7 +13,7 @@ type NamingSettings struct {
 
 func resolveAppId(config cfg.Config) (string, error) {
 	var err error
-	var identity cfg.AppIdentity
+	var identity cfg.Identity
 	var appId string
 
 	namingSettings := &NamingSettings{}

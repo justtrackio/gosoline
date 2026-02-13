@@ -156,7 +156,7 @@ func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.
 }
 
 type SnsInputTargetConfiguration struct {
-	Identity   cfg.AppIdentity   `cfg:"identity"`
+	Identity   cfg.Identity      `cfg:"identity"`
 	TopicId    string            `cfg:"topic_id" validate:"required"`
 	Attributes map[string]string `cfg:"attributes"`
 	ClientName string            `cfg:"client_name" default:"default"`
@@ -165,7 +165,7 @@ type SnsInputTargetConfiguration struct {
 type SnsInputConfiguration struct {
 	Type                string                        `cfg:"type" default:"sns"`
 	ConsumerId          string                        `cfg:"id" validate:"required"`
-	Identity            cfg.AppIdentity               `cfg:"identity"`
+	Identity            cfg.Identity                  `cfg:"identity"`
 	Targets             []SnsInputTargetConfiguration `cfg:"targets" validate:"min=1"`
 	MaxNumberOfMessages int32                         `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
 	WaitTime            int32                         `cfg:"wait_time" default:"3" validate:"min=1"`
@@ -226,7 +226,7 @@ func newSnsInputFromConfig(ctx context.Context, config cfg.Config, logger log.Lo
 }
 
 type sqsInputConfiguration struct {
-	TargetIdentity      cfg.AppIdentity            `cfg:"target_identity"`
+	TargetIdentity      cfg.Identity               `cfg:"target_identity"`
 	QueueId             string                     `cfg:"target_queue_id" validate:"min=1"`
 	MaxNumberOfMessages int32                      `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
 	WaitTime            int32                      `cfg:"wait_time" default:"3" validate:"min=1"`

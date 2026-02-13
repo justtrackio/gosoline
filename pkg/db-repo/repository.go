@@ -36,7 +36,7 @@ var (
 )
 
 type Settings struct {
-	cfg.AppIdentity
+	cfg.Identity
 	Metadata   Metadata
 	ClientName string
 }

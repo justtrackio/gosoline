@@ -31,13 +31,13 @@ func (s *DdbLockTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *DdbLockTestSuite) SetupTest() (err error) {
-	appIdentity, err := cfg.GetAppIdentity(s.Env().Config())
+	identity, err := cfg.GetAppIdentity(s.Env().Config())
 	if err != nil {
 		return fmt.Errorf("failed to get app identity: %w", err)
 	}
 
 	s.provider, err = ddb.NewDdbLockProvider(s.Env().Context(), s.Env().Config(), s.Env().Logger(), conc.DistributedLockSettings{
-		AppIdentity: appIdentity,
+		Identity: identity,
 		Backoff: exec.BackoffSettings{
 			MaxAttempts:    0,
 			MaxElapsedTime: 0,

@@ -3,9 +3,9 @@ sidebar_position: 1
 title: App Identity and Naming Patterns
 ---
 
-# Migrating to AppIdentity and Naming Patterns
+# Migrating to Identity and Naming Patterns
 
-This guide details how to migrate your gosoline application to the new `AppIdentity` system and dynamic resource naming.
+This guide details how to migrate your gosoline application to the new `Identity` system and dynamic resource naming.
 
 ## 1. Update Configuration
 
@@ -159,7 +159,7 @@ For DynamoDB tables, the naming logic has been aligned with other AWS resources.
 
 ## 3. Update Go Code
 
-### `cfg.AppId` is now `cfg.AppIdentity`
+### `cfg.AppId` is now `cfg.Identity`
 
 The `AppId` struct and its getters have been removed.
 
@@ -169,7 +169,7 @@ appId, _ := cfg.GetAppIdFromConfig(config)
 fmt.Println(appId.Project)
 
 // NEW
-identity, _ := cfg.GetAppIdentityFromConfig(config)
+identity, _ := cfg.GetIdentityFromConfig(config)
 fmt.Println(identity.Tags["project"])
 ```
 
@@ -239,7 +239,7 @@ redis:
 
 ## 5. Stream Input/Output Configuration
 
-The configuration for stream inputs and outputs has been updated to use the new `AppIdentity` structure.
+The configuration for stream inputs and outputs has been updated to use the new `Identity` structure.
 
 ### General Change
 

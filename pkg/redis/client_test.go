@@ -73,7 +73,7 @@ func (s *ClientWithMiniRedisTestSuite) TestNewClientWithSettings_InvalidPattern_
 
 func (s *ClientWithMiniRedisTestSuite) TestNewClientWithSettings_FormatError() {
 	s.settings.Naming.KeyPattern = "{app.missing}-{key}"
-	s.settings.AppIdentity = cfg.AppIdentity{
+	s.settings.Identity = cfg.Identity{
 		Name: "app",
 		Env:  "env",
 	}

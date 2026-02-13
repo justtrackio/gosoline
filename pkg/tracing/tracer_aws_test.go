@@ -59,10 +59,10 @@ func TestAwsTracer_StartSpanFromContextWithTrace(t *testing.T) {
 
 func getTracer(t *testing.T) tracing.Tracer {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
-	tracer, err := tracing.NewAwsTracerWithInterfaces(logger, cfg.AppIdentity{
+	tracer, err := tracing.NewAwsTracerWithInterfaces(logger, cfg.Identity{
 		Name: "test_name",
 		Env:  "test_env",
-		Tags: cfg.AppTags{
+		Tags: cfg.Tags{
 			"project": "test_project",
 			"family":  "test_family",
 			"group":   "test_group",
