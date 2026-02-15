@@ -10,6 +10,15 @@ import (
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/metric"
+)
+
+const (
+	MetadataKeyTaskRunner = "task_runner"
+	metricScheduledTasks  = "task_runner_scheduled_tasks"
+	metricStartedTasks    = "task_runner_started_tasks"
+	metricFinishedTasks   = "task_runner_finished_tasks"
+	metricFailedTasks     = "task_runner_failed_tasks"
 )
 
 // A TaskRunner allows you to execute tasks instead of adding modules to the kernel. In general, you should give your
@@ -23,7 +32,10 @@ import (
 //go:generate go run github.com/vektra/mockery/v2 --name TaskRunner
 type TaskRunner interface {
 	kernel.Module
-	RunTask(task kernel.Module) error
+	// RunTask schedules a new task to be executed in the background. The context passed to RunTask will be used to
+	// schedule the task and is not the context passed to the task itself during execution (as it might already have
+	// ended at that point, e.g., when scheduling tasks from an HTTP handler).
+	RunTask(ctx context.Context, task kernel.Module) error
 }
 
 type Settings struct {
@@ -36,14 +48,23 @@ type taskRunner struct {
 	lck          sync.Mutex
 	done         bool
 	pendingTasks chan kernel.Module
+	metricWriter metric.Writer
 }
 
 type taskRunnerKey int
 
-func Factory(_ context.Context, config cfg.Config, _ log.Logger) (map[string]kernel.ModuleFactory, error) {
+func Factory(ctx context.Context, config cfg.Config, _ log.Logger) (map[string]kernel.ModuleFactory, error) {
 	var settings Settings
 	if err := config.UnmarshalKey("task_runner", &settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal task runner settings: %w", err)
+	}
+
+	metadata := map[string]bool{
+		"enabled": settings.Enabled,
+	}
+
+	if err := appctx.MetadataAppend(ctx, MetadataKeyTaskRunner, metadata); err != nil {
+		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
 	if !settings.Enabled {
@@ -83,7 +104,7 @@ func RunTask(ctx context.Context, task kernel.Module) error {
 		return fmt.Errorf("could not find task runner: %w", err)
 	}
 
-	err = taskRunner.RunTask(task)
+	err = taskRunner.RunTask(ctx, task)
 	if err != nil {
 		return fmt.Errorf("could not run task on task runner: %w", err)
 	}
@@ -92,8 +113,11 @@ func RunTask(ctx context.Context, task kernel.Module) error {
 }
 
 func newTaskRunner() (*taskRunner, error) {
+	metricWriter := metric.NewWriter(getMetricDefaults()...)
+
 	return &taskRunner{
 		pendingTasks: make(chan kernel.Module, 100),
+		metricWriter: metricWriter,
 	}, nil
 }
 
@@ -110,12 +134,12 @@ func (s *taskRunner) Run(ctx context.Context) error {
 				s.lck.Unlock()
 
 				for task := range s.pendingTasks {
-					cfn.GoWithContext(ctx, task.Run)
+					cfn.GoWithContext(ctx, s.executeTask(task.Run))
 				}
 
 				return nil
 			case task := <-s.pendingTasks:
-				cfn.GoWithContext(ctx, task.Run)
+				cfn.GoWithContext(ctx, s.executeTask(task.Run))
 			}
 		}
 	})
@@ -123,7 +147,7 @@ func (s *taskRunner) Run(ctx context.Context) error {
 	return cfn.Wait()
 }
 
-func (s *taskRunner) RunTask(task kernel.Module) error {
+func (s *taskRunner) RunTask(ctx context.Context, task kernel.Module) error {
 	s.lck.Lock()
 	defer s.lck.Unlock()
 	if s.done {
@@ -131,6 +155,60 @@ func (s *taskRunner) RunTask(task kernel.Module) error {
 	}
 
 	s.pendingTasks <- task
+	s.countTask(ctx, metricScheduledTasks)
 
 	return nil
+}
+
+func (s *taskRunner) executeTask(task func(ctx context.Context) error) func(ctx context.Context) error {
+	return func(ctx context.Context) error {
+		s.countTask(ctx, metricStartedTasks)
+
+		err := task(ctx)
+		if err != nil {
+			s.countTask(ctx, metricFailedTasks)
+		} else {
+			s.countTask(ctx, metricFinishedTasks)
+		}
+
+		return err
+	}
+}
+
+func (s *taskRunner) countTask(ctx context.Context, metricName string) {
+	s.metricWriter.WriteOne(ctx, &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: metricName,
+		Value:      1,
+		Unit:       metric.UnitCount,
+	})
+}
+
+func getMetricDefaults() metric.Data {
+	return metric.Data{
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricScheduledTasks,
+			Value:      0,
+			Unit:       metric.UnitCount,
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricStartedTasks,
+			Value:      0,
+			Unit:       metric.UnitCount,
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricFailedTasks,
+			Value:      0,
+			Unit:       metric.UnitCount,
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricFinishedTasks,
+			Value:      0,
+			Unit:       metric.UnitCount,
+		},
+	}
 }
