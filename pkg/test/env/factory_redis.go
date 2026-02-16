@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	baseRedis "github.com/redis/go-redis/v9"
 )
 
 func init() {
@@ -24,7 +24,7 @@ type redisSettings struct {
 
 type redisFactory struct {
 	lck     sync.Mutex
-	clients map[string]*redis.Client
+	clients map[string]*baseRedis.Client
 }
 
 func (f *redisFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
@@ -110,18 +110,18 @@ func (f *redisFactory) address(container *Container) string {
 	return address
 }
 
-func (f *redisFactory) client(container *Container) *redis.Client {
+func (f *redisFactory) client(container *Container) *baseRedis.Client {
 	address := f.address(container)
 
 	f.lck.Lock()
 	defer f.lck.Unlock()
 
 	if f.clients == nil {
-		f.clients = make(map[string]*redis.Client)
+		f.clients = make(map[string]*baseRedis.Client)
 	}
 
 	if _, ok := f.clients[address]; !ok {
-		f.clients[address] = redis.NewClient(&redis.Options{
+		f.clients[address] = baseRedis.NewClient(&baseRedis.Options{
 			Addr: address,
 		})
 	}

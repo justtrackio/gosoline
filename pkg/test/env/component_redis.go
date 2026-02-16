@@ -1,14 +1,14 @@
 package env
 
 import (
-	"github.com/go-redis/redis/v8"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	baseRedis "github.com/redis/go-redis/v9"
 )
 
 type RedisComponent struct {
 	baseComponent
 	address string
-	client  *redis.Client
+	client  *baseRedis.Client
 }
 
 func (c *RedisComponent) CfgOptions() []cfg.Option {
@@ -26,6 +26,6 @@ func (c *RedisComponent) Address() string {
 	return c.address
 }
 
-func (c *RedisComponent) Client() *redis.Client {
+func (c *RedisComponent) Client() *baseRedis.Client {
 	return c.client
 }

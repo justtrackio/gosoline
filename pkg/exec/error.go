@@ -48,7 +48,11 @@ func CheckConnectionError(_ any, err error) ErrorType {
 }
 
 func IsConnectionError(err error) bool {
-	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, unix.ECONNREFUSED) || errors.Is(err, unix.ECONNRESET) || errors.Is(err, unix.EPIPE) {
+	if errors.Is(err, io.EOF) ||
+		errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, unix.ECONNREFUSED) ||
+		errors.Is(err, unix.ECONNRESET) ||
+		errors.Is(err, unix.EPIPE) {
 		return true
 	}
 
