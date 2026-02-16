@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	baseRedis "github.com/go-redis/redis/v8"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/reslife"
+	baseRedis "github.com/redis/go-redis/v9"
 )
 
 const (
@@ -395,7 +395,7 @@ func (c *redisClient) HGetAll(ctx context.Context, key string) (map[string]strin
 		return c.base.HGetAll(ctx, key)
 	})
 
-	return cmd.(*baseRedis.StringStringMapCmd).Val(), err
+	return cmd.(*baseRedis.MapStringStringCmd).Val(), err
 }
 
 func (c *redisClient) HSetNX(ctx context.Context, key, field string, value any) (bool, error) {
@@ -703,7 +703,7 @@ func (c *redisClient) ZRangeArgsWithScore(ctx context.Context, args ZRangeArgs) 
 
 func (c *redisClient) ZRandMember(ctx context.Context, key string, count int) ([]string, error) {
 	cmd, err := c.execute(ctx, func() ErrCmder {
-		return c.base.ZRandMember(ctx, key, count, false)
+		return c.base.ZRandMember(ctx, key, count)
 	})
 
 	return cmd.(*baseRedis.StringSliceCmd).Val(), err

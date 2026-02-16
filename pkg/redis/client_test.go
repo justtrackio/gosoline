@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/elliotchance/redismock/v8"
-	baseRedis "github.com/go-redis/redis/v8"
+	"github.com/elliotchance/redismock/v9"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/redis"
+	baseRedis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
