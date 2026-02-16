@@ -10,13 +10,17 @@ import (
 )
 
 type (
-	Balancer    string
-	StartOffset string
+	Balancer            string
+	FetchIsolationLevel string
+	StartOffset         string
 )
 
 const (
 	FirstOffset StartOffset = "first"
 	LastOffset  StartOffset = "last"
+
+	ReadCommitted   FetchIsolationLevel = "read_committed"
+	ReadUncommitted FetchIsolationLevel = "read_uncommitted"
 
 	CooperativeSticky  Balancer = "cooperative-sticky"
 	Sticky             Balancer = "sticky"
@@ -32,8 +36,9 @@ type Settings struct {
 	// GroupId is an optional identifier that can be used as part of the consumer group naming pattern
 	GroupId string `cfg:"group_id"`
 
-	StartOffset StartOffset `cfg:"start_offset" default:"last"               validate:"oneof=first last"`
-	Balancers   []Balancer  `cfg:"balancers"    default:"cooperative-sticky" validate:"dive,oneof=cooperative-sticky sticky round-robin range"`
+	StartOffset         StartOffset         `cfg:"start_offset"          default:"last"               validate:"oneof=first last"`
+	FetchIsolationLevel FetchIsolationLevel `cfg:"fetch_isolation_level" default:"read_uncommitted"   validate:"oneof=read_committed read_uncommitted"`
+	Balancers           []Balancer          `cfg:"balancers"             default:"cooperative-sticky" validate:"dive,oneof=cooperative-sticky sticky round-robin range"`
 
 	// MaxPollRecords should not be too large as exceeding the RebalanceTimeout while still processing records
 	// will get the consumer kicked out of the group and lead to duplicate message processing
@@ -54,6 +59,14 @@ func (s *Settings) GetStartOffset() kgo.Offset {
 	}
 
 	return startOffset
+}
+
+func (s *Settings) GetFetchIsolationLevel() kgo.IsolationLevel {
+	if s.FetchIsolationLevel == ReadCommitted {
+		return kgo.ReadCommitted()
+	}
+
+	return kgo.ReadUncommitted()
 }
 
 func (s *Settings) GetBalancers() []kgo.GroupBalancer {

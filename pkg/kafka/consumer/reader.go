@@ -34,6 +34,7 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 		kgo.ConsumeResetOffset(settings.GetStartOffset()),
 		kgo.ConsumeStartOffset(settings.GetStartOffset()),
 		kgo.ConsumeTopics(topicName),
+		kgo.FetchIsolationLevel(settings.GetFetchIsolationLevel()),
 		kgo.HeartbeatInterval(settings.HeartbeatInterval),
 		kgo.RebalanceTimeout(settings.RebalanceTimeout),
 		kgo.SessionTimeout(settings.SessionTimeout),
