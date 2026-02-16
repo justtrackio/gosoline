@@ -8,6 +8,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
+	baseRedis "github.com/redis/go-redis/v9"
 )
 
 func NewExecutor(logger log.Logger, settings exec.BackoffSettings, name string) exec.Executor {
@@ -58,29 +59,23 @@ func IsRetryableError(err error) bool {
 		return false
 	}
 
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) ||
+		errors.Is(err, baseRedis.ErrPoolTimeout) ||
+		errors.Is(err, baseRedis.ErrPoolExhausted) {
 		return true
 	}
 
-	if _, ok := err.(net.Error); ok {
+	var netErr net.Error
+	if errors.As(err, &netErr) {
 		return true
 	}
 
 	s := err.Error()
 
-	if s == "ERR max number of clients reached" {
-		return true
-	}
-
-	if strings.HasPrefix(s, "LOADING ") {
-		return true
-	}
-
-	if strings.HasPrefix(s, "READONLY ") {
-		return true
-	}
-
-	if strings.HasPrefix(s, "CLUSTERDOWN ") {
+	if s == "ERR max number of clients reached" ||
+		strings.HasPrefix(s, "LOADING ") ||
+		strings.HasPrefix(s, "READONLY ") ||
+		strings.HasPrefix(s, "CLUSTERDOWN ") {
 		return true
 	}
 

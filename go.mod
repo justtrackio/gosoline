@@ -36,7 +36,7 @@ require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/elastic/go-elasticsearch/v7 v7.2.1-0.20190714143206-f1e755531ff4
-	github.com/elliotchance/redismock/v8 v8.11.0
+	github.com/elliotchance/redismock/v9 v9.0.0
 	github.com/emersion/go-smtp v0.21.3
 	github.com/ettle/strcase v0.2.0
 	github.com/fatih/color v1.13.0
@@ -48,7 +48,6 @@ require (
 	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a
 	github.com/go-playground/mold/v4 v4.2.0
 	github.com/go-playground/validator/v10 v10.27.0
-	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-resty/resty/v2 v2.7.1-0.20230308051516-1578007c3c8d
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
@@ -79,6 +78,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.19.2
 	github.com/prometheus/client_golang v1.20.5
+	github.com/redis/go-redis/v9 v9.17.3
 	github.com/segmentio/go-athena v0.1.0
 	github.com/selm0/ladon v0.0.0-20231114080549-31144de4b38d
 	github.com/sha1sum/aws_signing_client v0.0.0-20170514202702-9088e4c7b34b
