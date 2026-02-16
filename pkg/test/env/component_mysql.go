@@ -10,6 +10,7 @@ import (
 
 type mysqlComponent struct {
 	baseComponent
+	configKey   string
 	client      *sqlx.DB
 	credentials mysqlCredentials
 	binding     ContainerBinding
@@ -19,7 +20,7 @@ type mysqlComponent struct {
 func (c *mysqlComponent) CfgOptions() []cfg.Option {
 	return []cfg.Option{
 		cfg.WithConfigMap(map[string]any{
-			"db": map[string]any{
+			c.configKey: map[string]any{
 				c.name: map[string]any{
 					"uri.host":           c.binding.host,
 					"uri.user":           c.credentials.UserName,

@@ -43,7 +43,9 @@ type mysqlFactory struct {
 }
 
 func (f *mysqlFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
-	if !config.IsSet("db") {
+	cfgKey := f.detectConfigKey(config)
+
+	if cfgKey == "" {
 		return nil
 	}
 
@@ -57,13 +59,13 @@ func (f *mysqlFactory) Detect(config cfg.Config, manager *ComponentsConfigManage
 		return nil
 	}
 
-	components, err := config.GetStringMap("db")
+	components, err := config.GetStringMap(cfgKey)
 	if err != nil {
 		return fmt.Errorf("can not get db components: %w", err)
 	}
 
 	for name := range components {
-		driver, err := config.Get(fmt.Sprintf("db.%s.driver", name))
+		driver, err := config.Get(fmt.Sprintf("%s.%s.driver", cfgKey, name))
 		if err != nil {
 			return fmt.Errorf("can not get driver for component %s: %w", name, err)
 		}
@@ -174,7 +176,7 @@ func (f *mysqlFactory) healthCheck(settings any) ComponentHealthCheck {
 	}
 }
 
-func (f *mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*Container, settings any) (Component, error) {
+func (f *mysqlFactory) Component(config cfg.Config, _ log.Logger, containers map[string]*Container, settings any) (Component, error) {
 	s := settings.(*mysqlSettings)
 
 	var err error
@@ -216,6 +218,7 @@ func (f *mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[stri
 		baseComponent: baseComponent{
 			name: s.Name,
 		},
+		configKey:   f.detectConfigKey(config),
 		client:      con,
 		credentials: s.Credentials,
 		binding:     connectionBinding,
@@ -336,4 +339,16 @@ func (f *mysqlFactory) dropDatabase(settings any) ComponentShutdownCallback {
 			return nil
 		}
 	}
+}
+
+func (f *mysqlFactory) detectConfigKey(config cfg.Config) string {
+	if config.IsSet("db") {
+		return "db"
+	}
+
+	if config.IsSet("sqlc") {
+		return "sqlc"
+	}
+
+	return ""
 }

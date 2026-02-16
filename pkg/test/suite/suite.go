@@ -44,6 +44,10 @@ func (s *Suite) Env() *env.Environment {
 	return s.env
 }
 
+func (s *Suite) Require() *require.Assertions {
+	return s.require
+}
+
 func (s *Suite) SetEnv(env *env.Environment) {
 	s.env = env
 }
