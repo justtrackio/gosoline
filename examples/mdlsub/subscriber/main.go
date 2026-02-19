@@ -5,5 +5,7 @@ import (
 )
 
 func main() {
-	application.RunMdlSubscriber(Transformers)
+	application.RunMdlSubscriber(Transformers,
+		application.WithConfigFile("config.dist.yml", "yml"),
+	)
 }

@@ -50,11 +50,15 @@ func TestWriteLotsOfBadMetrics(t *testing.T) {
 	ctx, cancel := context.WithCancel(appctx.WithContainer(t.Context()))
 
 	config := cfg.New(map[string]any{
-		"env":         "test",
-		"app_project": "justtrack",
-		"app_family":  "gosoline",
-		"app_group":   "gosoline",
-		"app_name":    "metric_daemon_test",
+		"app": map[string]any{
+			"env":  "test",
+			"name": "metric_daemon_test",
+			"tags": map[string]any{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "gosoline",
+			},
+		},
 		"metric": map[string]any{
 			"enabled":  true,
 			"interval": "1s",

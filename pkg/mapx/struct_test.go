@@ -1,6 +1,7 @@
 package mapx_test
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -1423,4 +1424,187 @@ func TestMapStructTimeCaster_Pointer_NonString(t *testing.T) {
 
 	assert.NotNil(t, source.CreatedAt)
 	assert.Equal(t, now.Unix(), source.CreatedAt.Unix())
+}
+
+func TestMapStructIO_ReadNamedMap(t *testing.T) {
+	type MyMap map[string]string
+	type sourceStruct struct {
+		M MyMap `cfg:"m"`
+	}
+
+	source := &sourceStruct{
+		M: MyMap{
+			"key": "value",
+		},
+	}
+
+	expectedValues := map[string]any{
+		"m": map[string]any{
+			"key": "value",
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
+func TestMapStructIO_ReadNamedMapAny(t *testing.T) {
+	type MyMap map[string]any
+	type sourceStruct struct {
+		M MyMap `cfg:"m"`
+	}
+
+	source := &sourceStruct{
+		M: MyMap{
+			"key": "value",
+			"int": 1,
+		},
+	}
+
+	expectedValues := map[string]any{
+		"m": map[string]any{
+			"key": "value",
+			"int": 1,
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
+func TestMapStructIO_ReadNamedMapSlice(t *testing.T) {
+	type MyMap map[string][]string
+	type sourceStruct struct {
+		M MyMap `cfg:"m"`
+	}
+
+	source := &sourceStruct{
+		M: MyMap{
+			"key": []string{"v1", "v2"},
+		},
+	}
+
+	expectedValues := map[string]any{
+		"m": map[string]any{
+			"key": []any{"v1", "v2"},
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
+type testStringer struct {
+	Value string `cfg:"value"`
+}
+
+func (s testStringer) String() string {
+	return s.Value
+}
+
+func TestMapStructIO_ReadMapOfInterfaceWithStruct(t *testing.T) {
+	type sourceStruct struct {
+		M map[string]fmt.Stringer `cfg:"m"`
+	}
+
+	source := &sourceStruct{
+		M: map[string]fmt.Stringer{
+			"a": testStringer{Value: "hello"},
+		},
+	}
+
+	expectedValues := map[string]any{
+		"m": map[string]any{
+			"a": map[string]any{
+				"value": "hello",
+			},
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
+func TestMapStructIO_ReadMapOfInterfaceWithScalar(t *testing.T) {
+	// We can't easily make a scalar implement an interface in a test,
+	// so test with a struct that has a single tagged field.
+	type sourceStruct struct {
+		M map[string]fmt.Stringer `cfg:"m"`
+	}
+
+	source := &sourceStruct{
+		M: map[string]fmt.Stringer{
+			"a": testStringer{Value: "hello"},
+			"b": testStringer{Value: "world"},
+		},
+	}
+
+	expectedValues := map[string]any{
+		"m": map[string]any{
+			"a": map[string]any{
+				"value": "hello",
+			},
+			"b": map[string]any{
+				"value": "world",
+			},
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
+func TestMapStructIO_ReadMapOfInterfaceWithNil(t *testing.T) {
+	type sourceStruct struct {
+		M map[string]fmt.Stringer `cfg:"m"`
+	}
+
+	source := &sourceStruct{
+		M: map[string]fmt.Stringer{
+			"a": nil,
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.True(t, msi.Has("m"))
+	assert.Nil(t, msi.Get("m.a").Data())
+}
+
+func TestMapStructIO_ReadMapOfInterfaceWithMixedTypes(t *testing.T) {
+	// Test that interface map values with different concrete types are handled correctly
+	type sourceStruct struct {
+		M map[string]fmt.Stringer `cfg:"m"`
+	}
+
+	source := &sourceStruct{
+		M: map[string]fmt.Stringer{
+			"present": testStringer{Value: "hello"},
+			"absent":  nil,
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, "hello", msi.Get("m.present.value").Data())
+	assert.Nil(t, msi.Get("m.absent").Data())
 }

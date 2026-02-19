@@ -27,8 +27,8 @@ const (
 
 var MyTestModelMetadata = db_repo.Metadata{
 	ModelId: mdl.ModelId{
-		Application: "application",
-		Name:        "myTestModel",
+		App:  "application",
+		Name: "myTestModel",
 	},
 	TableName:  "my_test_models",
 	PrimaryKey: "my_test_models.id",
@@ -45,8 +45,8 @@ type ManyToMany struct {
 
 var ManyToManyMetadata = db_repo.Metadata{
 	ModelId: mdl.ModelId{
-		Application: "application",
-		Name:        "manyToMany",
+		App:  "application",
+		Name: "manyToMany",
 	},
 	TableName:  "many_to_manies",
 	PrimaryKey: "many_to_manies.id",
@@ -63,8 +63,8 @@ type OneOfMany struct {
 
 var OneOfManyMetadata = db_repo.Metadata{
 	ModelId: mdl.ModelId{
-		Application: "application",
-		Name:        "oneOfMany",
+		App:  "application",
+		Name: "oneOfMany",
 	},
 	TableName:  "one_of_manies",
 	PrimaryKey: "one_of_manies.id",
@@ -81,8 +81,8 @@ type HasMany struct {
 
 var HasManyMetadata = db_repo.Metadata{
 	ModelId: mdl.ModelId{
-		Application: "application",
-		Name:        "hasMany",
+		App:  "application",
+		Name: "hasMany",
 	},
 	TableName:  "has_manies",
 	PrimaryKey: "has_manies.id",
@@ -131,7 +131,7 @@ func TestRepository_Create(t *testing.T) {
 	}
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` WHERE `my_test_models`\\.`id` = \\? AND \\(\\(`my_test_models`\\.`id` = 1\\)\\) ORDER BY `my_test_models`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` WHERE `my_test_models`\\.`id` = \\? AND \\(\\(`my_test_models`\\.`id` = 1\\)\\) ORDER BY `my_test_models`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
 
 	err := repo.Create(t.Context(), &model)
 
@@ -159,8 +159,8 @@ func TestRepository_CreateManyToManyNoRelation(t *testing.T) {
 	dbc.ExpectCommit()
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND \\(\\(`many_to_manies`\\.`id` = 1\\)\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`\\.`my_test_model_id` = `my_test_models`\\.`id` WHERE \\(`many_of_manies`\\.`many_to_many_id` IN \\(\\?\\)\\)").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND \\(\\(`many_to_manies`\\.`id` = 1\\)\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`\\.`my_test_model_id` = `my_test_models`\\.`id` WHERE \\(`many_of_manies`\\.`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnRows(rows)
 
 	model := ManyToMany{
 		Model: db_repo.Model{
@@ -199,8 +199,8 @@ func TestRepository_CreateManyToMany(t *testing.T) {
 	dbc.ExpectCommit()
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND \\(\\(`many_to_manies`\\.`id` = 1\\)\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`.`my_test_model_id` = `my_test_models`\\.`id` WHERE \\(`many_of_manies`.`many_to_many_id` IN \\(\\?\\)\\)").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND \\(\\(`many_to_manies`\\.`id` = 1\\)\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`.`my_test_model_id` = `my_test_models`\\.`id` WHERE \\(`many_of_manies`.`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnRows(rows)
 
 	model := ManyToMany{
 		Model: db_repo.Model{
@@ -242,7 +242,7 @@ func TestRepository_CreateManyToOneNoRelation(t *testing.T) {
 	}
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at", "my_test_model_id"}).AddRow(id1, &now, &now, (*uint)(nil))
-	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND \\(\\(`one_of_manies`\\.`id` = 1\\)\\) ORDER BY `one_of_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND \\(\\(`one_of_manies`\\.`id` = 1\\)\\) ORDER BY `one_of_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
 
 	err := repo.Create(t.Context(), &model)
 
@@ -266,7 +266,7 @@ func TestRepository_CreateManyToOne(t *testing.T) {
 	dbc.ExpectCommit()
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at", "my_test_model_id"}).AddRow(id1, &now, &now, id42)
-	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND \\(\\(`one_of_manies`\\.`id` = 1\\)\\) ORDER BY `one_of_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND \\(\\(`one_of_manies`\\.`id` = 1\\)\\) ORDER BY `one_of_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
 	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` WHERE \\(`id` IN \\(\\?\\)\\) ORDER BY `my_test_models`\\.`id` ASC").WithArgs(id42).WillReturnRows(rows)
 
 	model := OneOfMany{
@@ -304,8 +304,8 @@ func TestRepository_CreateHasManyNoRelation(t *testing.T) {
 	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1").WillReturnResult(delResult)
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 1\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `ones` WHERE \\(`has_many_id` IN \\(\\?\\)\\) ORDER BY `ones`\\.`id` ASC").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 1\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `ones` WHERE \\(`has_many_id` IN \\(\\?\\)\\) ORDER BY `ones`\\.`id` ASC").WithArgs(id1).WillReturnRows(rows)
 
 	model := HasMany{
 		Model: db_repo.Model{
@@ -340,8 +340,8 @@ func TestRepository_CreateHasMany(t *testing.T) {
 	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 0 AND id NOT IN \\(0,0\\)").WillReturnResult(delResult)
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 0\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `ones` WHERE \\(`has_many_id` IN \\(\\?\\)\\) ORDER BY `ones`\\.`id` ASC").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 0\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WithArgs(goSqlMock.AnyArg()).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `ones` WHERE \\(`has_many_id` IN \\(\\?\\)\\) ORDER BY `ones`\\.`id` ASC").WithArgs(goSqlMock.AnyArg()).WillReturnRows(rows)
 
 	model := HasMany{
 		Model: db_repo.Model{},
@@ -373,7 +373,7 @@ func TestRepository_Update(t *testing.T) {
 	dbc.ExpectCommit()
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` WHERE `my_test_models`\\.`id` = \\? AND \\(\\(`my_test_models`\\.`id` = 1\\)\\) ORDER BY `my_test_models`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` WHERE `my_test_models`\\.`id` = \\? AND \\(\\(`my_test_models`\\.`id` = 1\\)\\) ORDER BY `my_test_models`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
 
 	model := MyTestModel{
 		Model: db_repo.Model{
@@ -439,8 +439,8 @@ func TestRepository_UpdateManyToMany(t *testing.T) {
 	dbc.ExpectCommit()
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND \\(\\(`many_to_manies`\\.`id` = 1\\)\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`.`my_test_model_id` = `my_test_models`\\.`id` WHERE \\(`many_of_manies`.`many_to_many_id` IN \\(\\?\\)\\)").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND \\(\\(`many_to_manies`\\.`id` = 1\\)\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`.`my_test_model_id` = `my_test_models`\\.`id` WHERE \\(`many_of_manies`.`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnRows(rows)
 
 	model := ManyToMany{
 		Model: db_repo.Model{
@@ -576,8 +576,8 @@ func TestRepository_UpdateHasManyNoRelation(t *testing.T) {
 	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1").WillReturnResult(delResult)
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 1\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `ones` WHERE \\(`has_many_id` IN \\(\\?\\)\\) ORDER BY `ones`\\.`id` ASC").WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 1\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
+	dbc.ExpectQuery("SELECT \\* FROM `ones` WHERE \\(`has_many_id` IN \\(\\?\\)\\) ORDER BY `ones`\\.`id` ASC").WithArgs(id1).WillReturnRows(rows)
 
 	model := HasMany{
 		Model: db_repo.Model{

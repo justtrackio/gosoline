@@ -32,11 +32,76 @@
 | InMemory | InMemory | (testing) |
 
 ## Config keys
+
+Most stream inputs and outputs (SQS, SNS, Kinesis, Kafka) use an `identity` block for application identity configuration.
+The `identity.name` is optional and defaults to the global `app.name` if not specified.
+The `identity.tags` are required only if referenced by the configured naming patterns.
+
+**Exception:** Redis list inputs and outputs do **not** use the `identity` block. They only require `server_name`, `key`, and transport-specific settings. Redis naming is handled by the Redis client's own naming configuration (`redis.<client_name>.naming`).
+
+### Output example (SQS)
 ```yaml
-stream.consumer.my-consumer.input: sqs
-stream.consumer.my-consumer.sqs.queue_id: my-queue
-stream.consumer.my-consumer.encoding: json
-stream.consumer.my-consumer.retry.enabled: true
+stream:
+  output:
+    my-output:
+      type: sqs
+      identity:
+        name: my-app              # optional, defaults to app.name
+        tags:
+          project: my-project
+          family: my-family
+          group: my-group
+      queue_id: my-queue
+      client_name: default
+```
+
+### Input example (SQS)
+For SQS input, use `target_identity` to specify the target queue's identity:
+```yaml
+stream:
+  input:
+    my-input:
+      type: sqs
+      target_identity:
+        name: target-app          # optional
+        tags:
+          project: my-project
+          family: my-family
+          group: my-group
+      target_queue_id: my-queue
+```
+
+### SNS input with targets
+```yaml
+stream:
+  input:
+    my-sns-input:
+      type: sns
+      id: my-consumer
+      identity:
+        tags:
+          project: my-project
+          family: my-family
+          group: my-group
+      targets:
+        - identity:
+            name: target-app
+            tags:
+              project: target-project
+              family: target-family
+              group: target-group
+          topic_id: my-topic
+```
+
+### Consumer config
+```yaml
+stream:
+  consumer:
+    my-consumer:
+      input: sqs
+      encoding: json
+      retry:
+        enabled: true
 ```
 
 ## Related packages

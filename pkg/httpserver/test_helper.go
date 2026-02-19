@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -30,7 +31,11 @@ func HttpTest[Body HttpBody](method, path, requestPath string, body Body, handle
 		bodyReader = bytes.NewReader(value)
 	}
 
-	request, _ := http.NewRequest(method, requestPath, bodyReader)
+	request, err := http.NewRequest(method, requestPath, bodyReader)
+	if err != nil {
+		panic(fmt.Sprintf("httpserver.HttpTest: failed to create request: %v", err))
+	}
+
 	for _, opt := range requestOptions {
 		opt(request)
 	}

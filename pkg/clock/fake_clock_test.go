@@ -66,22 +66,22 @@ func TestFakeClockAfter(t *testing.T) {
 
 	ms := c.After(time.Millisecond)
 	sec := c.After(time.Second)
-	min := c.After(time.Minute)
+	minute := c.After(time.Minute)
 	h := c.After(time.Hour)
 
 	c.Advance(time.Millisecond)
 	assertCanRead(t, ms, "after advancing 1ms we should be able to read c.After(1ms)")
-	assertCanNotRead(t, sec, min, h)
+	assertCanNotRead(t, sec, minute, h)
 
 	c.Advance(time.Second)
 	assertCanRead(t, sec, "after advancing 1s we should be able to read c.After(1s)")
-	assertCanNotRead(t, min, h)
+	assertCanNotRead(t, minute, h)
 
 	c.Advance(time.Second)
-	assertCanNotRead(t, min, h)
+	assertCanNotRead(t, minute, h)
 
 	c.Advance(time.Minute)
-	assertCanRead(t, min, "after advancing 1m we should be able to read c.After(1m)")
+	assertCanRead(t, minute, "after advancing 1m we should be able to read c.After(1m)")
 	assertCanNotRead(t, h)
 
 	c.Advance(time.Hour)

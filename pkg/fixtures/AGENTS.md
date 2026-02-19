@@ -8,7 +8,7 @@
 ## Key files
 - `loader.go`, `container.go` - orchestrate fixture set registration and execution.
 - `settings.go`, `fixture_set_options.go` - config surface for enabling/disabling fixtures per environment.
-- `provider/` - built-in providers for DB, DDB, Redis, etc.
+- `provider/` - generic provider infrastructure (kernel module, handler interface). Specific fixture writers (DB, DDB, Redis, Blob) live in their respective packages.
 - Sequence helpers (`auto_numbered.go`, `uuid_sequence.go`, etc.) for deterministic IDs.
 
 ## Common tasks
@@ -49,5 +49,5 @@ fixtures.groups:
 
 ## Tips
 - Keep fixtures idempotent—providers should detect existing state when possible.
-- Respect `fixtures.disabled` config toggle so CI can skip expensive setup.
+- Respect `fixtures.enabled` config toggle so CI can skip expensive setup.
 - Document new fixture types/examples under `examples/fixtures` if they require external services.

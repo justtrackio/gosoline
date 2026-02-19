@@ -8,41 +8,40 @@ import (
 )
 
 type KafkaNamingSettings struct {
-	TopicPattern string `cfg:"topic_pattern,nodecode" default:"{project}-{env}-{family}-{group}-{topicId}"`
-	GroupPattern string `cfg:"group_pattern,nodecode" default:"{project}-{env}-{family}-{group}-{app}-{groupId}"`
+	TopicPattern   string `cfg:"topic_pattern,nodecode" default:"{app.namespace}-{topicId}"`
+	TopicDelimiter string `cfg:"topic_delimiter" default:"-"`
+	GroupPattern   string `cfg:"group_pattern,nodecode" default:"{app.namespace}-{app.name}-{groupId}"`
+	GroupDelimiter string `cfg:"group_delimiter" default:"-"`
 }
 
 func NormalizeKafkaName(name string) string {
 	return strings.ReplaceAll(name, "_", "-")
 }
 
-func BuildFullTopicName(config cfg.Config, appId cfg.AppId, topicId string) (string, error) {
+func BuildFullTopicName(config cfg.Config, identity cfg.Identity, topicId string) (string, error) {
 	namingSettings := &KafkaNamingSettings{}
 	if err := config.UnmarshalKey("kafka.naming", namingSettings); err != nil {
 		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' to build kafka topic name: %w", err)
 	}
 
-	name := namingSettings.TopicPattern
-	values := map[string]string{
-		"project": appId.Project,
-		"env":     appId.Environment,
-		"family":  appId.Family,
-		"group":   appId.Group,
-		"app":     appId.Application,
-		"topicId": topicId,
+	if err := identity.PadFromConfig(config); err != nil {
+		return "", fmt.Errorf("failed to pad app identity from config: %w", err)
 	}
 
-	for key, val := range values {
-		name = strings.ReplaceAll(name, fmt.Sprintf("{%s}", key), val)
+	name, err := identity.Format(namingSettings.TopicPattern, namingSettings.TopicDelimiter, map[string]string{
+		"topicId": topicId,
+	})
+	if err != nil {
+		return "", fmt.Errorf("kafka topic naming failed: %w", err)
 	}
 
 	return NormalizeKafkaName(name), nil
 }
 
 func BuildFullConsumerGroupId(config cfg.Config, groupId string) (string, error) {
-	appId, err := cfg.GetAppIdFromConfig(config)
+	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
-		return "", fmt.Errorf("failed to get app id from config: %w", err)
+		return "", fmt.Errorf("failed to get app identity from config: %w", err)
 	}
 
 	namingSettings := &KafkaNamingSettings{}
@@ -50,18 +49,11 @@ func BuildFullConsumerGroupId(config cfg.Config, groupId string) (string, error)
 		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' to build kakfa consumer group id: %w", err)
 	}
 
-	name := namingSettings.GroupPattern
-	values := map[string]string{
-		"project": appId.Project,
-		"env":     appId.Environment,
-		"family":  appId.Family,
-		"group":   appId.Group,
-		"app":     appId.Application,
+	name, err := identity.Format(namingSettings.GroupPattern, namingSettings.GroupDelimiter, map[string]string{
 		"groupId": groupId,
-	}
-
-	for key, val := range values {
-		name = strings.ReplaceAll(name, fmt.Sprintf("{%s}", key), val)
+	})
+	if err != nil {
+		return "", fmt.Errorf("kafka consumer group naming failed: %w", err)
 	}
 
 	return NormalizeKafkaName(name), nil

@@ -20,7 +20,7 @@ type OrmMigrationSetting struct {
 type OrmSettings struct {
 	Migrations  OrmMigrationSetting `cfg:"migrations"`
 	Driver      string              `cfg:"driver" validation:"required"`
-	Application string              `cfg:"application" default:"{app_name}"`
+	Application string              `cfg:"application" default:"{app.name}"`
 }
 
 func NewOrm(ctx context.Context, config cfg.Config, logger log.Logger, dbClientName string) (*gorm.DB, error) {

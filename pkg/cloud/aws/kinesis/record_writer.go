@@ -34,14 +34,14 @@ type Record struct {
 }
 
 type RecordWriterSettings struct {
-	cfg.AppId
+	Identity   cfg.Identity `cfg:"identity"`
 	ClientName string
 	StreamName string
 	Backoff    exec.BackoffSettings
 }
 
-func (r RecordWriterSettings) GetAppId() cfg.AppId {
-	return r.AppId
+func (r RecordWriterSettings) GetIdentity() cfg.Identity {
+	return r.Identity
 }
 
 func (r RecordWriterSettings) GetClientName() string {
@@ -70,10 +70,6 @@ type recordWriter struct {
 
 func NewRecordWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *RecordWriterSettings) (RecordWriter, error) {
 	var err error
-	if err = settings.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("can not pad settings from config: %w", err)
-	}
-
 	var fullStreamName Stream
 	var client *kinesis.Client
 

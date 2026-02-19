@@ -41,11 +41,13 @@ func (s *FixturesTestSuite) SetupSuite() []suite.Option {
 func (s *FixturesTestSuite) SetupTest() (err error) {
 	s.repo, err = s.Env().Localstack("default").DdbRepository(&ddb.Settings{
 		ModelId: mdl.ModelId{
-			Project:     "justtrack",
-			Environment: "test",
-			Family:      "gosoline",
-			Group:       "mdlsub",
-			Name:        "testModel",
+			Name: "testModel",
+			Env:  "test",
+			Tags: map[string]string{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "mdlsub",
+			},
 		},
 		Main: ddb.MainSettings{
 			Model: TestModel{},

@@ -1,12 +1,11 @@
 package kvstore_test
 
 import (
+	"bytes"
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
-	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	redisMocks "github.com/justtrackio/gosoline/pkg/redis/mocks"
@@ -23,8 +22,8 @@ type Item struct {
 func TestRedisKvStore_Contains(t *testing.T) {
 	ctx, store, client := buildTestableRedisStore[Item](t)
 
-	client.EXPECT().Exists(ctx, "justtrack-gosoline-grp-kvstore-test-foo").Return(int64(0), nil)
-	client.EXPECT().Exists(ctx, "justtrack-gosoline-grp-kvstore-test-bar").Return(int64(1), nil)
+	client.EXPECT().Exists(ctx, "foo").Return(int64(0), nil)
+	client.EXPECT().Exists(ctx, "bar").Return(int64(1), nil)
 
 	exists, err := store.Contains(ctx, "foo")
 	assert.NoError(t, err)
@@ -37,7 +36,7 @@ func TestRedisKvStore_Contains(t *testing.T) {
 
 func TestRedisKvStore_Get(t *testing.T) {
 	ctx, store, client := buildTestableRedisStore[Item](t)
-	client.EXPECT().Get(ctx, "justtrack-gosoline-grp-kvstore-test-foo").Return(`{"id":"foo","body":"bar"}`, nil)
+	client.EXPECT().Get(ctx, "foo").Return(`{"id":"foo","body":"bar"}`, nil)
 
 	item := &Item{}
 	found, err := store.Get(ctx, "foo", item)
@@ -51,7 +50,7 @@ func TestRedisKvStore_Get(t *testing.T) {
 func TestRedisKvStore_GetBatch(t *testing.T) {
 	ctx, store, client := buildTestableRedisStore[Item](t)
 
-	args := []any{"justtrack-gosoline-grp-kvstore-test-foo", "justtrack-gosoline-grp-kvstore-test-fuu"}
+	args := []any{"foo", "fuu"}
 	returns := []any{`{"id":"foo","body":"bar"}`, nil}
 
 	client.EXPECT().MGet(ctx, args...).Return(returns, nil)
@@ -72,7 +71,7 @@ func TestRedisKvStore_GetBatch(t *testing.T) {
 
 func TestRedisKvStore_Put(t *testing.T) {
 	ctx, store, client := buildTestableRedisStore[Item](t)
-	client.EXPECT().Set(ctx, "justtrack-gosoline-grp-kvstore-test-foo", []byte(`{"id":"foo","body":"bar"}`), time.Duration(0)).Return(nil)
+	client.EXPECT().Set(ctx, "foo", []byte(`{"id":"foo","body":"bar"}`), time.Duration(0)).Return(nil)
 
 	item := Item{
 		Id:   "foo",
@@ -88,18 +87,26 @@ func TestRedisKvStore_PutBatch(t *testing.T) {
 	ctx, store, client := buildTestableRedisStoreWithTTL[Item](t)
 
 	pipe := &redisMocks.Pipeliner{}
-	pipe.EXPECT().MSet(ctx, mock.MatchedBy(func(input []any) bool {
-		possibleInput1 := `[justtrack-gosoline-grp-kvstore-test-foo {"id":"foo","body":"bar"} justtrack-gosoline-grp-kvstore-test-fuu {"id":"fuu","body":"baz"}]`
-		possibleInput2 := `[justtrack-gosoline-grp-kvstore-test-fuu {"id":"fuu","body":"baz"} justtrack-gosoline-grp-kvstore-test-foo {"id":"foo","body":"bar"}]`
+	pipe.EXPECT().MSet(
+		ctx,
+		mock.MatchedBy(func(input string) bool {
+			return input == "foo" || input == "fuu"
+		}),
+		mock.MatchedBy(func(input []byte) bool {
+			return bytes.Equal(input, []byte(`{"id":"foo","body":"bar"}`)) || bytes.Equal(input, []byte(`{"id":"fuu","body":"baz"}`))
+		}),
+		mock.MatchedBy(func(input string) bool {
+			return input == "foo" || input == "fuu"
+		}),
+		mock.MatchedBy(func(input []byte) bool {
+			return bytes.Equal(input, []byte(`{"id":"foo","body":"bar"}`)) || bytes.Equal(input, []byte(`{"id":"fuu","body":"baz"}`))
+		}),
+	).Return(nil)
 
-		inputStr := fmt.Sprintf("%s", input)
-
-		return inputStr == possibleInput1 || inputStr == possibleInput2
-	})).Return(nil)
 	client.EXPECT().Pipeline().Return(pipe)
 	pipe.EXPECT().TxPipeline().Return(pipe)
-	pipe.EXPECT().Expire(ctx, "justtrack-gosoline-grp-kvstore-test-foo", mock.AnythingOfType("time.Duration")).Return(nil)
-	pipe.EXPECT().Expire(ctx, "justtrack-gosoline-grp-kvstore-test-fuu", mock.AnythingOfType("time.Duration")).Return(nil)
+	pipe.EXPECT().Expire(ctx, "foo", mock.AnythingOfType("time.Duration")).Return(nil)
+	pipe.EXPECT().Expire(ctx, "fuu", mock.AnythingOfType("time.Duration")).Return(nil)
 	pipe.EXPECT().Exec(ctx).Return(nil, nil)
 
 	items := map[string]Item{
@@ -122,14 +129,22 @@ func TestRedisKvStore_PutBatchSkipExpire(t *testing.T) {
 	ctx, store, client := buildTestableRedisStore[Item](t)
 
 	pipe := &redisMocks.Pipeliner{}
-	pipe.EXPECT().MSet(ctx, mock.MatchedBy(func(input []any) bool {
-		possibleInput1 := `[justtrack-gosoline-grp-kvstore-test-foo {"id":"foo","body":"bar"} justtrack-gosoline-grp-kvstore-test-fuu {"id":"fuu","body":"baz"}]`
-		possibleInput2 := `[justtrack-gosoline-grp-kvstore-test-fuu {"id":"fuu","body":"baz"} justtrack-gosoline-grp-kvstore-test-foo {"id":"foo","body":"bar"}]`
+	pipe.EXPECT().MSet(
+		ctx,
+		mock.MatchedBy(func(input string) bool {
+			return input == "foo" || input == "fuu"
+		}),
+		mock.MatchedBy(func(input []byte) bool {
+			return bytes.Equal(input, []byte(`{"id":"foo","body":"bar"}`)) || bytes.Equal(input, []byte(`{"id":"fuu","body":"baz"}`))
+		}),
+		mock.MatchedBy(func(input string) bool {
+			return input == "foo" || input == "fuu"
+		}),
+		mock.MatchedBy(func(input []byte) bool {
+			return bytes.Equal(input, []byte(`{"id":"foo","body":"bar"}`)) || bytes.Equal(input, []byte(`{"id":"fuu","body":"baz"}`))
+		}),
+	).Return(nil)
 
-		inputStr := fmt.Sprintf("%s", input)
-
-		return inputStr == possibleInput1 || inputStr == possibleInput2
-	})).Return(nil)
 	client.EXPECT().Pipeline().Return(pipe)
 	pipe.EXPECT().TxPipeline().Return(pipe)
 	pipe.EXPECT().Exec(ctx).Return(nil, nil)
@@ -161,7 +176,7 @@ func TestRedisKvStore_EstimateSize(t *testing.T) {
 
 func TestRedisKvStore_Delete(t *testing.T) {
 	ctx, store, client := buildTestableRedisStore[Item](t)
-	client.EXPECT().Del(ctx, "justtrack-gosoline-grp-kvstore-test-foo").Return(int64(1), nil)
+	client.EXPECT().Del(ctx, "foo").Return(int64(1), nil)
 
 	err := store.Delete(ctx, "foo")
 
@@ -170,7 +185,7 @@ func TestRedisKvStore_Delete(t *testing.T) {
 
 func TestRedisKvStore_DeleteBatch(t *testing.T) {
 	ctx, store, client := buildTestableRedisStore[Item](t)
-	client.EXPECT().Del(ctx, "justtrack-gosoline-grp-kvstore-test-foo", "justtrack-gosoline-grp-kvstore-test-fuu").Return(int64(2), nil)
+	client.EXPECT().Del(ctx, "foo", "fuu").Return(int64(2), nil)
 
 	items := []string{"foo", "fuu"}
 
@@ -184,14 +199,16 @@ func buildTestableRedisStore[T any](t *testing.T) (context.Context, kvstore.KvSt
 	client := redisMocks.NewClient(t)
 
 	store := kvstore.NewRedisKvStoreWithInterfaces[T](client, &kvstore.Settings{
-		AppId: cfg.AppId{
-			Project:     "justtrack",
-			Environment: "env",
-			Family:      "gosoline",
-			Group:       "grp",
-			Application: "app",
+		ModelId: mdl.ModelId{
+			Name: "test",
+			App:  "app",
+			Env:  "env",
+			Tags: map[string]string{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "grp",
+			},
 		},
-		Name:           "test",
 		BatchSize:      100,
 		MetricsEnabled: false,
 	})
@@ -204,14 +221,16 @@ func buildTestableRedisStoreWithTTL[T any](t *testing.T) (context.Context, kvsto
 	client := redisMocks.NewClient(t)
 
 	store := kvstore.NewRedisKvStoreWithInterfaces[T](client, &kvstore.Settings{
-		AppId: cfg.AppId{
-			Project:     "justtrack",
-			Environment: "test",
-			Family:      "gosoline",
-			Group:       "grp",
-			Application: "kvstore",
+		ModelId: mdl.ModelId{
+			Name: "test",
+			App:  "kvstore",
+			Env:  "test",
+			Tags: map[string]string{
+				"project": "justtrack",
+				"family":  "gosoline",
+				"group":   "grp",
+			},
 		},
-		Name:           "test",
 		BatchSize:      100,
 		MetricsEnabled: false,
 		Ttl:            time.Second,

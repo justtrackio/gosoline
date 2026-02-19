@@ -15,14 +15,14 @@ type metricRepository struct {
 	metric metric.Writer
 }
 
-func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRepository {
+func NewMetricRepository(config cfg.Config, logger log.Logger, repo Repository) (*metricRepository, error) {
 	defaults := getDefaultMetrics(repo.GetModelId())
 	output := metric.NewWriter(defaults...)
 
 	return &metricRepository{
 		Repository: repo,
 		metric:     output,
-	}
+	}, nil
 }
 
 func (r metricRepository) PutItem(ctx context.Context, _ PutItemBuilder, item any) (*PutItemResult, error) {

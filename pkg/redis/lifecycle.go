@@ -36,7 +36,7 @@ func NewLifecycleManager(settings *Settings) reslife.LifeCycleerFactory {
 		var err error
 		var client Client
 
-		if client, err = NewClientWithSettings(ctx, logger, settings); err != nil {
+		if client, err = NewClientWithSettings(ctx, config, logger, settings); err != nil {
 			return nil, fmt.Errorf("could not connect to database: %w", err)
 		}
 

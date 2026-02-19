@@ -417,6 +417,26 @@ func (s *ConfigTestSuite) TestEnvironmentUnmarshalStructWithEmbeddedSlice() {
 	s.Equal([]int{1, 2, 3}, cm.Integers)
 }
 
+func (s *ConfigTestSuite) TestFormat() {
+	s.setupConfigValues(map[string]any{
+		"app": map[string]any{
+			"env":  "test",
+			"name": "myapp",
+			"tags": map[string]any{
+				"project": "myproject",
+				"family":  "myfamily",
+				"group":   "mygroup",
+			},
+		},
+	})
+
+	str, err := s.config.FormatString("{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}-{app.name}-{queueId}", map[string]string{
+		"queueId": "orders",
+	})
+	s.NoError(err)
+	s.Equal("myproject-test-myfamily-mygroup-myapp-orders", str)
+}
+
 func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Struct() {
 	type configMap struct {
 		Foo          string   `cfg:"foo"`

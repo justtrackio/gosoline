@@ -15,7 +15,8 @@ type NumberSequence interface {
 	// The returned id can be used to get a fresh id for a fixture if you don't want to
 	// assign specific ids.
 	GetNextId() *uint
-	// GetNext is the old name of GetNextId
+	// GetNext is the old name of GetNextId.
+	//
 	// Deprecated: use GetNextId instead
 	GetNext() *uint
 }

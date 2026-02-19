@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
@@ -48,13 +49,18 @@ type ZRangeArgs struct {
 	Count   int64
 }
 
-//go:generate go run github.com/vektra/mockery/v2 --name Pipeliner
-type Pipeliner interface {
-	baseRedis.Pipeliner
-}
+type redisCacheKey string
 
-func GetFullyQualifiedKey(appId cfg.AppId, key string) string {
-	return fmt.Sprintf("%s-%s-%s-%s-%s-%s", appId.Project, appId.Environment, appId.Family, appId.Group, appId.Application, key)
+func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
+	settings, err := ReadSettings(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read redis settings for name %q in ProvideClient: %w", name, err)
+	}
+	cacheKey := fmt.Sprintf("%s:%s", settings.Address, name)
+
+	return appctx.Provide(ctx, redisCacheKey(cacheKey), func() (Client, error) {
+		return NewClient(ctx, config, logger, name)
+	})
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Client
@@ -136,13 +142,18 @@ type Client interface {
 }
 
 type redisClient struct {
-	base     baseRedis.Cmdable
-	logger   log.Logger
-	executor exec.Executor
-	settings *Settings
+	base      baseRedis.Cmdable
+	logger    log.Logger
+	executor  exec.Executor
+	settings  *Settings
+	keyPrefix string
 }
 
-type redisKey Settings
+type redisBaseClientKey string
+
+func buildRedisBaseClientKey(settings *Settings) redisBaseClientKey {
+	return redisBaseClientKey(fmt.Sprintf("%s:%d:%s", settings.Address, settings.DB, settings.Dialer))
+}
 
 func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
 	settings, err := ReadSettings(config, name)
@@ -154,13 +165,30 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 		return nil, fmt.Errorf("failed to add redis lifecycle manager: %w", err)
 	}
 
-	return NewClientWithSettings(ctx, logger, settings)
+	return NewClientWithSettings(ctx, config, logger, settings)
 }
 
-func NewClientWithSettings(ctx context.Context, logger log.Logger, settings *Settings) (Client, error) {
+func NewClientWithSettings(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (Client, error) {
 	logger = logger.WithFields(log.Fields{
 		"redis": settings.Name,
 	})
+
+	var err error
+	var keyPrefix string
+
+	if settings.Naming.KeyPattern != "" {
+		if !strings.HasSuffix(settings.Naming.KeyPattern, "{key}") {
+			return nil, fmt.Errorf("redis key naming pattern must end with {key} placeholder, got: %q", settings.Naming.KeyPattern)
+		}
+
+		keyPrefix = strings.TrimSuffix(settings.Naming.KeyPattern, "{key}")
+	}
+
+	if keyPrefix != "" {
+		if keyPrefix, err = settings.Format(keyPrefix, settings.Naming.KeyDelimiter); err != nil {
+			return nil, fmt.Errorf("redis key naming failed: %w", err)
+		}
+	}
 
 	executor := NewExecutor(logger, settings.BackoffSettings, settings.Name)
 
@@ -168,7 +196,7 @@ func NewClientWithSettings(ctx context.Context, logger log.Logger, settings *Set
 		return nil, fmt.Errorf("there is no redis dialer of type %s", settings.Dialer)
 	}
 
-	baseClient, err := appctx.Provide(ctx, redisKey(*settings), func() (*baseRedis.Client, error) {
+	baseClient, err := appctx.Provide(ctx, buildRedisBaseClientKey(settings), func() (*baseRedis.Client, error) {
 		baseClient := baseRedis.NewClient(&baseRedis.Options{
 			DB:     settings.DB,
 			Dialer: dialers[settings.Dialer](logger, settings),
@@ -180,15 +208,16 @@ func NewClientWithSettings(ctx context.Context, logger log.Logger, settings *Set
 		return nil, err
 	}
 
-	return NewClientWithInterfaces(logger, baseClient, executor, settings), nil
+	return NewClientWithInterfaces(logger, baseClient, executor, settings, keyPrefix), nil
 }
 
-func NewClientWithInterfaces(logger log.Logger, baseRedis baseRedis.Cmdable, executor exec.Executor, settings *Settings) Client {
+func NewClientWithInterfaces(logger log.Logger, baseRedis baseRedis.Cmdable, executor exec.Executor, settings *Settings, keyPrefix string) Client {
 	return &redisClient{
-		logger:   logger,
-		base:     baseRedis,
-		executor: executor,
-		settings: settings,
+		logger:    logger,
+		base:      baseRedis,
+		executor:  executor,
+		settings:  settings,
+		keyPrefix: keyPrefix,
 	}
 }
 
@@ -199,9 +228,9 @@ func (c *redisClient) GetBaseClient(ctx context.Context) baseRedis.Cmdable {
 }
 
 func (c *redisClient) Exists(ctx context.Context, keys ...string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
 		return c.base.Exists(ctx, keys...)
-	})
+	}, keys...)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
@@ -223,17 +252,17 @@ func (c *redisClient) DBSize(ctx context.Context) (int64, error) {
 }
 
 func (c *redisClient) Set(ctx context.Context, key string, value any, expiration time.Duration) error {
-	_, err := c.execute(ctx, func() ErrCmder {
+	_, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.Set(ctx, key, value, expiration)
-	})
+	}, key)
 
 	return err
 }
 
 func (c *redisClient) SetNX(ctx context.Context, key string, value any, expiration time.Duration) (bool, error) {
-	res, err := c.execute(ctx, func() ErrCmder {
+	res, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.SetNX(ctx, key, value, expiration)
-	})
+	}, key)
 
 	val := res.(*baseRedis.BoolCmd).Val()
 
@@ -241,81 +270,86 @@ func (c *redisClient) SetNX(ctx context.Context, key string, value any, expirati
 }
 
 func (c *redisClient) MSet(ctx context.Context, pairs ...any) error {
-	_, err := c.execute(ctx, func() ErrCmder {
-		return c.base.MSet(ctx, pairs...)
+	_, err := c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
+		prefixedPairs, err := c.prefixInterleavedKeys(pairs...)
+		if err != nil {
+			return nil, err
+		}
+
+		return c.base.MSet(ctx, prefixedPairs...), nil
 	})
 
 	return err
 }
 
 func (c *redisClient) HMSet(ctx context.Context, key string, pairs map[string]any) error {
-	_, err := c.execute(ctx, func() ErrCmder {
+	_, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.HMSet(ctx, key, pairs)
-	})
+	}, key)
 
 	return err
 }
 
 func (c *redisClient) Get(ctx context.Context, key string) (string, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.Get(ctx, key)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
 func (c *redisClient) MGet(ctx context.Context, keys ...string) ([]any, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
 		return c.base.MGet(ctx, keys...)
-	})
+	}, keys...)
 
 	return cmd.(*baseRedis.SliceCmd).Val(), err
 }
 
 func (c *redisClient) HMGet(ctx context.Context, key string, fields ...string) ([]any, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.HMGet(ctx, key, fields...)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.SliceCmd).Val(), err
 }
 
 func (c *redisClient) Del(ctx context.Context, keys ...string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
 		return c.base.Del(ctx, keys...)
-	})
+	}, keys...)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) BLPop(ctx context.Context, timeout time.Duration, keys ...string) ([]string, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
 		return c.base.BLPop(ctx, timeout, keys...)
-	})
+	}, keys...)
 
 	return cmd.(*baseRedis.StringSliceCmd).Val(), err
 }
 
 func (c *redisClient) LPop(ctx context.Context, key string) (string, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.LPop(ctx, key)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
 func (c *redisClient) LLen(ctx context.Context, key string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.LLen(ctx, key)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) LPush(ctx context.Context, key string, values ...any) (int64, error) {
-	res, err := c.execute(ctx, func() ErrCmder {
+	res, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.LPush(ctx, key, values...)
-	})
+	}, key)
 
 	val := res.(*baseRedis.IntCmd).Val()
 
@@ -323,9 +357,9 @@ func (c *redisClient) LPush(ctx context.Context, key string, values ...any) (int
 }
 
 func (c *redisClient) LRem(ctx context.Context, key string, count int64, value any) (int64, error) {
-	res, err := c.execute(ctx, func() ErrCmder {
+	res, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.LRem(ctx, key, count, value)
-	})
+	}, key)
 
 	val := res.(*baseRedis.IntCmd).Val()
 
@@ -333,9 +367,9 @@ func (c *redisClient) LRem(ctx context.Context, key string, count int64, value a
 }
 
 func (c *redisClient) RPush(ctx context.Context, key string, values ...any) (int64, error) {
-	res, err := c.execute(ctx, func() ErrCmder {
+	res, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.RPush(ctx, key, values...)
-	})
+	}, key)
 
 	val := res.(*baseRedis.IntCmd).Val()
 
@@ -343,65 +377,65 @@ func (c *redisClient) RPush(ctx context.Context, key string, values ...any) (int
 }
 
 func (c *redisClient) RPop(ctx context.Context, key string) (string, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.RPop(ctx, key)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
 func (c *redisClient) HExists(ctx context.Context, key, field string) (bool, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.HExists(ctx, key, field)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.BoolCmd).Val(), err
 }
 
 func (c *redisClient) HKeys(ctx context.Context, key string) ([]string, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.HKeys(ctx, key)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.StringSliceCmd).Val(), err
 }
 
 func (c *redisClient) HGet(ctx context.Context, key, field string) (string, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.HGet(ctx, key, field)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
 func (c *redisClient) HSet(ctx context.Context, key, field string, value any) error {
-	_, err := c.execute(ctx, func() ErrCmder {
+	_, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.HSet(ctx, key, field, value)
-	})
+	}, key)
 
 	return err
 }
 
 func (c *redisClient) HDel(ctx context.Context, key string, fields ...string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.HDel(ctx, key, fields...)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) HGetAll(ctx context.Context, key string) (map[string]string, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.HGetAll(ctx, key)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.MapStringStringCmd).Val(), err
 }
 
 func (c *redisClient) HSetNX(ctx context.Context, key, field string, value any) (bool, error) {
-	res, err := c.execute(ctx, func() ErrCmder {
+	res, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.HSetNX(ctx, key, field, value)
-	})
+	}, key)
 
 	val := res.(*baseRedis.BoolCmd).Val()
 
@@ -409,57 +443,59 @@ func (c *redisClient) HSetNX(ctx context.Context, key, field string, value any) 
 }
 
 func (c *redisClient) SAdd(ctx context.Context, key string, values ...any) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.SAdd(ctx, key, values...)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) SCard(ctx context.Context, key string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.SCard(ctx, key)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) SDiff(ctx context.Context, keys ...string) ([]string, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
 		return c.base.SDiff(ctx, keys...)
-	})
+	}, keys...)
 
 	return cmd.(*baseRedis.StringSliceCmd).Val(), err
 }
 
 func (c *redisClient) SDiffStore(ctx context.Context, destination string, keys ...string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
-		return c.base.SDiffStore(ctx, destination, keys...)
-	})
+	allKeys := append([]string{destination}, keys...)
+	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
+		return c.base.SDiffStore(ctx, keys[0], keys[1:]...)
+	}, allKeys...)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) SInter(ctx context.Context, keys ...string) ([]string, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
 		return c.base.SInter(ctx, keys...)
-	})
+	}, keys...)
 
 	return cmd.(*baseRedis.StringSliceCmd).Val(), err
 }
 
 func (c *redisClient) SInterStore(ctx context.Context, destination string, keys ...string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
-		return c.base.SInterStore(ctx, destination, keys...)
-	})
+	allKeys := append([]string{destination}, keys...)
+	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
+		return c.base.SInterStore(ctx, keys[0], keys[1:]...)
+	}, allKeys...)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) SMembers(ctx context.Context, key string) ([]string, error) {
-	res, err := c.execute(ctx, func() ErrCmder {
+	res, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.SMembers(ctx, key)
-	})
+	}, key)
 
 	val := res.(*baseRedis.StringSliceCmd).Val()
 
@@ -467,9 +503,9 @@ func (c *redisClient) SMembers(ctx context.Context, key string) ([]string, error
 }
 
 func (c *redisClient) SIsMember(ctx context.Context, key string, value any) (bool, error) {
-	res, err := c.execute(ctx, func() ErrCmder {
+	res, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.SIsMember(ctx, key, value)
-	})
+	}, key)
 
 	val := res.(*baseRedis.BoolCmd).Val()
 
@@ -477,9 +513,9 @@ func (c *redisClient) SIsMember(ctx context.Context, key string, value any) (boo
 }
 
 func (c *redisClient) SMove(ctx context.Context, sourceKey string, destKey string, member any) (bool, error) {
-	res, err := c.execute(ctx, func() ErrCmder {
-		return c.base.SMove(ctx, sourceKey, destKey, member)
-	})
+	res, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
+		return c.base.SMove(ctx, keys[0], keys[1], member)
+	}, sourceKey, destKey)
 
 	val := res.(*baseRedis.BoolCmd).Val()
 
@@ -487,9 +523,9 @@ func (c *redisClient) SMove(ctx context.Context, sourceKey string, destKey strin
 }
 
 func (c *redisClient) SPop(ctx context.Context, key string) (string, error) {
-	res, err := c.execute(ctx, func() ErrCmder {
+	res, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.SPop(ctx, key)
-	})
+	}, key)
 
 	val := res.(*baseRedis.StringCmd).Val()
 
@@ -497,9 +533,9 @@ func (c *redisClient) SPop(ctx context.Context, key string) (string, error) {
 }
 
 func (c *redisClient) SRem(ctx context.Context, key string, values ...any) (int64, error) {
-	res, err := c.execute(ctx, func() ErrCmder {
+	res, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.SRem(ctx, key, values...)
-	})
+	}, key)
 
 	val := res.(*baseRedis.IntCmd).Val()
 
@@ -507,9 +543,9 @@ func (c *redisClient) SRem(ctx context.Context, key string, values ...any) (int6
 }
 
 func (c *redisClient) SRandMember(ctx context.Context, key string) (string, error) {
-	res, err := c.execute(ctx, func() ErrCmder {
+	res, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.SRandMember(ctx, key)
-	})
+	}, key)
 
 	val := res.(*baseRedis.StringCmd).Val()
 
@@ -517,81 +553,83 @@ func (c *redisClient) SRandMember(ctx context.Context, key string) (string, erro
 }
 
 func (c *redisClient) SUnion(ctx context.Context, keys ...string) ([]string, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
 		return c.base.SUnion(ctx, keys...)
-	})
+	}, keys...)
 
 	return cmd.(*baseRedis.StringSliceCmd).Val(), err
 }
 
 func (c *redisClient) SUnionStore(ctx context.Context, destination string, keys ...string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
-		return c.base.SUnionStore(ctx, destination, keys...)
-	})
+	allKeys := append([]string{destination}, keys...)
+	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
+		return c.base.SUnionStore(ctx, keys[0], keys[1:]...)
+	}, allKeys...)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) Incr(ctx context.Context, key string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.Incr(ctx, key)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) IncrBy(ctx context.Context, key string, amount int64) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.IncrBy(ctx, key, amount)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) Decr(ctx context.Context, key string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.Decr(ctx, key)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) DecrBy(ctx context.Context, key string, amount int64) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.DecrBy(ctx, key, amount)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) Expire(ctx context.Context, key string, ttl time.Duration) (bool, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.Expire(ctx, key, ttl)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.BoolCmd).Val(), err
 }
 
 func (c *redisClient) PFAdd(ctx context.Context, key string, els ...any) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.PFAdd(ctx, key, els...)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) PFCount(ctx context.Context, keys ...string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
 		return c.base.PFCount(ctx, keys...)
-	})
+	}, keys...)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) PFMerge(ctx context.Context, dest string, keys ...string) (string, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
-		return c.base.PFMerge(ctx, dest, keys...)
-	})
+	allKeys := append([]string{dest}, keys...)
+	cmd, err := c.executePrefixed(ctx, func(keys ...string) ErrCmder {
+		return c.base.PFMerge(ctx, keys[0], keys[1:]...)
+	}, allKeys...)
 
 	return cmd.(*baseRedis.StatusCmd).Val(), err
 }
@@ -613,9 +651,9 @@ func (c *redisClient) ZAdd(ctx context.Context, key string, score float64, membe
 func (c *redisClient) ZAddArgs(ctx context.Context, args ZAddArgs) (int64, error) {
 	zAddArgs := c.toGoRedisZAddArgs(args)
 
-	cmd, err := c.execute(ctx, func() ErrCmder {
-		return c.base.ZAddArgs(ctx, args.Key, zAddArgs)
-	})
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
+		return c.base.ZAddArgs(ctx, key, zAddArgs)
+	}, args.Key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
@@ -623,49 +661,49 @@ func (c *redisClient) ZAddArgs(ctx context.Context, args ZAddArgs) (int64, error
 func (c *redisClient) ZAddArgsIncr(ctx context.Context, args ZAddArgs) (float64, error) {
 	zAddArgs := c.toGoRedisZAddArgs(args)
 
-	cmd, err := c.execute(ctx, func() ErrCmder {
-		return c.base.ZAddArgsIncr(ctx, args.Key, zAddArgs)
-	})
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
+		return c.base.ZAddArgsIncr(ctx, key, zAddArgs)
+	}, args.Key)
 
 	return cmd.(*baseRedis.FloatCmd).Val(), err
 }
 
 func (c *redisClient) ZCard(ctx context.Context, key string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.ZCard(ctx, key)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) ZCount(ctx context.Context, key string, minVal string, maxVal string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.ZCount(ctx, key, minVal, maxVal)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) ZIncrBy(ctx context.Context, key string, increment float64, member string) (float64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.ZIncrBy(ctx, key, increment, member)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.FloatCmd).Val(), err
 }
 
 func (c *redisClient) ZScore(ctx context.Context, key string, member string) (float64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.ZScore(ctx, key, member)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.FloatCmd).Val(), err
 }
 
 func (c *redisClient) ZMScore(ctx context.Context, key string, members ...string) ([]float64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.ZMScore(ctx, key, members...)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.FloatSliceCmd).Val(), err
 }
@@ -681,9 +719,11 @@ func (c *redisClient) ZRange(ctx context.Context, key string, start int64, stop 
 func (c *redisClient) ZRangeArgs(ctx context.Context, args ZRangeArgs) ([]string, error) {
 	zRangeArgs := baseRedis.ZRangeArgs(args)
 
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
+		zRangeArgs.Key = key
+
 		return c.base.ZRangeArgs(ctx, zRangeArgs)
-	})
+	}, args.Key)
 
 	return cmd.(*baseRedis.StringSliceCmd).Val(), err
 }
@@ -691,9 +731,11 @@ func (c *redisClient) ZRangeArgs(ctx context.Context, args ZRangeArgs) ([]string
 func (c *redisClient) ZRangeArgsWithScore(ctx context.Context, args ZRangeArgs) ([]Z, error) {
 	zRangeArgs := baseRedis.ZRangeArgs(args)
 
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
+		zRangeArgs.Key = key
+
 		return c.base.ZRangeArgsWithScores(ctx, zRangeArgs)
-	})
+	}, args.Key)
 
 	zs := cmd.(*baseRedis.ZSliceCmd).Val()
 	members := c.toGosolineZs(zs)
@@ -702,41 +744,41 @@ func (c *redisClient) ZRangeArgsWithScore(ctx context.Context, args ZRangeArgs) 
 }
 
 func (c *redisClient) ZRandMember(ctx context.Context, key string, count int) ([]string, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.ZRandMember(ctx, key, count)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.StringSliceCmd).Val(), err
 }
 
 func (c *redisClient) ZRank(ctx context.Context, key string, member string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.ZRank(ctx, key, member)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) ZRem(ctx context.Context, key string, members ...string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.ZRem(ctx, key, members)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) ZRevRange(ctx context.Context, key string, start int64, stop int64) ([]string, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.ZRevRange(ctx, key, start, stop)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.StringSliceCmd).Val(), err
 }
 
 func (c *redisClient) ZRevRank(ctx context.Context, key string, member string) (int64, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.ZRevRank(ctx, key, member)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
@@ -752,28 +794,98 @@ func (c *redisClient) IsAlive(ctx context.Context) bool {
 }
 
 func (c *redisClient) GetDel(ctx context.Context, key string) (any, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.GetDel(ctx, key)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
 func (c *redisClient) GetSet(ctx context.Context, key string, value any) (any, error) {
-	cmd, err := c.execute(ctx, func() ErrCmder {
+	cmd, err := c.executePrefixedKey(ctx, func(key string) ErrCmder {
 		return c.base.GetSet(ctx, key, value)
-	})
+	}, key)
 
 	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
 func (c *redisClient) Pipeline() Pipeliner {
-	return c.base.Pipeline()
+	return &prefixedPipeliner{
+		Pipeliner: c.base.Pipeline(),
+		client:    c,
+	}
 }
 
 func (c *redisClient) execute(ctx context.Context, wrappedCmd func() ErrCmder) (any, error) {
 	return c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 		cmder := wrappedCmd()
+
+		return cmder, cmder.Err()
+	})
+}
+
+func (c *redisClient) prefixKey(key string) (string, error) {
+	return c.keyPrefix + key, nil
+}
+
+func (c *redisClient) prefixKeys(keys ...string) ([]string, error) {
+	var err error
+	prefixedKeys := make([]string, len(keys))
+
+	for i, key := range keys {
+		if prefixedKeys[i], err = c.prefixKey(key); err != nil {
+			return nil, fmt.Errorf("failed to prefix key %q: %w", key, err)
+		}
+	}
+
+	return prefixedKeys, nil
+}
+
+func (c *redisClient) prefixInterleavedKeys(pairs ...any) ([]any, error) {
+	if len(pairs)%2 != 0 {
+		return nil, fmt.Errorf("pairs must be an even number of arguments")
+	}
+
+	prefixedPairs := make([]any, len(pairs))
+	copy(prefixedPairs, pairs)
+
+	for i := 0; i < len(pairs); i += 2 {
+		key, ok := pairs[i].(string)
+		if !ok {
+			return nil, fmt.Errorf("key at index %d is not a string: %v", i, pairs[i])
+		}
+
+		prefixed, err := c.prefixKey(key)
+		if err != nil {
+			return nil, err
+		}
+		prefixedPairs[i] = prefixed
+	}
+
+	return prefixedPairs, nil
+}
+
+func (c *redisClient) executePrefixedKey(ctx context.Context, wrappedCmd func(prefixedKey string) ErrCmder, key string) (any, error) {
+	return c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
+		prefixedKey, err := c.prefixKey(key)
+		if err != nil {
+			return nil, err
+		}
+
+		cmder := wrappedCmd(prefixedKey)
+
+		return cmder, cmder.Err()
+	})
+}
+
+func (c *redisClient) executePrefixed(ctx context.Context, wrappedCmd func(prefixedKeys ...string) ErrCmder, keys ...string) (any, error) {
+	return c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
+		prefixedKeys, err := c.prefixKeys(keys...)
+		if err != nil {
+			return nil, err
+		}
+
+		cmder := wrappedCmd(prefixedKeys...)
 
 		return cmder, cmder.Err()
 	})

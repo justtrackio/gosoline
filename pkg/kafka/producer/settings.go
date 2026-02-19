@@ -18,7 +18,7 @@ const (
 )
 
 type Settings struct {
-	cfg.AppId
+	Identity       cfg.Identity `cfg:"identity"`
 	Connection     string
 	TopicId        string
 	Compression    KafkaCompressionCodec

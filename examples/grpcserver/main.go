@@ -13,15 +13,10 @@ func main() {
 	grpcServerModule := grpcserver.New("default", service.Definer)
 	grpcServerModuleWithoutHealthChecks := grpcserver.New("no_health_checks", service.Definer)
 
-	// initialize the application
-	app := application.New(
-		application.WithConfigFile("./config.dist.yml", "yml"), // read config form config.dist.yml file
-		application.WithLoggerHandlersFromConfig,               // enable logging based on config
-
-		// add the grpcserver kernel.ModuleFactory to the kernel
+	// initialize and run the application
+	application.Run(
+		application.WithConfigFile("./config.dist.yml", "yml"),
 		application.WithModuleFactory("grpc_server", grpcServerModule),
 		application.WithModuleFactory("grpc_server_no_health_checks", grpcServerModuleWithoutHealthChecks),
 	)
-
-	app.Run()
 }

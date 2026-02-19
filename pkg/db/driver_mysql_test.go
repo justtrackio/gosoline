@@ -26,7 +26,14 @@ type MysqlDriverTestSuite struct {
 func (s *MysqlDriverTestSuite) SetupTest() {
 	s.config = cfg.New()
 	err := s.config.Option(cfg.WithConfigMap(map[string]any{
-		"app_name": "test",
+		"app": map[string]any{
+			"name": "test",
+			"tags": map[string]any{
+				"project": "prj",
+				"family":  "fam",
+				"group":   "grp",
+			},
+		},
 	}))
 	s.NoError(err)
 

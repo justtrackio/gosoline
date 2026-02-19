@@ -121,7 +121,7 @@ func (s *CalculatorModuleTestSuite) SetupTestCase() {
 		},
 		DynamoDb: calculator.DynamoDbSettings{
 			Naming: calculator.DynamoDbNamingSettings{
-				Pattern: "{project}-{env}-{family}-{group}",
+				TablePattern: "{app.tags.project}-{app.env}-{app.tags.family}-{app.tags.group}",
 			},
 		},
 		Ecs: calculator.EcsSettings{

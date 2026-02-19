@@ -2,7 +2,7 @@ test:
   auto_detect:
     enabled: false
   components:
-    ddb:
+    localstack:
       default:
         expire_after: 4m
     mysql:

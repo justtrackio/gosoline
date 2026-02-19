@@ -20,7 +20,6 @@ const (
 )
 
 type RedisListInputSettings struct {
-	cfg.AppId
 	ServerName         string
 	Key                string
 	WaitTime           time.Duration
@@ -34,24 +33,19 @@ type redisListInput struct {
 	settings         *RedisListInputSettings
 	healthCheckTimer clock.HealthCheckTimer
 
-	channel           chan *Message
-	stopped           bool
-	fullyQualifiedKey string
+	channel chan *Message
+	stopped bool
 }
 
 func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *RedisListInputSettings) (Input, error) {
-	err := settings.PadFromConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("can not pad settings from config: %w", err)
-	}
-
+	var err error
 	var client redis.Client
-	client, err = redis.ProvideClient(ctx, config, logger, settings.ServerName)
-	if err != nil {
+
+	if client, err = redis.ProvideClient(ctx, config, logger, settings.ServerName); err != nil {
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 
-	defaultMetrics := getRedisListInputDefaultMetrics(settings.AppId, settings.Key)
+	defaultMetrics := getRedisListInputDefaultMetrics(settings)
 	mw := metric.NewWriter(defaultMetrics...)
 
 	healthCheckTimer, err := clock.NewHealthCheckTimer(settings.HealthcheckTimeout)
@@ -59,26 +53,24 @@ func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("failed to create healthcheck timer: %w", err)
 	}
 
-	return NewRedisListInputWithInterfaces(logger, client, mw, settings, healthCheckTimer), nil
+	return NewRedisListInputWithInterfaces(config, logger, client, mw, settings, healthCheckTimer), nil
 }
 
 func NewRedisListInputWithInterfaces(
+	config cfg.Config,
 	logger log.Logger,
 	client redis.Client,
 	mw metric.Writer,
 	settings *RedisListInputSettings,
 	healthCheckTimer clock.HealthCheckTimer,
 ) Input {
-	fullyQualifiedKey := redis.GetFullyQualifiedKey(settings.AppId, settings.Key)
-
 	return &redisListInput{
-		logger:            logger,
-		client:            client,
-		settings:          settings,
-		healthCheckTimer:  healthCheckTimer,
-		mw:                mw,
-		channel:           make(chan *Message),
-		fullyQualifiedKey: fullyQualifiedKey,
+		logger:           logger,
+		client:           client,
+		settings:         settings,
+		healthCheckTimer: healthCheckTimer,
+		mw:               mw,
+		channel:          make(chan *Message),
 	}
 }
 
@@ -102,7 +94,7 @@ func (i *redisListInput) Run(ctx context.Context) error {
 
 		i.healthCheckTimer.MarkHealthy()
 
-		rawMessage, err := i.client.BLPop(ctx, i.settings.WaitTime, i.fullyQualifiedKey)
+		rawMessage, err := i.client.BLPop(ctx, i.settings.WaitTime, i.settings.Key)
 
 		if err != nil && err.Error() != redis.Nil.Error() {
 			i.logger.Error(ctx, "could not BLPop from redis: %w", err)
@@ -146,7 +138,7 @@ func (i *redisListInput) runMetricLoop(ctx context.Context) {
 }
 
 func (i *redisListInput) writeListLengthMetric(ctx context.Context) {
-	llen, err := i.client.LLen(ctx, i.fullyQualifiedKey)
+	llen, err := i.client.LLen(ctx, i.settings.Key)
 	if err != nil {
 		i.logger.Error(ctx, "can not publish stream list metric data: %w", err)
 
@@ -157,7 +149,7 @@ func (i *redisListInput) writeListLengthMetric(ctx context.Context) {
 		Priority:   metric.PriorityHigh,
 		MetricName: metricNameRedisListInputLength,
 		Dimensions: map[string]string{
-			"StreamName": i.fullyQualifiedKey,
+			"StreamName": fmt.Sprintf("%s-%s", i.settings.ServerName, i.settings.Key),
 		},
 		Unit:  metric.UnitCountAverage,
 		Value: float64(llen),
@@ -170,7 +162,7 @@ func (i *redisListInput) writeListReadMetric(ctx context.Context) {
 	data := metric.Data{{
 		MetricName: metricNameRedisListInputReads,
 		Dimensions: map[string]string{
-			"StreamName": i.fullyQualifiedKey,
+			"StreamName": fmt.Sprintf("%s-%s", i.settings.ServerName, i.settings.Key),
 		},
 		Value: 1.0,
 	}}
@@ -178,15 +170,13 @@ func (i *redisListInput) writeListReadMetric(ctx context.Context) {
 	i.mw.Write(ctx, data)
 }
 
-func getRedisListInputDefaultMetrics(appId cfg.AppId, key string) metric.Data {
-	fullyQualifiedKey := redis.GetFullyQualifiedKey(appId, key)
-
+func getRedisListInputDefaultMetrics(settings *RedisListInputSettings) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameRedisListInputReads,
 			Dimensions: map[string]string{
-				"StreamName": fullyQualifiedKey,
+				"StreamName": fmt.Sprintf("%s-%s", settings.ServerName, settings.Key),
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,

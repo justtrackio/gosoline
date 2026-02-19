@@ -22,10 +22,13 @@ type SubscriberCoreTestSuite struct {
 func (s *SubscriberCoreTestSuite) SetupTest() {
 	s.core = mdlsub.NewSubscriberCoreWithInterfaces(transformers, outputs)
 	s.modelId = mdl.ModelId{
-		Project: "justtrack",
-		Family:  "gosoline",
-		Group:   "mdlsub",
-		Name:    "testModel",
+		Name: "testModel",
+		Tags: map[string]string{
+			"project": "justtrack",
+			"family":  "gosoline",
+			"group":   "mdlsub",
+		},
+		DomainPattern: "{app.tags.project}.{app.tags.family}.{app.tags.group}",
 	}
 }
 
@@ -37,10 +40,13 @@ func (s *SubscriberCoreTestSuite) TestGetLatestModelIdVersion() {
 
 func (s *SubscriberCoreTestSuite) TestGetLatestModelIdMissingModelId() {
 	_, err := s.core.GetLatestModelIdVersion(mdl.ModelId{
-		Project: "justtrack",
-		Family:  "gosoline",
-		Group:   "foobar",
-		Name:    "testModel",
+		Name: "testModel",
+		Tags: map[string]string{
+			"project": "justtrack",
+			"family":  "gosoline",
+			"group":   "foobar",
+		},
+		DomainPattern: "{app.tags.project}.{app.tags.family}.{app.tags.group}",
 	})
 	s.EqualError(err, "failed to find model transformer for model id justtrack.gosoline.foobar.testModel")
 }

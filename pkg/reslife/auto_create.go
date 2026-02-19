@@ -11,9 +11,9 @@ func init() {
 }
 
 func AutoCreateConfigPostProcessor(config cfg.GosoConf) (bool, error) {
-	env, err := config.GetString("env", "")
+	env, err := config.GetString("app.env", "")
 	if err != nil {
-		return false, fmt.Errorf("could not get env: %w", err)
+		return false, fmt.Errorf("could not get app.env: %w", err)
 	}
 
 	if env != "dev" && env != "test" {

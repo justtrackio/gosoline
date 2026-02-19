@@ -12,6 +12,7 @@ import (
 
 func main() {
 	application.Run(
+		application.WithConfigFile("config.dist.yml", "yml"),
 		application.WithModuleFactory("hello-world", NewHelloWorldModule, kernel.ModuleType(kernel.TypeBackground)),
 		application.WithModuleFactory("foreground-module", NewForegroundModule, kernel.ModuleType(kernel.TypeForeground)),
 	)

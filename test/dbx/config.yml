@@ -1,9 +1,10 @@
-env: test
-
-app_project: justtrack
-app_family: gosoline
-app_group: dbx
-app_name: client_test
+app:
+  env: test
+  name: client_test
+  tags:
+    project: justtrack
+    family: gosoline
+    group: dbx
 
 db:
   default:

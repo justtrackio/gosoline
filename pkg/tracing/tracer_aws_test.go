@@ -3,7 +3,7 @@ package tracing_test
 import (
 	"testing"
 
-	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
+	"github.com/aws/aws-xray-sdk-go/v2/strategy/sampling"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -59,15 +59,17 @@ func TestAwsTracer_StartSpanFromContextWithTrace(t *testing.T) {
 
 func getTracer(t *testing.T) tracing.Tracer {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
-	tracer, err := tracing.NewAwsTracerWithInterfaces(logger, cfg.AppId{
-		Project:     "test_project",
-		Environment: "test_env",
-		Family:      "test_family",
-		Group:       "test_group",
-		Application: "test_name",
+	tracer, err := tracing.NewAwsTracerWithInterfaces(logger, cfg.Identity{
+		Name: "test_name",
+		Env:  "test_env",
+		Tags: cfg.Tags{
+			"project": "test_project",
+			"family":  "test_family",
+			"group":   "test_group",
+		},
 	}, &tracing.XRaySettings{
 		SamplingStrategy: &TestSamplingStrategy{},
-	})
+	}, "test_project-test_env-test_family-test_group-test_name")
 
 	assert.NoError(t, err, "we should be able to get a tracer")
 

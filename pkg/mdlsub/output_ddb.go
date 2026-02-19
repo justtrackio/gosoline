@@ -56,8 +56,13 @@ func NewOutputDdb(ctx context.Context, config cfg.Config, logger log.Logger, mod
 		return nil, fmt.Errorf("can not create ddb repository: %w", err)
 	}
 
+	metricRepo, err := ddb.NewMetricRepository(config, logger, repo)
+	if err != nil {
+		return nil, fmt.Errorf("can not create metric repository: %w", err)
+	}
+
 	return &OutputDdb{
-		repo: ddb.NewMetricRepository(config, logger, repo),
+		repo: metricRepo,
 	}, nil
 }
 

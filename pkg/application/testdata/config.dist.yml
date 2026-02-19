@@ -1,6 +1,7 @@
-env: test
-
-app_project: test_project
-app_family: test_family
-app_group: test_group
-app_name: test_app
+app:
+  env: test
+  name: test_app
+  tags:
+    project: test_project
+    family: test_family
+    group: test_group

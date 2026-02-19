@@ -16,7 +16,7 @@ import (
 const SqsOutputBatchSize = 10
 
 type SqsOutputSettings struct {
-	cfg.AppId
+	Identity          cfg.Identity
 	ClientName        string
 	Fifo              sqs.FifoSettings
 	QueueId           string
@@ -24,8 +24,8 @@ type SqsOutputSettings struct {
 	VisibilityTimeout int
 }
 
-func (s SqsOutputSettings) GetAppId() cfg.AppId {
-	return s.AppId
+func (s SqsOutputSettings) GetIdentity() cfg.Identity {
+	return s.Identity
 }
 
 func (s SqsOutputSettings) GetClientName() string {
@@ -48,10 +48,6 @@ type sqsOutput struct {
 
 func NewSqsOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsOutputSettings) (Output, error) {
 	var err error
-	if err = settings.PadFromConfig(config); err != nil {
-		return nil, fmt.Errorf("can not pad settings from config: %w", err)
-	}
-
 	var queueName string
 	var queue sqs.Queue
 

@@ -11,12 +11,11 @@ import (
 )
 
 func main() {
-	app := application.New(
+	application.Run(
 		application.WithModuleFactory("hello", moduleFactory),
 		application.WithMiddlewareFactory(two, kernel.PositionBeginning),
 		application.WithMiddlewareFactory(one, kernel.PositionBeginning),
 	)
-	app.Run()
 }
 
 func moduleFactory(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {

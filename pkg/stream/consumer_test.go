@@ -126,7 +126,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 		s.callback,
 		settings,
 		"test",
-		cfg.AppId{},
+		cfg.Identity{},
 	)
 	s.consumer = stream.NewUntypedConsumerWithInterfaces(baseConsumer, s.callback, healthCheckTimer, samplingDecider)
 }
