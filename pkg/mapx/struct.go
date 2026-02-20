@@ -432,6 +432,21 @@ func (s *Struct) doReadStruct(path string, mapValues *MapX, target any) error {
 func (s *Struct) doReadValue(path string, mapValues *MapX, tag *StructTag, fieldType reflect.StructField, fieldValue reflect.Value) error {
 	fieldPath := fmt.Sprintf("%s.%s", path, tag.Name)
 
+	// Dereference pointer fields. Nil pointers produce no entry in the map.
+	if fieldValue.Kind() == reflect.Ptr {
+		if fieldValue.IsNil() {
+			return nil
+		}
+
+		fieldValue = fieldValue.Elem()
+		fieldType = reflect.StructField{
+			Name:    fieldType.Name,
+			Type:    fieldValue.Type(),
+			Tag:     fieldType.Tag,
+			PkgPath: fieldType.PkgPath,
+		}
+	}
+
 	if fieldValue.Kind() == reflect.Map {
 		target := fieldValue.Interface()
 
@@ -543,71 +558,59 @@ func (s *Struct) doWritePrefixedStruct(tag *StructTag, targetValue reflect.Value
 }
 
 func (s *Struct) doWrite(target any, sourceValues *MapX) error {
-	st := reflect.TypeOf(target)
-	sv := reflect.ValueOf(target)
-
-	st = st.Elem()
-	sv = sv.Elem()
-
-	var tag *StructTag
-	var ok bool
+	st := reflect.TypeOf(target).Elem()
+	sv := reflect.ValueOf(target).Elem()
 
 	for i := 0; i < st.NumField(); i++ {
-		targetField := st.Field(i)
-		targetValue := sv.Field(i)
-
-		// skip unexported fields
-		if targetField.PkgPath != "" {
-			continue
-		}
-
-		if !targetValue.IsValid() {
-			return fmt.Errorf("field %s is invalid", targetField.Name)
-		}
-
-		if !targetValue.CanSet() {
-			return fmt.Errorf("field %s is not addressable", targetField.Name)
-		}
-
-		if targetField.Anonymous {
-			if err := s.doWriteAnonymous(targetField.Name, targetValue, sourceValues); err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		if tag, ok = s.readTag(targetField.Tag, targetField.Name); !ok {
-			continue
-		}
-
-		// Handle prefix option for struct fields
-		if tag.Prefix != "" {
-			targetKind := targetValue.Kind()
-			isStruct := targetKind == reflect.Struct && targetValue.Type() != reflect.TypeOf(time.Time{})
-			isPtrToStruct := targetKind == reflect.Ptr && targetValue.Type().Elem().Kind() == reflect.Struct
-
-			if isStruct || isPtrToStruct {
-				if err := s.doWritePrefixedStruct(tag, targetValue, sourceValues); err != nil {
-					return err
-				}
-
-				continue
-			}
-		}
-
-		// Use findMatchingKey instead of direct Has() check
-		matchedKey := s.findMatchingKey(sourceValues, tag.Name)
-		if matchedKey == "" {
-			continue
-		}
-
-		if err := s.doWriteValue(tag, matchedKey, sourceValues, targetValue); err != nil {
+		if err := s.doWriteField(st.Field(i), sv.Field(i), sourceValues); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// doWriteField processes a single struct field during a Write operation.
+func (s *Struct) doWriteField(targetField reflect.StructField, targetValue reflect.Value, sourceValues *MapX) error {
+	// skip unexported fields
+	if targetField.PkgPath != "" {
+		return nil
+	}
+
+	if !targetValue.IsValid() {
+		return fmt.Errorf("field %s is invalid", targetField.Name)
+	}
+
+	if !targetValue.CanSet() {
+		return fmt.Errorf("field %s is not addressable", targetField.Name)
+	}
+
+	if targetField.Anonymous {
+		return s.doWriteAnonymous(targetField.Name, targetValue, sourceValues)
+	}
+
+	tag, ok := s.readTag(targetField.Tag, targetField.Name)
+	if !ok {
+		return nil
+	}
+
+	// Handle prefix option for struct fields
+	if tag.Prefix != "" {
+		targetKind := targetValue.Kind()
+		isStruct := targetKind == reflect.Struct && targetValue.Type() != reflect.TypeOf(time.Time{})
+		isPtrToStruct := targetKind == reflect.Ptr && targetValue.Type().Elem().Kind() == reflect.Struct
+
+		if isStruct || isPtrToStruct {
+			return s.doWritePrefixedStruct(tag, targetValue, sourceValues)
+		}
+	}
+
+	matchedKey := s.findMatchingKey(sourceValues, tag.Name)
+	if matchedKey == "" {
+		return nil
+	}
+
+	return s.doWriteValue(tag, matchedKey, sourceValues, targetValue)
 }
 
 func (s *Struct) doWriteValue(tag *StructTag, matchedKey string, sourceValues *MapX, targetValue reflect.Value) (err error) {
@@ -985,6 +988,7 @@ func (s *Struct) readTag(sourceTag reflect.StructTag, fieldName string) (*Struct
 		if s.settings.DefaultToFieldName && fieldName != "" {
 			return &StructTag{Name: fieldName}, true
 		}
+
 		return nil, ok
 	}
 

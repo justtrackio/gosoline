@@ -562,6 +562,78 @@ func TestNewMapStructIO_ReadSliceBasic(t *testing.T) {
 	assert.Equal(t, expectedValues, msi.Msi())
 }
 
+func TestMapStructIO_Read_PointerToStruct(t *testing.T) {
+	type nested struct {
+		Replicas int `cfg:"replicas"`
+	}
+
+	type sourceStruct struct {
+		StatefulSet *nested `cfg:"stateful_set"`
+	}
+
+	source := &sourceStruct{
+		StatefulSet: &nested{Replicas: 3},
+	}
+
+	expectedValues := map[string]any{
+		"stateful_set": map[string]any{
+			"replicas": 3,
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
+func TestMapStructIO_Read_NilPointerToStruct(t *testing.T) {
+	type nested struct {
+		Replicas int `cfg:"replicas"`
+	}
+
+	type sourceStruct struct {
+		StatefulSet *nested `cfg:"stateful_set"`
+	}
+
+	source := &sourceStruct{
+		StatefulSet: nil,
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, map[string]any{}, msi.Msi())
+}
+
+func TestMapStructIO_Read_PointerToScalar(t *testing.T) {
+	strVal := "hello"
+	intVal := 42
+
+	type sourceStruct struct {
+		S *string `cfg:"s"`
+		I *int    `cfg:"i"`
+	}
+
+	source := &sourceStruct{
+		S: &strVal,
+		I: &intVal,
+	}
+
+	expectedValues := map[string]any{
+		"s": "hello",
+		"i": 42,
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
 func TestMapStructIO_ReadNonZero_AllZero(t *testing.T) {
 	type sourceStruct struct {
 		B bool   `cfg:"b"`
@@ -654,6 +726,34 @@ func TestMapStructIO_ReadNonZero_NestedStruct(t *testing.T) {
 		},
 		"non_zero_nested": map[string]any{
 			"s": "hi",
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.ReadNonZero()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
+func TestMapStructIO_ReadNonZero_PointerToStruct(t *testing.T) {
+	type nested struct {
+		Replicas int `cfg:"replicas"`
+	}
+
+	type sourceStruct struct {
+		StatefulSet    *nested `cfg:"stateful_set"`
+		NilStatefulSet *nested `cfg:"nil_stateful_set"`
+	}
+
+	source := &sourceStruct{
+		StatefulSet:    &nested{Replicas: 2},
+		NilStatefulSet: nil,
+	}
+
+	expectedValues := map[string]any{
+		"stateful_set": map[string]any{
+			"replicas": 2,
 		},
 	}
 
