@@ -562,6 +562,108 @@ func TestNewMapStructIO_ReadSliceBasic(t *testing.T) {
 	assert.Equal(t, expectedValues, msi.Msi())
 }
 
+func TestMapStructIO_ReadNonZero_AllZero(t *testing.T) {
+	type sourceStruct struct {
+		B bool   `cfg:"b"`
+		I int    `cfg:"i"`
+		S string `cfg:"s"`
+	}
+
+	source := &sourceStruct{}
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.ReadNonZero()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, map[string]any{}, msi.Msi())
+}
+
+func TestMapStructIO_ReadNonZero_AllNonZero(t *testing.T) {
+	type sourceStruct struct {
+		B bool   `cfg:"b"`
+		I int    `cfg:"i"`
+		S string `cfg:"s"`
+	}
+
+	source := &sourceStruct{
+		B: true,
+		I: 42,
+		S: "hello",
+	}
+
+	expectedValues := map[string]any{
+		"b": true,
+		"i": 42,
+		"s": "hello",
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.ReadNonZero()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
+func TestMapStructIO_ReadNonZero_Mixed(t *testing.T) {
+	type sourceStruct struct {
+		B bool   `cfg:"b"`
+		I int    `cfg:"i"`
+		S string `cfg:"s"`
+	}
+
+	source := &sourceStruct{
+		B: true,
+		I: 0,
+		S: "",
+	}
+
+	expectedValues := map[string]any{
+		"b": true,
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.ReadNonZero()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
+func TestMapStructIO_ReadNonZero_NestedStruct(t *testing.T) {
+	// ReadNonZero performs shallow filtering only: it compares each top-level
+	// value against its type's zero value using reflect.DeepEqual. Nested
+	// structs are returned by Read() as map[string]any values; an all-zero
+	// nested struct produces {"s": ""} which is not a nil map, so it is not
+	// equal to the zero value of map[string]any (nil) and is therefore kept.
+	type nested struct {
+		S string `cfg:"s"`
+	}
+
+	type sourceStruct struct {
+		ZeroNested    nested `cfg:"zero_nested"`
+		NonZeroNested nested `cfg:"non_zero_nested"`
+	}
+
+	source := &sourceStruct{
+		NonZeroNested: nested{S: "hi"},
+	}
+
+	expectedValues := map[string]any{
+		// zero_nested is kept because Read() produces a non-nil map[string]any{"s": ""},
+		// which is not equal to the zero value of map[string]any (nil).
+		"zero_nested": map[string]any{
+			"s": "",
+		},
+		"non_zero_nested": map[string]any{
+			"s": "hi",
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.ReadNonZero()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
 func TestMapStructIO_WriteBasic(t *testing.T) {
 	type sourceStruct struct {
 		B    bool          `cfg:"b" default:"true"`

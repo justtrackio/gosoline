@@ -234,10 +234,14 @@ func (s *Struct) ReadNonZero() (*MapX, error) {
 	}
 
 	nonZero := funk.MapFilter(mpx.Msi(), func(key string, value any) bool {
+		if value == nil {
+			return false
+		}
+
 		vt := reflect.TypeOf(value)
 		zeroValue := reflect.Zero(vt).Interface()
 
-		return value != zeroValue
+		return !reflect.DeepEqual(value, zeroValue)
 	})
 
 	return NewMapX(nonZero), nil
