@@ -22,25 +22,42 @@ type GetSqsQueueNameTestSuite struct {
 func (s *GetSqsQueueNameTestSuite) SetupTest() {
 	s.envProvider = cfg.NewMemoryEnvProvider()
 	s.config = cfg.NewWithInterfaces(s.envProvider)
+	
+	// Set up basic config values
+	baseConfig := map[string]any{
+		"app_project": "justtrack",
+		"env":         "test",
+		"app_family":  "gosoline",
+		"app_group":   "group",
+		"app_name":    "producer",
+		"realm":       "{app_project}-{env}-{app_family}-{app_group}", // Default realm value
+	}
+	
+	err := s.config.Option(cfg.WithConfigMap(baseConfig))
+	s.NoError(err)
+	
+	err = s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
+	s.NoError(err)
+	
+	// Create AppId from config
+	appId, err := cfg.GetAppIdFromConfig(s.config)
+	s.NoError(err)
+	
 	s.settings = sqs.QueueNameSettings{
-		AppId: cfg.AppId{
-			Project:     "justtrack",
-			Environment: "test",
-			Family:      "gosoline",
-			Group:       "group",
-			Application: "producer",
-		},
+		AppId:      appId,
 		ClientName: "default",
 		QueueId:    "event",
 	}
-
-	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
-	s.NoError(err)
 }
 
 func (s *GetSqsQueueNameTestSuite) setupConfig(settings map[string]any) {
 	err := s.config.Option(cfg.WithConfigMap(settings))
 	s.NoError(err, "there should be no error on setting up the config")
+	
+	// Recreate AppId from config to pick up new configuration
+	appId, err := cfg.GetAppIdFromConfig(s.config)
+	s.NoError(err)
+	s.settings.AppId = appId
 }
 
 func (s *GetSqsQueueNameTestSuite) setupConfigEnv(settings map[string]string) {
@@ -53,7 +70,7 @@ func (s *GetSqsQueueNameTestSuite) setupConfigEnv(settings map[string]string) {
 func (s *GetSqsQueueNameTestSuite) TestDefault() {
 	name, err := sqs.GetQueueName(s.config, s.settings)
 	s.NoError(err)
-	s.Equal("justtrack-test-gosoline-group-event", name)
+	s.Equal("justtrack-test-gosoline-group-producer-event", name)
 }
 
 func (s *GetSqsQueueNameTestSuite) TestDefaultFifo() {
@@ -61,7 +78,7 @@ func (s *GetSqsQueueNameTestSuite) TestDefaultFifo() {
 
 	name, err := sqs.GetQueueName(s.config, s.settings)
 	s.NoError(err)
-	s.Equal("justtrack-test-gosoline-group-event.fifo", name)
+	s.Equal("justtrack-test-gosoline-group-producer-event.fifo", name)
 }
 
 func (s *GetSqsQueueNameTestSuite) TestDefaultWithPattern() {
@@ -105,4 +122,80 @@ func (s *GetSqsQueueNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv()
 	name, err := sqs.GetQueueName(s.config, s.settings)
 	s.NoError(err)
 	s.Equal("producer-event", name)
+}
+
+func (s *GetSqsQueueNameTestSuite) TestRealmDefault() {
+	// Test default realm pattern resolves correctly
+	name, err := sqs.GetQueueName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack-test-gosoline-group-producer-event", name)
+}
+
+func (s *GetSqsQueueNameTestSuite) TestRealmGlobalCustomPattern() {
+	// Test custom global realm
+	s.setupConfig(map[string]any{
+		"realm": "{app_project}-{env}-{app_family}",
+	})
+
+	name, err := sqs.GetQueueName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack-test-gosoline-producer-event", name)
+}
+
+func (s *GetSqsQueueNameTestSuite) TestRealmServiceSpecificPattern() {
+	// Test service-specific realm
+	s.setupConfig(map[string]any{
+		"realm": "{app_project}-{env}",
+	})
+
+	name, err := sqs.GetQueueName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack-test-producer-event", name)
+}
+
+func (s *GetSqsQueueNameTestSuite) TestRealmClientSpecificPattern() {
+	// Test client-specific realm
+	s.settings.ClientName = "specific"
+	s.setupConfig(map[string]any{
+		"realm": "{app_project}-{app_family}",
+	})
+
+	name, err := sqs.GetQueueName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack-gosoline-producer-event", name)
+}
+
+func (s *GetSqsQueueNameTestSuite) TestRealmClientSpecificWithFallback() {
+	// Test client-specific fallback to service default realm
+	s.settings.ClientName = "specific"
+	s.setupConfig(map[string]any{
+		"realm": "{app_project}-{env}",
+	})
+
+	name, err := sqs.GetQueueName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack-test-producer-event", name)
+}
+
+func (s *GetSqsQueueNameTestSuite) TestRealmWithCustomPattern() {
+	// Test custom pattern with realm
+	s.setupConfig(map[string]any{
+		"realm": "{app_project}-{env}-{app_family}",
+		"cloud.aws.sqs.clients.default.naming.pattern": "{realm}-{queueId}",
+	})
+
+	name, err := sqs.GetQueueName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack-test-gosoline-event", name)
+}
+
+func (s *GetSqsQueueNameTestSuite) TestBackwardCompatibilityWithoutRealm() {
+	// Test that old patterns still work without realm
+	s.setupConfig(map[string]any{
+		"cloud.aws.sqs.clients.default.naming.pattern": "{project}-{env}-{family}-{group}-{queueId}",
+	})
+
+	name, err := sqs.GetQueueName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("justtrack-test-gosoline-group-event", name)
 }

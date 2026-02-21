@@ -37,6 +37,16 @@ func (s *TableNameTestSuite) SetupTest() {
 
 	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
 	s.NoError(err)
+
+	// Set up config values that PadFromConfig expects
+	s.setupConfig(map[string]any{
+		"app_project": "justtrack",
+		"env":         "test",
+		"app_family":  "gosoline",
+		"app_group":   "group",
+		"app_name":    "producer",
+		"realm":       "justtrack-test-gosoline-group",
+	})
 }
 
 func (s *TableNameTestSuite) setupConfig(settings map[string]any) {
@@ -52,6 +62,10 @@ func (s *TableNameTestSuite) setupConfigEnv(settings map[string]string) {
 }
 
 func (s *TableNameTestSuite) TestDefault() {
+	// Simulate what the repository does - call PadFromConfig
+	err := s.settings.ModelId.PadFromConfig(s.config)
+	s.NoError(err, "there should be no error on padding ModelId from config")
+
 	name, err := ddb.TableName(s.config, s.settings)
 	if err != nil {
 		s.FailNow("there should be no error on getting the table name", err)
@@ -64,6 +78,10 @@ func (s *TableNameTestSuite) TestDefaultWithPattern() {
 	s.setupConfig(map[string]any{
 		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app}-{modelId}",
 	})
+
+	// Simulate what the repository does - call PadFromConfig
+	err := s.settings.ModelId.PadFromConfig(s.config)
+	s.NoError(err, "there should be no error on padding ModelId from config")
 
 	name, err := ddb.TableName(s.config, s.settings)
 	if err != nil {
@@ -79,6 +97,10 @@ func (s *TableNameTestSuite) TestSpecificClientWithPattern() {
 		"cloud.aws.dynamodb.clients.specific.naming.pattern": "{app}-{modelId}",
 	})
 
+	// Simulate what the repository does - call PadFromConfig
+	err := s.settings.ModelId.PadFromConfig(s.config)
+	s.NoError(err, "there should be no error on padding ModelId from config")
+
 	name, err := ddb.TableName(s.config, s.settings)
 	if err != nil {
 		s.FailNow("there should be no error on getting the table name", err)
@@ -91,6 +113,10 @@ func (s *TableNameTestSuite) TestPatternFromTableSettings() {
 	s.settings.TableNamingSettings = ddb.TableNamingSettings{
 		Pattern: "this-is-an-fqn-overwrite",
 	}
+
+	// Simulate what the repository does - call PadFromConfig
+	err := s.settings.ModelId.PadFromConfig(s.config)
+	s.NoError(err, "there should be no error on padding ModelId from config")
 
 	name, err := ddb.TableName(s.config, s.settings)
 	if err != nil {
@@ -106,6 +132,10 @@ func (s *TableNameTestSuite) TestSpecificClientWithFallbackPattern() {
 		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app}-{modelId}",
 	})
 
+	// Simulate what the repository does - call PadFromConfig
+	err := s.settings.ModelId.PadFromConfig(s.config)
+	s.NoError(err, "there should be no error on padding ModelId from config")
+
 	name, err := ddb.TableName(s.config, s.settings)
 	if err != nil {
 		s.FailNow("there should be no error on getting the table name", err)
@@ -119,6 +149,10 @@ func (s *TableNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
 	s.setupConfigEnv(map[string]string{
 		"CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_PATTERN": "!nodecode {app}-{modelId}",
 	})
+
+	// Simulate what the repository does - call PadFromConfig
+	err := s.settings.ModelId.PadFromConfig(s.config)
+	s.NoError(err, "there should be no error on padding ModelId from config")
 
 	name, err := ddb.TableName(s.config, s.settings)
 	if err != nil {

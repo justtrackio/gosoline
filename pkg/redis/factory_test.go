@@ -46,6 +46,7 @@ func (s *FactoryTestSuite) TestDefault() {
 			Family:      "fam",
 			Group:       "grp",
 			Application: "redis",
+			Realm:       "gosoline-env-fam-grp",
 		},
 		Name: "default",
 		Naming: redis.Naming{
@@ -87,6 +88,7 @@ func (s *FactoryTestSuite) TestDedicated() {
 			Family:      "fam",
 			Group:       "grp",
 			Application: "redis",
+			Realm:       "gosoline-env-fam-grp",
 		},
 		Name: "dedicated",
 		Naming: redis.Naming{
@@ -130,6 +132,7 @@ func (s *FactoryTestSuite) TestWithDefaults() {
 			Family:      "fam",
 			Group:       "grp",
 			Application: "redis",
+			Realm:       "gosoline-env-fam-grp",
 		},
 		Name: "partial",
 		Naming: redis.Naming{

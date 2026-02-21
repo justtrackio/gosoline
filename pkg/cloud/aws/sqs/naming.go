@@ -2,7 +2,6 @@ package sqs
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
@@ -39,7 +38,7 @@ func (s QueueNameSettings) GetQueueId() string {
 }
 
 type QueueNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{queueId}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{realm}-{app}-{queueId}"`
 }
 
 func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (string, error) {
@@ -56,19 +55,13 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 
 	name := namingSettings.Pattern
 	appId := queueSettings.GetAppId()
-	values := map[string]string{
-		"project": appId.Project,
-		"env":     appId.Environment,
-		"family":  appId.Family,
-		"group":   appId.Group,
-		"app":     appId.Application,
-		"queueId": queueSettings.GetQueueId(),
+	
+	// Use AppId's ReplaceMacros method with queueId as extra macro
+	extraMacros := []cfg.MacroValue{
+		{"queueId", queueSettings.GetQueueId()},
 	}
 
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		name = strings.ReplaceAll(name, templ, val)
-	}
+	name = appId.ReplaceMacros(name, extraMacros...)
 
 	if queueSettings.IsFifoEnabled() {
 		name += FifoSuffix

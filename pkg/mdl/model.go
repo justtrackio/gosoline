@@ -16,6 +16,7 @@ type ModelId struct {
 	Group       string `cfg:"group" default:"{app_group}"`
 	Application string `cfg:"application" default:"{app_name}"`
 	Name        string `cfg:"name"`
+	Realm       string `cfg:"realm" default:"{app_project}-{env}-{app_family}-{app_group}"`
 }
 
 func (m *ModelId) String() string {
@@ -52,6 +53,12 @@ func (m *ModelId) PadFromConfig(config ConfigProvider) error {
 	if m.Application == "" {
 		if m.Application, err = config.GetString("app_name"); err != nil {
 			return fmt.Errorf("could not get app_name: %w", err)
+		}
+	}
+
+	if m.Realm == "" {
+		if m.Realm, err = config.GetString("realm"); err != nil {
+			return fmt.Errorf("could not get realm: %w", err)
 		}
 	}
 

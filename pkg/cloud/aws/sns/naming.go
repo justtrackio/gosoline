@@ -2,7 +2,6 @@ package sns
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
@@ -33,7 +32,7 @@ func (s TopicNameSettings) GetTopicId() string {
 }
 
 type TopicNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{topicId}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{realm}-{topicId}"`
 }
 
 func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (string, error) {
@@ -50,19 +49,11 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 
 	name := namingSettings.Pattern
 	appId := topicSettings.GetAppId()
-	values := map[string]string{
-		"project": appId.Project,
-		"env":     appId.Environment,
-		"family":  appId.Family,
-		"group":   appId.Group,
-		"app":     appId.Application,
-		"topicId": topicSettings.GetTopicId(),
+	
+	// Use AppId's ReplaceMacros method with topicId as extra macro
+	extraMacros := []cfg.MacroValue{
+		{"topicId", topicSettings.GetTopicId()},
 	}
 
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		name = strings.ReplaceAll(name, templ, val)
-	}
-
-	return name, nil
+	return appId.ReplaceMacros(name, extraMacros...), nil
 }
