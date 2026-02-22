@@ -152,7 +152,7 @@ func (d *selectData[T]) toSqlRaw() (sqlStr string, args []any, err error) {
 type SelectBuilder[T any] builder.Builder
 
 func newSelectBuilder[T any](client db.Client, table string, placeholderFormat PlaceholderFormat) SelectBuilder[T] {
-	b := builder.Builder(builder.EmptyBuilder)
+	b := builder.EmptyBuilder
 	sb := SelectBuilder[T](b).from(table)
 	sb = sb.placeholderFormat(placeholderFormat)
 	sb = builder.Set(sb, "Client", client).(SelectBuilder[T])
@@ -190,7 +190,7 @@ func (b SelectBuilder[T]) Options(options ...string) SelectBuilder[T] {
 func (b SelectBuilder[T]) columns(columns ...string) SelectBuilder[T] {
 	parts := make([]any, 0, len(columns))
 	for _, str := range columns {
-		parts = append(parts, newPart(str))
+		parts = append(parts, newPart(quoteIfNeeded(str)))
 	}
 
 	return builder.Extend(b, "Columns", parts).(SelectBuilder[T])
@@ -218,7 +218,7 @@ func (b SelectBuilder[T]) Column(column any, args ...any) SelectBuilder[T] {
 
 // From sets the FROM clause of the query.
 func (b SelectBuilder[T]) from(from string) SelectBuilder[T] {
-	return builder.Set(b, "From", newPart(from)).(SelectBuilder[T])
+	return builder.Set(b, "From", newPart(quoteIfNeeded(from))).(SelectBuilder[T])
 }
 
 // JoinClause adds a join clause to the query.

@@ -49,7 +49,7 @@ func (s *ClientTestSuite) TestDelete() {
 	ctx := s.T().Context()
 
 	s.sqlMock.
-		ExpectExec("DELETE FROM test_table WHERE id = ?").
+		ExpectExec("DELETE FROM `test_table` WHERE `id` = ?").
 		WithArgs(1).
 		WillReturnResult(goSqlMock.NewResult(1, 1))
 
@@ -63,7 +63,7 @@ func (s *ClientTestSuite) TestDeleteTyped() {
 	ctx := s.T().Context()
 
 	s.sqlMock.
-		ExpectExec("DELETE FROM test_table WHERE id = ?").
+		ExpectExec("DELETE FROM `test_table` WHERE `id` = ?").
 		WithArgs(1).
 		WillReturnResult(goSqlMock.NewResult(1, 1))
 
@@ -77,7 +77,7 @@ func (s *ClientTestSuite) TestDeleteOptions() {
 	ctx := s.T().Context()
 
 	s.sqlMock.
-		ExpectExec("DELETE LOW_PRIORITY FROM test_table").
+		ExpectExec("DELETE LOW_PRIORITY FROM `test_table`").
 		WillReturnResult(goSqlMock.NewResult(1, 1))
 
 	result, err := s.client.Delete().Options("LOW_PRIORITY").Exec(ctx)
@@ -95,7 +95,7 @@ func (s *ClientTestSuite) TestInsert() {
 	}
 
 	s.sqlMock.
-		ExpectExec("INSERT INTO test_table (`id`,`name`,`enabled`) VALUES (?,?,?)").
+		ExpectExec("INSERT INTO `test_table` (`id`,`name`,`enabled`) VALUES (?,?,?)").
 		WithArgs(testEntity.Id, testEntity.Name, testEntity.Enabled).
 		WillReturnResult(goSqlMock.NewResult(1, 1))
 
@@ -120,7 +120,7 @@ func (s *ClientTestSuite) TestInsertBatch() {
 	}
 
 	s.sqlMock.
-		ExpectExec("INSERT INTO test_table (`id`,`name`,`enabled`) VALUES (?,?,?),(?,?,?),(?,?,?)").
+		ExpectExec("INSERT INTO `test_table` (`id`,`name`,`enabled`) VALUES (?,?,?),(?,?,?),(?,?,?)").
 		WithArgs(args...).
 		WillReturnResult(goSqlMock.NewResult(3, 3))
 
@@ -140,7 +140,7 @@ func (s *ClientTestSuite) TestReplace() {
 	}
 
 	s.sqlMock.
-		ExpectExec("REPLACE INTO test_table (`id`,`name`,`enabled`) VALUES (?,?,?)").
+		ExpectExec("REPLACE INTO `test_table` (`id`,`name`,`enabled`) VALUES (?,?,?)").
 		WithArgs(testEntity.Id, testEntity.Name, testEntity.Enabled).
 		WillReturnResult(goSqlMock.NewResult(1, 1))
 
@@ -157,7 +157,7 @@ func (s *ClientTestSuite) TestSelect() {
 	}
 
 	s.sqlMock.
-		ExpectQuery("SELECT `id`, `name`, `enabled` FROM test_table WHERE id = ?").
+		ExpectQuery("SELECT `id`, `name`, `enabled` FROM `test_table` WHERE `id` = ?").
 		WillReturnRows(goSqlMock.NewRows([]string{"id", "name"}).AddRow(testEntity.Id, testEntity.Name))
 
 	_, err := s.client.Select().Where(dbx.Eq{"id": 1}).Exec(s.T().Context())
@@ -171,7 +171,7 @@ func (s *ClientTestSuite) TestSelectWhereStruct() {
 	}
 
 	s.sqlMock.
-		ExpectQuery("SELECT `id`, `name`, `enabled` FROM test_table WHERE id = ?").
+		ExpectQuery("SELECT `id`, `name`, `enabled` FROM `test_table` WHERE `id` = ?").
 		WithArgs(1).
 		WillReturnRows(goSqlMock.NewRows([]string{"id", "name"}).
 			AddRow(testEntity.Id, testEntity.Name))
@@ -188,7 +188,7 @@ func (s *ClientTestSuite) TestSelectOptions() {
 	}
 
 	s.sqlMock.
-		ExpectQuery("SELECT SQL_NO_CACHE HIGH_PRIORITY `id`, `name`, `enabled` FROM test_table").
+		ExpectQuery("SELECT SQL_NO_CACHE HIGH_PRIORITY `id`, `name`, `enabled` FROM `test_table`").
 		WillReturnRows(goSqlMock.NewRows([]string{"id", "name"}).AddRow(testEntity.Id, testEntity.Name))
 
 	_, err := s.client.Select().Options("SQL_NO_CACHE", "HIGH_PRIORITY").Exec(s.T().Context())
@@ -202,7 +202,7 @@ func (s *ClientTestSuite) TestSelectJoinGroupBy() {
 	}
 
 	s.sqlMock.
-		ExpectQuery("SELECT MAX(id) AS id, MIN(name) AS name FROM test_table JOIN join_table AS jt ON jt.id = test_table.id GROUP BY group_column").
+		ExpectQuery("SELECT MAX(id) AS id, MIN(name) AS name FROM `test_table` JOIN join_table AS jt ON jt.id = test_table.id GROUP BY group_column").
 		WillReturnRows(goSqlMock.NewRows([]string{"id", "name"}).AddRow(testEntity.Id, testEntity.Name))
 
 	res, err := s.client.Select().
@@ -218,7 +218,7 @@ func (s *ClientTestSuite) TestSelectJoinGroupBy() {
 
 func (s *ClientTestSuite) TestUpdate() {
 	s.sqlMock.
-		ExpectExec("UPDATE test_table SET name = ? WHERE id = ? ORDER BY id ASC LIMIT 2").
+		ExpectExec("UPDATE `test_table` SET `name` = ? WHERE `id` = ? ORDER BY id ASC LIMIT 2").
 		WithArgs("foobar", 1).
 		WillReturnResult(goSqlMock.NewResult(1, 1))
 
@@ -233,7 +233,7 @@ func (s *ClientTestSuite) TestUpdate() {
 
 func (s *ClientTestSuite) TestUpdateMap() {
 	s.sqlMock.
-		ExpectExec("UPDATE test_table SET name = ? WHERE id = ?").
+		ExpectExec("UPDATE `test_table` SET `name` = ? WHERE `id` = ?").
 		WithArgs("foobar", 1).
 		WillReturnResult(goSqlMock.NewResult(1, 1))
 
@@ -245,7 +245,7 @@ func (s *ClientTestSuite) TestUpdateMap() {
 
 func (s *ClientTestSuite) TestUpdateStruct() {
 	s.sqlMock.
-		ExpectExec("UPDATE test_table SET name = ? WHERE id = ?").
+		ExpectExec("UPDATE `test_table` SET `name` = ? WHERE `id` = ?").
 		WithArgs("foobar", 1).
 		WillReturnResult(goSqlMock.NewResult(1, 1))
 
@@ -255,7 +255,7 @@ func (s *ClientTestSuite) TestUpdateStruct() {
 
 func (s *ClientTestSuite) TestUpdateStructAndMap() {
 	s.sqlMock.
-		ExpectExec("UPDATE test_table SET enabled = ?, name = ? WHERE id = ?").
+		ExpectExec("UPDATE `test_table` SET `enabled` = ?, `name` = ? WHERE `id` = ?").
 		WithArgs(false, "foobar", 1).
 		WillReturnResult(goSqlMock.NewResult(1, 1))
 
@@ -275,7 +275,7 @@ func (s *ClientTestSuite) TestUpdateInvalidInput() {
 
 func (s *ClientTestSuite) TestUpdateOptions() {
 	s.sqlMock.
-		ExpectExec("UPDATE IGNORE test_table SET name = ?").
+		ExpectExec("UPDATE IGNORE `test_table` SET `name` = ?").
 		WithArgs("foobar").
 		WillReturnResult(goSqlMock.NewResult(1, 1))
 
@@ -293,7 +293,7 @@ func (s *ClientTestSuite) TestGet() {
 	}
 
 	s.sqlMock.
-		ExpectQuery("SELECT `id`, `name`, `enabled` FROM test_table WHERE id = ? LIMIT 2").
+		ExpectQuery("SELECT `id`, `name`, `enabled` FROM `test_table` WHERE `id` = ? LIMIT 2").
 		WithArgs(1).
 		WillReturnRows(
 			goSqlMock.NewRows([]string{"id", "name", "enabled"}).
@@ -316,7 +316,7 @@ func (s *ClientTestSuite) TestGetWhereStruct() {
 	}
 
 	s.sqlMock.
-		ExpectQuery("SELECT `id`, `name`, `enabled` FROM test_table WHERE id = ? LIMIT 2").
+		ExpectQuery("SELECT `id`, `name`, `enabled` FROM `test_table` WHERE `id` = ? LIMIT 2").
 		WithArgs(1).
 		WillReturnRows(
 			goSqlMock.NewRows([]string{"id", "name", "enabled"}).
@@ -333,7 +333,7 @@ func (s *ClientTestSuite) TestGetNotFound() {
 	ctx := s.T().Context()
 
 	s.sqlMock.
-		ExpectQuery("SELECT `id`, `name`, `enabled` FROM test_table WHERE id = ? LIMIT 2").
+		ExpectQuery("SELECT `id`, `name`, `enabled` FROM `test_table` WHERE `id` = ? LIMIT 2").
 		WithArgs(1).
 		WillReturnRows(
 			goSqlMock.NewRows([]string{"id", "name", "enabled"}),
@@ -348,7 +348,7 @@ func (s *ClientTestSuite) TestGetTooManyResults() {
 	ctx := s.T().Context()
 
 	s.sqlMock.
-		ExpectQuery("SELECT `id`, `name`, `enabled` FROM test_table WHERE id = ? LIMIT 2").
+		ExpectQuery("SELECT `id`, `name`, `enabled` FROM `test_table` WHERE `id` = ? LIMIT 2").
 		WithArgs(1).
 		WillReturnRows(
 			goSqlMock.NewRows([]string{"id", "name", "enabled"}).

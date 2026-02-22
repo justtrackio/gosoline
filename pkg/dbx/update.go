@@ -71,7 +71,7 @@ func (d *updateData[T]) toSql() (sqlStr string, args []any, err error) {
 		sql.WriteString(" ")
 	}
 
-	sql.WriteString(d.Table)
+	sql.WriteString(quoteIfNeeded(d.Table))
 
 	sql.WriteString(" SET ")
 	setSqls := make([]string, len(d.SetClauses))
@@ -88,7 +88,7 @@ func (d *updateData[T]) toSql() (sqlStr string, args []any, err error) {
 			valSql = "?"
 			args = append(args, setClause.value)
 		}
-		setSqls[i] = fmt.Sprintf("%s = %s", setClause.column, valSql)
+		setSqls[i] = fmt.Sprintf("%s = %s", quoteIfNeeded(setClause.column), valSql)
 	}
 	sql.WriteString(strings.Join(setSqls, ", "))
 

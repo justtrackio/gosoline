@@ -49,7 +49,6 @@ func (d *insertData[T]) toSql() (sqlStr string, err error) {
 	}
 
 	sql := &bytes.Buffer{}
-	args := []any{}
 
 	if d.StatementKeyword == "" {
 		sql.WriteString("INSERT ")
@@ -64,7 +63,7 @@ func (d *insertData[T]) toSql() (sqlStr string, err error) {
 	}
 
 	sql.WriteString("INTO ")
-	sql.WriteString(d.Into)
+	sql.WriteString(quoteIfNeeded(d.Into))
 	sql.WriteString(" ")
 
 	if len(d.Columns) > 0 {
@@ -79,7 +78,7 @@ func (d *insertData[T]) toSql() (sqlStr string, err error) {
 
 	if len(d.Suffixes) > 0 {
 		sql.WriteString(" ")
-		_, err = appendToSql(d.Suffixes, sql, " ", args)
+		_, err = appendToSql(d.Suffixes, sql, " ", nil)
 		if err != nil {
 			return
 		}
@@ -110,7 +109,7 @@ func (d *insertData[T]) appendValuesToSQL(w io.Writer) (err error) {
 type InsertBuilder[T any] builder.Builder
 
 func newInsertBuilder[T any](client db.Client, table string) InsertBuilder[T] {
-	b := builder.Builder(builder.EmptyBuilder)
+	b := builder.EmptyBuilder
 	ib := InsertBuilder[T](b).into(table)
 	ib = builder.Set(ib, "Client", client).(InsertBuilder[T])
 
@@ -131,8 +130,8 @@ func (b InsertBuilder[T]) Options(options ...string) InsertBuilder[T] {
 }
 
 // Into sets the INTO clause of the query.
-func (b InsertBuilder[T]) into(from string) InsertBuilder[T] {
-	return builder.Set(b, "Into", from).(InsertBuilder[T])
+func (b InsertBuilder[T]) into(into string) InsertBuilder[T] {
+	return builder.Set(b, "Into", into).(InsertBuilder[T])
 }
 
 // Columns adds insert columns to the query.

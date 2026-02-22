@@ -5,8 +5,6 @@ import (
 	"io"
 	"net"
 	"strings"
-
-	"golang.org/x/sys/unix"
 )
 
 type ErrorType int
@@ -50,9 +48,7 @@ func CheckConnectionError(_ any, err error) ErrorType {
 func IsConnectionError(err error) bool {
 	if errors.Is(err, io.EOF) ||
 		errors.Is(err, io.ErrUnexpectedEOF) ||
-		errors.Is(err, unix.ECONNREFUSED) ||
-		errors.Is(err, unix.ECONNRESET) ||
-		errors.Is(err, unix.EPIPE) {
+		isOsConnectionError(err) {
 		return true
 	}
 
@@ -76,7 +72,7 @@ func CheckTimeoutError(_ any, err error) ErrorType {
 }
 
 func IsTimeoutError(err error) bool {
-	return errors.Is(err, unix.ETIMEDOUT)
+	return isOsTimeoutError(err)
 }
 
 func CheckClientAwaitHeaderTimeoutError(_ any, err error) ErrorType {
