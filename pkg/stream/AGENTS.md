@@ -47,8 +47,8 @@ and transport-specific settings. Redis naming is handled by the Redis client's o
 (`redis.<client_name>.naming`).
 
 **Kafka/Kinesis inputs** (`KafkaInputConfiguration`, `KinesisInputConfiguration`) embed their transport
-`Settings` struct directly, which still uses `identity` (named field). These will be migrated in a
-future pass.
+`Settings` struct directly (`kafkaConsumer.Settings`, `kinesis.Settings`), which themselves embed
+`cfg.ResourceIdentifier`. The config keys are therefore also flat (`application`, `env`, `tags`).
 
 ### Output example (SQS)
 ```yaml

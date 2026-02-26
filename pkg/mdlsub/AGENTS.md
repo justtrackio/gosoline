@@ -25,22 +25,43 @@
 
 Output targets: `db`, `ddb`, `kvstore`
 
+## PublisherSettings
+
+`PublisherSettings` embeds `mdl.ModelId` **directly** (flat embedding). All `ModelId` fields (`Name`, `Application`,
+`Env`, `Tags`, `DomainPattern`) are therefore top-level config keys under `mdlsub.publishers.<name>.*`.
+
+`Name` defaults to the publisher map key when not explicitly set. `Application`, `Env`, and `Tags` are padded from
+global app config via `ModelId.PadFromConfig`.
+
 ## Config keys
 ```yaml
-mdlsub.publishers.mymodel.output.type: sns
-mdlsub.publishers.mymodel.output.topic_id: model-changes
+mdlsub:
+  publishers:
+    mymodel:
+      output_type: sns          # or sqs / kinesis / kafka / in_memory
+      # ModelId fields (all optional — defaults come from app config):
+      # name: mymodel           # defaults to the publisher map key
+      # application: my-app    # defaults to app.name
+      # env: prod               # defaults to app.env
+      # tags:
+      #   project: my-project
 
-mdlsub.subscribers.mymodel.input.type: sqs
-mdlsub.subscribers.mymodel.input.queue_id: model-changes
-mdlsub.subscribers.mymodel.output.type: ddb
+  subscribers:
+    mymodel:
+      input:
+        type: sqs
+        queue_id: model-changes
+      output:
+        type: ddb
 ```
 
 ## Related packages
 - `pkg/stream` - underlying transport layer
 - `pkg/ddb`, `pkg/db-repo`, `pkg/kvstore` - output targets
-- `pkg/mdl` - ModelId for naming
+- `pkg/mdl` - ModelId for naming and canonical string representation
 
 ## Tips
-- Rely on `mdl.ModelId` and `cfg.Identity` for naming; never duplicate logic locally.
+- `PublisherSettings` embeds `mdl.ModelId` — access model fields directly (`settings.Name`, `settings.Application`), not via `settings.ModelId.*`.
+- Rely on `mdl.ModelId` for naming; the config postprocessor wires transport identity from ModelId fields automatically.
 - Keep transformers stateless and idempotent to simplify retries.
 - Update fixture helpers when adding outputs so integration suites can preload state.

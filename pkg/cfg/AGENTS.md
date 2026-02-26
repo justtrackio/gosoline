@@ -8,6 +8,7 @@
 ## Key files
 - `config.go`, `read.go` - provider interfaces, load & merge process.
 - `application_identifiers.go` - `Identity`, `Tags`, identity loading, validation, and `Format()` method for pattern expansion.
+- `resource_identifier.go` - `ResourceIdentifier` struct for flat embedding in stream/kafka/kinesis config structs.
 - `merge*.go`, `options.go` - precedence rules and customization points.
 - `postprocessor.go`, `sanitizer.go` - value normalization and validation hooks.
 
