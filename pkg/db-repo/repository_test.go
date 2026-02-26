@@ -27,8 +27,8 @@ const (
 
 var MyTestModelMetadata = db_repo.Metadata{
 	ModelId: mdl.ModelId{
-		App:  "application",
-		Name: "myTestModel",
+		Application: "application",
+		Name:        "myTestModel",
 	},
 	TableName:  "my_test_models",
 	PrimaryKey: "my_test_models.id",
@@ -45,8 +45,8 @@ type ManyToMany struct {
 
 var ManyToManyMetadata = db_repo.Metadata{
 	ModelId: mdl.ModelId{
-		App:  "application",
-		Name: "manyToMany",
+		Application: "application",
+		Name:        "manyToMany",
 	},
 	TableName:  "many_to_manies",
 	PrimaryKey: "many_to_manies.id",
@@ -63,8 +63,8 @@ type OneOfMany struct {
 
 var OneOfManyMetadata = db_repo.Metadata{
 	ModelId: mdl.ModelId{
-		App:  "application",
-		Name: "oneOfMany",
+		Application: "application",
+		Name:        "oneOfMany",
 	},
 	TableName:  "one_of_manies",
 	PrimaryKey: "one_of_manies.id",
@@ -81,8 +81,8 @@ type HasMany struct {
 
 var HasManyMetadata = db_repo.Metadata{
 	ModelId: mdl.ModelId{
-		App:  "application",
-		Name: "hasMany",
+		Application: "application",
+		Name:        "hasMany",
 	},
 	TableName:  "has_manies",
 	PrimaryKey: "has_manies.id",

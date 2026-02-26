@@ -139,9 +139,9 @@ type Person struct {
 
 func (s *RedisTestSuite) provideKvStoreFixtures(data fixtures.NamedFixtures[*kvstore.KvStoreFixture]) ([]fixtures.FixtureSet, error) {
 	kvstoreWriter, err := kvstore.NewRedisKvStoreFixtureWriter[Person](s.Env().Context(), s.Env().Config(), s.Env().Logger(), &mdl.ModelId{
-		Name: "testModel",
-		Env:  "test",
-		App:  "test-application",
+		Name:        "testModel",
+		Env:         "test",
+		Application: "test-application",
 		Tags: map[string]string{
 			"project": "gosoline",
 			"family":  "integration-test",

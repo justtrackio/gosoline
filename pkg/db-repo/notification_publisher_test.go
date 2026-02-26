@@ -36,9 +36,9 @@ func Test_Publish_Notifier(t *testing.T) {
 	publisher.EXPECT().Publish(t.Context(), "CREATE", 1, input).Return(nil).Once()
 
 	modelId := mdl.ModelId{
-		Name: "myTest",
-		Env:  "test",
-		App:  "testApp",
+		Name:        "myTest",
+		Env:         "test",
+		Application: "testApp",
 		Tags: map[string]string{
 			"project": "testProject",
 			"family":  "testFamily",

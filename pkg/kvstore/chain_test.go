@@ -464,8 +464,8 @@ func buildTestableChainStore[T any](t *testing.T, missingCacheEnabled bool) (
 
 	settings := &kvstore.Settings{
 		ModelId: mdl.ModelId{
-			Name: "test",
-			App:  "kvstore",
+			Name:        "test",
+			Application: "kvstore",
 			Tags: map[string]string{
 				"project": "applike",
 				"family":  "gosoline",

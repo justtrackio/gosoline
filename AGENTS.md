@@ -159,9 +159,11 @@ Each service adds its own resource identifiers:
 - Redis: `{name}` (redis client name)
 
 ### ModelId macros (mdl package)
-Used in DynamoDB table names via `mdl.ModelId.ReplaceMacros(pattern)`:
-- `{project}`, `{env}`, `{family}`, `{group}`, `{app}` - from ModelId fields
-- `{modelId}` - the model's name
+Used in DynamoDB table names via `cfg.Identity.Format()` with `mdl.ModelId.ToMap()`:
+- `{app.env}` - from `ModelId.Env`
+- `{app.name}` - from `ModelId.Application`
+- `{app.tags.<key>}` - from `ModelId.Tags`
+- `{name}` - the model's name
 
 **Canonical Model IDs (`app.model_id.domain_pattern`):**
 For canonical model IDs (used in message routing, etc.), the pattern works differently:
@@ -173,7 +175,7 @@ For canonical model IDs (used in message routing, etc.), the pattern works diffe
   - `prefix-{app.env}` -> `prefix-production.myModel`
   - `{app.tags.project}-{app.env}` -> `myProject-production.myModel`
 
-Note: DynamoDB table naming uses ModelId-based macros (legacy style), not Identity macros.
+Note: DynamoDB table naming uses `ModelId.ToMap()` with `Identity.Format()` (same Identity macro system).
 
 ### Example configs
 ```yaml

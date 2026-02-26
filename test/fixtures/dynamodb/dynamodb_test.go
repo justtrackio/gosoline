@@ -112,9 +112,9 @@ type Person struct {
 }
 
 var kvStoreSettings = &mdl.ModelId{
-	Name: "testModel",
-	Env:  "test",
-	App:  "test-application",
+	Name:        "testModel",
+	Env:         "test",
+	Application: "test-application",
 	Tags: map[string]string{
 		"project": "gosoline",
 		"family":  "integration-test",
@@ -124,9 +124,9 @@ var kvStoreSettings = &mdl.ModelId{
 
 var ddbSettings = &ddb.Settings{
 	ModelId: mdl.ModelId{
-		Name: "testModel",
-		Env:  "test",
-		App:  "test-application",
+		Name:        "testModel",
+		Env:         "test",
+		Application: "test-application",
 		Tags: map[string]string{
 			"project": "gosoline",
 			"family":  "integration-test",

@@ -163,7 +163,7 @@ func (s *ParseModelIdTestSuite) TestParseModelId_Success() {
 
 			s.NoError(err)
 			s.Equal(tc.expectedEnv, modelId.Env, "Env mismatch")
-			s.Equal(tc.expectedApp, modelId.App, "App mismatch")
+			s.Equal(tc.expectedApp, modelId.Application, "Application mismatch")
 			s.Equal(tc.expectedName, modelId.Name, "Name mismatch")
 			s.Equal(tc.expectedTags, modelId.Tags, "Tags mismatch")
 			s.Equal(tc.domainPattern, modelId.DomainPattern, "DomainPattern should be set")
@@ -294,10 +294,10 @@ func (s *ParseModelIdTestSuite) TestParseModelId_RoundTrip() {
 			name:          "complex pattern",
 			domainPattern: "{app.tags.project}.{app.env}.{app.name}",
 			originalId: mdl.ModelId{
-				Name: "users",
-				Env:  "production",
-				App:  "myapp",
-				Tags: map[string]string{"project": "myproject"},
+				Name:        "users",
+				Env:         "production",
+				Application: "myapp",
+				Tags:        map[string]string{"project": "myproject"},
 			},
 		},
 		{
@@ -343,9 +343,9 @@ func (s *ParseModelIdTestSuite) TestParseModelId_RoundTrip() {
 			name:          "placeholder with underscore delimiter",
 			domainPattern: "{app.tags.project}_{app.name}",
 			originalId: mdl.ModelId{
-				Name: "users",
-				App:  "myapp",
-				Tags: map[string]string{"project": "myproject"},
+				Name:        "users",
+				Application: "myapp",
+				Tags:        map[string]string{"project": "myproject"},
 			},
 		},
 	}
@@ -367,7 +367,7 @@ func (s *ParseModelIdTestSuite) TestParseModelId_RoundTrip() {
 			s.NoError(err)
 			s.Equal(tc.originalId.Name, parsedId.Name, "Name should match")
 			s.Equal(tc.originalId.Env, parsedId.Env, "Env should match")
-			s.Equal(tc.originalId.App, parsedId.App, "App should match")
+			s.Equal(tc.originalId.Application, parsedId.Application, "Application should match")
 			s.Equal(tc.originalId.Tags, parsedId.Tags, "Tags should match")
 			s.Equal(tc.domainPattern, parsedId.DomainPattern, "DomainPattern should match")
 
@@ -448,7 +448,7 @@ func (s *ParseModelIdTestSuite) TestParseModelId_StaticPattern() {
 	s.NoError(err)
 	s.Equal("users", modelId.Name)
 	s.Equal("", modelId.Env)
-	s.Equal("", modelId.App)
+	s.Equal("", modelId.Application)
 	s.Empty(modelId.Tags)
 	s.Equal("staticdomain", modelId.DomainPattern)
 
@@ -467,6 +467,6 @@ func (s *ParseModelIdTestSuite) TestParseModelId_PreservesUnusedFields() {
 
 	s.NoError(err)
 	s.Equal("production", modelId.Env)
-	s.Equal("", modelId.App, "App should be empty since pattern doesn't use it")
+	s.Equal("", modelId.Application, "Application should be empty since pattern doesn't use it")
 	s.Empty(modelId.Tags, "Tags should be empty since pattern doesn't use them")
 }

@@ -42,8 +42,8 @@ type ModelId struct {
 	Name string `cfg:"name"`
 	// Env is the environment (the {app.env} placeholder)
 	Env string `cfg:"env"`
-	// App is the application name (the {app.name} placeholder)
-	App string `cfg:"app"`
+	// Application is the application name (the {app.name} placeholder)
+	Application string `cfg:"application"`
 	// Tags holds dynamic tag values (for {app.tags.<key>} placeholders)
 	Tags map[string]string `cfg:"tags"`
 
@@ -54,7 +54,7 @@ type ModelId struct {
 func (i ModelId) ToMap() map[string]string {
 	mss := map[string]string{
 		"name":     i.Name,
-		"app.name": i.App,
+		"app.name": i.Application,
 		"app.env":  i.Env,
 	}
 
@@ -94,7 +94,7 @@ func (m ModelId) DomainString() string {
 //
 // Supported placeholders:
 //   - {app.env} - the Env field
-//   - {app.name} - the App field
+//   - {app.name} - the Application field
 //   - {app.tags.<key>} - any tag from the Tags map
 //
 // The model name (Name field) is automatically appended as the last segment.
@@ -126,7 +126,7 @@ func (m *ModelId) formatDomain(domainPattern string) string {
 		case placeholder == PlaceholderAppEnv:
 			value = m.Env
 		case placeholder == PlaceholderAppName:
-			value = m.App
+			value = m.Application
 		case strings.HasPrefix(placeholder, PlaceholderAppTags):
 			tagKey := strings.TrimPrefix(placeholder, PlaceholderAppTags)
 			value = m.Tags[tagKey]
@@ -144,7 +144,7 @@ func (m *ModelId) formatDomain(domainPattern string) string {
 //
 // This method reads:
 //   - app.env -> Env (if empty)
-//   - app.name -> App (if empty)
+//   - app.name -> Application (if empty)
 //   - app.tags.* -> Tags (merged, existing tags take precedence)
 //   - app.model_id.domain_pattern -> DomainPattern (if empty and available)
 //
@@ -165,7 +165,7 @@ func (m *ModelId) PadFromConfig(config ConfigProvider) error {
 		return err
 	}
 
-	if err := m.padAppFromConfig(config); err != nil {
+	if err := m.padApplicationFromConfig(config); err != nil {
 		return err
 	}
 
@@ -204,20 +204,20 @@ func (m *ModelId) padEnvFromConfig(config ConfigProvider) error {
 	return nil
 }
 
-func (m *ModelId) padAppFromConfig(config ConfigProvider) error {
+func (m *ModelId) padApplicationFromConfig(config ConfigProvider) error {
 	var err error
 
-	if m.App != "" {
+	if m.Application != "" {
 		return nil
 	}
 
-	if m.App, err = config.GetString("app.name"); err != nil {
+	if m.Application, err = config.GetString("app.name"); err != nil {
 		return fmt.Errorf("failed to read app.name from config: %w", err)
 	}
 
-	m.App = strings.TrimSpace(m.App)
+	m.Application = strings.TrimSpace(m.Application)
 
-	if m.App == "" {
+	if m.Application == "" {
 		return fmt.Errorf("app name (app.name) is required to be not empty")
 	}
 

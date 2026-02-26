@@ -46,9 +46,9 @@ func (s *RepositoryTestSuite) SetupTest() {
 
 	tableSettings := &ddb.Settings{
 		ModelId: mdl.ModelId{
-			Name: "myModel",
-			Env:  "test",
-			App:  "ddb",
+			Name:        "myModel",
+			Env:         "test",
+			Application: "ddb",
 			Tags: map[string]string{
 				"project": "applike",
 				"family":  "gosoline",

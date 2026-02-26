@@ -18,7 +18,7 @@ func init() {
 }
 
 type RetryHandlerSqsSettings struct {
-	cfg.Identity
+	cfg.ResourceIdentifier
 	RetryHandlerSettings
 	ClientName          string                     `cfg:"client_name" default:"default"`
 	MaxNumberOfMessages int32                      `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
@@ -44,12 +44,18 @@ func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logge
 		return nil, nil, fmt.Errorf("failed to unmarshal retry handler sqs settings for %s: %w", name, err)
 	}
 
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, nil, fmt.Errorf("failed to pad resource identifier for retry handler sqs %s: %w", name, err)
+	}
+
 	if settings.QueueId == "" {
 		settings.QueueId = fmt.Sprintf("consumer-retry-%s", name)
 	}
 
+	identity := settings.ToIdentity()
+
 	inputSettings := &SqsInputSettings{
-		Identity:            settings.Identity,
+		Identity:            identity,
 		QueueId:             settings.QueueId,
 		MaxNumberOfMessages: settings.MaxNumberOfMessages,
 		WaitTime:            settings.WaitTime,

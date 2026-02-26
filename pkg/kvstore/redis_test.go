@@ -200,9 +200,9 @@ func buildTestableRedisStore[T any](t *testing.T) (context.Context, kvstore.KvSt
 
 	store := kvstore.NewRedisKvStoreWithInterfaces[T](client, &kvstore.Settings{
 		ModelId: mdl.ModelId{
-			Name: "test",
-			App:  "app",
-			Env:  "env",
+			Name:        "test",
+			Application: "app",
+			Env:         "env",
 			Tags: map[string]string{
 				"project": "justtrack",
 				"family":  "gosoline",
@@ -222,9 +222,9 @@ func buildTestableRedisStoreWithTTL[T any](t *testing.T) (context.Context, kvsto
 
 	store := kvstore.NewRedisKvStoreWithInterfaces[T](client, &kvstore.Settings{
 		ModelId: mdl.ModelId{
-			Name: "test",
-			App:  "kvstore",
-			Env:  "test",
+			Name:        "test",
+			Application: "kvstore",
+			Env:         "test",
 			Tags: map[string]string{
 				"project": "justtrack",
 				"family":  "gosoline",

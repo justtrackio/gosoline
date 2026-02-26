@@ -156,16 +156,16 @@ func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.
 }
 
 type SnsInputTargetConfiguration struct {
-	Identity   cfg.Identity      `cfg:"identity"`
+	cfg.ResourceIdentifier
 	TopicId    string            `cfg:"topic_id" validate:"required"`
 	Attributes map[string]string `cfg:"attributes"`
 	ClientName string            `cfg:"client_name" default:"default"`
 }
 
 type SnsInputConfiguration struct {
+	cfg.ResourceIdentifier
 	Type                string                        `cfg:"type" default:"sns"`
 	ConsumerId          string                        `cfg:"id" validate:"required"`
-	Identity            cfg.Identity                  `cfg:"identity"`
 	Targets             []SnsInputTargetConfiguration `cfg:"targets" validate:"min=1"`
 	MaxNumberOfMessages int32                         `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
 	WaitTime            int32                         `cfg:"wait_time" default:"3" validate:"min=1"`
@@ -184,8 +184,12 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 		return nil, nil, fmt.Errorf("failed to unmarshal sns input settings for key %q in readSnsInputSettings: %w", key, err)
 	}
 
+	if err := configuration.PadFromConfig(config); err != nil {
+		return nil, nil, fmt.Errorf("failed to pad resource identifier for sns input %q: %w", name, err)
+	}
+
 	settings := &SnsInputSettings{
-		Identity:            configuration.Identity,
+		Identity:            configuration.ToIdentity(),
 		QueueId:             configuration.ConsumerId,
 		MaxNumberOfMessages: configuration.MaxNumberOfMessages,
 		WaitTime:            configuration.WaitTime,
@@ -198,7 +202,9 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 
 	targets := make([]SnsInputTarget, len(configuration.Targets))
 	for i, t := range configuration.Targets {
-		targetIdentity := t.Identity
+		if err := t.PadFromConfig(config); err != nil {
+			return nil, nil, fmt.Errorf("failed to pad resource identifier for sns input target %d of %q: %w", i, name, err)
+		}
 
 		clientName := t.ClientName
 		if clientName == "" {
@@ -206,7 +212,7 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 		}
 
 		targets[i] = SnsInputTarget{
-			Identity:   targetIdentity,
+			Identity:   t.ToIdentity(),
 			TopicId:    t.TopicId,
 			Attributes: t.Attributes,
 			ClientName: clientName,
@@ -226,8 +232,8 @@ func newSnsInputFromConfig(ctx context.Context, config cfg.Config, logger log.Lo
 }
 
 type sqsInputConfiguration struct {
-	TargetIdentity      cfg.Identity               `cfg:"target_identity"`
-	QueueId             string                     `cfg:"target_queue_id" validate:"min=1"`
+	cfg.ResourceIdentifier
+	QueueId             string                     `cfg:"queue_id" validate:"min=1"`
 	MaxNumberOfMessages int32                      `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
 	WaitTime            int32                      `cfg:"wait_time" default:"3" validate:"min=1"`
 	VisibilityTimeout   int                        `cfg:"visibility_timeout" default:"30" validate:"min=1"`
@@ -247,8 +253,12 @@ func readSqsInputSettings(config cfg.Config, name string) (*SqsInputSettings, er
 		return nil, fmt.Errorf("failed to unmarshal sqs input settings for key %q in readSqsInputSettings: %w", key, err)
 	}
 
+	if err := configuration.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to pad resource identifier for sqs input %q: %w", name, err)
+	}
+
 	settings := &SqsInputSettings{
-		Identity:            configuration.TargetIdentity,
+		Identity:            configuration.ToIdentity(),
 		QueueId:             configuration.QueueId,
 		MaxNumberOfMessages: configuration.MaxNumberOfMessages,
 		WaitTime:            configuration.WaitTime,

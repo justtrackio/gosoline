@@ -21,7 +21,7 @@ type Reader interface {
 }
 
 func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settings Settings, partitionManager *PartitionManager, isReadOnly bool) (Reader, error) {
-	topicName, err := kafka.BuildFullTopicName(config, settings.Identity, settings.TopicId)
+	topicName, err := kafka.BuildFullTopicName(config, settings.ToIdentity(), settings.TopicId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build full kafka topic name: %w", err)
 	}

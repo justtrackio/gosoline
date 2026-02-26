@@ -26,8 +26,8 @@ func (s *PublisherTestSuite) SetupTest() {
 
 	s.publisher = mdlsub.NewPublisherWithInterfaces(logger, s.producer, &mdlsub.PublisherSettings{
 		ModelId: mdl.ModelId{
-			Name: "event",
-			App:  "app",
+			Name:        "event",
+			Application: "app",
 			Tags: map[string]string{
 				"project": "gosoline",
 				"family":  "test",
