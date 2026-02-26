@@ -23,10 +23,9 @@ func (s *GetStreamNameTestSuite) SetupTest() {
 	s.envProvider = cfg.NewMemoryEnvProvider()
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = &kinesis.Settings{
-		Identity: cfg.Identity{
-			Name:      "producer",
-			Env:       "env",
-			Namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
+		ResourceIdentifier: cfg.ResourceIdentifier{
+			Application: "producer",
+			Env:         "env",
 			Tags: cfg.Tags{
 				"project": "justtrack",
 				"family":  "gosoline",
@@ -40,8 +39,10 @@ func (s *GetStreamNameTestSuite) SetupTest() {
 	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
 	s.NoError(err)
 
-	// Ensure namespaceParts are initialized
-	err = s.settings.Identity.PadFromConfig(s.config)
+	// Supply the namespace pattern via config (ResourceIdentifier has no Namespace field)
+	err = s.config.Option(cfg.WithConfigMap(map[string]any{
+		"app.namespace": "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}",
+	}))
 	s.NoError(err)
 }
 
@@ -118,15 +119,11 @@ func (s *GetStreamNameTestSuite) TestUnknownPlaceholderReturnsError() {
 
 func (s *GetStreamNameTestSuite) TestMissingTagsOnlyFailsIfPatternRequiresThem() {
 	// StreamPattern doesn't use tags, so missing tags should not cause error
-	s.settings.Identity.Tags = nil
-	s.settings.Identity.Namespace = "{app.env}"
+	s.settings.Tags = nil
 	s.setupConfig(map[string]any{
+		"app.namespace": "{app.env}",
 		"cloud.aws.kinesis.clients.default.naming.stream_pattern": "{app.env}-{streamName}",
 	})
-
-	// Re-initialize namespaceParts with the new namespace
-	err := s.settings.Identity.PadFromConfig(s.config)
-	s.NoError(err)
 
 	name, err := kinesis.GetStreamName(s.config, s.settings)
 	s.NoError(err)

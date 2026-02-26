@@ -46,7 +46,7 @@ type SettingsInitialPosition struct {
 }
 
 type Settings struct {
-	Identity cfg.Identity `cfg:"identity"`
+	cfg.ResourceIdentifier
 	// Name of the kinesis client to use
 	ClientName string `cfg:"client_name" default:"default"`
 	// Name of the kinsumer
@@ -78,7 +78,7 @@ type Settings struct {
 }
 
 func (s Settings) GetIdentity() cfg.Identity {
-	return s.Identity
+	return s.ToIdentity()
 }
 
 func (s Settings) GetClientName() string {

@@ -25,9 +25,9 @@ func (s *TableNameTestSuite) SetupTest() {
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = &ddb.Settings{
 		ModelId: mdl.ModelId{
-			Name: "event",
-			Env:  "test",
-			App:  "producer",
+			Name:        "event",
+			Env:         "test",
+			Application: "producer",
 			Tags: map[string]string{
 				"project": "justtrack",
 				"family":  "gosoline",

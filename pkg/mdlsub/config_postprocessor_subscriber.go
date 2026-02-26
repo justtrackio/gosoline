@@ -128,10 +128,10 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 	inputSettings.ConsumerId = consumerId
 	inputSettings.Targets = []stream.SnsInputTargetConfiguration{
 		{
-			Identity: cfg.Identity{
-				Env:  sourceModel.Env,
-				Name: sourceModel.App,
-				Tags: cfg.Tags(sourceModel.Tags),
+			ResourceIdentifier: cfg.ResourceIdentifier{
+				Env:         sourceModel.Env,
+				Application: sourceModel.Application,
+				Tags:        cfg.Tags(sourceModel.Tags),
 			},
 			TopicId: topicId,
 		},
@@ -159,8 +159,8 @@ func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, s
 		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting), nil
 	}
 
-	inputSettings.Identity.Tags = sourceModel.Tags
-	inputSettings.Identity.Name = sourceModel.App
+	inputSettings.Tags = sourceModel.Tags
+	inputSettings.Application = sourceModel.Application
 	inputSettings.GroupId = topicId
 	inputSettings.TopicId = topicId
 
@@ -186,7 +186,7 @@ func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string,
 		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting), nil
 	}
 
-	inputSettings.Identity.Tags = sourceModel.Tags
+	inputSettings.Tags = sourceModel.Tags
 	inputSettings.Name = sourceModel.Name
 	inputSettings.StreamName = streamName
 

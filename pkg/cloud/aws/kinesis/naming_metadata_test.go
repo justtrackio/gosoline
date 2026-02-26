@@ -23,10 +23,9 @@ func (s *GetMetadataTableNameTestSuite) SetupTest() {
 	s.envProvider = cfg.NewMemoryEnvProvider()
 	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = &kinesis.Settings{
-		Identity: cfg.Identity{
-			Name:      "producer",
-			Env:       "env",
-			Namespace: "{app.tags.project}.{app.env}.{app.tags.family}",
+		ResourceIdentifier: cfg.ResourceIdentifier{
+			Application: "producer",
+			Env:         "env",
 			Tags: cfg.Tags{
 				"project": "justtrack",
 				"family":  "gosoline",
@@ -40,8 +39,10 @@ func (s *GetMetadataTableNameTestSuite) SetupTest() {
 	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
 	s.NoError(err)
 
-	// Ensure namespaceParts are initialized
-	err = s.settings.Identity.PadFromConfig(s.config)
+	// Supply the namespace pattern via config (ResourceIdentifier has no Namespace field)
+	err = s.config.Option(cfg.WithConfigMap(map[string]any{
+		"app.namespace": "{app.tags.project}.{app.env}.{app.tags.family}",
+	}))
 	s.NoError(err)
 }
 

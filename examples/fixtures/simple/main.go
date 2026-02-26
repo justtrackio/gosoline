@@ -81,9 +81,9 @@ func mysqlPlainFixtureSet(ctx context.Context, config cfg.Config, logger log.Log
 
 func dynamodbKvstoreFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
 	dynamoDbKvStoreWriter, err := kvstore.NewDynamoDbKvStoreFixtureWriter[DynamoDbExampleModel](ctx, config, logger, &mdl.ModelId{
-		Name: "exampleModel",
-		Env:  "dev",
-		App:  "fixture-loader",
+		Name:        "exampleModel",
+		Env:         "dev",
+		Application: "fixture-loader",
 		Tags: map[string]string{
 			"project": "gosoline",
 			"family":  "example",
@@ -125,9 +125,9 @@ func redisFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) 
 func dynamodbFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
 	dynamodbWriter, err := ddb.NewDynamoDbFixtureWriter(ctx, config, logger, &ddb.Settings{
 		ModelId: mdl.ModelId{
-			Name: "exampleModel",
-			Env:  "dev",
-			App:  "fixture-loader",
+			Name:        "exampleModel",
+			Env:         "dev",
+			Application: "fixture-loader",
 			Tags: map[string]string{
 				"project": "gosoline",
 				"family":  "example",

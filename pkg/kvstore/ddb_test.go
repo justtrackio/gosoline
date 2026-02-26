@@ -278,8 +278,8 @@ func buildTestableDdbStore[T any](t *testing.T) (context.Context, kvstore.KvStor
 
 	store := kvstore.NewDdbKvStoreWithInterfaces[T](repository, &kvstore.Settings{
 		ModelId: mdl.ModelId{
-			Name: "test",
-			App:  "kvstore",
+			Name:        "test",
+			Application: "kvstore",
 			Tags: map[string]string{
 				"project": "applike",
 				"family":  "gosoline",

@@ -29,8 +29,8 @@ const (
 )
 
 type Settings struct {
-	Identity   cfg.Identity `cfg:"identity"`
-	Connection string       `cfg:"connection" default:"default"`
+	cfg.ResourceIdentifier
+	Connection string `cfg:"connection" default:"default"`
 
 	TopicId string `cfg:"topic_id" validate:"required"`
 	// GroupId is an optional identifier that can be used as part of the consumer group naming pattern

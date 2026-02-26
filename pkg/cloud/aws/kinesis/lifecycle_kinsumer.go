@@ -75,7 +75,7 @@ func (l *lifecycleManagerKinsumer) Register(ctx context.Context) (key string, me
 		ClientId:       l.clientId,
 		Name:           l.settings.Name,
 		OpenShardCount: desc.OpenShardCount,
-		StreamAppId:    l.settings.Identity,
+		StreamAppId:    l.settings.ToIdentity(),
 		StreamArn:      desc.StreamArn,
 		StreamName:     desc.StreamName,
 		StreamNameFull: Stream(desc.FullStreamName),

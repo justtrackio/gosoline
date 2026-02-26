@@ -63,14 +63,14 @@ func processPublisher(config cfg.GosoConf, name string) error {
 
 	producerSettings := &stream.ProducerSettings{}
 	if err := config.UnmarshalDefaults(producerSettings); err != nil {
-		return fmt.Errorf("can not unmarshal producer settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
+		return fmt.Errorf("can not unmarshal producer settings for publisher %s: %w", publisherSettings.Name, err)
 	}
 
-	if err := publisherSettings.ModelId.PadFromConfig(config); err != nil {
-		return fmt.Errorf("can not pad model id from config for publisher %s: %w", publisherSettings.ModelId.Name, err)
+	if err := publisherSettings.PadFromConfig(config); err != nil {
+		return fmt.Errorf("can not pad model id from config for publisher %s: %w", publisherSettings.Name, err)
 	}
 
-	modelIdString := publisherSettings.ModelId.String()
+	modelIdString := publisherSettings.String()
 
 	producerSettings.Output = outputName
 	producerSettings.Daemon.MessageAttributes[AttributeModelId] = modelIdString
@@ -86,14 +86,14 @@ func processPublisher(config cfg.GosoConf, name string) error {
 func buildPublisherOutput(config cfg.GosoConf, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings, producerName string) (stream.BaseOutputConfigurationAware, string, error) {
 	outputTypeHandler, ok := publisherOutputTypeHandlers[publisherSettings.OutputType]
 	if !ok {
-		return nil, "", fmt.Errorf("no publisherOutputTypeHandler found for publisher %s and output type %s", publisherSettings.ModelId.Name, publisherSettings.OutputType)
+		return nil, "", fmt.Errorf("no publisherOutputTypeHandler found for publisher %s and output type %s", publisherSettings.Name, publisherSettings.OutputType)
 	}
 
 	clientName := producerName
 
 	outputSettings, err := outputTypeHandler(config, publisherSettings, producerSettings, clientName)
 	if err != nil {
-		return nil, "", fmt.Errorf("can not handle publisher output type %s for publisher %s: %w", publisherSettings.OutputType, publisherSettings.ModelId.Name, err)
+		return nil, "", fmt.Errorf("can not handle publisher output type %s for publisher %s: %w", publisherSettings.OutputType, publisherSettings.Name, err)
 	}
 
 	return outputSettings, clientName, nil
@@ -125,7 +125,7 @@ func applyPublisherConfig(
 	}
 
 	if err := config.Option(configOptions...); err != nil {
-		return fmt.Errorf("can not apply config settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
+		return fmt.Errorf("can not apply config settings for publisher %s: %w", publisherSettings.Name, err)
 	}
 
 	return nil
@@ -143,15 +143,15 @@ func handlePublisherOutputTypeInMemory(config cfg.Config, _ *PublisherSettings, 
 func handlePublisherOutputTypeKafka(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings, _ string) (stream.BaseOutputConfigurationAware, error) {
 	outputSettings := &stream.KafkaOutputConfiguration{}
 	if err := config.UnmarshalDefaults(outputSettings); err != nil {
-		return nil, fmt.Errorf("can not unmarshal kafka output settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
+		return nil, fmt.Errorf("can not unmarshal kafka output settings for publisher %s: %w", publisherSettings.Name, err)
 	}
 
-	outputSettings.Identity = cfg.Identity{
-		Env:  publisherSettings.ModelId.Env,
-		Name: publisherSettings.ModelId.App,
-		Tags: cfg.Tags(publisherSettings.ModelId.Tags),
+	outputSettings.ResourceIdentifier = cfg.ResourceIdentifier{
+		Env:         publisherSettings.Env,
+		Application: publisherSettings.Application,
+		Tags:        cfg.Tags(publisherSettings.Tags),
 	}
-	outputSettings.TopicId = publisherSettings.ModelId.Name
+	outputSettings.TopicId = publisherSettings.Name
 	outputSettings.Tracing.Enabled = false
 
 	return outputSettings, nil
@@ -169,16 +169,16 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 
 	outputSettings := &stream.KinesisOutputConfiguration{}
 	if err := config.UnmarshalDefaults(outputSettings); err != nil {
-		return nil, fmt.Errorf("can not unmarshal kinesis output settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
+		return nil, fmt.Errorf("can not unmarshal kinesis output settings for publisher %s: %w", publisherSettings.Name, err)
 	}
 
-	outputSettings.Identity = cfg.Identity{
-		Env:  publisherSettings.ModelId.Env,
-		Name: publisherSettings.ModelId.App,
-		Tags: cfg.Tags(publisherSettings.ModelId.Tags),
+	outputSettings.ResourceIdentifier = cfg.ResourceIdentifier{
+		Env:         publisherSettings.Env,
+		Application: publisherSettings.Application,
+		Tags:        cfg.Tags(publisherSettings.Tags),
 	}
 	outputSettings.ClientName = clientName
-	outputSettings.StreamName = publisherSettings.ModelId.Name
+	outputSettings.StreamName = publisherSettings.Name
 	outputSettings.Tracing.Enabled = false
 
 	return outputSettings, nil
@@ -187,15 +187,15 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings, clientName string) (stream.BaseOutputConfigurationAware, error) {
 	outputSettings := &stream.SnsOutputConfiguration{}
 	if err := config.UnmarshalDefaults(outputSettings); err != nil {
-		return nil, fmt.Errorf("can not unmarshal sns output settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
+		return nil, fmt.Errorf("can not unmarshal sns output settings for publisher %s: %w", publisherSettings.Name, err)
 	}
 
-	outputSettings.Identity = cfg.Identity{
-		Env:  publisherSettings.ModelId.Env,
-		Name: publisherSettings.ModelId.App,
-		Tags: cfg.Tags(publisherSettings.ModelId.Tags),
+	outputSettings.ResourceIdentifier = cfg.ResourceIdentifier{
+		Env:         publisherSettings.Env,
+		Application: publisherSettings.Application,
+		Tags:        cfg.Tags(publisherSettings.Tags),
 	}
-	outputSettings.TopicId = publisherSettings.ModelId.Name
+	outputSettings.TopicId = publisherSettings.Name
 	outputSettings.ClientName = clientName
 
 	if publisherSettings.Shared {
@@ -208,15 +208,15 @@ func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *Publishe
 func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings, clientName string) (stream.BaseOutputConfigurationAware, error) {
 	outputSettings := &stream.SqsOutputConfiguration{}
 	if err := config.UnmarshalDefaults(outputSettings); err != nil {
-		return nil, fmt.Errorf("can not unmarshal sqs output settings for publisher %s: %w", publisherSettings.ModelId.Name, err)
+		return nil, fmt.Errorf("can not unmarshal sqs output settings for publisher %s: %w", publisherSettings.Name, err)
 	}
 
-	outputSettings.Identity = cfg.Identity{
-		Env:  publisherSettings.ModelId.Env,
-		Name: publisherSettings.ModelId.App,
-		Tags: cfg.Tags(publisherSettings.ModelId.Tags),
+	outputSettings.ResourceIdentifier = cfg.ResourceIdentifier{
+		Env:         publisherSettings.Env,
+		Application: publisherSettings.Application,
+		Tags:        cfg.Tags(publisherSettings.Tags),
 	}
-	outputSettings.QueueId = publisherSettings.ModelId.Name
+	outputSettings.QueueId = publisherSettings.Name
 	outputSettings.ClientName = clientName
 
 	if publisherSettings.Shared {
@@ -238,8 +238,8 @@ func readPublisherSetting(config cfg.Config, name string) (*PublisherSettings, e
 		return nil, fmt.Errorf("failed to unmarshal publisher settings for %s: %w", name, err)
 	}
 
-	if settings.ModelId.Name == "" {
-		settings.ModelId.Name = name
+	if settings.Name == "" {
+		settings.Name = name
 	}
 
 	return settings, nil

@@ -34,14 +34,14 @@ type Record struct {
 }
 
 type RecordWriterSettings struct {
-	Identity   cfg.Identity `cfg:"identity"`
+	cfg.ResourceIdentifier
 	ClientName string
 	StreamName string
 	Backoff    exec.BackoffSettings
 }
 
 func (r RecordWriterSettings) GetIdentity() cfg.Identity {
-	return r.Identity
+	return r.ToIdentity()
 }
 
 func (r RecordWriterSettings) GetClientName() string {

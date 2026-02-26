@@ -19,13 +19,13 @@ const (
 )
 
 type KinesisOutputSettings struct {
-	Identity   cfg.Identity
+	cfg.ResourceIdentifier
 	ClientName string
 	StreamName string
 }
 
 func (s KinesisOutputSettings) GetIdentity() cfg.Identity {
-	return s.Identity
+	return s.ToIdentity()
 }
 
 func (s KinesisOutputSettings) GetClientName() string {
@@ -56,10 +56,10 @@ func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger,
 	backoffSettings.InitialInterval = time.Second
 
 	recordWriterSettings := &gosoKinesis.RecordWriterSettings{
-		Identity:   settings.Identity,
-		ClientName: settings.ClientName,
-		StreamName: settings.GetStreamName(),
-		Backoff:    backoffSettings,
+		ResourceIdentifier: settings.ResourceIdentifier,
+		ClientName:         settings.ClientName,
+		StreamName:         settings.GetStreamName(),
+		Backoff:            backoffSettings,
 	}
 
 	if recordWriter, err = gosoKinesis.NewRecordWriter(ctx, config, logger, recordWriterSettings); err != nil {

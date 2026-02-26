@@ -38,7 +38,7 @@ name, err := config.FormatString("{app.tags.project}-{name}", modelId.ToMap())
 | Field | Map Key |
 |-------|---------|
 | `Env` | `app.env` |
-| `App` | `app.name` |
+| `Application` | `app.name` |
 | `Tags` | `app.tags.<key>` |
 | `Name` | `name` |
 

@@ -19,7 +19,7 @@ type Writer interface {
 }
 
 func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (Writer, error) {
-	topic, err := kafka.BuildFullTopicName(config, settings.Identity, settings.TopicId)
+	topic, err := kafka.BuildFullTopicName(config, settings.ToIdentity(), settings.TopicId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build full topic name for topic id %q: %w", settings.TopicId, err)
 	}

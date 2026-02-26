@@ -94,7 +94,7 @@ func modelIdFromStringWithDomainPattern(domainPattern, str string) (ModelId, err
 		case name == PlaceholderAppEnv:
 			modelId.Env = value
 		case name == PlaceholderAppName:
-			modelId.App = value
+			modelId.Application = value
 		case strings.HasPrefix(name, PlaceholderAppTags):
 			tagKey := strings.TrimPrefix(name, PlaceholderAppTags)
 			modelId.Tags[tagKey] = value

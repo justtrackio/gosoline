@@ -18,4 +18,4 @@ stream:
   input:
     consumerInput:
       type: sqs
-      target_queue_id: inputEvent
+      queue_id: inputEvent

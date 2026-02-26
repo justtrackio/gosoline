@@ -33,11 +33,22 @@
 
 ## Config keys
 
-Most stream inputs and outputs (SQS, SNS, Kinesis, Kafka) use an `identity` block for application identity configuration.
-The `identity.name` is optional and defaults to the global `app.name` if not specified.
-The `identity.tags` are required only if referenced by the configured naming patterns.
+Stream inputs and outputs (SQS, SNS, Kinesis, Kafka) use a `cfg.ResourceIdentifier` embedded directly in their
+configuration structs. This means the fields are **flat** — no extra nesting level:
 
-**Exception:** Redis list inputs and outputs do **not** use the `identity` block. They only require `server_name`, `key`, and transport-specific settings. Redis naming is handled by the Redis client's own naming configuration (`redis.<client_name>.naming`).
+| Field | Config key | Required | Description |
+|-------|------------|----------|-------------|
+| `application` | `application` | no | Name of the owning application. Defaults to `app.name`. |
+| `env` | `env` | no | Environment of the owning application. Defaults to `app.env`. |
+| `tags` | `tags` | no | Tags for pattern expansion. Merged with `app.tags`; per-resource keys win. |
+
+**Exception:** Redis list inputs and outputs do **not** use `ResourceIdentifier`. They only require `server_name`, `key`,
+and transport-specific settings. Redis naming is handled by the Redis client's own naming configuration
+(`redis.<client_name>.naming`).
+
+**Kafka/Kinesis inputs** (`KafkaInputConfiguration`, `KinesisInputConfiguration`) embed their transport
+`Settings` struct directly, which still uses `identity` (named field). These will be migrated in a
+future pass.
 
 ### Output example (SQS)
 ```yaml
@@ -45,30 +56,27 @@ stream:
   output:
     my-output:
       type: sqs
-      identity:
-        name: my-app              # optional, defaults to app.name
-        tags:
-          project: my-project
-          family: my-family
-          group: my-group
+      application: my-app       # optional, defaults to app.name
+      tags:                     # optional, merged with app.tags
+        project: my-project
+        family: my-family
+        group: my-group
       queue_id: my-queue
       client_name: default
 ```
 
 ### Input example (SQS)
-For SQS input, use `target_identity` to specify the target queue's identity:
 ```yaml
 stream:
   input:
     my-input:
       type: sqs
-      target_identity:
-        name: target-app          # optional
-        tags:
-          project: my-project
-          family: my-family
-          group: my-group
-      target_queue_id: my-queue
+      application: target-app   # optional, defaults to app.name
+      tags:                     # optional
+        project: my-project
+        family: my-family
+        group: my-group
+      queue_id: my-queue
 ```
 
 ### SNS input with targets
@@ -78,18 +86,16 @@ stream:
     my-sns-input:
       type: sns
       id: my-consumer
-      identity:
-        tags:
-          project: my-project
-          family: my-family
-          group: my-group
+      tags:                     # optional — identity of the SQS queue used for fan-out
+        project: my-project
+        family: my-family
+        group: my-group
       targets:
-        - identity:
-            name: target-app
-            tags:
-              project: target-project
-              family: target-family
-              group: target-group
+        - application: target-app   # optional — identity of the SNS topic to subscribe to
+          tags:
+            project: target-project
+            family: target-family
+            group: target-group
           topic_id: my-topic
 ```
 
