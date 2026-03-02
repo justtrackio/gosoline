@@ -30,8 +30,8 @@ type RetryHandlerSqsSettings struct {
 	RunnerCount         int                        `cfg:"runner_count" default:"1"`
 	QueueId             string                     `cfg:"queue_id"`
 	Healthcheck         health.HealthCheckSettings `cfg:"healthcheck"`
-	MsgBodyEncoding     string `cfg:"msg_body_encoding" default:"raw"`
-	Unmarshaller        string `cfg:"unmarshaller" default:"msg"`
+	MsgBodyEncoding     string                     `cfg:"msg_body_encoding" default:"raw"`
+	Unmarshaller        string                     `cfg:"unmarshaller" default:"msg"`
 }
 
 type RetryHandlerSqs struct {
@@ -47,7 +47,10 @@ func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logge
 		settings = &RetryHandlerSqsSettings{}
 	)
 
-	config.UnmarshalKey(md.retryConfigKey, settings)
+	err = config.UnmarshalKey(md.retryConfigKey, settings)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal retry handler settings for %q: %w", md.name, err)
+	}
 
 	if err := settings.PadFromConfig(config); err != nil {
 		return nil, nil, fmt.Errorf("failed to pad resource identifier for retry handler sqs %s: %w", md.name, err)
