@@ -13,7 +13,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
-	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
@@ -223,20 +222,6 @@ func (p *producerRetryDaemon) ingestDataFromSource(input Input, src string) func
 					return nil
 				}
 
-				if retryId, ok := msg.Attributes[AttributeRetryId]; ok {
-					// get the trace id from the message so our message can be found a lot easier in the logs
-					decoder := tracing.NewMessageWithTraceEncoder(tracing.TraceIdErrorReturnStrategy{})
-					newCtx, _, err := decoder.Decode(ctx, nil, funk.MergeMaps(msg.Attributes)) // copy the attributes as Decode modifies the map...
-					if err == nil {
-						ctx = newCtx
-					}
-
-					p.logger.WithFields(log.Fields{
-						"retry_id": fmt.Sprintf("%s", retryId),
-					}).Warn(ctx, "retrying message with id")
-					p.writeMetricRetryCount(ctx, metricNameProducerRetryGetCount)
-				}
-
 				p.data <- &producerRetryDaemonData{
 					msg: msg,
 					src: src,
@@ -269,6 +254,7 @@ func (p *producerRetryDaemon) processMessages(ctx context.Context) error {
 				return nil
 			}
 
+			p.writeMetricRetryCount(ctx, metricNameProducerRetryGetCount)
 			err := p.output.WriteOne(ctx, data.msg)
 			if err != nil {
 				p.logger.WithFields(log.Fields{
