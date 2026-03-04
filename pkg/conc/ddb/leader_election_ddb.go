@@ -3,7 +3,6 @@ package ddb
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
@@ -19,18 +18,6 @@ type DdbLeaderElectionItem struct {
 	LeadingUntil int64  `json:"leadingUntil" ddb:"ttl=enabled"`
 }
 
-type TableNamingSettings struct {
-	TablePattern   string `cfg:"table_pattern,nodecode" default:"{app.tags.project}-{app.env}-{app.tags.family}-leader-elections"`
-	TableDelimiter string `cfg:"table_delimiter" default:"-"`
-}
-
-type DdbLeaderElectionSettings struct {
-	Naming        TableNamingSettings `cfg:"naming"`
-	ClientName    string              `cfg:"client_name" default:"default"`
-	GroupId       string              `cfg:"group_id" default:"{app.name}"`
-	LeaseDuration time.Duration       `cfg:"lease_duration" default:"1m"`
-}
-
 type DdbLeaderElection struct {
 	logger     log.Logger
 	clock      clock.Clock
@@ -39,10 +26,9 @@ type DdbLeaderElection struct {
 }
 
 func NewDdbLeaderElection(ctx context.Context, config cfg.Config, logger log.Logger, name string) (LeaderElection, error) {
-	key := GetLeaderElectionConfigKey(name)
-	settings := &DdbLeaderElectionSettings{}
-	if err := config.UnmarshalKey(key, settings); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal ddb leader election settings: %w", err)
+	settings, err := ReadLeaderElectionDdbSettings(config, name)
+	if err != nil {
+		return nil, err
 	}
 
 	return NewDdbLeaderElectionWithSettings(ctx, config, logger, settings)
