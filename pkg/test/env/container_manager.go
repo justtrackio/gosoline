@@ -35,6 +35,7 @@ type HealthCheckSettings struct {
 type containerManager struct {
 	logger            log.Logger
 	runnerFactory     func(typ string) (ContainerRunner, error)
+	runnersMu         sync.Mutex
 	runners           map[string]ContainerRunner
 	settings          *ContainerManagerSettings
 	shutdownCallbacks map[string]func() error
@@ -140,13 +141,17 @@ func (m *containerManager) runContainer(ctx context.Context, request ContainerRe
 		runnerType = m.settings.RunnerType
 	}
 
+	m.runnersMu.Lock()
 	if _, ok := m.runners[runnerType]; !ok {
 		if m.runners[runnerType], err = m.runnerFactory(runnerType); err != nil {
+			m.runnersMu.Unlock()
 			return nil, fmt.Errorf("can not create container runner for type %s: %w", runnerType, err)
 		}
 	}
+	runner := m.runners[runnerType]
+	m.runnersMu.Unlock()
 
-	if container, err = m.runners[runnerType].RunContainer(ctx, request); err != nil {
+	if container, err = runner.RunContainer(ctx, request); err != nil {
 		return nil, fmt.Errorf(
 			"can not run container %s (%s:%s): %w",
 			request.id(),
@@ -170,6 +175,9 @@ func (m *containerManager) Stop(ctx context.Context) error {
 			m.logger.Error(ctx, "shutdown callback failed for container %s: %w", name, err)
 		}
 	}
+
+	m.runnersMu.Lock()
+	defer m.runnersMu.Unlock()
 
 	for name, runner := range m.runners {
 		if err := runner.Stop(ctx); err != nil {
