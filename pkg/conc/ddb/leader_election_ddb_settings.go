@@ -25,7 +25,7 @@ func ReadLeaderElectionDdbSettings(config cfg.Config, name string) (*DdbLeaderEl
 
 	settings := &DdbLeaderElectionSettings{}
 	if err := config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultsFromKey(defaultKey, ".")); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal ddb leader election settings: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal ddb leader election settings for name %q (key %q, default key %q): %w", name, key, defaultKey, err)
 	}
 
 	return settings, nil
