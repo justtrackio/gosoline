@@ -26,11 +26,9 @@ type DdbLeaderElection struct {
 }
 
 func NewDdbLeaderElection(ctx context.Context, config cfg.Config, logger log.Logger, name string) (LeaderElection, error) {
-	var err error
-	var settings *DdbLeaderElectionSettings
-
-	if settings, err = ReadLeaderElectionDdbSettings(config, name); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal ddb leader election settings: %w", err)
+	settings, err := ReadLeaderElectionDdbSettings(config, name)
+	if err != nil {
+		return nil, err
 	}
 
 	return NewDdbLeaderElectionWithSettings(ctx, config, logger, settings)
