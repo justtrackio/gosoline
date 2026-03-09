@@ -38,7 +38,13 @@ func SubscriberFactory(ctx context.Context, config cfg.Config, logger log.Logger
 		}
 
 		if _, ok := modules[subscriberFQN]; ok {
-			continue
+			if subscriberSettings.SourceModel.Shared && subscriberSettings.TargetModel.Shared {
+				continue
+			}
+
+			// if two subscribers result in the same FQN, then they must both be shared. as this is not the case, we have a misconfigured app
+			// and should report this as an error (otherwise, we would just subscribe to part of the data we need to)
+			return nil, fmt.Errorf("duplicate subscriber name %q for source model %q", subscriberFQN, subscriberSettings.SourceModel)
 		}
 
 		callbackFactory := NewSubscriberCallbackFactory(core, subscriberSettings.SourceModel, subscriberSettings.PersistGraceTime)
