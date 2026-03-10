@@ -1338,6 +1338,38 @@ func TestMapStruct_Decode(t *testing.T) {
 	assert.Equal(t, expected, source)
 }
 
+func TestMapStruct_DecodeErrorIncludesOriginalValueAndCause(t *testing.T) {
+	type sourceStruct struct {
+		Service string `cfg:"service"`
+	}
+
+	source := &sourceStruct{}
+	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
+		FieldTag: "cfg",
+		Decoders: []mapx.MapStructDecoder{
+			func(targetType reflect.Type, val any) (any, error) {
+				if raw, ok := val.(string); ok && raw == "{app_group}" {
+					return "", fmt.Errorf("there is no config setting or default for key %q", "app_group")
+				}
+
+				return val, nil
+			},
+		},
+	})
+
+	assert.NoError(t, err, "there should be no error on creating the mapstruct")
+
+	err = ms.Write(mapx.NewMapX(map[string]any{
+		"service": "{app_group}",
+	}))
+
+	assert.EqualError(
+		t,
+		err,
+		"can not decode and cast value for key service: can not decode value \"{app_group}\": there is no config setting or default for key \"app_group\"",
+	)
+}
+
 func setupMapStructIO(t *testing.T, source any) *mapx.Struct {
 	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
 		FieldTag:   "cfg",
