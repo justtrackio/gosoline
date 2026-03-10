@@ -689,6 +689,25 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKeyValidation() {
 	)
 }
 
+func (s *ConfigTestSuite) TestConfig_UnmarshalKeyMissingPlaceholder() {
+	type configMap struct {
+		Service string `cfg:"service"`
+	}
+
+	s.setupConfigValues(map[string]any{
+		"key": map[string]any{
+			"service": "{app_group}",
+		},
+	})
+
+	cm := configMap{}
+	err := s.config.UnmarshalKey("key", &cm)
+
+	s.Require().Error(err)
+	s.Contains(err.Error(), "{app_group}")
+	s.Contains(err.Error(), `there is no config setting or default for key "app_group"`)
+}
+
 func (s *ConfigTestSuite) TestConfig_UnmarshalKeyWithDefaultsFromKey() {
 	type ConfigNested struct {
 		I int  `cfg:"i" default:"1"`
