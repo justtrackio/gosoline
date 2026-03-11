@@ -22,6 +22,65 @@ func (_m *Service) EXPECT() *Service_Expecter {
 	return &Service_Expecter{mock: &_m.Mock}
 }
 
+// GetOrCreateSubjectSchemaId provides a mock function with given fields: ctx, subject, schema, schemaType
+func (_m *Service) GetOrCreateSubjectSchemaId(ctx context.Context, subject string, schema string, schemaType schema_registry.SchemaType) (int, error) {
+	ret := _m.Called(ctx, subject, schema, schemaType)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetOrCreateSubjectSchemaId")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, schema_registry.SchemaType) (int, error)); ok {
+		return rf(ctx, subject, schema, schemaType)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, schema_registry.SchemaType) int); ok {
+		r0 = rf(ctx, subject, schema, schemaType)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, schema_registry.SchemaType) error); ok {
+		r1 = rf(ctx, subject, schema, schemaType)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Service_GetOrCreateSubjectSchemaId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetOrCreateSubjectSchemaId'
+type Service_GetOrCreateSubjectSchemaId_Call struct {
+	*mock.Call
+}
+
+// GetOrCreateSubjectSchemaId is a helper method to define mock.On call
+//   - ctx context.Context
+//   - subject string
+//   - schema string
+//   - schemaType schema_registry.SchemaType
+func (_e *Service_Expecter) GetOrCreateSubjectSchemaId(ctx interface{}, subject interface{}, schema interface{}, schemaType interface{}) *Service_GetOrCreateSubjectSchemaId_Call {
+	return &Service_GetOrCreateSubjectSchemaId_Call{Call: _e.mock.On("GetOrCreateSubjectSchemaId", ctx, subject, schema, schemaType)}
+}
+
+func (_c *Service_GetOrCreateSubjectSchemaId_Call) Run(run func(ctx context.Context, subject string, schema string, schemaType schema_registry.SchemaType)) *Service_GetOrCreateSubjectSchemaId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(schema_registry.SchemaType))
+	})
+	return _c
+}
+
+func (_c *Service_GetOrCreateSubjectSchemaId_Call) Return(_a0 int, _a1 error) *Service_GetOrCreateSubjectSchemaId_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_GetOrCreateSubjectSchemaId_Call) RunAndReturn(run func(context.Context, string, string, schema_registry.SchemaType) (int, error)) *Service_GetOrCreateSubjectSchemaId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSubjectSchemaId provides a mock function with given fields: ctx, subject, schema, schemaType
 func (_m *Service) GetSubjectSchemaId(ctx context.Context, subject string, schema string, schemaType schema_registry.SchemaType) (int, error) {
 	ret := _m.Called(ctx, subject, schema, schemaType)

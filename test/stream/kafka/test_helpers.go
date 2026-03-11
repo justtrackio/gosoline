@@ -8,7 +8,8 @@ import (
 )
 
 // WithRegisteredSchema registers a schema before the integration test starts.
-// This is necessary because gosoline expects all used schemas to be registered externally and to already exist in the schema registry.
+// This remains useful for tests that want explicit registry setup or exercise the
+// default lookup-only producer behavior without AutoRegister enabled.
 func WithRegisteredSchema(s suite.TestingSuite, subject string, schema string, schemaType sr.SchemaType) suite.Option {
 	return suite.WithEnvSetup(
 		func() error {

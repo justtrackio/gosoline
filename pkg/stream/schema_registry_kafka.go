@@ -73,7 +73,12 @@ func InitKafkaSchemaRegistry(
 		return nil, fmt.Errorf("unknown schema type: %s", schemaType)
 	}
 
-	schemaId, err := schemaRegistryService.GetSubjectSchemaId(ctx, settings.Subject, settings.Schema, schemaType)
+	getSchemaId := schemaRegistryService.GetSubjectSchemaId
+	if settings.AutoRegister {
+		getSchemaId = schemaRegistryService.GetOrCreateSubjectSchemaId
+	}
+
+	schemaId, err := getSchemaId(ctx, settings.Subject, settings.Schema, schemaType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get subject schema id from registry: %w", err)
 	}
