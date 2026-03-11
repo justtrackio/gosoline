@@ -4,6 +4,7 @@ type SchemaSettingsWithEncoding struct {
 	Subject              string
 	Schema               string
 	Encoding             EncodingType
+	AutoRegister         bool
 	ProtobufMessageIndex []int
 	Model                any
 }
@@ -11,6 +12,7 @@ type SchemaSettingsWithEncoding struct {
 type SchemaSettings struct {
 	Subject              string
 	Schema               string
+	AutoRegister         bool
 	ProtobufMessageIndex []int
 	Model                any
 }
@@ -20,6 +22,7 @@ func (s SchemaSettings) WithEncoding(encoding EncodingType) SchemaSettingsWithEn
 		Subject:              s.Subject,
 		Schema:               s.Schema,
 		Encoding:             encoding,
+		AutoRegister:         s.AutoRegister,
 		ProtobufMessageIndex: s.ProtobufMessageIndex,
 		Model:                s.Model,
 	}
