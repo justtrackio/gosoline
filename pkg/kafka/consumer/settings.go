@@ -28,6 +28,13 @@ const (
 	Range              Balancer = "range"
 )
 
+// RackAwarenessSettings configures rack-aware fetching for Kafka consumers.
+type RackAwarenessSettings struct {
+	// Enabled controls whether rack awareness is active. When true, the consumer resolves its rack
+	// from the configured topology provider (cloud.kubernetes.topology) and passes it to the Kafka client.
+	Enabled bool `cfg:"enabled" default:"false"`
+}
+
 type Settings struct {
 	cfg.ResourceIdentifier
 	Connection string `cfg:"connection" default:"default"`
@@ -47,6 +54,12 @@ type Settings struct {
 	SessionTimeout    time.Duration `cfg:"session_timeout"    default:"45s"`
 	HeartbeatInterval time.Duration `cfg:"heartbeat_interval" default:"3s"`
 	IdleWaitTime      time.Duration `cfg:"idle_wait_time"     default:"500ms"`
+
+	// RackAwareness configures rack-aware fetching for this consumer.
+	// When enabled, the consumer will resolve its rack (typically an availability zone) from a topology
+	// provider and pass it to the Kafka client. This enables follower fetching (KIP-392) to reduce
+	// cross-AZ traffic and rack-aware partition assignment (KIP-848) when using server-side assignment.
+	RackAwareness RackAwarenessSettings `cfg:"rack_awareness"`
 
 	Healthcheck health.HealthCheckSettings `cfg:"healthcheck"`
 	Backoff     exec.BackoffSettings       `cfg:"backoff"`

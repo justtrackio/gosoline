@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cloud/topology"
 	"github.com/justtrackio/gosoline/pkg/kafka"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	"github.com/justtrackio/gosoline/pkg/kafka/logging"
@@ -61,6 +62,17 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 	}
 	opts = append(opts, connOpts...)
 
+	if settings.RackAwareness.Enabled {
+		rackOpt, err := resolveRackAwareness(ctx, config, logger)
+		if err != nil {
+			return nil, err
+		}
+
+		if rackOpt != nil {
+			opts = append(opts, rackOpt)
+		}
+	}
+
 	client, err := kgo.NewClient(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("can not create franz-go client: %w", err)
@@ -71,4 +83,28 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 	}
 
 	return client, nil
+}
+
+// resolveRackAwareness resolves the rack from the topology provider. It returns nil if no topology
+// provider is configured (noop provider returns empty zone). It returns an error only for real failures.
+func resolveRackAwareness(ctx context.Context, config cfg.Config, logger log.Logger) (kgo.Opt, error) {
+	topologyProvider, err := topology.ProvideProvider(ctx, config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get topology provider for rack awareness: %w", err)
+	}
+
+	rack, err := topologyProvider.GetZone(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve rack from topology provider: %w", err)
+	}
+
+	if rack == "" {
+		logger.Warn(ctx, "kafka consumer rack awareness is enabled but no topology provider is configured, skipping")
+
+		return nil, nil
+	}
+
+	logger.Info(ctx, "kafka consumer rack awareness enabled, using rack %q", rack)
+
+	return kgo.Rack(rack), nil
 }
