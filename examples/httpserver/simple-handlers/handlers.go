@@ -111,6 +111,14 @@ func (h *MyEntityHandler) TransformUpdate(_ context.Context, input any, model db
 	return
 }
 
+func (h *MyEntityHandler) TransformPatch(_ context.Context, model db_repo.ModelBased) (any, error) {
+	b := model.(*MyEntity)
+
+	return &MyEntityUpdateInput{
+		Prop1: b.Prop1,
+	}, nil
+}
+
 func (h *MyEntityHandler) List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (out any, err error) {
 	res := make([]*MyEntity, 0)
 	err = h.repo.Query(ctx, qb, &res)

@@ -67,6 +67,17 @@ type UpdateHandler interface {
 	BaseUpdateHandler
 }
 
+type BasePatchHandler interface {
+	TransformPatch(ctx context.Context, model dbRepo.ModelBased) (updateInput any, err error)
+	TransformUpdate(ctx context.Context, input any, model dbRepo.ModelBased) (err error)
+}
+
+//go:generate go run github.com/vektra/mockery/v2 --name PatchHandler
+type PatchHandler interface {
+	BaseHandler
+	BasePatchHandler
+}
+
 //go:generate go run github.com/vektra/mockery/v2 --name BaseListHandler
 type BaseListHandler interface {
 	List(ctx context.Context, qb *dbRepo.QueryBuilder, apiView string) (out any, err error)
@@ -83,6 +94,7 @@ type Handler interface {
 	BaseHandler
 	BaseCreateHandler
 	BaseUpdateHandler
+	BasePatchHandler
 	BaseListHandler
 }
 
@@ -95,6 +107,10 @@ func AddCrudHandlers(config cfg.Config, logger log.Logger, d *httpserver.Definit
 
 	if err := AddUpdateHandler(config, logger, d, version, basePath, handler); err != nil {
 		return fmt.Errorf("failed to add update handler: %w", err)
+	}
+
+	if err := AddPatchHandler(config, logger, d, version, basePath, handler); err != nil {
+		return fmt.Errorf("failed to add patch handler: %w", err)
 	}
 
 	if err := AddDeleteHandler(config, logger, d, version, basePath, handler); err != nil {
@@ -134,6 +150,19 @@ func AddUpdateHandler(config cfg.Config, logger log.Logger, d *httpserver.Defini
 	}
 
 	d.PUT(idPath, updateHandler)
+
+	return nil
+}
+
+func AddPatchHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler PatchHandler) error {
+	_, idPath := getHandlerPaths(version, basePath)
+
+	patchHandler, err := NewPatchHandler(config, logger, handler)
+	if err != nil {
+		return fmt.Errorf("failed to create update handler: %w", err)
+	}
+
+	d.PATCH(idPath, patchHandler)
 
 	return nil
 }
