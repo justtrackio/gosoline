@@ -141,5 +141,5 @@ func (r transactionRepository) TransactWriteItemsIdempotent(ctx context.Context,
 
 	res.ConsumedCapacity.addSlice(out.ConsumedCapacity)
 
-	return res, gosoDynamodb.TransformTransactionError(err)
+	return res, nil
 }

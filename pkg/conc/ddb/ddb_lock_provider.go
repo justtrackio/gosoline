@@ -137,6 +137,19 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.Di
 	return lock, err
 }
 
+func (m *ddbLockProvider) TryAcquireIn(ctx context.Context, resource string, timeout time.Duration) (conc.DistributedLock, error) {
+	ctx, stop := context.WithTimeout(ctx, timeout)
+	defer stop()
+
+	lock, err := m.Acquire(ctx, resource)
+	if errors.Is(err, context.DeadlineExceeded) {
+		// timeout -> return no lock and no error as documented
+		return nil, nil
+	}
+
+	return lock, err
+}
+
 func (m *ddbLockProvider) RenewLock(ctx context.Context, lockTime time.Duration, resource string, token string) (expiry time.Time, err error) {
 	_, err = m.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 		qb := m.repo.UpdateItemBuilder().
