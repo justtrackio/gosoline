@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -69,9 +70,7 @@ func (m *LifeCycleManager) refreshResources(ctx context.Context) (err error) {
 	var resource LifeCycleer
 
 	if cont, err = provideContainer(ctx); err != nil {
-		err = fmt.Errorf("could not get lifecyleer factories: %w", err)
-
-		return
+		return fmt.Errorf("could not get lifecyleer factories: %w", err)
 	}
 
 	cont.lck.Lock()
@@ -80,9 +79,7 @@ func (m *LifeCycleManager) refreshResources(ctx context.Context) (err error) {
 	i := len(m.resources)
 	for ; i < len(cont.factories); i++ {
 		if resource, err = m.refresher(cont.factories[i]); err != nil {
-			err = fmt.Errorf("could not build lifecycleer: %w", err)
-
-			return
+			return fmt.Errorf("could not build lifecycleer: %w", err)
 		}
 
 		m.resources = append(m.resources, resource)
@@ -223,6 +220,20 @@ func (m *LifeCycleManager) Register(ctx context.Context) error {
 }
 
 func (m *LifeCycleManager) Purge(ctx context.Context) error {
+	return m.purge(ctx, nil)
+}
+
+func (m *LifeCycleManager) PurgeSelected(ctx context.Context, resourceIds []string) error {
+	if len(resourceIds) == 0 {
+		m.logger.Info(ctx, "no mutable resources selected for purge, skipping")
+
+		return nil
+	}
+
+	return m.purge(ctx, resourceIds)
+}
+
+func (m *LifeCycleManager) purge(ctx context.Context, resourceIds []string) error {
 	var ok bool
 	var err error
 	var regexps []*regexp.Regexp
@@ -243,6 +254,10 @@ func (m *LifeCycleManager) Purge(ctx context.Context) error {
 	}
 
 	for _, res := range m.resources {
+		if len(resourceIds) > 0 && !slices.Contains(resourceIds, res.GetId()) {
+			continue
+		}
+
 		if m.shouldSkip(ctx, res.GetId(), m.purged, regexps) {
 			continue
 		}
@@ -273,7 +288,7 @@ func (m *LifeCycleManager) prepareCycle(settings SettingsCycle) (enabled bool, e
 	regexps := make([]*regexp.Regexp, len(settings.Excludes))
 	for i, pattern := range settings.Excludes {
 		if regexps[i], err = regexp.Compile(pattern); err != nil {
-			return false, nil, fmt.Errorf("could not compile exlude regexp %q: %w", pattern, err)
+			return false, nil, fmt.Errorf("could not compile exclude regexp %q: %w", pattern, err)
 		}
 	}
 

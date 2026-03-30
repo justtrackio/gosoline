@@ -26,6 +26,10 @@ type dynamoDbKvStoreFixtureWriter[T any] struct {
 
 func DynamoDbKvStoreFixtureSetFactory[T any](modelId *mdl.ModelId, data fixtures.NamedFixtures[*KvStoreFixture], options ...fixtures.FixtureSetOption) fixtures.FixtureSetFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
+		if err := modelId.PadFromConfig(config); err != nil {
+			return nil, fmt.Errorf("failed to pad model id from config: %w", err)
+		}
+
 		var err error
 		var writer fixtures.FixtureWriter
 
@@ -53,7 +57,11 @@ func NewDynamoDbKvStoreFixtureWriter[T any](ctx context.Context, config cfg.Conf
 		return nil, fmt.Errorf("failed to create dynamodb kv store: %w", err)
 	}
 
-	return NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger, store), nil
+	resolvedModelId := *modelId
+	resolvedModelId.Name = DdbBaseName(&Settings{ModelId: resolvedModelId})
+	resourceId := fmt.Sprintf("ddb/%s", resolvedModelId.String())
+
+	return fixtures.NewManagedFixtureWriter(NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger, store), resourceId), nil
 }
 
 func NewDynamoDbKvStoreFixtureWriterWithInterfaces[T any](logger log.Logger, store KvStore[T]) fixtures.FixtureWriter {

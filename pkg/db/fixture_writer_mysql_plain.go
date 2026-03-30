@@ -43,7 +43,14 @@ func NewMysqlPlainFixtureWriter(ctx context.Context, config cfg.Config, logger l
 		return nil, fmt.Errorf("can not create dbClient: %w", err)
 	}
 
-	return NewMysqlPlainFixtureWriterWithInterfaces(logger, dbClient, metadata), nil
+	settings, err := ReadSettings(config, "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not read db settings: %w", err)
+	}
+
+	resourceId := fmt.Sprintf("db/%s", settings.Uri.Database)
+
+	return fixtures.NewManagedFixtureWriter(NewMysqlPlainFixtureWriterWithInterfaces(logger, dbClient, metadata), resourceId), nil
 }
 
 func NewMysqlPlainFixtureWriterWithInterfaces(logger log.Logger, client Client, metadata *MysqlPlainMetaData) fixtures.FixtureWriter {

@@ -5,6 +5,9 @@ app:
     project: project
     family: family
     group: grp
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+  model_id:
+    domain_pattern: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
 
 mdlsub:
   publishers:

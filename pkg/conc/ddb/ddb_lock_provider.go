@@ -114,7 +114,6 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.Di
 			Token:    token,
 			Ttl:      expires.Unix(),
 		})
-
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +161,6 @@ func (m *ddbLockProvider) RenewLock(ctx context.Context, lockTime time.Duration,
 			Token:    token,
 			Ttl:      expiry.Unix(),
 		})
-
 		if err != nil {
 			return nil, fmt.Errorf("failed to renew lock: %w", err)
 		}

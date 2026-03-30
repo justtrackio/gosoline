@@ -41,7 +41,14 @@ func NewMysqlSqlxFixtureWriter(ctx context.Context, config cfg.Config, logger lo
 		return nil, fmt.Errorf("can not create dbClient: %w", err)
 	}
 
-	return NewMysqlSqlxFixtureWriterWithInterfaces(logger, dbClient, metadata), nil
+	settings, err := ReadSettings(config, "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not read db settings: %w", err)
+	}
+
+	resourceId := fmt.Sprintf("db/%s", settings.Uri.Database)
+
+	return fixtures.NewManagedFixtureWriter(NewMysqlSqlxFixtureWriterWithInterfaces(logger, dbClient, metadata), resourceId), nil
 }
 
 func NewMysqlSqlxFixtureWriterWithInterfaces(logger log.Logger, client Client, metadata *MysqlSqlxMetaData) fixtures.FixtureWriter {

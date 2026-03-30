@@ -5,7 +5,9 @@ app:
     project: gosoline
     family: gosoline
     group: grp
-
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+  model_id:
+    domain_pattern: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
 
 db:
   default:

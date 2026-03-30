@@ -37,7 +37,7 @@ func isTestCaseBase(_ TestingSuite, method reflect.Method) error {
 func buildTestCaseBase(_ TestingSuite, method reflect.Method) (TestCaseRunner, error) {
 	return func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment) {
 		suite.SetT(t)
-		if err := environment.LifeCyleCreate(); err != nil {
+		if err := environment.LifeCycleCreate(); err != nil {
 			t.Fatalf("failed to run the create lifecycle: %v", err)
 
 			return

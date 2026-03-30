@@ -57,7 +57,9 @@ func NewMysqlOrmFixtureWriter(ctx context.Context, config cfg.Config, logger log
 		return nil, fmt.Errorf("can not create repo: %w", err)
 	}
 
-	return NewMysqlFixtureWriterWithInterfaces(logger, metadata, repo), nil
+	resourceId := fmt.Sprintf("db/%s", dbSettings.Uri.Database)
+
+	return fixtures.NewManagedFixtureWriter(NewMysqlFixtureWriterWithInterfaces(logger, metadata, repo), resourceId), nil
 }
 
 func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *Metadata, repo Repository) fixtures.FixtureWriter {

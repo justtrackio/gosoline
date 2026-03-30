@@ -240,7 +240,7 @@ func (e *Environment) LoadFixtureSet(factory fixtures.FixtureSetsFactory, postPr
 	return e.LoadFixtureSets([]fixtures.FixtureSetsFactory{factory}, postProcessorFactories...)
 }
 
-func (e *Environment) LifeCyleCreate() error {
+func (e *Environment) LifeCycleCreate() error {
 	if err := e.resManager.Create(e.ctx); err != nil {
 		return fmt.Errorf("can not handle the create lifecycle: %w", err)
 	}
@@ -280,12 +280,26 @@ func (e *Environment) LoadFixtureSets(factories []fixtures.FixtureSetsFactory, p
 		}
 	}
 
-	if err := e.LifeCyleCreate(); err != nil {
+	if err := e.LifeCycleCreate(); err != nil {
 		return fmt.Errorf("can not handle the lifecycle: %w", err)
+	}
+
+	if err := e.resManager.Register(e.ctx); err != nil {
+		return fmt.Errorf("can not handle the register lifecycle: %w", err)
 	}
 
 	if loader, err = fixtures.NewFixtureLoader(e.ctx, e.config, e.logger, allFixtureSets, postProcessors); err != nil {
 		return fmt.Errorf("failed to create fixture loader: %w", err)
+	}
+
+	if resourceIds, ok := fixtures.MutableResourceIds(loader); ok {
+		err = e.resManager.PurgeSelected(e.ctx, resourceIds)
+	} else {
+		err = e.resManager.Purge(e.ctx)
+	}
+
+	if err != nil {
+		return fmt.Errorf("can not handle the purge lifecycle: %w", err)
 	}
 
 	if err = loader.Load(e.ctx); err != nil {
