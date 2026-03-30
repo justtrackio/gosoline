@@ -1,10 +1,8 @@
 //go:build integration
-// +build integration
 
 package conc_test
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -32,7 +30,7 @@ func (s *DdbLockTestSuite) SetupSuite() []suite.Option {
 	}
 }
 
-func (s *DdbLockTestSuite) SetupTest() (err error) {
+func (s *DdbLockTestSuite) SetupTest() error {
 	identity, err := cfg.GetAppIdentity(s.Env().Config())
 	if err != nil {
 		return fmt.Errorf("failed to get app identity: %w", err)
@@ -43,7 +41,7 @@ func (s *DdbLockTestSuite) SetupTest() (err error) {
 		Backoff: exec.BackoffSettings{
 			CancelDelay:     0,
 			InitialInterval: time.Millisecond * 25,
-			MaxAttempts:     0,
+			MaxAttempts:     2,
 			MaxElapsedTime:  0,
 			MaxInterval:     time.Millisecond * 100,
 		},
@@ -51,15 +49,12 @@ func (s *DdbLockTestSuite) SetupTest() (err error) {
 		Domain:          fmt.Sprintf("test%d", time.Now().UnixNano()),
 	})
 
-	return
+	return err
 }
 
 func (s *DdbLockTestSuite) TestLockAndRelease() {
 	// Case 1: Acquire a lock and release it again
-	ctx, cancel := context.WithTimeout(s.T().Context(), time.Minute)
-	defer cancel()
-
-	l, err := s.provider.Acquire(ctx, s.T().Name())
+	l, err := s.provider.Acquire(s.T().Context(), s.T().Name())
 	s.NoError(err)
 	err = l.Release()
 	s.NoError(err)
@@ -67,48 +62,33 @@ func (s *DdbLockTestSuite) TestLockAndRelease() {
 
 func (s *DdbLockTestSuite) TestAcquireTwiceFails() {
 	// Case 2: Acquire a lock, then try to acquire it again. Second call fails
-	ctx, cancel := context.WithTimeout(s.T().Context(), time.Minute)
-	defer cancel()
-
-	l, err := s.provider.Acquire(ctx, s.T().Name())
+	l, err := s.provider.Acquire(s.T().Context(), s.T().Name())
 	s.NoError(err)
 
-	ctx2, cancel2 := context.WithTimeout(s.T().Context(), time.Second)
-	defer cancel2()
-
-	_, err = s.provider.Acquire(ctx2, s.T().Name())
+	_, err = s.provider.Acquire(s.T().Context(), s.T().Name())
 	s.Error(err)
-	s.True(exec.IsRequestCanceled(err) || errors.Is(err, conc.ErrLockOwned), "Error is: %v", err)
+	s.True(errors.Is(err, conc.ErrLockOwned), "Error is: %v", err)
 	err = l.Release()
 	s.NoError(err)
 }
 
 func (s *DdbLockTestSuite) TestAcquireRenewWorks() {
 	// Case 3: Acquire a lock, then renew it, try to lock it again (should fail), release it
-	ctx, cancel := context.WithTimeout(s.T().Context(), time.Minute)
-	defer cancel()
-
-	l, err := s.provider.Acquire(ctx, s.T().Name())
+	l, err := s.provider.Acquire(s.T().Context(), s.T().Name())
 	s.NoError(err)
-	err = l.Renew(ctx, time.Hour)
+	err = l.Renew(s.T().Context(), time.Hour)
 	s.NoError(err)
 
-	ctx2, cancel2 := context.WithTimeout(s.T().Context(), time.Second)
-	defer cancel2()
-
-	_, err = s.provider.Acquire(ctx2, s.T().Name())
+	_, err = s.provider.Acquire(s.T().Context(), s.T().Name())
 	s.Error(err)
-	s.EqualError(err, conc.ErrLockOwned.Error())
+	s.True(errors.Is(err, conc.ErrLockOwned), "Error is: %v", err)
 	err = l.Release()
 	s.NoError(err)
 }
 
 func (s *DdbLockTestSuite) TestReleaseTwiceFails() {
 	// Case 4: try to release a lock twice
-	ctx, cancel := context.WithTimeout(s.T().Context(), time.Minute)
-	defer cancel()
-
-	l, err := s.provider.Acquire(ctx, s.T().Name())
+	l, err := s.provider.Acquire(s.T().Context(), s.T().Name())
 	s.NoError(err)
 	err = l.Release()
 	s.NoError(err)
@@ -119,26 +99,20 @@ func (s *DdbLockTestSuite) TestReleaseTwiceFails() {
 
 func (s *DdbLockTestSuite) TestRenewAfterReleaseFails() {
 	// Case 5: try to renew a lock after releasing it
-	ctx, cancel := context.WithTimeout(s.T().Context(), time.Minute)
-	defer cancel()
-
-	l, err := s.provider.Acquire(ctx, s.T().Name())
+	l, err := s.provider.Acquire(s.T().Context(), s.T().Name())
 	s.NoError(err)
 	err = l.Release()
 	s.NoError(err)
-	err = l.Renew(ctx, time.Hour)
+	err = l.Renew(s.T().Context(), time.Hour)
 	s.Error(err)
 	s.Equal(conc.ErrLockNotOwned, err)
 }
 
 func (s *DdbLockTestSuite) TestAcquireDifferentResources() {
 	// Case 6: try to acquire two different resources
-	ctx, cancel := context.WithTimeout(s.T().Context(), time.Minute)
-	defer cancel()
-
-	l1, err := s.provider.Acquire(ctx, s.T().Name())
+	l1, err := s.provider.Acquire(s.T().Context(), s.T().Name())
 	s.NoError(err)
-	l2, err := s.provider.Acquire(ctx, s.T().Name()+"-other")
+	l2, err := s.provider.Acquire(s.T().Context(), s.T().Name()+"-other")
 	s.NoError(err)
 	err = l1.Release()
 	s.NoError(err)

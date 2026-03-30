@@ -100,18 +100,17 @@ func (l *ddbLock) Release() error {
 }
 
 func (l *ddbLock) runWatcher() {
-	t := l.clock.NewTimer(time.Hour)
+	t := l.clock.NewTimer(l.expiresIn())
 	defer t.Stop()
 
 	for {
-		expires := time.UnixMicro(atomic.LoadInt64(&l.expires))
-		now := l.clock.Now()
+		expiresIn := l.expiresIn()
 
-		if !expires.After(now) {
+		if expiresIn <= 0 {
 			break
 		}
 
-		t.Reset(expires.Sub(now))
+		t.Reset(expiresIn)
 
 		select {
 		case <-t.Chan():
@@ -125,4 +124,11 @@ func (l *ddbLock) runWatcher() {
 		"ddb_lock_token":    l.token,
 		"ddb_lock_resource": l.resource,
 	}).Warn(l.ctx, "failed to release or renew the lock before the timeout")
+}
+
+func (l *ddbLock) expiresIn() time.Duration {
+	expires := time.UnixMicro(atomic.LoadInt64(&l.expires))
+	now := l.clock.Now()
+
+	return expires.Sub(now)
 }

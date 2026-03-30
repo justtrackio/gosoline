@@ -25,6 +25,7 @@ func (s *ConsumerTestSuite) SetupSuite() []suite.Option {
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("../stream-consumer/config.dist.yml"),
 		suite.WithModule("consumerModule", stream.NewConsumer("uintConsumer", consumer.NewConsumer())),
+		suite.WithSharedEnvironment(),
 	}
 }
 
@@ -57,20 +58,29 @@ func (s *ConsumerTestSuite) TestSuccess() *suite.StreamTestCase {
 	}
 }
 
-func (s *ConsumerTestSuite) TestSuccessTwice(app suite.AppUnderTest) {
-	consumer := s.Env().StreamInput("consumerInput")
-	s.NotNil(consumer)
+func (s *ConsumerTestSuite) TestSuccessTwice() *suite.StreamTestCase {
+	return &suite.StreamTestCase{
+		Input: map[string][]suite.StreamTestCaseInput{
+			"consumerInput": {
+				{
+					Attributes: nil,
+					Body:       mdl.Box(uint(2)),
+				},
+				{
+					Attributes: nil,
+					Body:       mdl.Box(uint(3)),
+				},
+			},
+		},
+		Assert: func() error {
+			var result int
+			s.Env().StreamOutput("publisher-outputEvent").Unmarshal(0, &result)
+			s.Equal(3, result)
 
-	consumer.Publish(mdl.Box(uint(2)), nil)
-	consumer.Publish(mdl.Box(uint(3)), nil)
+			s.Env().StreamOutput("publisher-outputEvent").Unmarshal(1, &result)
+			s.Equal(4, result)
 
-	app.Stop()
-	app.WaitDone()
-
-	var result int
-	s.Env().StreamOutput("publisher-outputEvent").Unmarshal(0, &result)
-	s.Equal(3, result)
-
-	s.Env().StreamOutput("publisher-outputEvent").Unmarshal(1, &result)
-	s.Equal(4, result)
+			return nil
+		},
+	}
 }

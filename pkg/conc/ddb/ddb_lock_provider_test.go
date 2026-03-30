@@ -288,6 +288,22 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewErrorsAnd
 	s.NoError(err)
 }
 
+func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireInTimeout() {
+	lockItem := &concDdb.DdbLockItem{
+		Resource: s.resource,
+		Token:    s.token,
+		Ttl:      s.clock.Now().Add(time.Minute).Unix(),
+	}
+
+	qb := s.getAcquireQueryBuilder()
+	// simply simulate the context timing out
+	s.repo.EXPECT().PutItem(matcher.Context, qb, lockItem).Return(nil, context.DeadlineExceeded).Once()
+
+	l, err := s.provider.TryAcquireIn(s.ctx, s.resource[5:], time.Second)
+	s.Nil(l)
+	s.NoError(err)
+}
+
 func TestDdbLockProvider(t *testing.T) {
 	suite.Run(t, new(ddbLockProviderTestSuite))
 }

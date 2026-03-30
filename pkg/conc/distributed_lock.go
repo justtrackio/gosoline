@@ -25,6 +25,10 @@ type DistributedLockProvider interface {
 	// if the maximum number of retries is reached according to the backoff
 	// configuration
 	Acquire(ctx context.Context, resource string) (DistributedLock, error)
+	// TryAcquireIn is a shorthand for Acquire with a deadline set on the
+	// context. If the lock was not acquired in the specified time, neither a
+	// lock nor an error is returned.
+	TryAcquireIn(ctx context.Context, resource string, timeout time.Duration) (DistributedLock, error)
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name DistributedLock

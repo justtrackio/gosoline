@@ -273,13 +273,7 @@ func SliceToMap[S ~[]T, T, V any, K comparable](sl S, keyer func(T) (K, V)) map[
 }
 
 func SliceToSet[S ~[]T, T comparable](sl S) Set[T] {
-	result := make(Set[T], len(sl))
-
-	for _, item := range sl {
-		result.Add(item)
-	}
-
-	return result
+	return NewSet[T](sl...)
 }
 
 func Repeat[T any](el T, times int) []T {
