@@ -23,6 +23,7 @@ type kafkaInput struct {
 	connection            connection.Settings
 	healthCheckTimer      clock.HealthCheckTimer
 	pollingOrRebalancing  atomic.Bool
+	schemaRegistryReady   atomic.Bool
 	partitionManager      *kafkaConsumer.PartitionManager
 	reader                kafkaConsumer.Reader
 	schemaRegistryService schemaRegistry.Service
@@ -90,7 +91,7 @@ func NewKafkaInputWithInterfaces(
 	settings kafkaConsumer.Settings,
 	data chan *Message,
 ) Input {
-	return &kafkaInput{
+	inp := &kafkaInput{
 		logger:                logger,
 		clock:                 clock,
 		connection:            connection,
@@ -103,6 +104,12 @@ func NewKafkaInputWithInterfaces(
 		data:                  data,
 		stopped:               make(chan struct{}),
 	}
+
+	// initialize ready as we don't know yet if we will use the schema registry
+	// the schema is only parsed later from the implementing consumer
+	inp.schemaRegistryReady.Store(true)
+
+	return inp
 }
 
 // CheckKafkaRetryableError is an exec.ErrorChecker that classifies Kafka errors.
@@ -247,9 +254,18 @@ func (i *kafkaInput) Data() <-chan *Message {
 }
 
 func (i *kafkaInput) IsHealthy() bool {
-	return i.healthCheckTimer.IsHealthy() || i.pollingOrRebalancing.Load()
+	return i.schemaRegistryReady.Load() && (i.healthCheckTimer.IsHealthy() || i.pollingOrRebalancing.Load())
 }
 
 func (i *kafkaInput) InitSchemaRegistry(ctx context.Context, settings SchemaSettingsWithEncoding) (MessageBodyEncoder, error) {
-	return InitKafkaSchemaRegistry(ctx, settings, i.schemaRegistryService)
+	i.schemaRegistryReady.Store(false)
+
+	encoder, err := InitKafkaSchemaRegistry(ctx, i.logger, settings, i.settings.Backoff, i.schemaRegistryService)
+	if err != nil {
+		return nil, err
+	}
+
+	i.schemaRegistryReady.Store(true)
+
+	return encoder, nil
 }

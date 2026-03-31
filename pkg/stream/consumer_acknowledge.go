@@ -42,7 +42,14 @@ func (c *consumerAcknowledge) Acknowledge(ctx context.Context, cdata *consumerDa
 	delayedCtx, stop := exec.WithDelayedCancelContext(ctx, c.graceTime)
 	defer stop()
 
-	if err := ackInput.Ack(delayedCtx, cdata.msg, ack); err != nil {
+	err := ackInput.Ack(delayedCtx, cdata.msg, ack)
+	if exec.IsRequestCanceled(err) || ctx.Err() != nil {
+		c.logger.Warn(ctx, "could not acknowledge the message during shutdown: %w", err)
+
+		return
+	}
+
+	if err != nil {
 		c.logger.Error(ctx, "could not acknowledge the message: %w", err)
 	}
 }
@@ -81,7 +88,14 @@ func (c *consumerAcknowledge) AcknowledgeBatch(ctx context.Context, cdata []*con
 	defer stop()
 
 	for src, input := range inputs {
-		if err := input.AckBatch(delayedCtx, inputMsgs[src], inputAcks[src]); err != nil {
+		err := input.AckBatch(delayedCtx, inputMsgs[src], inputAcks[src])
+		if exec.IsRequestCanceled(err) {
+			c.logger.Warn(ctx, "could not acknowledge the messages during shutdown: %w", err)
+
+			continue
+		}
+
+		if err != nil {
 			c.logger.Error(ctx, "could not acknowledge the messages: %w", err)
 		}
 	}
