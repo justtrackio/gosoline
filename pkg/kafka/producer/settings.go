@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
@@ -19,13 +20,14 @@ const (
 
 type Settings struct {
 	cfg.ResourceIdentifier
-	Connection     string
-	TopicId        string
-	Compression    KafkaCompressionCodec
-	MaxBatchBytes  int32
-	MaxBatchSize   int
-	LingerTimeout  time.Duration
-	RequestTimeout time.Duration
+	BackoffSettings exec.BackoffSettings
+	Connection      string
+	TopicId         string
+	Compression     KafkaCompressionCodec
+	MaxBatchBytes   int32
+	MaxBatchSize    int
+	LingerTimeout   time.Duration
+	RequestTimeout  time.Duration
 }
 
 func (s Settings) GetKafkaCompressor() kgo.CompressionCodec {

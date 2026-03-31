@@ -462,6 +462,12 @@ func (c *baseConsumer) buildRetryMessage(msg *Message) (retryMsg *Message, retry
 }
 
 func (c *baseConsumer) handleError(ctx context.Context, err error, msg string) {
+	if exec.IsRequestCanceled(err) || ctx.Err() != nil {
+		c.logger.Warn(ctx, "%s during shutdown: %s", msg, err)
+
+		return
+	}
+
 	c.logger.Error(ctx, "%s: %w", msg, err)
 
 	c.metricWriter.Write(ctx, metric.Data{
