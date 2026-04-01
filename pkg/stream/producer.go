@@ -67,6 +67,8 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name
 			return nil, fmt.Errorf("failed to initialize schema registry: %w", err)
 		}
 
+		// keep in mind that the external encoder might be nil in case we just got a tracing output or a producer daemon output.
+		// however, assigning nil here is okay, we just didn't do anything in that case then.
 		encoderSettings.ExternalEncoder = externalEncoder
 	}
 
