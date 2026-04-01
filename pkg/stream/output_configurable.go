@@ -7,7 +7,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
-	"github.com/justtrackio/gosoline/pkg/exec"
 	kafkaProducer "github.com/justtrackio/gosoline/pkg/kafka/producer"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -125,8 +124,6 @@ type KafkaOutputConfiguration struct {
 
 	MaxBatchSize  int   `cfg:"max_batch_size" default:"10000"`
 	MaxBatchBytes int32 `cfg:"max_batch_bytes" default:"1000012"`
-
-	BackoffSettings exec.BackoffSettings `cfg:"backoff"`
 }
 
 func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
@@ -181,7 +178,6 @@ func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log
 		ResourceIdentifier: configuration.ResourceIdentifier,
 		Connection:         configuration.Connection,
 		TopicId:            configuration.TopicId,
-		BackoffSettings:    configuration.BackoffSettings,
 		Compression:        compression,
 		MaxBatchSize:       configuration.MaxBatchSize,
 		MaxBatchBytes:      configuration.MaxBatchBytes,

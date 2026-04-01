@@ -4,10 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/justtrackio/gosoline/pkg/exec"
-	"github.com/justtrackio/gosoline/pkg/kafka/errors"
 	schemaRegistry "github.com/justtrackio/gosoline/pkg/kafka/schema-registry"
-	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/twmb/franz-go/pkg/sr"
 )
 
@@ -19,9 +16,7 @@ var encodingToKafkaSchemaTypeMap = map[EncodingType]schemaRegistry.SchemaType{
 
 func InitKafkaSchemaRegistry(
 	ctx context.Context,
-	logger log.Logger,
 	settings SchemaSettingsWithEncoding,
-	backoff exec.BackoffSettings,
 	schemaRegistryService schemaRegistry.Service,
 ) (MessageBodyEncoder, error) {
 	schemaType, ok := encodingToKafkaSchemaTypeMap[settings.Encoding]
@@ -83,27 +78,10 @@ func InitKafkaSchemaRegistry(
 		getSchemaId = schemaRegistryService.GetOrCreateSubjectSchemaId
 	}
 
-	executor := exec.NewBackoffExecutor(logger, &exec.ExecutableResource{
-		Type: "schema-registry",
-		Name: settings.Subject,
-	}, &backoff, []exec.ErrorChecker{
-		func(result any, err error) exec.ErrorType {
-			if errors.IsRetryableKafkaError(err) {
-				return exec.ErrorTypeRetryable
-			}
-
-			return exec.ErrorTypeUnknown
-		},
-	})
-
-	result, err := executor.Execute(ctx, func(ctx context.Context) (any, error) {
-		return getSchemaId(ctx, settings.Subject, settings.Schema, schemaType)
-	})
+	schemaId, err := getSchemaId(ctx, settings.Subject, settings.Schema, schemaType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get subject schema id from registry: %w", err)
 	}
-
-	schemaId := result.(int)
 
 	serde := schemaRegistry.NewSerde()
 	serde.Register(schemaId, settings.Model, options...)

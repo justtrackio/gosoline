@@ -145,6 +145,7 @@ func (m *containerManager) runContainer(ctx context.Context, request ContainerRe
 	if _, ok := m.runners[runnerType]; !ok {
 		if m.runners[runnerType], err = m.runnerFactory(runnerType); err != nil {
 			m.runnersMu.Unlock()
+
 			return nil, fmt.Errorf("can not create container runner for type %s: %w", runnerType, err)
 		}
 	}
