@@ -2,11 +2,17 @@ package schema_registry_test
 
 import (
 	"context"
+	"errors"
+	"io"
 	"net/http"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/exec"
 	schemaRegistry "github.com/justtrackio/gosoline/pkg/kafka/schema-registry"
 	"github.com/justtrackio/gosoline/pkg/kafka/schema-registry/mocks"
+	"github.com/justtrackio/gosoline/pkg/log"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/suite"
 	"github.com/twmb/franz-go/pkg/sr"
 )
@@ -26,13 +32,21 @@ type ServiceTestSuite struct {
 func (s *ServiceTestSuite) SetupTest() {
 	s.ctx = s.T().Context()
 	s.client = mocks.NewClient(s.T())
-	s.service = schemaRegistry.NewServiceWithInterfaces(s.client)
+	s.service = schemaRegistry.NewServiceWithInterfaces(
+		s.client,
+		exec.NewExecutor(
+			logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()), logMocks.WithMockUntilLevel(log.PriorityWarn)),
+			&exec.ExecutableResource{Type: "schema-registry", Name: "test"},
+			&exec.BackoffSettings{InitialInterval: 0, MaxInterval: 0, MaxAttempts: 3},
+			[]exec.ErrorChecker{exec.CheckConnectionError},
+		),
+	)
 }
 
 func (s *ServiceTestSuite) TestGetSubjectSchemaId_LookupSuccess() {
 	registrySchema := sr.Schema{Schema: `{"type":"string"}`, Type: sr.TypeAvro}
 
-	s.client.EXPECT().LookupSchema(s.ctx, "test-subject", registrySchema).Return(sr.SubjectSchema{ID: 13}, nil).Once()
+	s.client.EXPECT().LookupSchema(matcher.Context, "test-subject", registrySchema).Return(sr.SubjectSchema{ID: 13}, nil).Once()
 
 	id, err := s.service.GetSubjectSchemaId(s.ctx, "test-subject", registrySchema.Schema, schemaRegistry.Avro)
 
@@ -43,7 +57,7 @@ func (s *ServiceTestSuite) TestGetSubjectSchemaId_LookupSuccess() {
 func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_LookupSuccessWithoutCreate() {
 	registrySchema := sr.Schema{Schema: `{"type":"string"}`, Type: sr.TypeJSON}
 
-	s.client.EXPECT().LookupSchema(s.ctx, "test-subject", registrySchema).Return(sr.SubjectSchema{ID: 17}, nil).Once()
+	s.client.EXPECT().LookupSchema(matcher.Context, "test-subject", registrySchema).Return(sr.SubjectSchema{ID: 17}, nil).Once()
 
 	id, err := s.service.GetOrCreateSubjectSchemaId(s.ctx, "test-subject", registrySchema.Schema, schemaRegistry.Json)
 
@@ -54,7 +68,7 @@ func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_LookupSuccessWithoutCr
 func (s *ServiceTestSuite) TestGetSubjectSchemaId_LookupMissReturnsError() {
 	registrySchema := sr.Schema{Schema: `{"type":"string"}`, Type: sr.TypeAvro}
 
-	s.client.EXPECT().LookupSchema(s.ctx, "test-subject", registrySchema).Return(
+	s.client.EXPECT().LookupSchema(matcher.Context, "test-subject", registrySchema).Return(
 		sr.SubjectSchema{},
 		&sr.ResponseError{
 			StatusCode: http.StatusNotFound,
@@ -72,7 +86,7 @@ func (s *ServiceTestSuite) TestGetSubjectSchemaId_LookupMissReturnsError() {
 func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_CreatesOnLookupMiss() {
 	registrySchema := sr.Schema{Schema: `{"type":"string"}`, Type: sr.TypeJSON}
 
-	s.client.EXPECT().LookupSchema(s.ctx, "test-subject", registrySchema).Return(
+	s.client.EXPECT().LookupSchema(matcher.Context, "test-subject", registrySchema).Return(
 		sr.SubjectSchema{},
 		&sr.ResponseError{
 			StatusCode: http.StatusNotFound,
@@ -80,7 +94,7 @@ func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_CreatesOnLookupMiss() 
 			Message:    "schema not found",
 		},
 	).Once()
-	s.client.EXPECT().CreateSchema(s.ctx, "test-subject", registrySchema).Return(sr.SubjectSchema{ID: 23}, nil).Once()
+	s.client.EXPECT().CreateSchema(matcher.Context, "test-subject", registrySchema).Return(sr.SubjectSchema{ID: 23}, nil).Once()
 
 	id, err := s.service.GetOrCreateSubjectSchemaId(s.ctx, "test-subject", registrySchema.Schema, schemaRegistry.Json)
 
@@ -91,7 +105,7 @@ func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_CreatesOnLookupMiss() 
 func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_CreateConflictRetriesLookup() {
 	registrySchema := sr.Schema{Schema: `{"type":"string"}`, Type: sr.TypeAvro}
 
-	s.client.EXPECT().LookupSchema(s.ctx, "test-subject", registrySchema).Return(
+	s.client.EXPECT().LookupSchema(matcher.Context, "test-subject", registrySchema).Return(
 		sr.SubjectSchema{},
 		&sr.ResponseError{
 			StatusCode: http.StatusNotFound,
@@ -99,7 +113,7 @@ func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_CreateConflictRetriesL
 			Message:    "schema not found",
 		},
 	).Once()
-	s.client.EXPECT().CreateSchema(s.ctx, "test-subject", registrySchema).Return(
+	s.client.EXPECT().CreateSchema(matcher.Context, "test-subject", registrySchema).Return(
 		sr.SubjectSchema{},
 		&sr.ResponseError{
 			StatusCode: http.StatusConflict,
@@ -107,7 +121,7 @@ func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_CreateConflictRetriesL
 			Message:    "schema already registered",
 		},
 	).Once()
-	s.client.EXPECT().LookupSchema(s.ctx, "test-subject", registrySchema).Return(sr.SubjectSchema{ID: 29}, nil).Once()
+	s.client.EXPECT().LookupSchema(matcher.Context, "test-subject", registrySchema).Return(sr.SubjectSchema{ID: 29}, nil).Once()
 
 	id, err := s.service.GetOrCreateSubjectSchemaId(s.ctx, "test-subject", registrySchema.Schema, schemaRegistry.Avro)
 
@@ -118,7 +132,7 @@ func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_CreateConflictRetriesL
 func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_CreateIncompatibleReturnsError() {
 	registrySchema := sr.Schema{Schema: `{"type":"string"}`, Type: sr.TypeProtobuf}
 
-	s.client.EXPECT().LookupSchema(s.ctx, "test-subject", registrySchema).Return(
+	s.client.EXPECT().LookupSchema(matcher.Context, "test-subject", registrySchema).Return(
 		sr.SubjectSchema{},
 		&sr.ResponseError{
 			StatusCode: http.StatusNotFound,
@@ -126,7 +140,7 @@ func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_CreateIncompatibleRetu
 			Message:    "schema not found",
 		},
 	).Once()
-	s.client.EXPECT().CreateSchema(s.ctx, "test-subject", registrySchema).Return(
+	s.client.EXPECT().CreateSchema(matcher.Context, "test-subject", registrySchema).Return(
 		sr.SubjectSchema{},
 		&sr.ResponseError{
 			StatusCode: http.StatusConflict,
@@ -139,4 +153,73 @@ func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_CreateIncompatibleRetu
 
 	s.Zero(id)
 	s.EqualError(err, "failed to create subject schema: Schema is incompatible with an earlier schema")
+}
+
+func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_RetriesCreateOnTransientConnectionError() {
+	registrySchema := sr.Schema{Schema: `{"type":"string"}`, Type: sr.TypeJSON}
+
+	s.client.EXPECT().LookupSchema(matcher.Context, "test-subject", registrySchema).Return(
+		sr.SubjectSchema{},
+		&sr.ResponseError{
+			StatusCode: http.StatusNotFound,
+			ErrorCode:  sr.ErrSchemaNotFound.Code,
+			Message:    "schema not found",
+		},
+	).Once()
+	s.client.EXPECT().CreateSchema(matcher.Context, "test-subject", registrySchema).Return(sr.SubjectSchema{}, io.EOF).Once()
+	s.client.EXPECT().CreateSchema(matcher.Context, "test-subject", registrySchema).Return(sr.SubjectSchema{ID: 31}, nil).Once()
+
+	id, err := s.service.GetOrCreateSubjectSchemaId(s.ctx, "test-subject", registrySchema.Schema, schemaRegistry.Json)
+
+	s.NoError(err)
+	s.Equal(31, id)
+}
+
+func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_RetriesCreateUntilConflictThenLooksUp() {
+	registrySchema := sr.Schema{Schema: `{"type":"string"}`, Type: sr.TypeAvro}
+
+	s.client.EXPECT().LookupSchema(matcher.Context, "test-subject", registrySchema).Return(
+		sr.SubjectSchema{},
+		&sr.ResponseError{
+			StatusCode: http.StatusNotFound,
+			ErrorCode:  sr.ErrSchemaNotFound.Code,
+			Message:    "schema not found",
+		},
+	).Once()
+	s.client.EXPECT().CreateSchema(matcher.Context, "test-subject", registrySchema).Return(sr.SubjectSchema{}, io.EOF).Once()
+	s.client.EXPECT().CreateSchema(matcher.Context, "test-subject", registrySchema).Return(
+		sr.SubjectSchema{},
+		&sr.ResponseError{
+			StatusCode: http.StatusConflict,
+			ErrorCode:  sr.ErrUnknown.Code,
+			Message:    "schema already registered",
+		},
+	).Once()
+	s.client.EXPECT().LookupSchema(matcher.Context, "test-subject", registrySchema).Return(sr.SubjectSchema{ID: 37}, nil).Once()
+
+	id, err := s.service.GetOrCreateSubjectSchemaId(s.ctx, "test-subject", registrySchema.Schema, schemaRegistry.Avro)
+
+	s.NoError(err)
+	s.Equal(37, id)
+}
+
+func (s *ServiceTestSuite) TestGetOrCreateSubjectSchemaId_ReturnsRetryableErrorWhenAttemptsExhausted() {
+	registrySchema := sr.Schema{Schema: `{"type":"string"}`, Type: sr.TypeJSON}
+
+	s.client.EXPECT().LookupSchema(matcher.Context, "test-subject", registrySchema).Return(
+		sr.SubjectSchema{},
+		&sr.ResponseError{
+			StatusCode: http.StatusNotFound,
+			ErrorCode:  sr.ErrSchemaNotFound.Code,
+			Message:    "schema not found",
+		},
+	).Once()
+	s.client.EXPECT().CreateSchema(matcher.Context, "test-subject", registrySchema).Return(sr.SubjectSchema{}, io.EOF).Times(3)
+
+	id, err := s.service.GetOrCreateSubjectSchemaId(s.ctx, "test-subject", registrySchema.Schema, schemaRegistry.Json)
+
+	s.Zero(id)
+	s.Error(err)
+	s.True(errors.Is(err, io.EOF))
+	s.EqualError(err, "failed to create subject schema: EOF")
 }
