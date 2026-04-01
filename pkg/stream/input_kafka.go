@@ -50,7 +50,7 @@ func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, se
 		return nil, fmt.Errorf("can not create kafka reader: %w", err)
 	}
 
-	schemaRegistryService, err := schemaRegistry.NewService(*conn)
+	schemaRegistryService, err := schemaRegistry.NewService(config, logger, settings.Connection, *conn)
 	if err != nil {
 		return nil, fmt.Errorf("can not create schema registry service: %w", err)
 	}
@@ -260,7 +260,7 @@ func (i *kafkaInput) IsHealthy() bool {
 func (i *kafkaInput) InitSchemaRegistry(ctx context.Context, settings SchemaSettingsWithEncoding) (MessageBodyEncoder, error) {
 	i.schemaRegistryReady.Store(false)
 
-	encoder, err := InitKafkaSchemaRegistry(ctx, i.logger, settings, i.settings.Backoff, i.schemaRegistryService)
+	encoder, err := InitKafkaSchemaRegistry(ctx, settings, i.schemaRegistryService)
 	if err != nil {
 		return nil, err
 	}

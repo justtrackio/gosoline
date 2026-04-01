@@ -25,3 +25,11 @@ func IsRetryableKafkaError(err error) bool {
 		return false
 	}
 }
+
+func CheckRetryableKafkaError(_ any, err error) exec.ErrorType {
+	if IsRetryableKafkaError(err) {
+		return exec.ErrorTypeRetryable
+	}
+
+	return exec.ErrorTypeUnknown
+}
