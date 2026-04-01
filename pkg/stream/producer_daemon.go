@@ -264,7 +264,9 @@ func (d *producerDaemon) InitSchemaRegistry(ctx context.Context, settings Schema
 		return schemaRegistryAwareOutput.InitSchemaRegistry(ctx, settings)
 	}
 
-	return nil, fmt.Errorf("output does not support a schema registry")
+	// if our nested output doesn't actually implement this, fail gracefully and just return nothing.
+	// the producer then is responsible for handling this case.
+	return nil, nil
 }
 
 func (d *producerDaemon) WriteOne(ctx context.Context, msg WritableMessage) error {

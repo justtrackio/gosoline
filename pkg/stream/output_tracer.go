@@ -68,5 +68,7 @@ func (o outputTracer) InitSchemaRegistry(ctx context.Context, settings SchemaSet
 		return schemaRegistryAwareOutput.InitSchemaRegistry(ctx, settings)
 	}
 
-	return nil, fmt.Errorf("output does not support a schema registry")
+	// if our nested output doesn't actually implement this, fail gracefully and just return nothing.
+	// the producer then is responsible for handling this case.
+	return nil, nil
 }
