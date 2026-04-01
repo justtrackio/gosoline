@@ -35,7 +35,7 @@ func NewKafkaOutput(ctx context.Context, config cfg.Config, logger log.Logger, s
 		return nil, fmt.Errorf("failed to parse kafka connection settings for connection name %q: %w", settings.Connection, err)
 	}
 
-	schemaRegistryService, err := schemaRegistry.NewService(*conn)
+	schemaRegistryService, err := schemaRegistry.NewService(config, logger, settings.Connection, *conn)
 	if err != nil {
 		return nil, fmt.Errorf("can not create schema registry service: %w", err)
 	}

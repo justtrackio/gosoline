@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/twmb/franz-go/pkg/sr"
 )
 
@@ -17,21 +20,28 @@ type Service interface {
 }
 
 type service struct {
-	client Client
+	client   Client
+	executor exec.Executor
 }
 
-func NewService(connection connection.Settings) (Service, error) {
-	client, err := NewClient(connection.SchemaRegistryAddress)
+func NewService(config cfg.Config, logger log.Logger, connectionName string, settings connection.Settings) (Service, error) {
+	client, err := NewClient(settings.SchemaRegistryAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create schema registry client: %w", err)
 	}
 
-	return NewServiceWithInterfaces(client), nil
+	executor, err := NewExecutor(config, logger, connectionName, settings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create schema registry executor: %w", err)
+	}
+
+	return NewServiceWithInterfaces(client, executor), nil
 }
 
-func NewServiceWithInterfaces(client Client) Service {
+func NewServiceWithInterfaces(client Client, executor exec.Executor) Service {
 	return &service{
-		client: client,
+		client:   client,
+		executor: executor,
 	}
 }
 
@@ -41,7 +51,7 @@ func (s service) GetSubjectSchemaId(ctx context.Context, subject string, schema 
 		return 0, err
 	}
 
-	subjectSchema, err := s.client.LookupSchema(ctx, subject, registrySchema)
+	subjectSchema, err := s.lookupSchema(ctx, subject, registrySchema)
 	if err != nil {
 		return 0, fmt.Errorf("failed to lookup subject schema: %w", err)
 	}
@@ -55,7 +65,7 @@ func (s service) GetOrCreateSubjectSchemaId(ctx context.Context, subject string,
 		return 0, err
 	}
 
-	subjectSchema, err := s.client.LookupSchema(ctx, subject, registrySchema)
+	subjectSchema, err := s.lookupSchema(ctx, subject, registrySchema)
 	if err == nil {
 		return subjectSchema.ID, nil
 	}
@@ -64,7 +74,7 @@ func (s service) GetOrCreateSubjectSchemaId(ctx context.Context, subject string,
 		return 0, fmt.Errorf("failed to lookup subject schema: %w", err)
 	}
 
-	subjectSchema, err = s.client.CreateSchema(ctx, subject, registrySchema)
+	subjectSchema, err = s.createSchema(ctx, subject, registrySchema)
 	if err == nil {
 		return subjectSchema.ID, nil
 	}
@@ -73,12 +83,35 @@ func (s service) GetOrCreateSubjectSchemaId(ctx context.Context, subject string,
 		return 0, fmt.Errorf("failed to create subject schema: %w", err)
 	}
 
-	subjectSchema, lookupErr := s.client.LookupSchema(ctx, subject, registrySchema)
+	subjectSchema, lookupErr := s.lookupSchema(ctx, subject, registrySchema)
 	if lookupErr != nil {
 		return 0, fmt.Errorf("failed to lookup subject schema after create conflict: %w", lookupErr)
 	}
 
 	return subjectSchema.ID, nil
+}
+
+func (s service) lookupSchema(ctx context.Context, subject string, registrySchema sr.Schema) (sr.SubjectSchema, error) {
+	return s.execute(ctx, func(ctx context.Context) (sr.SubjectSchema, error) {
+		return s.client.LookupSchema(ctx, subject, registrySchema)
+	})
+}
+
+func (s service) createSchema(ctx context.Context, subject string, registrySchema sr.Schema) (sr.SubjectSchema, error) {
+	return s.execute(ctx, func(ctx context.Context) (sr.SubjectSchema, error) {
+		return s.client.CreateSchema(ctx, subject, registrySchema)
+	})
+}
+
+func (s service) execute(ctx context.Context, request func(ctx context.Context) (sr.SubjectSchema, error)) (sr.SubjectSchema, error) {
+	result, err := s.executor.Execute(ctx, func(ctx context.Context) (any, error) {
+		return request(ctx)
+	})
+	if err != nil {
+		return sr.SubjectSchema{}, err
+	}
+
+	return result.(sr.SubjectSchema), nil
 }
 
 func buildRegistrySchema(schema string, schemaType SchemaType) (sr.Schema, error) {
