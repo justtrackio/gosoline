@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	kafkaProducer "github.com/justtrackio/gosoline/pkg/kafka/producer"
 	schemaRegistry "github.com/justtrackio/gosoline/pkg/kafka/schema-registry"
@@ -16,6 +17,7 @@ type kafkaOutput struct {
 	connection            connection.Settings
 	schemaRegistryService schemaRegistry.Service
 	writer                kafkaProducer.Writer
+	backoff               exec.BackoffSettings
 	maxBatchBytes         int32
 	maxBatchSize          int
 }
@@ -33,12 +35,12 @@ func NewKafkaOutput(ctx context.Context, config cfg.Config, logger log.Logger, s
 		return nil, fmt.Errorf("failed to parse kafka connection settings for connection name %q: %w", settings.Connection, err)
 	}
 
-	schemaRegistryService, err := schemaRegistry.NewService(*conn)
+	schemaRegistryService, err := schemaRegistry.NewService(config, logger, settings.Connection, *conn)
 	if err != nil {
 		return nil, fmt.Errorf("can not create schema registry service: %w", err)
 	}
 
-	return NewKafkaOutputWithInterfaces(logger, *conn, schemaRegistryService, writer, settings.MaxBatchBytes, settings.MaxBatchSize), nil
+	return NewKafkaOutputWithInterfaces(logger, *conn, schemaRegistryService, writer, settings.BackoffSettings, settings.MaxBatchBytes, settings.MaxBatchSize), nil
 }
 
 func NewKafkaOutputWithInterfaces(
@@ -46,6 +48,7 @@ func NewKafkaOutputWithInterfaces(
 	connection connection.Settings,
 	schemaRegistryService schemaRegistry.Service,
 	writer kafkaProducer.Writer,
+	backoff exec.BackoffSettings,
 	maxBatchBytes int32,
 	maxBatchSize int,
 ) Output {
@@ -54,6 +57,7 @@ func NewKafkaOutputWithInterfaces(
 		connection:            connection,
 		schemaRegistryService: schemaRegistryService,
 		writer:                writer,
+		backoff:               backoff,
 		maxBatchBytes:         maxBatchBytes,
 		maxBatchSize:          maxBatchSize,
 	}
@@ -90,5 +94,5 @@ func (o *kafkaOutput) Write(ctx context.Context, batch []WritableMessage) error 
 }
 
 func (o *kafkaOutput) InitSchemaRegistry(ctx context.Context, settings SchemaSettingsWithEncoding) (MessageBodyEncoder, error) {
-	return InitKafkaSchemaRegistry(ctx, settings, o.schemaRegistryService)
+	return InitKafkaSchemaRegistry(ctx, o.logger, settings, o.backoff, o.schemaRegistryService)
 }

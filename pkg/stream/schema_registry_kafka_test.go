@@ -3,9 +3,12 @@ package stream_test
 import (
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/exec"
 	schemaRegistry "github.com/justtrackio/gosoline/pkg/kafka/schema-registry"
 	schemaRegistryMocks "github.com/justtrackio/gosoline/pkg/kafka/schema-registry/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,6 +22,8 @@ func TestSchemaSettings_WithEncodingPreservesAutoRegister(t *testing.T) {
 }
 
 func TestInitKafkaSchemaRegistry_UsesLookupOnlyByDefault(t *testing.T) {
+	backoff := exec.BackoffSettings{}
+	logger := logMocks.NewLoggerMock(logMocks.WithTestingT(t))
 	service := schemaRegistryMocks.NewService(t)
 	settings := stream.SchemaSettingsWithEncoding{
 		Subject:  "test-subject",
@@ -27,15 +32,17 @@ func TestInitKafkaSchemaRegistry_UsesLookupOnlyByDefault(t *testing.T) {
 		Model:    &struct{}{},
 	}
 
-	service.EXPECT().GetSubjectSchemaId(t.Context(), settings.Subject, settings.Schema, schemaRegistry.Json).Return(11, nil).Once()
+	service.EXPECT().GetSubjectSchemaId(matcher.Context, settings.Subject, settings.Schema, schemaRegistry.Json).Return(11, nil).Once()
 
-	encoder, err := stream.InitKafkaSchemaRegistry(t.Context(), settings, service)
+	encoder, err := stream.InitKafkaSchemaRegistry(t.Context(), logger, settings, backoff, service)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, encoder)
 }
 
 func TestInitKafkaSchemaRegistry_UsesGetOrCreateWhenAutoRegisterEnabled(t *testing.T) {
+	backoff := exec.BackoffSettings{}
+	logger := logMocks.NewLoggerMock(logMocks.WithTestingT(t))
 	service := schemaRegistryMocks.NewService(t)
 	settings := stream.SchemaSettingsWithEncoding{
 		Subject:      "test-subject",
@@ -45,9 +52,9 @@ func TestInitKafkaSchemaRegistry_UsesGetOrCreateWhenAutoRegisterEnabled(t *testi
 		Model:        &struct{}{},
 	}
 
-	service.EXPECT().GetOrCreateSubjectSchemaId(t.Context(), settings.Subject, settings.Schema, schemaRegistry.Json).Return(12, nil).Once()
+	service.EXPECT().GetOrCreateSubjectSchemaId(matcher.Context, settings.Subject, settings.Schema, schemaRegistry.Json).Return(12, nil).Once()
 
-	encoder, err := stream.InitKafkaSchemaRegistry(t.Context(), settings, service)
+	encoder, err := stream.InitKafkaSchemaRegistry(t.Context(), logger, settings, backoff, service)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, encoder)
