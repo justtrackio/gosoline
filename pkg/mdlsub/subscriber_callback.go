@@ -167,6 +167,12 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 	defer stop()
 
 	err = output.Persist(ctx, model, spec.CrudType)
+	if exec.IsRequestCanceled(err) {
+		logger.Warn(ctx, "failed to persist subscription for modelId %s and version %d: %s", err)
+
+		return false, nil
+	}
+
 	if err != nil {
 		return false, fmt.Errorf("can not persist subscription of model %s and version %d: %w", spec.ModelId, spec.Version, err)
 	}
