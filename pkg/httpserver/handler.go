@@ -109,7 +109,7 @@ func CreateMultipleBindingsHandler(handler HandlerWithMultipleBindings) gin.Hand
 	return handleWithMultipleBindings(handler, defaultErrorHandler)
 }
 
-// CreateRawHandler creates a gin.HandlerFunc that handles the request without input binding and passes the body to the handler as []byte
+// CreateRawHandler creates a gin.HandlerFunc that handles the request without input binding and passes the body to the handler as a string
 func CreateRawHandler(handler HandlerWithoutInput) gin.HandlerFunc {
 	return handleRaw(handler, defaultErrorHandler)
 }
