@@ -69,6 +69,14 @@ func (h handler) TransformUpdate(_ context.Context, inp any, model db_repo.Model
 	return nil
 }
 
+func (h handler) TransformPatch(_ context.Context, model db_repo.ModelBased) (any, error) {
+	m := model.(*Model)
+
+	return &UpdateInput{
+		Name: m.Name,
+	}, nil
+}
+
 func (h handler) TransformOutput(_ context.Context, model db_repo.ModelBased, _ string) (any, error) {
 	m := model.(*Model)
 

@@ -32,6 +32,16 @@ func Box[T any](v T) *T {
 	return &v
 }
 
+func ClonePtr[T any](v *T) *T {
+	if v == nil {
+		return nil
+	}
+
+	cloned := *v
+
+	return &cloned
+}
+
 func Unbox[T any](v *T, def T) T {
 	if v == nil {
 		return def
