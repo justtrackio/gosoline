@@ -27,13 +27,49 @@ func ConfigurableKvStoreFixtureSetFactory[T any](name string, data fixtures.Name
 	}
 }
 
+func configurableKvStoreResourceIds(config cfg.Config, name string) ([]string, error) {
+	key := fmt.Sprintf("kvstore.%s.type", name)
+	t, err := config.GetString(key)
+	if err != nil {
+		return nil, fmt.Errorf("could not get type for kvstore %s: %w", name, err)
+	}
+
+	if t != TypeChain {
+		return nil, fmt.Errorf("invalid kvstore %s of type %s, expected type %s", name, t, TypeChain)
+	}
+
+	configuration := ChainConfiguration{}
+	if err := config.UnmarshalKey(GetConfigurableKey(name), &configuration); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal kvstore configuration for %s: %w", name, err)
+	}
+
+	resourceIds := make([]string, 0, len(configuration.Elements))
+	for _, element := range configuration.Elements {
+		switch element {
+		case TypeDdb:
+			modelId := configuration.ModelId
+			modelId.Name = DdbBaseName(&Settings{ModelId: modelId, DdbSettings: configuration.Ddb})
+			resourceIds = append(resourceIds, fmt.Sprintf("ddb/%s", modelId.String()))
+		case TypeRedis:
+			resourceIds = append(resourceIds, fmt.Sprintf("redis/%s", RedisBasename(name)))
+		}
+	}
+
+	return resourceIds, nil
+}
+
 func NewConfigurableKvStoreFixtureWriter[T any](ctx context.Context, config cfg.Config, logger log.Logger, name string) (fixtures.FixtureWriter, error) {
 	store, err := ProvideConfigurableKvStore[T](ctx, config, logger, name)
 	if err != nil {
 		return nil, fmt.Errorf("can not provide configurable kvstore: %w", err)
 	}
 
-	return NewConfigurableKvStoreFixtureWriterWithInterfaces[T](logger, store), nil
+	resourceIds, err := configurableKvStoreResourceIds(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine configurable kvstore resources for %s: %w", name, err)
+	}
+
+	return fixtures.NewManagedFixtureWriter(NewConfigurableKvStoreFixtureWriterWithInterfaces[T](logger, store), resourceIds...), nil
 }
 
 func NewConfigurableKvStoreFixtureWriterWithInterfaces[T any](logger log.Logger, store KvStore[T]) fixtures.FixtureWriter {

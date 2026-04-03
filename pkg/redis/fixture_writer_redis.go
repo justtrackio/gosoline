@@ -59,7 +59,9 @@ func NewRedisFixtureWriter(ctx context.Context, config cfg.Config, logger log.Lo
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 
-	return NewRedisFixtureWriterWithInterfaces(logger, client, operation), nil
+	resourceId := fmt.Sprintf("redis/%s", name)
+
+	return fixtures.NewManagedFixtureWriter(NewRedisFixtureWriterWithInterfaces(logger, client, operation), resourceId), nil
 }
 
 func NewRedisFixtureWriterWithInterfaces(logger log.Logger, client Client, operation string) fixtures.FixtureWriter {

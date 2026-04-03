@@ -17,6 +17,10 @@ type redisKvStoreFixtureWriter[T any] struct {
 
 func RedisKvStoreFixtureSetFactory[T any](modelId *mdl.ModelId, data fixtures.NamedFixtures[*KvStoreFixture], options ...fixtures.FixtureSetOption) fixtures.FixtureSetFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
+		if err := modelId.PadFromConfig(config); err != nil {
+			return nil, fmt.Errorf("failed to pad model id from config: %w", err)
+		}
+
 		var err error
 		var writer fixtures.FixtureWriter
 
@@ -38,7 +42,9 @@ func NewRedisKvStoreFixtureWriter[T any](ctx context.Context, config cfg.Config,
 		return nil, fmt.Errorf("can not create redis store: %w", err)
 	}
 
-	return NewRedisKvStoreFixtureWriterWithInterfaces(logger, store), nil
+	resourceId := fmt.Sprintf("redis/%s", RedisBasename(modelId.Name))
+
+	return fixtures.NewManagedFixtureWriter(NewRedisKvStoreFixtureWriterWithInterfaces(logger, store), resourceId), nil
 }
 
 func NewRedisKvStoreFixtureWriterWithInterfaces[T any](logger log.Logger, store KvStore[T]) fixtures.FixtureWriter {

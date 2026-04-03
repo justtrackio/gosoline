@@ -29,44 +29,63 @@ func LifeCycleManagerMiddleware(ctx context.Context, config cfg.Config, logger l
 	}
 
 	return func(next kernel.MiddlewareHandler) kernel.MiddlewareHandler {
-		return func(ctx context.Context) {
-			if loader, err = container.Build(ctx, config, logger); err != nil {
-				logger.Error(ctx, "can not build fixture loader: %w", err)
-
-				return
-			}
-
-			if err := manager.Create(ctx); err != nil {
-				logger.Error(ctx, "can not handle the create lifecycle: %w", err)
-
-				return
-			}
-
-			if err := manager.Init(ctx); err != nil {
-				logger.Error(ctx, "can not handle the init lifecycle: %w", err)
-
-				return
-			}
-
-			if err := manager.Register(ctx); err != nil {
-				logger.Error(ctx, "can not handle the register lifecycle: %w", err)
-
-				return
-			}
-
-			if err := manager.Purge(ctx); err != nil {
-				logger.Error(ctx, "can not handle the purge lifecycle: %w", err)
-
-				return
-			}
-
-			if err := loader.Load(ctx); err != nil {
-				logger.Error(ctx, "can not load fixtures: %w", err)
-
-				return
-			}
-
-			next(ctx)
-		}
+		return lifeCycleManagerMiddleware(config, logger, manager, container, loader, next)
 	}, nil
+}
+
+func lifeCycleManagerMiddleware(
+	config cfg.Config,
+	logger log.Logger,
+	manager *LifeCycleManager,
+	container *fixtures.Container,
+	loader fixtures.FixtureLoader,
+	next kernel.MiddlewareHandler,
+) kernel.MiddlewareHandler {
+	return func(ctx context.Context) {
+		var err error
+
+		if loader, err = container.Build(ctx, config, logger); err != nil {
+			logger.Error(ctx, "can not build fixture loader: %w", err)
+
+			return
+		}
+
+		if err := manager.Create(ctx); err != nil {
+			logger.Error(ctx, "can not handle the create lifecycle: %w", err)
+
+			return
+		}
+
+		if err := manager.Init(ctx); err != nil {
+			logger.Error(ctx, "can not handle the init lifecycle: %w", err)
+
+			return
+		}
+
+		if err := manager.Register(ctx); err != nil {
+			logger.Error(ctx, "can not handle the register lifecycle: %w", err)
+
+			return
+		}
+
+		if resourceIds, ok := fixtures.MutableResourceIds(loader); ok {
+			err = manager.PurgeSelected(ctx, resourceIds)
+		} else {
+			err = manager.Purge(ctx)
+		}
+
+		if err != nil {
+			logger.Error(ctx, "can not handle the purge lifecycle: %w", err)
+
+			return
+		}
+
+		if err := loader.Load(ctx); err != nil {
+			logger.Error(ctx, "can not load fixtures: %w", err)
+
+			return
+		}
+
+		next(ctx)
+	}
 }

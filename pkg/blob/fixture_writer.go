@@ -63,7 +63,9 @@ func NewBlobFixtureWriter(ctx context.Context, config cfg.Config, logger log.Log
 		return nil, fmt.Errorf("can not create blob store: %w", err)
 	}
 
-	return NewBlobFixtureWriterWithInterfaces(logger, bri, reader, store), nil
+	resourceId := fmt.Sprintf("blob/%s", storeName)
+
+	return fixtures.NewManagedFixtureWriter(NewBlobFixtureWriterWithInterfaces(logger, bri, reader, store), resourceId), nil
 }
 
 func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner BatchRunner, reader FixtureReader, store Store) fixtures.FixtureWriter {

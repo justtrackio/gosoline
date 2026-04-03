@@ -33,18 +33,18 @@ func (s *ddbLockTestSuite) SetupTest() {
 	s.clock = clockPkg.NewFakeClock()
 	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.ctx = s.T().Context()
-	s.lock = ddb.NewDdbLockFromInterfaces(s.lockManager, s.clock, s.logger, s.ctx, "resource", "token", s.clock.Now().Add(time.Minute).Unix())
+	s.lock = ddb.NewDdbLockFromInterfaces(s.lockManager, s.clock, s.logger, s.ctx, "resource", "token", s.clock.Now().Add(time.Minute))
 }
 
 func (s *ddbLockTestSuite) TestRenewLockSuccess() {
-	s.lockManager.EXPECT().RenewLock(s.ctx, time.Hour, "resource", "token").Return(nil).Once()
+	s.lockManager.EXPECT().RenewLock(s.ctx, time.Hour, "resource", "token").Return(s.clock.Now().Add(time.Hour), nil).Once()
 
 	err := s.lock.Renew(s.ctx, time.Hour)
 	s.NoError(err)
 }
 
 func (s *ddbLockTestSuite) TestRenewLockFails() {
-	s.lockManager.EXPECT().RenewLock(s.ctx, time.Hour, "resource", "token").Return(fmt.Errorf("fail")).Once()
+	s.lockManager.EXPECT().RenewLock(s.ctx, time.Hour, "resource", "token").Return(time.Time{}, fmt.Errorf("fail")).Once()
 
 	err := s.lock.Renew(s.ctx, time.Hour)
 	s.EqualError(err, "fail")

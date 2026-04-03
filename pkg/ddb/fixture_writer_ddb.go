@@ -16,6 +16,10 @@ type dynamoDbFixtureWriter struct {
 
 func DynamoDbFixtureSetFactory[T any](settings *Settings, data fixtures.NamedFixtures[T], options ...fixtures.FixtureSetOption) fixtures.FixtureSetFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
+		if err := settings.ModelId.PadFromConfig(config); err != nil {
+			return nil, fmt.Errorf("failed to pad model id from config: %w", err)
+		}
+
 		var err error
 		var writer fixtures.FixtureWriter
 
@@ -53,7 +57,9 @@ func NewDynamoDbFixtureWriter(ctx context.Context, config cfg.Config, logger log
 		return nil, fmt.Errorf("failed to create dynamodb repository: %w", err)
 	}
 
-	return NewDynamoDbFixtureWriterWithInterfaces(logger, repo), nil
+	resourceId := fmt.Sprintf("ddb/%s", settings.ModelId.String())
+
+	return fixtures.NewManagedFixtureWriter(NewDynamoDbFixtureWriterWithInterfaces(logger, repo), resourceId), nil
 }
 
 func NewDynamoDbFixtureWriterWithInterfaces(logger log.Logger, repo Repository) fixtures.FixtureWriter {
