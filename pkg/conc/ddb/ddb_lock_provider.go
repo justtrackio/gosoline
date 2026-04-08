@@ -142,8 +142,8 @@ func (m *ddbLockProvider) TryAcquireIn(ctx context.Context, resource string, tim
 	defer stop()
 
 	lock, err := m.Acquire(ctx, resource)
-	if errors.Is(err, context.DeadlineExceeded) {
-		// timeout -> return no lock and no error as documented
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, conc.ErrLockOwned) {
+		// timeout or owned lock -> return no lock and no error as documented
 		return nil, nil
 	}
 
@@ -152,16 +152,13 @@ func (m *ddbLockProvider) TryAcquireIn(ctx context.Context, resource string, tim
 
 func (m *ddbLockProvider) RenewLock(ctx context.Context, lockTime time.Duration, resource string, token string) (expiry time.Time, err error) {
 	_, err = m.executor.Execute(ctx, func(ctx context.Context) (any, error) {
+		expiry = m.clock.Now().Add(lockTime)
 		qb := m.repo.UpdateItemBuilder().
 			WithHash(resource).
-			WithCondition(ddb.AttributeExists("resource").And(ddb.Eq("token", token)))
+			WithCondition(ddb.AttributeExists("resource").And(ddb.Eq("token", token))).
+			Set("ttl", expiry.Unix())
 
-		expiry = m.clock.Now().Add(lockTime)
-		result, err := m.repo.UpdateItem(ctx, qb, &DdbLockItem{
-			Resource: resource,
-			Token:    token,
-			Ttl:      expiry.Unix(),
-		})
+		result, err := m.repo.UpdateItem(ctx, qb, &DdbLockItem{})
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to renew lock: %w", err)

@@ -3,6 +3,7 @@
 package conc_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -12,18 +13,25 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/conc/ddb"
+	ddbRepo "github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
 type DdbLockTestSuite struct {
 	suite.Suite
+	clock    clock.FakeClock
 	provider conc.DistributedLockProvider
+	repo     ddbRepo.Repository
+	domain   string
 }
 
 func (s *DdbLockTestSuite) SetupSuite() []suite.Option {
+	s.clock = clock.NewFakeClockAt(time.Now().UTC())
+
 	return []suite.Option{
-		suite.WithClockProvider(clock.NewRealClock()),
+		suite.WithClockProvider(s.clock),
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("./config.dist.yml"),
 		suite.WithSharedEnvironment(),
@@ -36,6 +44,7 @@ func (s *DdbLockTestSuite) SetupTest() error {
 		return fmt.Errorf("failed to get app identity: %w", err)
 	}
 
+	s.domain = fmt.Sprintf("test%d", s.clock.Now().UnixNano())
 	s.provider, err = ddb.NewDdbLockProvider(s.Env().Context(), s.Env().Config(), s.Env().Logger(), conc.DistributedLockSettings{
 		Identity: identity,
 		Backoff: exec.BackoffSettings{
@@ -46,7 +55,22 @@ func (s *DdbLockTestSuite) SetupTest() error {
 			MaxInterval:     time.Millisecond * 100,
 		},
 		DefaultLockTime: time.Minute * 10,
-		Domain:          fmt.Sprintf("test%d", time.Now().UnixNano()),
+		Domain:          s.domain,
+	})
+	if err != nil {
+		return err
+	}
+
+	s.repo, err = ddbRepo.NewRepository(s.Env().Context(), s.Env().Config(), s.Env().Logger(), &ddbRepo.Settings{
+		ModelId: mdl.ModelId{
+			Name:        "locks",
+			Env:         identity.Env,
+			Application: identity.Name,
+			Tags:        identity.Tags,
+		},
+		Main: ddbRepo.MainSettings{
+			Model: &ddb.DdbLockItem{},
+		},
 	})
 
 	return err
@@ -73,17 +97,37 @@ func (s *DdbLockTestSuite) TestAcquireTwiceFails() {
 }
 
 func (s *DdbLockTestSuite) TestAcquireRenewWorks() {
-	// Case 3: Acquire a lock, then renew it, try to lock it again (should fail), release it
-	l, err := s.provider.Acquire(s.T().Context(), s.T().Name())
-	s.NoError(err)
-	err = l.Renew(s.T().Context(), time.Hour)
+	// Case 3: Acquire a lock, renew it, verify the stored ttl changed and the renewed lease remains effective.
+	ctx := s.T().Context()
+	resource := s.T().Name()
+	fullResource := fmt.Sprintf("%s-%s", s.domain, resource)
+	renewLockTime := time.Hour
+
+	l, err := s.provider.Acquire(ctx, resource)
 	s.NoError(err)
 
-	_, err = s.provider.Acquire(s.T().Context(), s.T().Name())
+	itemBeforeRenew := s.getLockItem(ctx, fullResource)
+	originalExpiry := time.Unix(itemBeforeRenew.Ttl, 0)
+
+	s.clock.Advance(time.Minute)
+	err = l.Renew(ctx, renewLockTime)
+	s.NoError(err)
+
+	itemAfterRenew := s.getLockItem(ctx, fullResource)
+	s.Greater(itemAfterRenew.Ttl, itemBeforeRenew.Ttl)
+	s.Equal(s.clock.Now().Add(renewLockTime).Unix(), itemAfterRenew.Ttl)
+
+	s.clock.Advance(originalExpiry.Add(6 * time.Second).Sub(s.clock.Now()))
+	_, err = s.provider.Acquire(ctx, resource)
 	s.Error(err)
 	s.True(errors.Is(err, conc.ErrLockOwned), "Error is: %v", err)
+
 	err = l.Release()
 	s.NoError(err)
+
+	l, err = s.provider.Acquire(ctx, resource)
+	s.NoError(err)
+	s.NoError(l.Release())
 }
 
 func (s *DdbLockTestSuite) TestReleaseTwiceFails() {
@@ -122,4 +166,17 @@ func (s *DdbLockTestSuite) TestAcquireDifferentResources() {
 
 func TestDdbLockManager(t *testing.T) {
 	suite.Run(t, new(DdbLockTestSuite))
+}
+
+func (s *DdbLockTestSuite) getLockItem(ctx context.Context, resource string) *ddb.DdbLockItem {
+	item := &ddb.DdbLockItem{}
+	result, err := s.repo.GetItem(ctx, s.repo.GetItemBuilder().
+		WithHash(resource).
+		WithConsistentRead(true).
+		DisableTtlFilter(), item)
+
+	s.NoError(err)
+	s.True(result.IsFound)
+
+	return item
 }
