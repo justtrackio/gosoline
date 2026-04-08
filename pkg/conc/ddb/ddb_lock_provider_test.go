@@ -98,8 +98,9 @@ func (s *ddbLockProviderTestSuite) getAcquireQueryBuilder() *ddbMocks.PutItemBui
 
 func (s *ddbLockProviderTestSuite) getRenewQueryBuilder() *ddbMocks.UpdateItemBuilder {
 	qb := ddbMocks.NewUpdateItemBuilder(s.T())
-	qb.EXPECT().WithHash(s.resource).Return(qb)
-	qb.EXPECT().WithCondition(ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb)
+	qb.EXPECT().WithHash(s.resource).Return(qb).Once()
+	qb.EXPECT().WithCondition(ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb).Once()
+	qb.EXPECT().Set("ttl", s.clock.Now().Add(time.Hour).Unix()).Return(qb).Once()
 
 	s.repo.EXPECT().UpdateItemBuilder().Return(qb).Once()
 
@@ -238,13 +239,8 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRelease() {
 func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewCanceled() {
 	l := s.testAcquireLock(true, false)
 	qb := s.getRenewQueryBuilder()
-	lockItem := &concDdb.DdbLockItem{
-		Resource: s.resource,
-		Token:    s.token,
-		Ttl:      s.clock.Now().Add(time.Hour).Unix(),
-	}
 
-	s.repo.EXPECT().UpdateItem(s.ctx, qb, lockItem).
+	s.repo.EXPECT().UpdateItem(s.ctx, qb, &concDdb.DdbLockItem{}).
 		Return(nil, exec.RequestCanceledError).
 		Once()
 
@@ -256,13 +252,8 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewCanceled(
 func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewFails() {
 	l := s.testAcquireLock(true, false)
 	qb := s.getRenewQueryBuilder()
-	lockItem := &concDdb.DdbLockItem{
-		Resource: s.resource,
-		Token:    s.token,
-		Ttl:      s.clock.Now().Add(time.Hour).Unix(),
-	}
 
-	s.repo.EXPECT().UpdateItem(s.ctx, qb, lockItem).Return(&ddb.UpdateItemResult{
+	s.repo.EXPECT().UpdateItem(s.ctx, qb, &concDdb.DdbLockItem{}).Return(&ddb.UpdateItemResult{
 		ConditionalCheckFailed: true,
 	}, nil).Once()
 
@@ -275,14 +266,9 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewErrorsAnd
 	l := s.testAcquireLock(true, false)
 	qb1 := s.getRenewQueryBuilder()
 	qb2 := s.getRenewQueryBuilder()
-	lockItem := &concDdb.DdbLockItem{
-		Resource: s.resource,
-		Token:    s.token,
-		Ttl:      s.clock.Now().Add(time.Hour).Unix(),
-	}
 
-	s.repo.EXPECT().UpdateItem(s.ctx, qb1, lockItem).Return(nil, errors.New("db error")).Once()
-	s.repo.EXPECT().UpdateItem(s.ctx, qb2, lockItem).Return(&ddb.UpdateItemResult{}, nil).Once()
+	s.repo.EXPECT().UpdateItem(s.ctx, qb1, &concDdb.DdbLockItem{}).Return(nil, errors.New("db error")).Once()
+	s.repo.EXPECT().UpdateItem(s.ctx, qb2, &concDdb.DdbLockItem{}).Return(&ddb.UpdateItemResult{}, nil).Once()
 
 	err := l.Renew(s.ctx, time.Hour)
 	s.NoError(err)
