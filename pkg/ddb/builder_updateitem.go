@@ -146,6 +146,10 @@ func (b *updateItemBuilder) Build(item any) (*dynamodb.UpdateItemInput, error) {
 		return nil, err
 	}
 
+	if b.updateBuilder == nil {
+		return nil, fmt.Errorf("update item requires at least one mutation (set, add, remove, or delete)")
+	}
+
 	if b.returnType != "" && b.returnType != types.ReturnValueNone && !isPointer(item) {
 		return nil, fmt.Errorf("value for returning the updated item is not a pointer")
 	}

@@ -539,6 +539,19 @@ func (s *RepositoryTestSuite) TestUpdate() {
 	s.EqualValues(expectedItem, updatedItem)
 }
 
+func (s *RepositoryTestSuite) TestUpdateWithoutMutationFails() {
+	updatedItem := &model{
+		Id:  1,
+		Rev: "0",
+	}
+
+	ub := s.repo.UpdateItemBuilder().WithCondition(ddb.Eq("foo", "bar")).ReturnAllNew()
+	res, err := s.repo.UpdateItem(s.ctx, ub, updatedItem)
+
+	s.Nil(res)
+	s.EqualError(err, "could not build input for UpdateItem operation on table applike-test-gosoline-ddb-myModel: update item requires at least one mutation (set, add, remove, or delete)")
+}
+
 func (s *RepositoryTestSuite) TestDeleteItem() {
 	input := &dynamodb.DeleteItemInput{
 		ConditionExpression: aws.String("#0 = :0"),
