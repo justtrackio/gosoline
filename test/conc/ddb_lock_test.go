@@ -152,8 +152,23 @@ func (s *DdbLockTestSuite) TestRenewAfterReleaseFails() {
 	s.Equal(conc.ErrLockNotOwned, err)
 }
 
+func (s *DdbLockTestSuite) TestReleaseAfterAcquireContextCanceled() {
+	// Case 6: releasing still works after the acquire context was canceled.
+	ctx, cancel := context.WithCancel(s.T().Context())
+	l, err := s.provider.Acquire(ctx, s.T().Name())
+	s.NoError(err)
+
+	cancel()
+	err = l.Release()
+	s.NoError(err)
+
+	l, err = s.provider.Acquire(s.T().Context(), s.T().Name())
+	s.NoError(err)
+	s.NoError(l.Release())
+}
+
 func (s *DdbLockTestSuite) TestAcquireDifferentResources() {
-	// Case 6: try to acquire two different resources
+	// Case 7: try to acquire two different resources
 	l1, err := s.provider.Acquire(s.T().Context(), s.T().Name())
 	s.NoError(err)
 	l2, err := s.provider.Acquire(s.T().Context(), s.T().Name()+"-other")

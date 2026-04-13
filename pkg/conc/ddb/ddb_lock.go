@@ -78,25 +78,25 @@ func (l *ddbLock) Release() error {
 		return conc.ErrLockNotOwned
 	}
 
-	done := make(chan struct{})
-	defer close(done)
-
 	// we should always release the lock, even when our parent gets canceled.
 	// if we don't manage to do this until it expires anyway, there is no further point in trying.
-	ctx, cancel := exec.WithManualCancelContext(l.ctx)
-	go func() {
-		timer := l.clock.NewTimer(remainingLockTime)
-		defer timer.Stop()
+	// make sure we have enough time to release the lock:
+	delayedCtx, stop := exec.WithDelayedCancelContext(l.ctx, remainingLockTime)
+	defer stop()
 
-		select {
-		case <-done:
-			return
-		case <-timer.Chan():
-			cancel()
-		}
-	}()
+	// and that we don't spend more time than needed on it:
+	ctx, cancel := context.WithDeadline(delayedCtx, deadline)
+	defer cancel()
 
-	return l.manager.ReleaseLock(ctx, l.resource, l.token)
+	err := l.manager.ReleaseLock(ctx, l.resource, l.token)
+	if exec.IsRequestCanceled(err) {
+		// map the cancel to no error at all: we should only get this error if the lock expired,
+		// so we have "released" the lock in some other way as well, and we don't need to bother
+		// our caller with this.
+		return nil
+	}
+
+	return err
 }
 
 func (l *ddbLock) runWatcher() {
