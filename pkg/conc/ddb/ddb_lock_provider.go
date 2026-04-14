@@ -96,11 +96,15 @@ func NewDdbLockProviderWithInterfaces(
 }
 
 func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.DistributedLock, error) {
+	return m.acquire(ctx, ctx, resource)
+}
+
+func (m *ddbLockProvider) acquire(acquireCtx context.Context, lockCtx context.Context, resource string) (conc.DistributedLock, error) {
 	resource = fmt.Sprintf("%s-%s", m.domain, resource)
 	token := m.uuidSource.NewV4()
 
 	var lock *ddbLock
-	_, err := m.executor.Execute(ctx, func(ctx context.Context) (any, error) {
+	_, err := m.executor.Execute(acquireCtx, func(ctx context.Context) (any, error) {
 		now := m.clock.Now()
 		// ddb does return expired items if they have not yet been deleted
 		// to account for potential clock skew, we treat items that have been expired by at least five seconds as deleted
@@ -114,7 +118,6 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.Di
 			Token:    token,
 			Ttl:      expires.Unix(),
 		})
-
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +131,9 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.Di
 			"ddb_lock_resource": resource,
 		}).Debug(ctx, "acquired lock")
 
-		lock = NewDdbLockFromInterfaces(m, m.clock, m.logger, ctx, resource, token, expires)
+		// make sure we do not use the same context on the lock as when we acquire it - TryAcquireIn passes a context which gets canceled once we
+		// return, and we don't want to store that on our lock.
+		lock = NewDdbLockFromInterfaces(m, m.clock, m.logger, lockCtx, resource, token, expires)
 		go lock.runWatcher()
 
 		return nil, nil
@@ -138,10 +143,10 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.Di
 }
 
 func (m *ddbLockProvider) TryAcquireIn(ctx context.Context, resource string, timeout time.Duration) (conc.DistributedLock, error) {
-	ctx, stop := context.WithTimeout(ctx, timeout)
+	acquireCtx, stop := context.WithTimeout(ctx, timeout)
 	defer stop()
 
-	lock, err := m.Acquire(ctx, resource)
+	lock, err := m.acquire(acquireCtx, ctx, resource)
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, conc.ErrLockOwned) {
 		// timeout or owned lock -> return no lock and no error as documented
 		return nil, nil
@@ -159,7 +164,6 @@ func (m *ddbLockProvider) RenewLock(ctx context.Context, lockTime time.Duration,
 			Set("ttl", expiry.Unix())
 
 		result, err := m.repo.UpdateItem(ctx, qb, &DdbLockItem{})
-
 		if err != nil {
 			return nil, fmt.Errorf("failed to renew lock: %w", err)
 		}
