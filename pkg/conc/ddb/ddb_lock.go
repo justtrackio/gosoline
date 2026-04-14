@@ -85,14 +85,13 @@ func (l *ddbLock) Release() error {
 	defer stop()
 
 	// and that we don't spend more time than needed on it:
-	ctx, cancel := context.WithDeadline(delayedCtx, deadline)
+	ctx, cancel := context.WithTimeout(delayedCtx, remainingLockTime)
 	defer cancel()
 
 	err := l.manager.ReleaseLock(ctx, l.resource, l.token)
-	if exec.IsRequestCanceled(err) {
-		// map the cancel to no error at all: we should only get this error if the lock expired,
-		// so we have "released" the lock in some other way as well, and we don't need to bother
-		// our caller with this.
+	if exec.IsRequestCanceled(err) && l.expiresIn() <= 0 {
+		// if the lock expired while the release request was in flight, treat the canceled
+		// release like a late release and keep callers from handling an already lost lock.
 		return nil
 	}
 

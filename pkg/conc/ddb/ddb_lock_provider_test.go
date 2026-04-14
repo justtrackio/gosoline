@@ -73,7 +73,7 @@ func (s *ddbLockProviderTestSuite) SetupTest() {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	s.ctx = s.T().Context()
 	s.repo = ddbMocks.NewRepository(s.T())
-	s.clock = clock.NewFakeClock()
+	s.clock = clock.NewFakeClockAt(time.Now().UTC())
 	s.uuidSource = uuidMocks.NewUuid(s.T())
 	s.uuidSource.EXPECT().NewV4().Return(s.token).Once()
 	s.executor = &testExecutor{
@@ -107,13 +107,14 @@ func (s *ddbLockProviderTestSuite) getRenewQueryBuilder() *ddbMocks.UpdateItemBu
 	return qb
 }
 
-func (s *ddbLockProviderTestSuite) getReleaseQueryBuilder(result *ddb.DeleteItemResult, err error) {
+func (s *ddbLockProviderTestSuite) getReleaseQueryBuilder(result *ddb.DeleteItemResult, err error) *ddbMocks.Repository_DeleteItem_Call {
 	qb := ddbMocks.NewDeleteItemBuilder(s.T())
 	qb.EXPECT().WithHash(s.resource).Return(qb).Once()
 	qb.EXPECT().WithCondition(ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb).Once()
 
 	s.repo.EXPECT().DeleteItemBuilder().Return(qb).Once()
-	s.repo.EXPECT().DeleteItem(matcher.Context, qb, &concDdb.DdbLockItem{
+
+	return s.repo.EXPECT().DeleteItem(matcher.Context, qb, &concDdb.DdbLockItem{
 		Resource: s.resource,
 		Token:    s.token,
 	}).Return(result, err)
@@ -288,6 +289,30 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireInTimeout() {
 	l, err := s.provider.TryAcquireIn(s.ctx, s.resource[5:], time.Second)
 	s.Nil(l)
 	s.NoError(err)
+}
+
+func (s *ddbLockProviderTestSuite) TestDdbLockProvider_TryAcquireInReturnsLockThatReleasesWithCallerContext() {
+	acquireQb := s.getAcquireQueryBuilder()
+	s.repo.EXPECT().PutItem(matcher.Context, acquireQb, &concDdb.DdbLockItem{
+		Resource: s.resource,
+		Token:    s.token,
+		Ttl:      s.clock.Now().Add(time.Minute).Unix(),
+	}).Return(&ddb.PutItemResult{}, nil).Once()
+
+	s.getReleaseQueryBuilder(&ddb.DeleteItemResult{}, nil).Run(func(ctx context.Context, qb ddb.DeleteItemBuilder, item any) {
+		s.Require().NoError(ctx.Err())
+		deadline, ok := ctx.Deadline()
+		s.Require().True(ok)
+		minDeadline := s.clock.Now().Add(time.Minute).UTC().Truncate(time.Microsecond)
+		s.Require().WithinDuration(minDeadline, deadline.UTC(), time.Second*5)
+		s.Require().True(deadline.UTC().After(minDeadline))
+	}).Once()
+
+	lock, err := s.provider.TryAcquireIn(s.ctx, s.resource[5:], time.Second)
+	s.Require().NoError(err)
+	s.Require().NotNil(lock)
+
+	s.NoError(lock.Release())
 }
 
 func TestDdbLockProvider(t *testing.T) {

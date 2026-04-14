@@ -81,7 +81,7 @@ func (s *ddbLockTestSuite) TestReleaseLockDelayedParentCancel() {
 	s.NoError(err)
 }
 
-func (s *ddbLockTestSuite) TestReleaseLockCancellationIsIgnored() {
+func (s *ddbLockTestSuite) TestReleaseLockCancellationIsNotIgnored() {
 	s.lock = ddb.NewDdbLockFromInterfaces(s.lockManager, s.clock, s.logger, s.ctx, "resource", "token", s.clock.Now().Add(time.Minute))
 
 	s.lockManager.EXPECT().
@@ -90,14 +90,32 @@ func (s *ddbLockTestSuite) TestReleaseLockCancellationIsIgnored() {
 		Once()
 
 	err := s.lock.Release()
-	s.NoError(err)
+	s.ErrorIs(err, context.Canceled)
 }
 
-func (s *ddbLockTestSuite) TestReleaseLockDeadlineExceededIsIgnored() {
+func (s *ddbLockTestSuite) TestReleaseLockCancellationIsIgnoredAfterExpiry() {
 	s.lock = ddb.NewDdbLockFromInterfaces(s.lockManager, s.clock, s.logger, s.ctx, "resource", "token", s.clock.Now().Add(time.Minute))
 
 	s.lockManager.EXPECT().
 		ReleaseLock(matcher.Context, "resource", "token").
+		Run(func(ctx context.Context, resource string, token string) {
+			s.clock.Advance(time.Minute)
+		}).
+		Return(context.Canceled).
+		Once()
+
+	err := s.lock.Release()
+	s.NoError(err)
+}
+
+func (s *ddbLockTestSuite) TestReleaseLockDeadlineExceededIsIgnoredAfterExpiry() {
+	s.lock = ddb.NewDdbLockFromInterfaces(s.lockManager, s.clock, s.logger, s.ctx, "resource", "token", s.clock.Now().Add(time.Minute))
+
+	s.lockManager.EXPECT().
+		ReleaseLock(matcher.Context, "resource", "token").
+		Run(func(ctx context.Context, resource string, token string) {
+			s.clock.Advance(time.Minute)
+		}).
 		Return(context.DeadlineExceeded).
 		Once()
 
