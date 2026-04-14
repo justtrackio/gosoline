@@ -55,11 +55,6 @@ func newStoppableContext(parentCtx context.Context, deadline *time.Time, handler
 		stopped:   make(chan struct{}),
 		deadline:  deadline,
 	}
-	if parentDeadline, ok := parentCtx.Deadline(); ok {
-		if ctx.deadline == nil || ctx.deadline.After(parentDeadline) {
-			ctx.deadline = &parentDeadline
-		}
-	}
 
 	go func() {
 		defer ctx.stopWg.Done()
@@ -110,10 +105,17 @@ func (c *stoppableContext) stop() {
 // WithDelayedCancelContext creates a context which propagates the cancellation of the parent context after a fixed delay
 // to the returned context. Call the returned StopFunc function to release resources associated with the returned context once
 // you no longer need it. Calling stop never returns before all resources have been released, so after Stop returns,
-// the context will not experience a delayed cancel anymore (however, if the parent context was already canceled the moment
-// you called stop, the child context will immediately get canceled).
+// the context will not experience a delayed cancel anymore. However, if the parent context was already canceled the moment
+// you called stop, the child context will immediately get canceled.
+// The child context will extend the parent deadline by the specified delay if the parent context has a deadline.
 func WithDelayedCancelContext(parentCtx context.Context, delay time.Duration) (context.Context, StopFunc) {
-	return newStoppableContext(parentCtx, nil, func(ctx *stoppableContext) (bool, error) {
+	var deadline *time.Time
+	if parentDeadline, ok := parentCtx.Deadline(); ok {
+		d := parentDeadline.Add(delay)
+		deadline = &d
+	}
+
+	return newStoppableContext(parentCtx, deadline, func(ctx *stoppableContext) (bool, error) {
 		select {
 		case <-ctx.stopped:
 			return false, nil
@@ -139,6 +141,11 @@ func WithDelayedCancelContext(parentCtx context.Context, delay time.Duration) (c
 // you call the returned context.CancelFunc, WithStoppableDeadlineContext does not cancel the context if it is not yet canceled
 // once you stop it.
 func WithStoppableDeadlineContext(parentCtx context.Context, deadline time.Time) (context.Context, StopFunc) {
+	parentDeadline, ok := parentCtx.Deadline()
+	if ok && deadline.After(parentDeadline) {
+		deadline = parentDeadline
+	}
+
 	return newStoppableContext(parentCtx, &deadline, func(ctx *stoppableContext) (bool, error) {
 		c := clock.Provider
 		waitTime := -c.Since(deadline)

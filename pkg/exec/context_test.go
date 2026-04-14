@@ -87,6 +87,27 @@ func (s *contextTestSuite) TestWithDelayedCancelContext_StopAfterCancel() {
 	s.assertCanceled(ctx, context.Canceled)
 }
 
+func (s *contextTestSuite) TestWithDelayedCancelContext_DeadlineExtendsParentDeadline() {
+	parentDeadline := time.Now().Add(time.Minute)
+	parentCtx, cancel := context.WithDeadline(s.T().Context(), parentDeadline)
+	defer cancel()
+
+	ctx, stop := exec.WithDelayedCancelContext(parentCtx, time.Hour)
+	defer stop()
+
+	deadline, ok := ctx.Deadline()
+	s.True(ok)
+	s.WithinDuration(parentDeadline.Add(time.Hour), deadline, 0)
+}
+
+func (s *contextTestSuite) TestWithDelayedCancelContext_WithoutParentDeadlineHasNoDeadline() {
+	ctx, stop := exec.WithDelayedCancelContext(s.T().Context(), time.Hour)
+	defer stop()
+
+	_, ok := ctx.Deadline()
+	s.False(ok)
+}
+
 func (s *contextTestSuite) TestWithStoppableDeadlineContext() {
 	parentCtx := s.T().Context()
 	ctx, stop := exec.WithStoppableDeadlineContext(parentCtx, s.fakeClock.Now().Add(time.Minute))
@@ -135,6 +156,30 @@ func (s *contextTestSuite) TestWithStoppableDeadlineContext_Stop() {
 	// even give it some time to wrongly propagate a cancel - as this should not happen, this should not change it
 	time.Sleep(time.Millisecond)
 	s.assertNotCanceled(ctx)
+}
+
+func (s *contextTestSuite) TestWithStoppableDeadlineContext_ParentDeadlineEarlier() {
+	// Parent has a deadline earlier than the one we'll request
+	parentDeadline := time.Now().Add(time.Minute)
+	parentCtx, cancelParent := context.WithDeadline(s.T().Context(), parentDeadline)
+	defer cancelParent()
+
+	// Request a later deadline - it should be clamped to the parent's deadline
+	ctx, stop := exec.WithStoppableDeadlineContext(parentCtx, time.Now().Add(time.Hour))
+	defer stop()
+
+	// Initially the context is not canceled
+	s.assertNotCanceled(ctx)
+
+	// The reported deadline must match the parent's earlier deadline, not the requested later one
+	deadline, ok := ctx.Deadline()
+	s.True(ok)
+	s.WithinDuration(parentDeadline, deadline, 0)
+
+	// When the parent is canceled, the child should also be canceled
+	cancelParent()
+	<-ctx.Done()
+	s.assertCanceled(ctx, context.Canceled)
 }
 
 func (s *contextTestSuite) TestWithManualCancelContext() {
