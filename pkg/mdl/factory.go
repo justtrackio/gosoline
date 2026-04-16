@@ -32,6 +32,10 @@ func Box[T any](v T) *T {
 	return &v
 }
 
+// ClonePtr returns a pointer to a shallow copy of *v, or nil if v is nil.
+// For types containing pointers, slices, or maps, the copy shares the same
+// underlying data as the original; mutating nested reference fields will
+// affect both values.
 func ClonePtr[T any](v *T) *T {
 	if v == nil {
 		return nil
