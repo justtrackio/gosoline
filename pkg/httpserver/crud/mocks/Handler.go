@@ -380,6 +380,65 @@ func (_c *Handler_TransformOutput_Call) RunAndReturn(run func(context.Context, d
 	return _c
 }
 
+// TransformPatch provides a mock function with given fields: ctx, model
+func (_m *Handler) TransformPatch(ctx context.Context, model db_repo.ModelBased) (interface{}, error) {
+	ret := _m.Called(ctx, model)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TransformPatch")
+	}
+
+	var r0 interface{}
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, db_repo.ModelBased) (interface{}, error)); ok {
+		return rf(ctx, model)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, db_repo.ModelBased) interface{}); ok {
+		r0 = rf(ctx, model)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(interface{})
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, db_repo.ModelBased) error); ok {
+		r1 = rf(ctx, model)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Handler_TransformPatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TransformPatch'
+type Handler_TransformPatch_Call struct {
+	*mock.Call
+}
+
+// TransformPatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - model db_repo.ModelBased
+func (_e *Handler_Expecter) TransformPatch(ctx interface{}, model interface{}) *Handler_TransformPatch_Call {
+	return &Handler_TransformPatch_Call{Call: _e.mock.On("TransformPatch", ctx, model)}
+}
+
+func (_c *Handler_TransformPatch_Call) Run(run func(ctx context.Context, model db_repo.ModelBased)) *Handler_TransformPatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(db_repo.ModelBased))
+	})
+	return _c
+}
+
+func (_c *Handler_TransformPatch_Call) Return(updateInput interface{}, err error) *Handler_TransformPatch_Call {
+	_c.Call.Return(updateInput, err)
+	return _c
+}
+
+func (_c *Handler_TransformPatch_Call) RunAndReturn(run func(context.Context, db_repo.ModelBased) (interface{}, error)) *Handler_TransformPatch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // TransformUpdate provides a mock function with given fields: ctx, input, model
 func (_m *Handler) TransformUpdate(ctx context.Context, input interface{}, model db_repo.ModelBased) error {
 	ret := _m.Called(ctx, input, model)
