@@ -26,7 +26,7 @@ type patchHandler struct {
 func NewPatchHandler(config cfg.Config, logger log.Logger, transformer PatchHandler) (gin.HandlerFunc, error) {
 	settings := Settings{}
 	if err := config.UnmarshalKey(SettingsConfigKey, &settings); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal update handler settings: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal patch handler settings: %w", err)
 	}
 	uh := patchHandler{
 		transformer: transformer,
@@ -94,7 +94,7 @@ func (ph patchHandler) Handle(reqCtx context.Context, request *httpserver.Reques
 		return HandleErrorOnWrite(ctx, logger, fmt.Errorf("failed to marshal input: %w", err))
 	}
 
-	// apply batch on update input bytes
+	// apply patch to update input bytes
 	if after, err = jsonpatch.MergePatch(before, patch); err != nil {
 		return HandleErrorOnWrite(ctx, logger, fmt.Errorf("failed to merge patch: %w", err))
 	}

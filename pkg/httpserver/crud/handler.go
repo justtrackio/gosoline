@@ -159,7 +159,7 @@ func AddPatchHandler(config cfg.Config, logger log.Logger, d *httpserver.Definit
 
 	patchHandler, err := NewPatchHandler(config, logger, handler)
 	if err != nil {
-		return fmt.Errorf("failed to create update handler: %w", err)
+		return fmt.Errorf("failed to create patch handler: %w", err)
 	}
 
 	d.PATCH(idPath, patchHandler)
