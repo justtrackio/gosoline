@@ -130,9 +130,7 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 		return true, nil
 	}
 
-	a.logger.WithFields(log.Fields{
-		"id_token": idToken,
-	}).Info(reqCtx, "token not in cache, will perform request")
+	a.logger.Info(reqCtx, "token not in cache, will perform request")
 
 	tokenInfo, err = a.tokenProvider.GetTokenInfo(idToken)
 	if err != nil {
