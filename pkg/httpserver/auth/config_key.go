@@ -1,9 +1,9 @@
 package auth
 
 import (
+	"crypto/subtle"
 	"fmt"
 	"net/http"
-	"slices"
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -81,7 +81,13 @@ func (a *configKeyAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 		return false, fmt.Errorf("there are no api keys configured")
 	}
 
-	if !slices.Contains(a.keys, apiKey) {
+	matched := false
+	for _, k := range a.keys {
+		if subtle.ConstantTimeCompare([]byte(k), []byte(apiKey)) == 1 {
+			matched = true
+		}
+	}
+	if !matched {
 		return false, fmt.Errorf("api key does not match")
 	}
 
