@@ -49,14 +49,28 @@ func (s *MysqlDriverTestSuite) TestDsn() {
 	s.NoError(err)
 
 	dsn := driver.GetDSN(s.settings)
-	s.Equal("tcp(localhost:3306)/?collation=utf8mb4_general_ci&multiStatements=true&parseTime=true&charset=utf8mb4&readTimeout=0s&writeTimeout=0s", dsn)
+	s.Equal("tcp(localhost:3306)/?collation=utf8mb4_general_ci&parseTime=true&charset=utf8mb4&readTimeout=0s&writeTimeout=0s", dsn)
 
 	s.settings.Timeouts.ReadTimeout = time.Millisecond * 50
 	s.settings.Timeouts.WriteTimeout = time.Millisecond * 50
 	dsn = driver.GetDSN(s.settings)
-	s.Equal("tcp(localhost:3306)/?collation=utf8mb4_general_ci&multiStatements=true&parseTime=true&charset=utf8mb4&readTimeout=50ms&writeTimeout=50ms", dsn)
+	s.Equal("tcp(localhost:3306)/?collation=utf8mb4_general_ci&parseTime=true&charset=utf8mb4&readTimeout=50ms&writeTimeout=50ms", dsn)
 
 	s.settings.Parameters["param1"] = "value1"
 	dsn = driver.GetDSN(s.settings)
-	s.Equal("tcp(localhost:3306)/?collation=utf8mb4_general_ci&multiStatements=true&parseTime=true&charset=utf8mb4&param1=value1&readTimeout=50ms&writeTimeout=50ms", dsn)
+	s.Equal("tcp(localhost:3306)/?collation=utf8mb4_general_ci&parseTime=true&charset=utf8mb4&param1=value1&readTimeout=50ms&writeTimeout=50ms", dsn)
+}
+
+func (s *MysqlDriverTestSuite) TestDsn_MigrationConnectionHasMultiStatements() {
+	// openMigrationDB copies settings and forces MultiStatements=true so that
+	// SQL migration files containing multiple statements execute correctly.
+	driver, err := db.NewMysqlDriver(s.logger)
+	s.NoError(err)
+
+	migrationSettings := *s.settings
+	migrationSettings.MultiStatements = true
+
+	dsn := driver.GetDSN(&migrationSettings)
+	s.Contains(dsn, "multiStatements=true",
+		"migration DSN must include multiStatements=true regardless of the runtime default")
 }
