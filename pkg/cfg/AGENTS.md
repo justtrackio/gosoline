@@ -68,6 +68,7 @@ Components pass additional placeholders via the `args` parameter:
 - Redis: `{name}`, `{key}`
 - DynamoDB: `{name}` (model name)
 - S3: `{bucketId}`
+- SageMaker Runtime: `{name}`
 
 ### Usage
 ```go

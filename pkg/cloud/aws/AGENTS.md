@@ -33,6 +33,7 @@
 | `rds/` | RDS client | `cloud.aws.rds` |
 | `resourcegroupstaggingapi/` | Resource tagging API | `cloud.aws.resourcegroupstaggingapi` |
 | `s3/` | Object storage | `cloud.aws.s3` |
+| `sagemakerruntime/` | SageMaker Runtime inference | `cloud.aws.sagemakerruntime` |
 | `secretsmanager/` | Secrets retrieval | `cloud.aws.secretsmanager` |
 | `servicediscovery/` | Cloud Map service discovery | `cloud.aws.servicediscovery` |
 | `ses/` | Email sending | `cloud.aws.ses` |
