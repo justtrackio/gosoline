@@ -175,7 +175,7 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 
 func (a *configGoogleAuthenticator) isAddressAllowed(address string) (bool, error) {
 	for _, allowed := range a.allowedAddresses {
-		ok, err := regexp.MatchString(allowed, address)
+		ok, err := regexp.MatchString("^(?:"+allowed+")$", address)
 		if err != nil {
 			return false, fmt.Errorf("can not compile regex for allowed address check: %w", err)
 		}
