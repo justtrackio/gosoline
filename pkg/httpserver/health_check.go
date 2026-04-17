@@ -104,16 +104,12 @@ func buildHealthCheckHandler(logger log.Logger, healthChecker kernel.HealthCheck
 
 		if result.Err() != nil {
 			ctx := c.Request.Context()
-			logger.Error(ctx, "encountered an error during the health check: %", result.Err())
+			logger.Error(ctx, "encountered an error during the health check: %w", result.Err())
 		}
 
 		resp := gin.H{}
 		for _, module := range result.GetUnhealthy() {
-			if module.Err != nil {
-				resp[module.Name] = module.Err.Error()
-			} else {
-				resp[module.Name] = "unhealthy"
-			}
+			resp[module.Name] = "unhealthy"
 		}
 
 		c.JSON(http.StatusInternalServerError, resp)

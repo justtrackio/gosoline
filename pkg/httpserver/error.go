@@ -8,10 +8,15 @@ import (
 type ErrorHandler func(statusCode int, err error) *Response
 
 func errorHandlerJson(statusCode int, err error) *Response {
+	body := gin.H{"err": err.Error()}
+	if statusCode >= 500 {
+		body = gin.H{"err": "internal server error"}
+	}
+
 	return &Response{
 		StatusCode:  statusCode,
 		ContentType: mdl.Box(ContentTypeJson),
-		Body:        gin.H{"err": err.Error()},
+		Body:        body,
 	}
 }
 

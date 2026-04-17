@@ -151,8 +151,7 @@ func (s *patchTestSuite) TestPatch_UnmarshalPatchedModel() {
 	response := httpserver.HttpTest("PATCH", "/:id", "/1", `{"name":123}`, s.patchHandler)
 
 	s.Equal(http.StatusInternalServerError, response.Code)
-	s.Contains(response.Body.String(), `failed to unmarshal patched model`)
-	s.Contains(response.Body.String(), `cannot unmarshal number`)
+	s.JSONEq(`{"err":"internal server error"}`, response.Body.String())
 }
 
 func (s *patchTestSuite) TestPatch_InvalidBody() {
