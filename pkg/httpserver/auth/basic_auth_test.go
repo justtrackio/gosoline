@@ -67,3 +67,20 @@ func TestBasicAuth_Authenticate_ValidUser(t *testing.T) {
 
 	assert.Equal(t, nil, err)
 }
+
+func TestBasicAuth_Authenticate_ValidUser_SubjectHasCorrectFields(t *testing.T) {
+	logger, ginCtx := getBasicAuthMocks("alice", "correctpass")
+
+	a := auth.NewBasicAuthAuthenticatorWithInterfaces(logger, map[string]string{
+		"alice": "correctpass",
+	})
+	ok, err := a.IsValid(ginCtx)
+
+	assert.True(t, ok)
+	assert.NoError(t, err)
+
+	subj := auth.GetSubject(ginCtx.Request.Context())
+	assert.Equal(t, "anon", subj.Name)
+	assert.True(t, subj.Anonymous)
+	assert.Equal(t, auth.ByBasicAuth, subj.AuthenticatedBy)
+}
