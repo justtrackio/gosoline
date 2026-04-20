@@ -46,7 +46,7 @@ func ProfilingModuleFactory(_ context.Context, config cfg.Config, _ log.Logger) 
 func NewProfilingWithInterfaces(logger log.Logger, router *gin.Engine, settings *ProfilingSettings) *Profiling {
 	AddProfilingEndpoints(router)
 
-	addr := fmt.Sprintf(":%d", settings.Api.Port)
+	addr := fmt.Sprintf("127.0.0.1:%d", settings.Api.Port)
 
 	server := &http.Server{
 		Addr:    addr,
