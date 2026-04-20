@@ -3,7 +3,7 @@ package metric
 import "sync"
 
 var (
-	metricDefaultsLock = sync.Mutex{}
+	metricDefaultsLock sync.RWMutex
 	metricDefaults     = map[string]*Datum{}
 )
 
@@ -18,8 +18,10 @@ func addMetricDefaults(data ...*Datum) {
 }
 
 func amendFromDefault(datum *Datum) {
+	metricDefaultsLock.RLock()
 	defId := datum.Id()
 	def, ok := metricDefaults[defId]
+	metricDefaultsLock.RUnlock()
 
 	if !ok {
 		return
