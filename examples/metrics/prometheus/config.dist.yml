@@ -5,6 +5,7 @@ app:
     project: gosoline
     family: metrics
     group: grp
+  namespace: example
 
 httpserver:
   default:

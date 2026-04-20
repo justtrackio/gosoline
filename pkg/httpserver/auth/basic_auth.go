@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -108,7 +109,7 @@ func (a *basicAuthAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	}
 
 	if password, ok := a.users[split[0]]; ok {
-		if password != split[1] {
+		if subtle.ConstantTimeCompare([]byte(password), []byte(split[1])) != 1 {
 			return false, fmt.Errorf("invalid credentials provided")
 		}
 
