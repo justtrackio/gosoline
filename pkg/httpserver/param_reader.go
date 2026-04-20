@@ -14,7 +14,7 @@ func GetUintFromRequest(request *Request, name string) (*uint, bool) {
 	}
 
 	param, err := strconv.Atoi(paramString)
-	if err != nil {
+	if err != nil || param < 0 {
 		return mdl.Box(uint(0)), false
 	}
 
