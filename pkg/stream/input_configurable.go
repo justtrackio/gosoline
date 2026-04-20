@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
@@ -39,22 +40,12 @@ func SetInputFactory(typ string, factory InputFactory) {
 	inputFactories[typ] = factory
 }
 
-var inputs = map[string]Input{}
+type configurableInputKey string
 
 func ProvideConfigurableInput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
-	var ok bool
-	var err error
-	var input Input
-
-	if input, ok = inputs[name]; ok {
-		return input, nil
-	}
-
-	if inputs[name], err = NewConfigurableInput(ctx, config, logger, name); err != nil {
-		return nil, err
-	}
-
-	return inputs[name], nil
+	return appctx.Provide(ctx, configurableInputKey(name), func() (Input, error) {
+		return NewConfigurableInput(ctx, config, logger, name)
+	})
 }
 
 func NewConfigurableInput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
