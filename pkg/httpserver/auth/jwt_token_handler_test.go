@@ -145,7 +145,6 @@ func TestJwtTokenHandler_Sign_IsValid_Valid(t *testing.T) {
 	assert.Equal(t, "image", claims["image"])
 }
 
-
 // TestJwtTokenHandlerSettings_SigningSecretMinLength verifies that the cfg
 // validation rejects a signing secret shorter than 32 characters.
 func TestJwtTokenHandlerSettings_SigningSecretMinLength(t *testing.T) {

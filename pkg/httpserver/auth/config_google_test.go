@@ -176,7 +176,6 @@ func TestAuthGoogle_Authenticate_MultipleAudiences(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-
 // TestAuthGoogle_EmailPattern_AnchoredPreventsPartialMatch verifies that an
 // allowedAddresses pattern without explicit anchors (e.g. `.*@company\.com`)
 // does NOT match an email whose domain extends the pattern
