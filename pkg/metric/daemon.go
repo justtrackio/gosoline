@@ -127,9 +127,11 @@ func (d *Daemon) Run(ctx context.Context) error {
 	d.resetBatch(ctx)
 
 	// initialize the default metrics upon daemon module Run for raw writers
-	metricDefaultsLock.Lock()
-	d.rawFanout(ctx, funk.Values(metricDefaults))
-	metricDefaultsLock.Unlock()
+	metricDefaultsLock.RLock()
+	defaults := funk.Values(metricDefaults)
+	metricDefaultsLock.RUnlock()
+
+	d.rawFanout(ctx, defaults)
 
 	for {
 		select {
@@ -212,11 +214,17 @@ func (d *Daemon) resetBatch(ctx context.Context) {
 	d.batch = make(map[string]*BatchedMetricDatum)
 	d.dataPointCount = 0
 
+	metricDefaultsLock.RLock()
+	defs := make([]*Datum, 0, len(metricDefaults))
 	for _, def := range metricDefaults {
 		cpy := *def
 		cpy.Timestamp = time.Now()
+		defs = append(defs, &cpy)
+	}
+	metricDefaultsLock.RUnlock()
 
-		d.append(ctx, &cpy)
+	for _, cpy := range defs {
+		d.append(ctx, cpy)
 	}
 }
 
