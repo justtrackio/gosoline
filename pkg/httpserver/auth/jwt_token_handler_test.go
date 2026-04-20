@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/httpserver/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -142,4 +143,38 @@ func TestJwtTokenHandler_Sign_IsValid_Valid(t *testing.T) {
 	assert.Equal(t, "test", claims["name"])
 	assert.Equal(t, "mail", claims["email"])
 	assert.Equal(t, "image", claims["image"])
+}
+
+
+// TestJwtTokenHandlerSettings_SigningSecretMinLength verifies that the cfg
+// validation rejects a signing secret shorter than 32 characters.
+func TestJwtTokenHandlerSettings_SigningSecretMinLength(t *testing.T) {
+	config := cfg.New(map[string]any{
+		"jwt": map[string]any{
+			"signingSecret":  "tooshort", // 8 chars, must fail
+			"issuer":         "me",
+			"expireDuration": "15m",
+		},
+	})
+
+	var settings auth.JwtTokenHandlerSettings
+	err := config.UnmarshalKey("jwt", &settings)
+	assert.Error(t, err, "signing secret shorter than 32 chars must fail validation")
+}
+
+// TestJwtTokenHandlerSettings_SigningSecretMinLength_Valid verifies that a
+// secret with at least 32 characters passes validation.
+func TestJwtTokenHandlerSettings_SigningSecretMinLength_Valid(t *testing.T) {
+	config := cfg.New(map[string]any{
+		"jwt": map[string]any{
+			"signingSecret":  "this-is-a-valid-secret-at-least-32-chars",
+			"issuer":         "me",
+			"expireDuration": "15m",
+		},
+	})
+
+	var settings auth.JwtTokenHandlerSettings
+	err := config.UnmarshalKey("jwt", &settings)
+	assert.NoError(t, err)
+	assert.Equal(t, "this-is-a-valid-secret-at-least-32-chars", settings.SigningSecret)
 }

@@ -175,3 +175,61 @@ func TestAuthGoogle_Authenticate_MultipleAudiences(t *testing.T) {
 
 	assert.NoError(t, err)
 }
+
+
+// TestAuthGoogle_EmailPattern_AnchoredPreventsPartialMatch verifies that an
+// allowedAddresses pattern without explicit anchors (e.g. `.*@company\.com`)
+// does NOT match an email whose domain extends the pattern
+// (e.g. `user@company.com.evil.com`). Before the fix the unanchored regex
+// would match because the pattern appears inside the longer string.
+func TestAuthGoogle_EmailPattern_AnchoredPreventsPartialMatch(t *testing.T) {
+	logger, tokenProvider, _ := getMocks(t, "")
+
+	// Email domain is a suffix-extension of the pattern's domain.
+	tokenInfo := &oauth2.Tokeninfo{
+		Audience: "client-id",
+		Email:    "user@company.com.evil.com",
+		ServerResponse: googleapi.ServerResponse{
+			HTTPStatusCode: http.StatusOK,
+		},
+	}
+	tokenProvider.EXPECT().GetTokenInfo("tok").Return(tokenInfo, nil)
+
+	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(
+		logger,
+		tokenProvider,
+		[]string{"client-id"},
+		// Pattern without explicit anchors; the fix adds ^(?:...)$ automatically.
+		[]string{`.*@company\.com`},
+	)
+
+	ok, err := a.IsValid(getGinCtx("tok"))
+	assert.False(t, ok, "suffix-extended email must be rejected")
+	assert.EqualError(t, err, "google auth: address user@company.com.evil.com is not allowed")
+}
+
+// TestAuthGoogle_EmailPattern_AnchoredAllowsExactMatch verifies that the
+// same pattern does accept an email that matches exactly.
+func TestAuthGoogle_EmailPattern_AnchoredAllowsExactMatch(t *testing.T) {
+	logger, tokenProvider, _ := getMocks(t, "")
+
+	tokenInfo := &oauth2.Tokeninfo{
+		Audience: "client-id",
+		Email:    "user@company.com",
+		ServerResponse: googleapi.ServerResponse{
+			HTTPStatusCode: http.StatusOK,
+		},
+	}
+	tokenProvider.EXPECT().GetTokenInfo("tok2").Return(tokenInfo, nil)
+
+	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(
+		logger,
+		tokenProvider,
+		[]string{"client-id"},
+		[]string{`.*@company\.com`},
+	)
+
+	ok, err := a.IsValid(getGinCtx("tok2"))
+	assert.True(t, ok)
+	assert.NoError(t, err)
+}
