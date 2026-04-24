@@ -210,7 +210,7 @@ func TestListQueryBuilder_Build_ComplexFilter(t *testing.T) {
 	expected := db_repo.NewQueryBuilder()
 	expected.Table("tablename")
 	expected.Where(
-		"(((foo IN (?,?))) AND ((fieldA != ?)) AND ((void IS null)) AND (((fieldB LIKE ?)) OR ((fieldB = ?))))",
+		"(((foo IN (?,?))) AND ((fieldA != ?)) AND ((void IS NULL)) AND (((fieldB LIKE ?)) OR ((fieldB = ?))))",
 		"blub",
 		"blubber",
 		1,
@@ -471,4 +471,260 @@ func TestListQueryBuilder_BuildSqlInjectionOperator(t *testing.T) {
 		`can not build filter: error building filter for column foo: invalid operator "IN (SELECT username FROM admins WHERE id = 42) AND 1 ="`,
 	)
 	assert.Equal(t, db_repo.NewQueryBuilder(), qb)
+}
+
+func TestListQueryBuilder_IsOperator_NullValueProducesIsNull(t *testing.T) {
+	metadata := db_repo.Metadata{
+		TableName:  "items",
+		PrimaryKey: "id",
+		Mappings: db_repo.FieldMappings{
+			"id":    db_repo.NewFieldMapping("id"),
+			"field": db_repo.NewFieldMapping("field"),
+		},
+	}
+	inp := &sql.Input{
+		Filter: sql.Filter{
+			Matches: []sql.FilterMatch{
+				{Dimension: "field", Operator: "IS", Values: []any{"NULL"}},
+			},
+			Bool: sql.BoolAnd,
+		},
+		Order:   []sql.Order{},
+		GroupBy: []string{},
+	}
+
+	lqb := sql.NewOrmQueryBuilder(metadata)
+	qb, err := lqb.Build(inp)
+
+	assert.NoError(t, err)
+	expected := db_repo.NewQueryBuilder()
+	expected.Table("items")
+	expected.Where("(((field IS NULL)))", []any{}...)
+	expected.GroupBy("id")
+	assert.Equal(t, expected, qb)
+}
+
+func TestListQueryBuilder_IsOperator_NonNullValueReturnsError(t *testing.T) {
+	metadata := db_repo.Metadata{
+		TableName:  "items",
+		PrimaryKey: "id",
+		Mappings: db_repo.FieldMappings{
+			"id":    db_repo.NewFieldMapping("id"),
+			"field": db_repo.NewFieldMapping("field"),
+		},
+	}
+	inp := &sql.Input{
+		Filter: sql.Filter{
+			Matches: []sql.FilterMatch{
+				{Dimension: "field", Operator: "IS", Values: []any{"somevalue"}},
+			},
+			Bool: sql.BoolAnd,
+		},
+		Order:   []sql.Order{},
+		GroupBy: []string{},
+	}
+
+	lqb := sql.NewOrmQueryBuilder(metadata)
+	_, err := lqb.Build(inp)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "IS operator only supports NULL")
+}
+
+func TestListQueryBuilder_IsNotOperator_NullValueProducesIsNotNull(t *testing.T) {
+	metadata := db_repo.Metadata{
+		TableName:  "items",
+		PrimaryKey: "id",
+		Mappings: db_repo.FieldMappings{
+			"id":    db_repo.NewFieldMapping("id"),
+			"field": db_repo.NewFieldMapping("field"),
+		},
+	}
+	inp := &sql.Input{
+		Filter: sql.Filter{
+			Matches: []sql.FilterMatch{
+				{Dimension: "field", Operator: "IS NOT", Values: []any{"null"}},
+			},
+			Bool: sql.BoolAnd,
+		},
+		Order:   []sql.Order{},
+		GroupBy: []string{},
+	}
+
+	lqb := sql.NewOrmQueryBuilder(metadata)
+	qb, err := lqb.Build(inp)
+
+	assert.NoError(t, err)
+	expected := db_repo.NewQueryBuilder()
+	expected.Table("items")
+	expected.Where("(((field IS NOT NULL)))", []any{}...)
+	expected.GroupBy("id")
+	assert.Equal(t, expected, qb)
+}
+
+func TestListQueryBuilder_IsNotOperator_NonNullValueReturnsError(t *testing.T) {
+	metadata := db_repo.Metadata{
+		TableName:  "items",
+		PrimaryKey: "id",
+		Mappings: db_repo.FieldMappings{
+			"id":    db_repo.NewFieldMapping("id"),
+			"field": db_repo.NewFieldMapping("field"),
+		},
+	}
+	inp := &sql.Input{
+		Filter: sql.Filter{
+			Matches: []sql.FilterMatch{
+				{Dimension: "field", Operator: "IS NOT", Values: []any{"1234"}},
+			},
+			Bool: sql.BoolAnd,
+		},
+		Order:   []sql.Order{},
+		GroupBy: []string{},
+	}
+
+	lqb := sql.NewOrmQueryBuilder(metadata)
+	_, err := lqb.Build(inp)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "IS NOT operator only supports NULL")
+}
+
+func TestListQueryBuilder_IsOperator_NullValueCaseInsensitive(t *testing.T) {
+	metadata := db_repo.Metadata{
+		TableName:  "items",
+		PrimaryKey: "id",
+		Mappings: db_repo.FieldMappings{
+			"id":    db_repo.NewFieldMapping("id"),
+			"field": db_repo.NewFieldMapping("field"),
+		},
+	}
+
+	for _, nullVariant := range []string{"null", "NULL", "Null", "nUlL", "NuLl"} {
+		nullVariant := nullVariant
+		t.Run(nullVariant, func(t *testing.T) {
+			inp := &sql.Input{
+				Filter: sql.Filter{
+					Matches: []sql.FilterMatch{
+						{Dimension: "field", Operator: "IS", Values: []any{nullVariant}},
+					},
+					Bool: sql.BoolAnd,
+				},
+				Order:   []sql.Order{},
+				GroupBy: []string{},
+			}
+
+			lqb := sql.NewOrmQueryBuilder(metadata)
+			qb, err := lqb.Build(inp)
+
+			assert.NoError(t, err, "IS operator must accept %q as NULL", nullVariant)
+			expected := db_repo.NewQueryBuilder()
+			expected.Table("items")
+			expected.Where("(((field IS NULL)))", []any{}...)
+			expected.GroupBy("id")
+			assert.Equal(t, expected, qb)
+		})
+	}
+}
+
+func TestListQueryBuilder_IsNotOperator_NullValueCaseInsensitive(t *testing.T) {
+	metadata := db_repo.Metadata{
+		TableName:  "items",
+		PrimaryKey: "id",
+		Mappings: db_repo.FieldMappings{
+			"id":    db_repo.NewFieldMapping("id"),
+			"field": db_repo.NewFieldMapping("field"),
+		},
+	}
+
+	for _, nullVariant := range []string{"null", "NULL", "Null", "nUlL", "NuLl"} {
+		nullVariant := nullVariant
+		t.Run(nullVariant, func(t *testing.T) {
+			inp := &sql.Input{
+				Filter: sql.Filter{
+					Matches: []sql.FilterMatch{
+						{Dimension: "field", Operator: "IS NOT", Values: []any{nullVariant}},
+					},
+					Bool: sql.BoolAnd,
+				},
+				Order:   []sql.Order{},
+				GroupBy: []string{},
+			}
+
+			lqb := sql.NewOrmQueryBuilder(metadata)
+			qb, err := lqb.Build(inp)
+
+			assert.NoError(t, err, "IS NOT operator must accept %q as NULL", nullVariant)
+			expected := db_repo.NewQueryBuilder()
+			expected.Table("items")
+			expected.Where("(((field IS NOT NULL)))", []any{}...)
+			expected.GroupBy("id")
+			assert.Equal(t, expected, qb)
+		})
+	}
+}
+
+func TestListQueryBuilder_IsOperator_NilValueProducesIsNull(t *testing.T) {
+	metadata := db_repo.Metadata{
+		TableName:  "items",
+		PrimaryKey: "id",
+		Mappings: db_repo.FieldMappings{
+			"id":    db_repo.NewFieldMapping("id"),
+			"field": db_repo.NewFieldMapping("field"),
+		},
+	}
+
+	inp := &sql.Input{
+		Filter: sql.Filter{
+			Matches: []sql.FilterMatch{
+				{Dimension: "field", Operator: "IS", Values: []any{nil}},
+			},
+			Bool: sql.BoolAnd,
+		},
+		Order:   []sql.Order{},
+		GroupBy: []string{},
+	}
+
+	lqb := sql.NewOrmQueryBuilder(metadata)
+	qb, err := lqb.Build(inp)
+
+	assert.NoError(t, err)
+
+	expected := db_repo.NewQueryBuilder()
+	expected.Table("items")
+	expected.Where("(((field IS NULL)))", []any{}...)
+	expected.GroupBy("id")
+	assert.Equal(t, expected, qb)
+}
+
+func TestListQueryBuilder_IsNotOperator_NilValueProducesIsNotNull(t *testing.T) {
+	metadata := db_repo.Metadata{
+		TableName:  "items",
+		PrimaryKey: "id",
+		Mappings: db_repo.FieldMappings{
+			"id":    db_repo.NewFieldMapping("id"),
+			"field": db_repo.NewFieldMapping("field"),
+		},
+	}
+
+	inp := &sql.Input{
+		Filter: sql.Filter{
+			Matches: []sql.FilterMatch{
+				{Dimension: "field", Operator: "IS NOT", Values: []any{nil}},
+			},
+			Bool: sql.BoolAnd,
+		},
+		Order:   []sql.Order{},
+		GroupBy: []string{},
+	}
+
+	lqb := sql.NewOrmQueryBuilder(metadata)
+	qb, err := lqb.Build(inp)
+
+	assert.NoError(t, err)
+
+	expected := db_repo.NewQueryBuilder()
+	expected.Table("items")
+	expected.Where("(((field IS NOT NULL)))", []any{}...)
+	expected.GroupBy("id")
+	assert.Equal(t, expected, qb)
 }

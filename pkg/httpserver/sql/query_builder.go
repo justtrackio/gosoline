@@ -310,6 +310,18 @@ func (qb baseQueryBuilder) buildFilterValues(match FilterMatch) (where string, a
 	return where, args, nil
 }
 
+// isNullValue reports whether v represents a SQL NULL — either a Go nil or the
+// case-insensitive string "null" (as sent by some HTTP clients and query params).
+func isNullValue(v any) bool {
+	if v == nil {
+		return true
+	}
+
+	s, ok := v.(string)
+
+	return ok && strings.EqualFold(s, "null")
+}
+
 func (qb baseQueryBuilder) buildFilterColumn(match FilterMatch, column db_repo.FieldMappingColumn) (where string, args []any, err error) {
 	if (match.Operator == OpEq || match.Operator == OpNeq) && len(match.Values) > 1 {
 		where, args := qb.buildSetFilterColumn(match, column)
@@ -325,10 +337,18 @@ func (qb baseQueryBuilder) buildFilterColumn(match FilterMatch, column db_repo.F
 	for _, v := range match.Values {
 		switch {
 		case strings.EqualFold(OpIs, match.Operator):
-			stmts = append(stmts, fmt.Sprintf("%s IS %s", column.Name(), v))
+			if !isNullValue(v) {
+				return "", nil, fmt.Errorf("IS operator only supports NULL, got %q", v)
+			}
+
+			stmts = append(stmts, fmt.Sprintf("%s IS NULL", column.Name()))
 
 		case strings.EqualFold(OpIsNot, match.Operator):
-			stmts = append(stmts, fmt.Sprintf("%s IS NOT %s", column.Name(), v))
+			if !isNullValue(v) {
+				return "", nil, fmt.Errorf("IS NOT operator only supports NULL, got %q", v)
+			}
+
+			stmts = append(stmts, fmt.Sprintf("%s IS NOT NULL", column.Name()))
 
 		case match.Operator == OpLike:
 			stmts = append(stmts, fmt.Sprintf("%s LIKE ?", column.Name()))
@@ -375,9 +395,7 @@ func (qb baseQueryBuilder) buildFilterColumn(match FilterMatch, column db_repo.F
 			match.Operator == OpLt ||
 			match.Operator == OpGt ||
 			match.Operator == OpLte ||
-			match.Operator == OpGte ||
-			strings.EqualFold(match.Operator, OpIs) ||
-			strings.EqualFold(match.Operator, OpIsNot):
+			match.Operator == OpGte:
 			stmts = append(stmts, fmt.Sprintf("%s %s ?", column.Name(), match.Operator))
 			args = append(args, v)
 
