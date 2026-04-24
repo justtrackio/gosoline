@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
-	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/cache"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/pkg/errors"
@@ -31,11 +32,16 @@ func (p *GoogleTokenProvider) GetTokenInfo(idToken string) (*oauth2.Tokeninfo, e
 	return p.oauth2Service.Tokeninfo().IdToken(idToken).Do()
 }
 
+const (
+	tokenCacheTTL       = 5 * time.Minute
+	tokenCacheMaxSize   = 10_000
+	tokenCachePruneSize = 500
+)
+
 type configGoogleAuthenticator struct {
 	logger           log.Logger
-	tokenCache       map[string]*oauth2.Tokeninfo
+	tokenCache       cache.Cache[oauth2.Tokeninfo]
 	tokenProvider    TokenInfoProvider
-	mutex            sync.Mutex
 	validAudiences   []string
 	allowedAddresses []string
 }
@@ -90,11 +96,13 @@ func NewConfigGoogleAuthenticator(config cfg.Config, logger log.Logger) (Authent
 }
 
 func NewConfigGoogleAuthenticatorWithInterfaces(logger log.Logger, tokenProvider TokenInfoProvider, clientIds []string, allowedAddresses []string) Authenticator {
+	tokenCache := cache.New[oauth2.Tokeninfo](tokenCacheMaxSize, tokenCachePruneSize, tokenCacheTTL)
+
 	return &configGoogleAuthenticator{
 		logger:           logger,
 		validAudiences:   clientIds,
 		allowedAddresses: allowedAddresses,
-		tokenCache:       make(map[string]*oauth2.Tokeninfo),
+		tokenCache:       tokenCache,
 		tokenProvider:    tokenProvider,
 	}
 }
@@ -108,69 +116,45 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 
 	reqCtx := ginCtx.Request.Context()
 
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	var ok bool
-	var err error
-	var tokenInfo *oauth2.Tokeninfo
-
-	if tokenInfo, ok = a.tokenCache[idToken]; ok && tokenInfo == nil {
-		a.logger.Debug(reqCtx, "token was in cache but invalid")
-
-		return false, fmt.Errorf("token from cache invalidated the user")
-	}
-
-	if tokenInfo, ok = a.tokenCache[idToken]; ok {
-		a.logger.Debug(reqCtx, "idToken was already in cache and valid")
-
-		user := a.getSubjectForToken(tokenInfo)
-		RequestWithSubject(ginCtx, user)
-
-		return true, nil
-	}
-
-	a.logger.WithFields(log.Fields{
-		"id_token": idToken,
-	}).Info(reqCtx, "token not in cache, will perform request")
-
-	tokenInfo, err = a.tokenProvider.GetTokenInfo(idToken)
+	tokenInfo, err := a.tokenCache.ProvideWithError(idToken, func() (oauth2.Tokeninfo, error) {
+		return a.fetchAndValidateToken(reqCtx, idToken)
+	})
 	if err != nil {
-		a.tokenCache[idToken] = nil
-
-		return false, errors.Wrap(err, "google auth: failed requesting token info")
+		return false, err
 	}
 
-	if tokenInfo.HTTPStatusCode > 299 {
-		a.tokenCache[idToken] = nil
-
-		return false, fmt.Errorf("google auth: invalid status code %d", tokenInfo.HTTPStatusCode)
-	}
-
-	if !slices.Contains(a.validAudiences, tokenInfo.Audience) {
-		a.tokenCache[idToken] = nil
-
-		return false, fmt.Errorf("google auth: invalid audience")
-	}
-
-	if ok, err = a.isAddressAllowed(tokenInfo.Email); err != nil {
-		a.tokenCache[idToken] = nil
-
-		return false, fmt.Errorf("google auth: can not check if address is allowed")
-	}
-
-	if !ok {
-		a.tokenCache[idToken] = nil
-
-		return false, fmt.Errorf("google auth: address %s is not allowed", tokenInfo.Email)
-	}
-
-	a.tokenCache[idToken] = tokenInfo
-
-	user := a.getSubjectForToken(tokenInfo)
+	user := a.getSubjectForToken(&tokenInfo)
 	RequestWithSubject(ginCtx, user)
 
 	return true, nil
+}
+
+func (a *configGoogleAuthenticator) fetchAndValidateToken(ctx context.Context, idToken string) (oauth2.Tokeninfo, error) {
+	a.logger.Info(ctx, "token not in cache, will perform request")
+
+	tokenInfo, err := a.tokenProvider.GetTokenInfo(idToken)
+	if err != nil {
+		return oauth2.Tokeninfo{}, errors.Wrap(err, "google auth: failed requesting token info")
+	}
+
+	if tokenInfo.HTTPStatusCode > 299 {
+		return oauth2.Tokeninfo{}, fmt.Errorf("google auth: invalid status code %d", tokenInfo.HTTPStatusCode)
+	}
+
+	if !slices.Contains(a.validAudiences, tokenInfo.Audience) {
+		return oauth2.Tokeninfo{}, fmt.Errorf("google auth: invalid audience")
+	}
+
+	ok, err := a.isAddressAllowed(tokenInfo.Email)
+	if err != nil {
+		return oauth2.Tokeninfo{}, fmt.Errorf("google auth: can not check if address is allowed")
+	}
+
+	if !ok {
+		return oauth2.Tokeninfo{}, fmt.Errorf("google auth: address %s is not allowed", tokenInfo.Email)
+	}
+
+	return *tokenInfo, nil
 }
 
 func (a *configGoogleAuthenticator) isAddressAllowed(address string) (bool, error) {
