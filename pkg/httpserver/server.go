@@ -99,6 +99,7 @@ func NewWithSettings(ctx context.Context, name string, definer Definer, settings
 		router.Use(metricMiddleware)
 		router.Use(LoggingMiddleware(logger, settings.Logging))
 		router.Use(compressionMiddlewares...)
+		router.Use(MaxBodySizeMiddleware(settings.MaxBodyBytes))
 		router.Use(RecoveryWithSentry(logger))
 		router.Use(location.Default())
 		router.Use(connectionLifeCycleInterceptor)

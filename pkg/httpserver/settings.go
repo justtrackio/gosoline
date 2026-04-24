@@ -59,6 +59,9 @@ type (
 		Timeout TimeoutSettings `cfg:"timeout"`
 		// Logging settings
 		Logging LoggingSettings `cfg:"logging"`
+		// MaxBodyBytes is the maximum size of an incoming request body in bytes.
+		// A value of 0 disables the limit. Default: 10 MiB.
+		MaxBodyBytes int64 `cfg:"max_body_bytes" default:"10485760"`
 	}
 
 	// TimeoutSettings configures IO timeouts.
