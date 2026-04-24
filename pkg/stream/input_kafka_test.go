@@ -1,13 +1,18 @@
 package stream
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/kafka/connection"
+	kafkaConsumer "github.com/justtrackio/gosoline/pkg/kafka/consumer"
 	kafkaConsumerMocks "github.com/justtrackio/gosoline/pkg/kafka/consumer/mocks"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/twmb/franz-go/pkg/kerr"
 	"golang.org/x/sys/unix"
@@ -118,4 +123,33 @@ func TestCheckKafkaRetryableError(t *testing.T) {
 			assert.Equal(t, tt.expected, result, "CheckKafkaRetryableError(nil, %v) = %v, want %v", tt.err, result, tt.expected)
 		})
 	}
+}
+
+func TestKafkaInputRunClosesReaderBeforeStoppingPartitionManager(t *testing.T) {
+	reader := kafkaConsumerMocks.NewReader(t)
+	messageHandler := kafkaConsumerMocks.NewKafkaMessageHandler(t)
+	callOrder := make([]string, 0, 2)
+
+	reader.EXPECT().CloseAllowingRebalance().RunAndReturn(func() {
+		callOrder = append(callOrder, "reader")
+	}).Once()
+	messageHandler.EXPECT().Stop().RunAndReturn(func() {
+		callOrder = append(callOrder, "partition_manager")
+	}).Once()
+
+	partitionManager := kafkaConsumer.NewPartitionManager(log.NewLogger(), messageHandler)
+
+	input := &kafkaInput{
+		logger:           log.NewLogger(),
+		clock:            clock.Provider,
+		connection:       connection.Settings{},
+		partitionManager: partitionManager,
+		reader:           reader,
+		stopped:          make(chan struct{}),
+	}
+
+	input.Stop(context.Background())
+
+	assert.NoError(t, input.Run(context.Background()))
+	assert.Equal(t, []string{"reader", "partition_manager"}, callOrder)
 }
