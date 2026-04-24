@@ -190,8 +190,8 @@ func (i *kafkaInput) processPartitions(ctx context.Context, fetches kgo.Fetches)
 }
 
 func (i *kafkaInput) Run(ctx context.Context) error {
-	defer i.reader.CloseAllowingRebalance()
 	defer i.partitionManager.Stop(ctx)
+	defer i.reader.CloseAllowingRebalance()
 
 	for {
 		select {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -17,6 +18,7 @@ type PartitionManager struct {
 	lck            sync.RWMutex
 	messageHandler KafkaMessageHandler
 	done           chan struct{}
+	stopping       atomic.Bool
 }
 
 type assignment struct {
@@ -44,11 +46,24 @@ func NewPartitionManager(logger log.Logger, messageHandler KafkaMessageHandler) 
 }
 
 func (p *PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo.Client, assigned map[string][]int32) {
+	if p.stopping.Load() {
+		p.logger.Info(ctx, "ignoring partition assignment while partition manager is stopping")
+
+		return
+	}
+
 	for topic, partitions := range assigned {
 		for _, partition := range partitions {
+			p.lck.Lock()
+			if p.stopping.Load() {
+				p.lck.Unlock()
+				p.logger.Info(ctx, "ignoring partition assignment for partition %d of topic %s while partition manager is stopping", partition, topic)
+
+				continue
+			}
+
 			partitionConsumer := NewPartitionConsumer(p.logger, topic, partition, p.messageHandler, client)
 
-			p.lck.Lock()
 			p.consumers[assignment{topic, partition}] = partitionConsumer
 			p.lck.Unlock()
 
@@ -119,6 +134,8 @@ func (p *PartitionManager) HandleWithoutCommit(records []*kgo.Record) {
 }
 
 func (p *PartitionManager) Stop(ctx context.Context) {
+	p.stopping.Store(true)
+
 	p.lck.Lock()
 	for assignment, consumer := range p.consumers {
 		consumer.Stop()
