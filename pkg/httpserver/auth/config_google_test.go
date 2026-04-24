@@ -109,14 +109,14 @@ func TestAuthGoogle_Authenticate_IdTokenInvalidEmailSuffixError(t *testing.T) {
 		},
 	}
 
-	tokenProvider.EXPECT().GetTokenInfo("test").Return(tokenInfo, nil)
+	tokenProvider.EXPECT().GetTokenInfo("test").Return(tokenInfo, nil).Times(2)
 	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"c.de"}, []string{"^.*c\\.de$"})
 
 	_, err := a.IsValid(ginCtx)
 	assert.EqualError(t, err, "google auth: address a.b@c.be is not allowed")
 
 	_, err = a.IsValid(ginCtx)
-	assert.EqualError(t, err, "token from cache invalidated the user")
+	assert.EqualError(t, err, "google auth: address a.b@c.be is not allowed")
 }
 
 func TestAuthGoogle_Authenticate_IdTokenValid(t *testing.T) {
@@ -231,4 +231,37 @@ func TestAuthGoogle_EmailPattern_AnchoredAllowsExactMatch(t *testing.T) {
 	ok, err := a.IsValid(getGinCtx("tok2"))
 	assert.True(t, ok)
 	assert.NoError(t, err)
+}
+
+// TestAuthGoogle_ValidTokenCachedForSubsequentRequests verifies that a
+// successfully validated token is served from cache on the next request,
+// so the expensive token-info RPC is performed only once.
+func TestAuthGoogle_ValidTokenCachedForSubsequentRequests(t *testing.T) {
+	logger, tokenProvider, _ := getMocks(t, "")
+
+	tokenInfo := &oauth2.Tokeninfo{
+		Audience: "client-id",
+		Email:    "user@example.com",
+		ServerResponse: googleapi.ServerResponse{
+			HTTPStatusCode: http.StatusOK,
+		},
+	}
+
+	// GetTokenInfo must be called exactly once even though IsValid is called twice.
+	tokenProvider.EXPECT().GetTokenInfo("mytoken").Return(tokenInfo, nil).Once()
+
+	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(
+		logger,
+		tokenProvider,
+		[]string{"client-id"},
+		[]string{`.*@example\.com`},
+	)
+
+	ok1, err1 := a.IsValid(getGinCtx("mytoken"))
+	assert.True(t, ok1)
+	assert.NoError(t, err1)
+
+	ok2, err2 := a.IsValid(getGinCtx("mytoken"))
+	assert.True(t, ok2)
+	assert.NoError(t, err2)
 }
