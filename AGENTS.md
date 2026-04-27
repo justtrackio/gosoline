@@ -83,6 +83,7 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 | `rds/` | RDS |
 | `resourcegroupstaggingapi/` | Resource Groups Tagging API |
 | `s3/` | S3 object storage |
+| `sagemakerruntime/` | SageMaker Runtime |
 | `secretsmanager/` | Secrets Manager |
 | `servicediscovery/` | Cloud Map service discovery |
 | `ses/` | Simple Email Service |
@@ -157,6 +158,7 @@ Each service adds its own resource identifiers:
 - Kinesis: `{streamName}`
 - Kafka: `{topicId}`, `{groupId}`
 - Redis: `{name}` (redis client name)
+- SageMaker Runtime: `{name}`
 
 ### ModelId macros (mdl package)
 Used in DynamoDB table names via `cfg.Identity.Format()` with `mdl.ModelId.ToMap()`:
