@@ -29,7 +29,9 @@ func NewFileInput(_ cfg.Config, logger log.Logger, settings FileSettings) Input 
 
 func NewFileInputWithInterfaces(logger log.Logger, settings FileSettings) Input {
 	return &fileInput{
-		logger:   logger,
+		logger: logger.WithFields(log.Fields{
+			"file_name": settings.Filename,
+		}),
 		settings: settings,
 		channel:  make(chan *Message),
 	}

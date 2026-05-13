@@ -49,6 +49,10 @@ func ProvideConfigurableInput(ctx context.Context, config cfg.Config, logger log
 }
 
 func NewConfigurableInput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
+	logger = logger.WithFields(log.Fields{
+		"input": name,
+	})
+
 	t, err := readInputType(config, name)
 	if err != nil {
 		return nil, fmt.Errorf("could not read input type: %w", err)
