@@ -109,7 +109,11 @@ func NewSqsInputWithInterfaces(
 	}
 
 	return &sqsInput{
-		logger:           logger,
+		logger: logger.WithFields(log.Fields{
+			"queue_name": queue.GetName(),
+			"queue_url":  queue.GetUrl(),
+			"queue_arn":  queue.GetArn(),
+		}),
 		queue:            queue,
 		settings:         settings,
 		unmarshaler:      unmarshaller,

@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/kafka"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	kafkaConsumer "github.com/justtrackio/gosoline/pkg/kafka/consumer"
 	kafkaErrors "github.com/justtrackio/gosoline/pkg/kafka/errors"
@@ -36,6 +37,15 @@ type kafkaInput struct {
 var _ SchemaRegistryAwareInput = &kafkaInput{}
 
 func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, settings kafkaConsumer.Settings) (Input, error) {
+	topicName, err := kafka.BuildFullTopicName(config, settings.ToIdentity(), settings.TopicId)
+	if err != nil {
+		return nil, fmt.Errorf("can not build kafka topic name: %w", err)
+	}
+
+	logger = logger.WithFields(log.Fields{
+		"kafka_topic": topicName,
+	})
+
 	data := make(chan *Message)
 	messageHandler := NewKafkaMessageHandler(data)
 	partitionManager := kafkaConsumer.NewPartitionManager(logger, messageHandler)

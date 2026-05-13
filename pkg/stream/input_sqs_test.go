@@ -80,6 +80,9 @@ func TestSqsInput_Run(t *testing.T) {
 			msg := &stream.Message{}
 
 			queue := sqsMocks.NewQueue(t)
+			queue.EXPECT().GetName().Return("test-queue").Once()
+			queue.EXPECT().GetUrl().Return("https://sqs.us-east-1.amazonaws.com/123456789012/test-queue").Once()
+			queue.EXPECT().GetArn().Return("arn:aws:sqs:us-east-1:123456789012:test-queue").Once()
 			queue.EXPECT().Receive(ctx, int32(1), int32(3)).
 				RunAndReturn(func(_ context.Context, mrc, wt int32) ([]types.Message, error) {
 					newCount := atomic.AddInt32(&count, 1)
@@ -131,6 +134,9 @@ func TestSqsInput_Run_Failure(t *testing.T) {
 	waitRunDone := make(chan struct{})
 
 	queue := sqsMocks.NewQueue(t)
+	queue.EXPECT().GetName().Return("test-queue").Once()
+	queue.EXPECT().GetUrl().Return("https://sqs.us-east-1.amazonaws.com/123456789012/test-queue").Once()
+	queue.EXPECT().GetArn().Return("arn:aws:sqs:us-east-1:123456789012:test-queue").Once()
 	queue.EXPECT().Receive(matcher.Context, int32(10), int32(3)).
 		RunAndReturn(func(_ context.Context, mrc, wt int32) ([]types.Message, error) {
 			newCount := atomic.AddInt32(&count, 1)
