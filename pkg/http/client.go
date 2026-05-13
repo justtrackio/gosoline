@@ -477,19 +477,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 		return nil, fmt.Errorf("failed to assemble request: %w", err)
 	}
 
-	req.SetContext(ctx)
-	req.SetHeaders(c.defaultHeaders)
-
-	if request.forwardTraceId {
-		if traceId := tracing.GetTraceIdFromContext(ctx); traceId != nil {
-			req.SetHeader(xray.TraceIDHeaderKey, *traceId)
-		}
-	}
-
-	if request.outputFile != nil {
-		req.SetOutput(*request.outputFile)
-	}
-
+	c.prepareRequest(ctx, req, request)
 	c.writeMetric(ctx, metricRequest, method, metric.UnitCount, 1.0)
 	start := c.clock.Now()
 	resp, err := req.Execute(method, url)
@@ -522,6 +510,40 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	c.writeMetric(ctx, metricRequestDuration, method, metric.UnitMillisecondsAverage, requestDurationMs)
 
 	return response, nil
+}
+
+func (c *client) prepareRequest(ctx context.Context, req *resty.Request, request *Request) {
+	req.SetContext(ctx)
+	c.setDefaultHeaders(req)
+	c.injectTraceId(ctx, req, request)
+
+	if request.outputFile != nil {
+		req.SetOutput(*request.outputFile)
+	}
+}
+
+func (c *client) injectTraceId(ctx context.Context, req *resty.Request, request *Request) {
+	if !request.forwardTraceId {
+		return
+	}
+
+	// do not overwrite the header if it was already provided by the caller
+	if _, ok := req.Header[http.CanonicalHeaderKey(xray.TraceIDHeaderKey)]; ok {
+		return
+	}
+
+	if traceId := tracing.GetTraceIdFromContext(ctx); traceId != nil {
+		req.SetHeader(xray.TraceIDHeaderKey, *traceId)
+	}
+}
+
+func (c *client) setDefaultHeaders(req *resty.Request) {
+	for k, v := range c.defaultHeaders {
+		// we only set a default header if the request doesn't already carry it, allowing a request to overwrite the defaults
+		if _, ok := req.Header[http.CanonicalHeaderKey(k)]; !ok {
+			req.SetHeader(k, v)
+		}
+	}
 }
 
 func (c *client) writeMetric(ctx context.Context, metricName string, method string, unit metric.StandardUnit, value float64) {

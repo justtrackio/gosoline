@@ -44,6 +44,10 @@ func (c *consumerAcknowledge) Acknowledge(ctx context.Context, cdata *consumerDa
 
 	err := ackInput.Ack(delayedCtx, cdata.msg, ack)
 	if exec.IsRequestCanceled(err) || ctx.Err() != nil {
+		if err == nil {
+			// we only got an error on the context, assign it so we don't log a nil error
+			err = ctx.Err()
+		}
 		c.logger.Warn(ctx, "could not acknowledge the message during shutdown: %w", err)
 
 		return
