@@ -37,7 +37,7 @@ func TestTaskRunner(t *testing.T) {
 		if i%2 == 0 {
 			err = taskRunner.RunTask(ctx, task)
 		} else {
-			err = runner.RunTask(task)
+			err = runner.RunTask(ctx, task)
 		}
 		assert.NoError(t, err)
 	}
