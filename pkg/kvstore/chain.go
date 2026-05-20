@@ -101,10 +101,10 @@ func (s *chainKvStore[T]) Get(ctx context.Context, key any, value *T) (bool, err
 		if err != nil {
 			// return error only if last element fails
 			if i == lastElementIndex {
-				return false, fmt.Errorf("could not get %s from kvstore %T: %w", key, element, err)
+				return false, fmt.Errorf("could not get %v from kvstore %T: %w", key, element, err)
 			}
 
-			s.logger.Warn(ctx, "could not get %s from kvstore %T: %s", key, element, err.Error())
+			s.logger.Warn(ctx, "could not get %v from kvstore %T: %s", key, element, err.Error())
 		}
 
 		if exists {
@@ -127,7 +127,7 @@ func (s *chainKvStore[T]) Get(ctx context.Context, key any, value *T) (bool, err
 	for i := foundInIndex - 1; i >= 0; i-- {
 		err := s.chain[i].Put(ctx, key, *value)
 		if err != nil {
-			s.logger.Warn(ctx, "could not put %s to kvstore %T: %s", key, s.chain[i], err.Error())
+			s.logger.Warn(ctx, "could not put %v to kvstore %T: %s", key, s.chain[i], err.Error())
 		}
 	}
 
@@ -269,10 +269,10 @@ func (s *chainKvStore[T]) Put(ctx context.Context, key any, value T) error {
 		if err != nil {
 			// return error only if last element fails
 			if i == lastElementIndex {
-				return fmt.Errorf("could not put %s to kvstore %T: %w", key, s.chain[i], err)
+				return fmt.Errorf("could not put %v to kvstore %T: %w", key, s.chain[i], err)
 			}
 
-			s.logger.Warn(ctx, "could not put %s to kvstore %T: %s", key, s.chain[i], err.Error())
+			s.logger.Warn(ctx, "could not put %v to kvstore %T: %s", key, s.chain[i], err.Error())
 		}
 	}
 
@@ -280,7 +280,7 @@ func (s *chainKvStore[T]) Put(ctx context.Context, key any, value T) error {
 	// otherwise, we might remove it, some other thread adds it again and then we insert
 	// it into the backing stores
 	if err := s.missingCache.Delete(ctx, key); err != nil {
-		s.logger.Warn(ctx, "could not erase cached empty value for key %s: %s", key, err.Error())
+		s.logger.Warn(ctx, "could not erase cached empty value for key %v: %s", key, err.Error())
 	}
 
 	return nil
@@ -322,7 +322,7 @@ func (s *chainKvStore[T]) Delete(ctx context.Context, key any) error {
 			// even if we do not fail at the last index, we can't leave something
 			// in a cache but not in the backend store
 
-			return fmt.Errorf("could not delete %s from kvstore %T: %w", key, store, err)
+			return fmt.Errorf("could not delete %v from kvstore %T: %w", key, store, err)
 		}
 	}
 
