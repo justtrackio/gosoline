@@ -2,65 +2,127 @@ package cli
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
+	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/kernel"
-	"github.com/justtrackio/gosoline/pkg/reslife"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	kernelPkg "github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.ModuleFactory) {
-	var err error
-	var cfgPostProcessors map[string]int
+type Cli struct {
+	*Router
 
-	configOptions := []cfg.Option{
-		cfg.WithConfigFile("./config.dist.yml", "yml"),
-		cfg.WithConfigFileFlag("config"),
+	input      *Input
+	flags      []Flag
+	cliOptions []Option
+	appOptions []application.Option
+}
+
+func NewCli(options ...Option) *Cli {
+	input := NewInput()
+	router := NewRouter(nil)
+
+	defaultAppOptions := []application.Option{
+		application.WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
+		application.WithConfigSanitizers(cfg.TimeSanitizer),
 	}
 
-	config := cfg.New()
-	if err := config.Option(configOptions...); err != nil {
-		defaultErrorHandler("can not initialize the config: %w", err)
+	return &Cli{
+		Router:     router,
+		input:      input,
+		flags:      nil,
+		cliOptions: options,
+		appOptions: defaultAppOptions,
+	}
+}
 
-		return
+func (c *Cli) Run() {
+	for _, opt := range c.cliOptions {
+		opt(c)
 	}
 
-	if cfgPostProcessors, err = cfg.ApplyPostProcessors(config); err != nil {
-		defaultErrorHandler("can not apply post processor on config: %w", err)
+	blueprint := NewBlueprint(c.Router, c.input)
+	appOptions, cmd := c.processArgs(blueprint)
 
-		return
-	}
+	appOptions = append(c.appOptions, appOptions...)
+	appOptions = append(appOptions, application.WithConfigSetting("cli.cmd", blueprint.Cmd))
+	appOptions = append(appOptions, application.WithConfigSetting("cli.args", blueprint.Args))
 
-	logger, err := newCliLogger(config)
-	if err != nil {
-		defaultErrorHandler("can not initialize the logger: %w", err)
+	for _, flag := range blueprint.Flags {
+		appOptions = append(appOptions, flag.AppOptions...)
 
-		return
-	}
+		key := fmt.Sprintf("cli.flags.%s", flag.Key)
+		appOptions = append(appOptions, application.WithConfigSetting(key, flag.Value))
 
-	for name, priority := range cfgPostProcessors {
-		logger.Info(context.Background(), "applied priority %d config post processor '%s'", priority, name)
-	}
-
-	ctx := appctx.WithContainer(context.Background())
-
-	options := []kernel.Option{
-		kernel.WithModuleFactory("cli", module, kernel.ModuleType(kernel.TypeEssential), kernel.ModuleStage(kernel.StageApplication)),
-		kernel.WithMiddlewareFactory(reslife.LifeCycleManagerMiddleware, kernel.PositionBeginning),
-	}
-
-	for _, otherModuleMap := range otherModuleMaps {
-		for name, otherModule := range otherModuleMap {
-			options = append(options, kernel.WithModuleFactory(name, otherModule))
+		if flag.CustomKey != "" {
+			appOptions = append(appOptions, application.WithConfigSetting(flag.CustomKey, flag.Value))
 		}
 	}
 
-	k, err := kernel.BuildKernel(ctx, config, logger, options)
-	if err != nil {
-		defaultErrorHandler("can not initialize the kernel: %w", err)
-
-		return
+	if cmd.ModuleFactory == nil {
+		fmt.Printf("no module found for arguments %s\n", c.input.Arguments)
+		os.Exit(1)
 	}
 
-	k.Run()
+	appOptions = append(appOptions, application.WithModuleFactory("main", cmd.ModuleFactory))
+	c.runApp(appOptions)
+}
+
+func (c *Cli) processArgs(blueprint *Blueprint) ([]application.Option, Cmd) {
+	var selected bool
+	var selectedCmd Cmd
+
+	router := c.Router
+	defaultCmd := router.defaultCmd
+	appOptions := make([]application.Option, 0)
+
+	for _, arg := range blueprint.Cmd {
+		if group, ok := router.groups[arg]; ok {
+			defaultCmd = group.child.defaultCmd
+			appOptions = append(appOptions, group.AppOptions...)
+			router = group.child
+
+			continue
+		}
+
+		if cmd, ok := router.cmds[arg]; ok {
+			selected = true
+			selectedCmd = cmd
+
+			break
+		}
+	}
+
+	if !selected {
+		selectedCmd = defaultCmd
+	}
+
+	appOptions = append(appOptions, selectedCmd.AppOptions...)
+
+	return appOptions, selectedCmd
+}
+
+func (c *Cli) runApp(appOptions []application.Option) {
+	ctx := appctx.WithContainer(context.Background())
+	config := cfg.New(map[string]any{
+		"app": map[string]any{
+			"env":  "dev",
+			"name": "gosoline",
+		},
+	})
+
+	logger := log.NewLoggerWithInterfaces(clock.NewRealClock(), []log.Handler{LogHandler{}})
+
+	var err error
+	var ker kernelPkg.Kernel
+	if ker, err = application.NewWithInterfaces(ctx, config, logger, appOptions...); err != nil {
+		fmt.Printf("can not build application: %v\n", err)
+		os.Exit(1)
+	}
+
+	ker.Run()
 }
