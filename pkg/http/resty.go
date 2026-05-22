@@ -14,5 +14,6 @@ type restyClient interface {
 	SetCookies(cookies []*http.Cookie) *resty.Client
 	SetProxy(proxy string) *resty.Client
 	SetRedirectPolicy(policies ...any) *resty.Client
+	SetRetryAfter(callback resty.RetryAfterFunc) *resty.Client
 	SetTimeout(timeout time.Duration) *resty.Client
 }

@@ -40,6 +40,10 @@ httpserver.default.mode: release  # or debug
 httpserver.default.timeout.read: 60s
 httpserver.default.timeout.write: 60s
 httpserver.default.compression.level: default
+httpserver.default.concurrency.max_requests: 0       # disabled; reject excess active requests when > 0
+httpserver.default.concurrency.max_connections: 0    # disabled; evict idle keep-alive connections when > 0
+httpserver.default.concurrency.overload_status_code: 503
+httpserver.default.concurrency.retry_after: 0
 ```
 
 ## Related packages

@@ -17,12 +17,12 @@ const (
 	MetricHttpStatus               = "HttpStatus"
 )
 
-func NewMetricMiddleware(name string) (middleware gin.HandlerFunc, setupHandler func(definitions []Definition)) {
+func NewMetricMiddleware(name string, metricRecorder ServerMetricRecorder) (middleware gin.HandlerFunc, setupHandler func(definitions []Definition)) {
 	// writer without any defaults until we initialize some defaults and overwrite it
 	writer := metric.NewWriter()
 
 	middleware = func(ginCtx *gin.Context) {
-		metricMiddleware(name, ginCtx, writer)
+		metricMiddleware(name, ginCtx, writer, metricRecorder)
 	}
 
 	setupHandler = func(definitions []Definition) {
@@ -33,9 +33,12 @@ func NewMetricMiddleware(name string) (middleware gin.HandlerFunc, setupHandler 
 	return middleware, setupHandler
 }
 
-func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer) {
+func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, metricRecorder ServerMetricRecorder) {
 	start := time.Now()
 	method := ginCtx.Request.Method
+
+	metricRecorder.TrackRequestStarted(ginCtx.Request.Context())
+	defer metricRecorder.TrackRequestCompleted(ginCtx.Request.Context())
 
 	path := ginCtx.FullPath()
 	if path == "" {

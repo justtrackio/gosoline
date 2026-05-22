@@ -62,6 +62,23 @@ type (
 		// MaxBodyBytes is the maximum size of an incoming request body in bytes.
 		// A value of 0 disables the limit. Default: 10 MiB.
 		MaxBodyBytes int64 `cfg:"max_body_bytes" default:"10485760"`
+		// Concurrency settings control request and connection pressure limits.
+		Concurrency ConcurrencySettings `cfg:"concurrency"`
+	}
+
+	// ConcurrencySettings configures pressure limits for a HTTP server.
+	ConcurrencySettings struct {
+		// MaxRequests is the maximum number of concurrently handled requests.
+		// A value of 0 disables request limiting.
+		MaxRequests int `cfg:"max_requests" default:"0" validate:"min=0"`
+		// MaxConnections is the target maximum number of concurrently open connections.
+		// A value of 0 disables connection pressure management.
+		MaxConnections int `cfg:"max_connections" default:"0" validate:"min=0"`
+		// OverloadStatusCode is returned when MaxRequests is reached.
+		OverloadStatusCode int `cfg:"overload_status_code" default:"503" validate:"min=100,max=599"`
+		// RetryAfter is written as Retry-After header when MaxRequests is reached.
+		// A value of 0 omits the header.
+		RetryAfter time.Duration `cfg:"retry_after" default:"0" validate:"min=0"`
 	}
 
 	// TimeoutSettings configures IO timeouts.
