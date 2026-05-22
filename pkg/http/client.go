@@ -75,6 +75,7 @@ type client struct {
 	http           restyClient
 	metricWriter   metric.Writer
 	forwardTraceId bool
+	requestTimeout time.Duration
 }
 
 type Settings struct {
@@ -82,6 +83,7 @@ type Settings struct {
 	FollowRedirects        bool                   `cfg:"follow_redirects" default:"true"`
 	RequestTimeout         time.Duration          `cfg:"request_timeout" default:"30s"`
 	RetryCount             int                    `cfg:"retry_count" default:"5"`
+	RetryAfterSettings     RetryAfterSettings     `cfg:"retry_after"`
 	RetryMaxWaitTime       time.Duration          `cfg:"retry_max_wait_time" default:"2000ms"`
 	RetryResetReaders      bool                   `cfg:"retry_reset_readers" default:"true"`
 	RetryWaitTime          time.Duration          `cfg:"retry_wait_time" default:"100ms"`
@@ -272,7 +274,14 @@ func newHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, na
 		return nil, fmt.Errorf("failed to unmarshal client settings: %w", err)
 	}
 	restyClient := newRestyClient(tracer, settings)
-	client := NewHttpClientWithInterfaces(logger, clock.Provider, metricWriter, restyClient, settings.TracingSettings.ForwardTraceId)
+	client := NewHttpClientWithInterfaces(
+		logger,
+		clock.Provider,
+		metricWriter,
+		restyClient,
+		settings.TracingSettings.ForwardTraceId,
+		settings.RequestTimeout,
+	)
 
 	if settings.CircuitBreakerSettings.Enabled {
 		client = NewCircuitBreakerClientWithInterfaces(client, logger, clock.Provider, name, settings.CircuitBreakerSettings)
@@ -328,7 +337,8 @@ func newRestyClient(tracer tracing.Instrumentor, settings Settings) *resty.Clien
 	httpClient.SetRetryCount(settings.RetryCount)
 	httpClient.SetTimeout(settings.RequestTimeout)
 	httpClient.SetRetryWaitTime(settings.RetryWaitTime)
-	httpClient.SetRetryMaxWaitTime(settings.RetryMaxWaitTime)
+	httpClient.SetRetryMaxWaitTime(getRetryMaxWaitTime(settings))
+	httpClient.SetRetryAfter(newRetryAfterFunc(settings))
 	httpClient.SetRetryResetReaders(settings.RetryResetReaders)
 	httpClient.SetTransport(transport)
 
@@ -372,6 +382,7 @@ func NewHttpClientWithInterfaces(
 	metricWriter metric.Writer,
 	httpClient restyClient,
 	forwardTraceId bool,
+	requestTimeout time.Duration,
 ) Client {
 	return &client{
 		logger:         logger,
@@ -380,6 +391,7 @@ func NewHttpClientWithInterfaces(
 		http:           httpClient,
 		metricWriter:   metricWriter,
 		forwardTraceId: forwardTraceId,
+		requestTimeout: requestTimeout,
 	}
 }
 
@@ -465,6 +477,9 @@ func (c *client) Put(ctx context.Context, request *Request) (*Response, error) {
 }
 
 func (c *client) do(ctx context.Context, method string, request *Request) (*Response, error) {
+	ctx, cancel := c.withRequestTimeout(ctx)
+	defer cancel()
+
 	req, url, err := request.build()
 	logger := c.logger.WithFields(log.Fields{
 		"url":    url,
@@ -510,6 +525,14 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	c.writeMetric(ctx, metricRequestDuration, method, metric.UnitMillisecondsAverage, requestDurationMs)
 
 	return response, nil
+}
+
+func (c *client) withRequestTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	if c.requestTimeout <= 0 {
+		return ctx, func() {}
+	}
+
+	return context.WithTimeout(ctx, c.requestTimeout)
 }
 
 func (c *client) prepareRequest(ctx context.Context, req *resty.Request, request *Request) {

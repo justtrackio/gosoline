@@ -1,0 +1,16 @@
+app:
+  env: test
+  name: concurrency-test
+  tags:
+    project: gosoline
+    family: test
+    group: grp
+
+httpserver:
+  default:
+    port: 0
+    concurrency:
+      max_requests: 1
+      max_connections: 0
+      overload_status_code: 429
+      retry_after: 1s

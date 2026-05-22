@@ -1,0 +1,14 @@
+app:
+  env: test
+  name: connection-pressure-test
+  tags:
+    project: gosoline
+    family: test
+    group: grp
+
+httpserver:
+  default:
+    port: 0
+    concurrency:
+      max_requests: 0
+      max_connections: 1

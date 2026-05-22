@@ -10,8 +10,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
+	httpserverMocks "github.com/justtrackio/gosoline/pkg/httpserver/mocks"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	tracingMocks "github.com/justtrackio/gosoline/pkg/tracing/mocks"
 	"github.com/stretchr/testify/assert"
@@ -23,6 +25,7 @@ type ServerTestSuite struct {
 	logger              log.Logger
 	router              *gin.Engine
 	tracingInstrumentor tracing.Instrumentor
+	metricRecorder      *httpserverMocks.ServerMetricRecorder
 	server              *httpserver.HttpServer
 }
 
@@ -39,8 +42,9 @@ func (s *ServerTestSuite) SetupTest() {
 	tracingInstrumentor := tracingMocks.NewInstrumentor(s.T())
 	tracingInstrumentor.EXPECT().HttpHandler(s.router).Return(s.router)
 	s.tracingInstrumentor = tracingInstrumentor
+	s.metricRecorder = httpserverMocks.NewServerMetricRecorder(s.T())
 
-	server, err := httpserver.NewWithInterfaces(s.T().Context(), s.logger, s.router, s.tracingInstrumentor, &httpserver.Settings{})
+	server, err := httpserver.NewWithInterfaces(s.T().Context(), s.logger, s.router, s.tracingInstrumentor, &httpserver.Settings{}, s.metricRecorder)
 	s.NoError(err)
 
 	s.server = server
@@ -49,6 +53,7 @@ func (s *ServerTestSuite) SetupTest() {
 func (s *ServerTestSuite) TestLifecycle_Cancel() {
 	ctx, cancel := context.WithCancel(s.T().Context())
 	cancel()
+	s.metricRecorder.EXPECT().Run(matcher.Context).Return(nil)
 
 	s.NotPanics(func() {
 		err := s.server.Run(ctx)
