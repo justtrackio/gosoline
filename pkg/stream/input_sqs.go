@@ -109,11 +109,7 @@ func NewSqsInputWithInterfaces(
 	}
 
 	return &sqsInput{
-		logger: logger.WithFields(log.Fields{
-			"queue_name": queue.GetName(),
-			"queue_url":  queue.GetUrl(),
-			"queue_arn":  queue.GetArn(),
-		}),
+		logger:           logger,
 		queue:            queue,
 		settings:         settings,
 		unmarshaler:      unmarshaller,
@@ -134,9 +130,9 @@ func (i *sqsInput) Run(ctx context.Context) error {
 	}
 
 	defer close(i.channel)
-	defer i.logger.Info(ctx, "leaving sqs input")
+	defer i.loggerWithQueueFields().Info(ctx, "leaving sqs input")
 
-	i.logger.Info(ctx, "starting sqs input with %d runners", i.settings.RunnerCount)
+	i.loggerWithQueueFields().Info(ctx, "starting sqs input with %d runners", i.settings.RunnerCount)
 
 	i.cfn.Go(func() error {
 		for j := 0; j < i.settings.RunnerCount; j++ {
@@ -155,7 +151,7 @@ func (i *sqsInput) Run(ctx context.Context) error {
 }
 
 func (i *sqsInput) runLoop(ctx context.Context) error {
-	defer i.logger.Info(ctx, "leaving sqs input runner")
+	defer i.loggerWithQueueFields().Info(ctx, "leaving sqs input runner")
 
 	for {
 		if atomic.LoadInt32(&i.stopped) != 0 {
@@ -167,7 +163,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 
 		sqsMessages, err := i.queue.Receive(ctx, i.settings.MaxNumberOfMessages, i.settings.WaitTime)
 		if err != nil {
-			i.logger.Error(ctx, "could not get messages from sqs: %w", err)
+			i.loggerWithQueueFields().Error(ctx, "could not get messages from sqs: %w", err)
 
 			continue
 		}
@@ -175,7 +171,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 		for _, sqsMessage := range sqsMessages {
 			msg, err := i.unmarshaler(sqsMessage.Body)
 			if err != nil {
-				i.logger.Error(ctx, "could not unmarshal message: %w", err)
+				i.loggerWithQueueFields().Error(ctx, "could not unmarshal message: %w", err)
 
 				continue
 			}
@@ -198,6 +194,14 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 			i.healthCheckTimer.MarkHealthy()
 		}
 	}
+}
+
+func (i *sqsInput) loggerWithQueueFields() log.Logger {
+	return i.logger.WithFields(log.Fields{
+		"queue_name": i.queue.GetName(),
+		"queue_url":  i.queue.GetUrl(),
+		"queue_arn":  i.queue.GetArn(),
+	})
 }
 
 func (i *sqsInput) Stop(ctx context.Context) {

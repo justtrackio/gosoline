@@ -37,14 +37,10 @@ type kafkaInput struct {
 var _ SchemaRegistryAwareInput = &kafkaInput{}
 
 func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, settings kafkaConsumer.Settings) (Input, error) {
-	topicName, err := kafka.BuildFullTopicName(config, settings.ToIdentity(), settings.TopicId)
+	logger, err := addKafkaInputLoggerFields(config, logger, settings)
 	if err != nil {
-		return nil, fmt.Errorf("can not build kafka topic name: %w", err)
+		return nil, err
 	}
-
-	logger = logger.WithFields(log.Fields{
-		"kafka_topic": topicName,
-	})
 
 	data := make(chan *Message)
 	messageHandler := NewKafkaMessageHandler(data)
@@ -87,6 +83,17 @@ func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, se
 	)
 
 	return NewKafkaInputWithInterfaces(logger, clock.Provider, *conn, healthCheckTimer, partitionManager, reader, schemaRegistryService, executor, settings, data), nil
+}
+
+func addKafkaInputLoggerFields(config cfg.Config, logger log.Logger, settings kafkaConsumer.Settings) (log.Logger, error) {
+	topicName, err := kafka.BuildFullTopicName(config, settings.ToIdentity(), settings.TopicId)
+	if err != nil {
+		return nil, fmt.Errorf("can not build kafka topic name: %w", err)
+	}
+
+	return logger.WithFields(log.Fields{
+		"kafka_topic": topicName,
+	}), nil
 }
 
 func NewKafkaInputWithInterfaces(
