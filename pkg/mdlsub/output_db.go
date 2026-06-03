@@ -3,6 +3,7 @@ package mdlsub
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -49,16 +50,34 @@ func NewOutputDb(ctx context.Context, config cfg.Config, logger log.Logger) (*Ou
 }
 
 func (p *OutputDb) Persist(_ context.Context, model Model, op string) error {
-	var err error
+	addressableModel, err := ensureAddressableModel(model)
+	if err != nil {
+		return err
+	}
 
 	switch op {
 	case db_repo.Create, db_repo.Update:
-		err = p.orm.Save(model).Error
+		err = p.orm.Save(addressableModel).Error
 	case db_repo.Delete:
-		err = p.orm.Delete(model).Error
+		err = p.orm.Delete(addressableModel).Error
 	default:
 		err = fmt.Errorf("unknown operation %s in OutputDb", op)
 	}
 
 	return err
+}
+
+func ensureAddressableModel(model Model) (any, error) {
+	value := reflect.ValueOf(model)
+	if !value.IsValid() {
+		return nil, fmt.Errorf("model must not be nil")
+	}
+	if value.Kind() == reflect.Ptr {
+		return nil, fmt.Errorf("model must not be a pointer")
+	}
+
+	pointer := reflect.New(value.Type())
+	pointer.Elem().Set(value)
+
+	return pointer.Interface(), nil
 }
