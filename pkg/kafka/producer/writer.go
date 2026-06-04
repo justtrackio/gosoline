@@ -9,7 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	"github.com/justtrackio/gosoline/pkg/kafka/logging"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/reslife"
+	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
@@ -18,11 +18,13 @@ type Writer interface {
 	ProduceSync(ctx context.Context, rs ...*kgo.Record) kgo.ProduceResults
 }
 
-func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (Writer, error) {
+func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, name string) (Writer, error) {
 	topic, err := kafka.BuildFullTopicName(config, settings.ToIdentity(), settings.TopicId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build full topic name for topic id %q: %w", settings.TopicId, err)
 	}
+
+	metricsHook := kafka.NewMetricsHook(metric.NewWriter(), kafka.DimensionProducer, name)
 
 	opts := []kgo.Opt{
 		kgo.DefaultProduceTopic(topic),
@@ -32,6 +34,7 @@ func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settin
 		kgo.ProduceRequestTimeout(settings.RequestTimeout),
 		kgo.ProducerBatchCompression(settings.GetKafkaCompressor()),
 		kgo.WithContext(ctx),
+		kgo.WithHooks(metricsHook),
 		kgo.WithLogger(logging.NewKafkaLogger(ctx, logger)),
 	}
 
@@ -44,10 +47,6 @@ func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settin
 	client, err := kgo.NewClient(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create franz-go client: %w", err)
-	}
-
-	if err = reslife.AddLifeCycleer(ctx, kafka.NewLifecycleManager(settings.Connection, topic)); err != nil {
-		return nil, fmt.Errorf("failed to add kafka lifecycle manager: %w", err)
 	}
 
 	return client, nil

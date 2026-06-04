@@ -6,13 +6,23 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/kafka"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/twmb/franz-go/pkg/kgo"
+)
+
+const (
+	metricNameRebalanceCount = "RebalanceCount"
 )
 
 type PartitionManager struct {
 	logger         log.Logger
+	clock          clock.Clock
+	metricWriter   metric.Writer
+	name           string
 	cfn            coffin.Coffin
 	consumers      map[assignment]*PartitionConsumer
 	lck            sync.RWMutex
@@ -26,7 +36,7 @@ type assignment struct {
 	partition int32
 }
 
-func NewPartitionManager(logger log.Logger, messageHandler KafkaMessageHandler) *PartitionManager {
+func NewPartitionManager(logger log.Logger, clk clock.Clock, metricWriter metric.Writer, messageHandler KafkaMessageHandler, name string) *PartitionManager {
 	cfn := coffin.New()
 	done := make(chan struct{})
 
@@ -38,6 +48,9 @@ func NewPartitionManager(logger log.Logger, messageHandler KafkaMessageHandler) 
 
 	return &PartitionManager{
 		logger:         logger,
+		clock:          clk,
+		metricWriter:   metricWriter,
+		name:           name,
 		cfn:            cfn,
 		consumers:      make(map[assignment]*PartitionConsumer),
 		messageHandler: messageHandler,
@@ -53,6 +66,8 @@ func (p *PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo
 	}
 
 	for topic, partitions := range assigned {
+		p.metricWriter.WriteOne(ctx, metric.NewMetricDatum(metricNameRebalanceCount, metric.Dimensions{kafka.DimensionConsumer: p.name, kafka.DimensionTopic: topic}, 1.0, metric.UnitCount, metric.PriorityHigh))
+
 		for _, partition := range partitions {
 			p.lck.Lock()
 			if p.stopping.Load() {
@@ -62,7 +77,7 @@ func (p *PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo
 				continue
 			}
 
-			partitionConsumer := NewPartitionConsumer(p.logger, topic, partition, p.messageHandler, client)
+			partitionConsumer := NewPartitionConsumer(p.logger, p.clock, p.metricWriter, p.messageHandler, client, p.name, topic, partition)
 
 			p.consumers[assignment{topic, partition}] = partitionConsumer
 			p.lck.Unlock()
@@ -86,6 +101,8 @@ func (p *PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo
 	defer wg.Wait()
 
 	for topic, partitions := range lost {
+		p.metricWriter.WriteOne(ctx, metric.NewMetricDatum(metricNameRebalanceCount, metric.Dimensions{kafka.DimensionConsumer: p.name, kafka.DimensionTopic: topic}, 1.0, metric.UnitCount, metric.PriorityHigh))
+
 		for _, partition := range partitions {
 			assignment := assignment{topic, partition}
 

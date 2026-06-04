@@ -52,3 +52,14 @@ func (d *Datum) IsValid() error {
 }
 
 type Data []*Datum
+
+// NewMetricDatum creates a Datum with the given parameters.
+func NewMetricDatum(metricName string, dims Dimensions, value float64, unit StandardUnit, priority int) *Datum {
+	return &Datum{
+		Priority:   priority,
+		MetricName: metricName,
+		Dimensions: dims,
+		Value:      value,
+		Unit:       unit,
+	}
+}

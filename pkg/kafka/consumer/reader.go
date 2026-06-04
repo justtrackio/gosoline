@@ -9,7 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	"github.com/justtrackio/gosoline/pkg/kafka/logging"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/reslife"
+	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
@@ -20,11 +20,13 @@ type Reader interface {
 	PollRecords(ctx context.Context, maxPollRecords int) kgo.Fetches
 }
 
-func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settings Settings, partitionManager *PartitionManager, isReadOnly bool) (Reader, error) {
+func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settings Settings, partitionManager *PartitionManager, isReadOnly bool, name string) (Reader, error) {
 	topicName, err := kafka.BuildFullTopicName(config, settings.ToIdentity(), settings.TopicId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build full kafka topic name: %w", err)
 	}
+
+	metricsHook := kafka.NewMetricsHook(metric.NewWriter(), kafka.DimensionConsumer, name)
 
 	opts := []kgo.Opt{
 		kgo.ConsumeResetOffset(settings.GetStartOffset()),
@@ -35,6 +37,7 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 		kgo.RebalanceTimeout(settings.RebalanceTimeout),
 		kgo.SessionTimeout(settings.SessionTimeout),
 		kgo.WithContext(ctx),
+		kgo.WithHooks(metricsHook),
 		kgo.WithLogger(logging.NewKafkaLogger(ctx, logger)),
 	}
 
@@ -64,10 +67,6 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 	client, err := kgo.NewClient(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("can not create franz-go client: %w", err)
-	}
-
-	if err = reslife.AddLifeCycleer(ctx, kafka.NewLifecycleManager(settings.Connection, topicName)); err != nil {
-		return nil, fmt.Errorf("failed to add kafka lifecycle manager: %w", err)
 	}
 
 	return client, nil

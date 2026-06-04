@@ -4,19 +4,22 @@ import (
 	"context"
 	"testing"
 
-	consumerMocks "github.com/justtrackio/gosoline/pkg/kafka/consumer/mocks"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	kafkaConsumerMocks "github.com/justtrackio/gosoline/pkg/kafka/consumer/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestPartitionManagerIgnoresAssignmentsAfterStop(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
-	messageHandler := consumerMocks.NewKafkaMessageHandler(t)
+	messageHandler := kafkaConsumerMocks.NewKafkaMessageHandler(t)
+	metricWriter := metricMocks.NewWriter(t)
 
 	messageHandler.EXPECT().Stop().Once()
 
-	manager := NewPartitionManager(logger, messageHandler)
+	manager := NewPartitionManager(logger, clock.NewFakeClock(), metricWriter, messageHandler, "test-consumer")
 	manager.Stop(context.Background())
 
 	require.NotPanics(t, func() {
