@@ -1,6 +1,8 @@
 package httpserver
 
 import (
+	"context"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -27,6 +29,7 @@ func ConcurrentRequestLimitMiddleware(settings ConcurrencySettings) gin.HandlerF
 
 			c.Next()
 		default:
+			c.Request = markRequestRejected(c.Request)
 			writeRetryAfterHeader(c, settings.RetryAfter)
 			c.AbortWithStatusJSON(settings.OverloadStatusCode, gin.H{
 				"error": "server overloaded",
@@ -49,4 +52,16 @@ func writeRetryAfterHeader(c *gin.Context, retryAfter time.Duration) {
 	}
 
 	c.Header("Retry-After", strconv.FormatInt(seconds, 10))
+}
+
+type rejectedRequestKey struct{}
+
+func markRequestRejected(request *http.Request) *http.Request {
+	return request.WithContext(context.WithValue(request.Context(), rejectedRequestKey{}, true))
+}
+
+func wasRequestRejected(request *http.Request) bool {
+	isRejected, ok := request.Context().Value(rejectedRequestKey{}).(bool)
+
+	return ok && isRejected
 }
