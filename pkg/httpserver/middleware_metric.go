@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +15,7 @@ const (
 	MetricHttpRequestCount         = "HttpRequestCount"
 	MetricHttpRequestCountPerRoute = "HttpRequestCountPerRoute"
 	MetricHttpRequestResponseTime  = "HttpRequestResponseTime"
+	MetricHttpRequestsRejected     = "HttpRequestsRejected"
 	MetricHttpStatus               = "HttpStatus"
 )
 
@@ -86,6 +88,32 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 			"ServerName": name,
 		},
 	}))
+
+	if wasRequestRejected(ginCtx.Request) {
+		writer.Write(ginCtx.Request.Context(), metric.Data{
+			{
+				Priority:   metric.PriorityHigh,
+				MetricName: MetricHttpRequestsRejected,
+				Unit:       metric.UnitCount,
+				Dimensions: map[string]string{
+					"Method":     method,
+					"Path":       path,
+					"ServerName": name,
+				},
+				Value: 1.0,
+			},
+			{
+				Priority:   metric.PriorityHigh,
+				MetricName: MetricHttpRequestsRejected,
+				Unit:       metric.UnitCount,
+				Dimensions: map[string]string{
+					"ServerName": name,
+				},
+				Value: 1.0,
+				Kind:  metric.KindTotal,
+			},
+		})
+	}
 }
 
 // createMetricsWithDimensions is creating a metric.Data set
@@ -107,25 +135,53 @@ func createMetricsWithDimensions(metrics metric.Data, dimensionsByMetricSuffix m
 }
 
 func getMetricMiddlewareDefaults(name string, definitions ...Definition) metric.Data {
-	return append(funk.Map(definitions, func(definition Definition) *metric.Datum {
-		return &metric.Datum{
-			Priority:   metric.PriorityHigh,
-			MetricName: MetricHttpRequestCountPerRoute,
-			Dimensions: metric.Dimensions{
-				"Method":     definition.httpMethod,
-				"Path":       definition.getAbsolutePath(),
-				"ServerName": name,
+	return slices.Concat(
+		funk.Map(definitions, func(definition Definition) *metric.Datum {
+			return &metric.Datum{
+				Priority:   metric.PriorityHigh,
+				MetricName: MetricHttpRequestCountPerRoute,
+				Dimensions: metric.Dimensions{
+					"Method":     definition.httpMethod,
+					"Path":       definition.getAbsolutePath(),
+					"ServerName": name,
+				},
+				Unit:  metric.UnitCount,
+				Value: 0.0,
+			}
+		}),
+		funk.Map(definitions, func(definition Definition) *metric.Datum {
+			return &metric.Datum{
+				Priority:   metric.PriorityHigh,
+				MetricName: MetricHttpRequestsRejected,
+				Dimensions: metric.Dimensions{
+					"Method":     definition.httpMethod,
+					"Path":       definition.getAbsolutePath(),
+					"ServerName": name,
+				},
+				Unit:  metric.UnitCount,
+				Value: 0.0,
+			}
+		}),
+		metric.Data{
+			{
+				Priority:   metric.PriorityHigh,
+				MetricName: MetricHttpRequestsRejected,
+				Dimensions: metric.Dimensions{
+					"ServerName": name,
+				},
+				Unit:  metric.UnitCount,
+				Value: 0.0,
+				Kind:  metric.KindTotal,
 			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-		}
-	}), &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: MetricHttpRequestCount,
-		Dimensions: metric.Dimensions{
-			"ServerName": name,
+			{
+				Priority:   metric.PriorityHigh,
+				MetricName: MetricHttpRequestCount,
+				Dimensions: metric.Dimensions{
+					"ServerName": name,
+				},
+				Unit:  metric.UnitCount,
+				Value: 0.0,
+			},
 		},
-		Unit:  metric.UnitCount,
-		Value: 0.0,
-	})
+	)
 }

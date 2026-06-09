@@ -10,95 +10,101 @@ import (
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	httpserverMocks "github.com/justtrackio/gosoline/pkg/httpserver/mocks"
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestConnectionPressureManager_TracksConnectionOpenedAndClosed(t *testing.T) {
-	recorder := httpserverMocks.NewServerMetricRecorder(t)
-	manager := httpserver.NewConnectionPressureManagerWithInterfaces(t.Context(), clock.NewFakeClock(), recorder)
-	conn := httpserverMocks.NewNetConn(t)
-	recorder.EXPECT().TrackConnectionOpened(matcher.Context).Return().Once()
-	recorder.EXPECT().TrackConnectionClosed(matcher.Context).Return().Once()
-
-	manager.ConnState(conn, http.StateNew)
-	manager.ConnState(conn, http.StateActive)
-	manager.ConnState(conn, http.StateIdle)
-	manager.ConnState(conn, http.StateClosed)
+func TestRunConnectionPressureManagerTestSuite(t *testing.T) {
+	suite.Run(t, new(ConnectionPressureManagerTestSuite))
 }
 
-func TestConnectionPressureManager_NotifiesWhenConnectionBecomesIdle(t *testing.T) {
-	recorder := httpserverMocks.NewServerMetricRecorder(t)
-	manager := httpserver.NewConnectionPressureManagerWithInterfaces(t.Context(), clock.NewFakeClock(), recorder)
-	conn := httpserverMocks.NewNetConn(t)
+type ConnectionPressureManagerTestSuite struct {
+	suite.Suite
+
+	recorder *httpserverMocks.ServerMetricRecorder
+	manager  httpserver.ConnectionPressureManager
+}
+
+func (s *ConnectionPressureManagerTestSuite) SetupTest() {
+	s.recorder = httpserverMocks.NewServerMetricRecorder(s.T())
+	s.manager = httpserver.NewConnectionPressureManagerWithInterfaces(s.T().Context(), clock.NewFakeClock(), s.recorder)
+}
+
+func (s *ConnectionPressureManagerTestSuite) TestTracksConnectionOpenedAndClosed() {
+	conn := httpserverMocks.NewNetConn(s.T())
+	s.recorder.EXPECT().TrackConnectionOpened(matcher.Context).Return().Once()
+	s.recorder.EXPECT().TrackConnectionClosed(matcher.Context).Return().Once()
+
+	s.manager.ConnState(conn, http.StateNew)
+	s.manager.ConnState(conn, http.StateActive)
+	s.manager.ConnState(conn, http.StateIdle)
+	s.manager.ConnState(conn, http.StateClosed)
+}
+
+func (s *ConnectionPressureManagerTestSuite) TestNotifiesWhenConnectionBecomesIdle() {
+	conn := httpserverMocks.NewNetConn(s.T())
 	ready := make(chan struct{})
 	notified := atomic.Bool{}
-	recorder.EXPECT().TrackConnectionOpened(matcher.Context).Return().Once()
+	s.recorder.EXPECT().TrackConnectionOpened(matcher.Context).Return().Once()
+
 	go func() {
 		close(ready)
-		<-manager.IdleConnectionAvailable()
+		<-s.manager.IdleConnectionAvailable()
 		notified.Store(true)
 	}()
 	<-ready
 
-	manager.ConnState(conn, http.StateNew)
-	manager.ConnState(conn, http.StateIdle)
+	s.manager.ConnState(conn, http.StateNew)
+	s.manager.ConnState(conn, http.StateIdle)
 
-	assert.Eventually(t, notified.Load, time.Second, time.Millisecond)
+	s.Eventually(notified.Load, time.Second, time.Millisecond)
 }
 
-func TestConnectionPressureManager_ClosesOldestIdleConnection(t *testing.T) {
-	recorder := httpserverMocks.NewServerMetricRecorder(t)
-	manager := httpserver.NewConnectionPressureManagerWithInterfaces(t.Context(), clock.NewFakeClock(), recorder)
-	connA := httpserverMocks.NewNetConn(t)
-	connB := httpserverMocks.NewNetConn(t)
+func (s *ConnectionPressureManagerTestSuite) TestClosesOldestIdleConnection() {
+	connA := httpserverMocks.NewNetConn(s.T())
+	connB := httpserverMocks.NewNetConn(s.T())
 	connAClosed := atomic.Bool{}
 	connA.EXPECT().Close().Run(func() {
 		connAClosed.Store(true)
 	}).Return(nil).Once()
-	recorder.EXPECT().TrackConnectionOpened(matcher.Context).Return().Twice()
-	recorder.EXPECT().TrackConnectionClosed(matcher.Context).Return().Once()
+	s.recorder.EXPECT().TrackConnectionOpened(matcher.Context).Return().Twice()
+	s.recorder.EXPECT().TrackConnectionClosed(matcher.Context).Return().Once()
 
-	manager.ConnState(connA, http.StateNew)
-	manager.ConnState(connA, http.StateIdle)
-	manager.ConnState(connB, http.StateNew)
-	manager.ConnState(connB, http.StateIdle)
+	s.manager.ConnState(connA, http.StateNew)
+	s.manager.ConnState(connA, http.StateIdle)
+	s.manager.ConnState(connB, http.StateNew)
+	s.manager.ConnState(connA, http.StateIdle)
 
-	closed, err := manager.CloseOldestIdleConnection()
+	closed, err := s.manager.CloseOldestIdleConnection()
 
-	require.NoError(t, err)
-	assert.True(t, closed)
-	assert.True(t, connAClosed.Load())
+	s.NoError(err)
+	s.True(closed)
+	s.True(connAClosed.Load())
 }
 
-func TestConnectionPressureManager_DoesNotCloseActiveConnection(t *testing.T) {
-	recorder := httpserverMocks.NewServerMetricRecorder(t)
-	manager := httpserver.NewConnectionPressureManagerWithInterfaces(t.Context(), clock.NewFakeClock(), recorder)
-	conn := httpserverMocks.NewNetConn(t)
-	recorder.EXPECT().TrackConnectionOpened(matcher.Context).Return().Once()
+func (s *ConnectionPressureManagerTestSuite) TestDoesNotCloseActiveConnection() {
+	conn := httpserverMocks.NewNetConn(s.T())
+	s.recorder.EXPECT().TrackConnectionOpened(matcher.Context).Return().Once()
 
-	manager.ConnState(conn, http.StateNew)
+	s.manager.ConnState(conn, http.StateNew)
 
-	closed, err := manager.CloseOldestIdleConnection()
+	closed, err := s.manager.CloseOldestIdleConnection()
 
-	require.NoError(t, err)
-	assert.False(t, closed)
+	s.NoError(err)
+	s.False(closed)
 }
 
-func TestConnectionPressureManager_TracksClosedOnceWhenIdleConnectionWasAlreadyEvicted(t *testing.T) {
-	recorder := httpserverMocks.NewServerMetricRecorder(t)
-	manager := httpserver.NewConnectionPressureManagerWithInterfaces(t.Context(), clock.NewFakeClock(), recorder)
-	conn := httpserverMocks.NewNetConn(t)
+func (s *ConnectionPressureManagerTestSuite) TestTracksClosedOnceWhenIdleConnectionWasAlreadyEvicted() {
+	conn := httpserverMocks.NewNetConn(s.T())
 	conn.EXPECT().Close().Return(nil).Once()
-	recorder.EXPECT().TrackConnectionOpened(matcher.Context).Return().Once()
-	recorder.EXPECT().TrackConnectionClosed(matcher.Context).Return().Once()
+	s.recorder.EXPECT().TrackConnectionOpened(matcher.Context).Return().Once()
+	s.recorder.EXPECT().TrackConnectionClosed(matcher.Context).Return().Once()
 
-	manager.ConnState(conn, http.StateNew)
-	manager.ConnState(conn, http.StateIdle)
+	s.manager.ConnState(conn, http.StateNew)
+	s.manager.ConnState(conn, http.StateIdle)
 
-	closed, err := manager.CloseOldestIdleConnection()
-	require.NoError(t, err)
-	require.True(t, closed)
+	closed, err := s.manager.CloseOldestIdleConnection()
+	s.NoError(err)
+	s.True(closed)
 
-	manager.ConnState(conn, http.StateClosed)
+	s.manager.ConnState(conn, http.StateClosed)
 }

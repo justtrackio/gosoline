@@ -84,20 +84,20 @@ func (r *serverMetricRecorder) Run(ctx context.Context) error {
 
 func (r *serverMetricRecorder) writeCurrent(ctx context.Context) {
 	r.writer.Write(ctx, metric.Data{
-		r.buildDatum(MetricHttpConcurrentRequests, r.activeRequests.Load()),
-		r.buildDatum(MetricHttpOpenConnections, r.openConnections.Load()),
+		r.buildGaugeDatum(MetricHttpConcurrentRequests, r.activeRequests.Load()),
+		r.buildGaugeDatum(MetricHttpOpenConnections, r.openConnections.Load()),
 	})
 }
 
 func (r *serverMetricRecorder) writeConcurrentRequests(ctx context.Context, value int64) {
-	r.writer.WriteOne(ctx, r.buildDatum(MetricHttpConcurrentRequests, value))
+	r.writer.WriteOne(ctx, r.buildGaugeDatum(MetricHttpConcurrentRequests, value))
 }
 
 func (r *serverMetricRecorder) writeOpenConnections(ctx context.Context, value int64) {
-	r.writer.WriteOne(ctx, r.buildDatum(MetricHttpOpenConnections, value))
+	r.writer.WriteOne(ctx, r.buildGaugeDatum(MetricHttpOpenConnections, value))
 }
 
-func (r *serverMetricRecorder) buildDatum(metricName string, value int64) *metric.Datum {
+func (r *serverMetricRecorder) buildGaugeDatum(metricName string, value int64) *metric.Datum {
 	return &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: metricName,
@@ -112,7 +112,7 @@ func (r *serverMetricRecorder) buildDatum(metricName string, value int64) *metri
 
 func getMetricRecorderDefaults(name string) metric.Data {
 	return metric.Data{
-		&metric.Datum{
+		{
 			Priority:   metric.PriorityHigh,
 			MetricName: MetricHttpConcurrentRequests,
 			Dimensions: metric.Dimensions{
@@ -122,7 +122,7 @@ func getMetricRecorderDefaults(name string) metric.Data {
 			Kind:  metric.KindGauge.Build(),
 			Value: 0,
 		},
-		&metric.Datum{
+		{
 			Priority:   metric.PriorityHigh,
 			MetricName: MetricHttpOpenConnections,
 			Dimensions: metric.Dimensions{
