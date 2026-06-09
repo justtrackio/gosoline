@@ -65,7 +65,10 @@ func NewRedisListInputWithInterfaces(
 	healthCheckTimer clock.HealthCheckTimer,
 ) Input {
 	return &redisListInput{
-		logger:           logger,
+		logger: logger.WithFields(log.Fields{
+			"redis_server_name": settings.ServerName,
+			"redis_key":         settings.Key,
+		}),
 		client:           client,
 		settings:         settings,
 		healthCheckTimer: healthCheckTimer,
