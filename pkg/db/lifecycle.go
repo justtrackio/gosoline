@@ -55,12 +55,12 @@ func (m *lifecycleManager) GetId() string {
 	return fmt.Sprintf("db/%s", m.settings.Uri.Database)
 }
 
-func (l *lifecycleManager) Register(ctx context.Context) (key string, metadata any, err error) {
+func (m *lifecycleManager) Register(_ context.Context) (key string, metadata any, err error) {
 	metadata = Metadata{
-		Name:     l.name,
-		Host:     l.settings.Uri.Host,
-		Port:     l.settings.Uri.Port,
-		Database: l.settings.Uri.Database,
+		Name:     m.name,
+		Host:     m.settings.Uri.Host,
+		Port:     m.settings.Uri.Port,
+		Database: m.settings.Uri.Database,
 	}
 
 	return MetadataKey, metadata, nil

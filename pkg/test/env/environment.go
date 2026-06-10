@@ -240,13 +240,21 @@ func (e *Environment) LoadFixtureSet(factory fixtures.FixtureSetsFactory, postPr
 	return e.LoadFixtureSets([]fixtures.FixtureSetsFactory{factory}, postProcessorFactories...)
 }
 
-func (e *Environment) LifeCyleCreate() error {
+func (e *Environment) runLifeCycle() error {
 	if err := e.resManager.Create(e.ctx); err != nil {
 		return fmt.Errorf("can not handle the create lifecycle: %w", err)
 	}
 
 	if err := e.resManager.Init(e.ctx); err != nil {
 		return fmt.Errorf("can not handle the init lifecycle: %w", err)
+	}
+
+	if err := e.resManager.Register(e.ctx); err != nil {
+		return fmt.Errorf("can not handle the register lifecycle: %w", err)
+	}
+
+	if err := e.resManager.Purge(e.ctx); err != nil {
+		return fmt.Errorf("can not handle the purge lifecycle: %w", err)
 	}
 
 	return nil
@@ -280,7 +288,7 @@ func (e *Environment) LoadFixtureSets(factories []fixtures.FixtureSetsFactory, p
 		}
 	}
 
-	if err := e.LifeCyleCreate(); err != nil {
+	if err := e.runLifeCycle(); err != nil {
 		return fmt.Errorf("can not handle the lifecycle: %w", err)
 	}
 

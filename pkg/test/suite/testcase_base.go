@@ -1,11 +1,14 @@
 package suite
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
-	"time"
 
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/test/env"
 )
 
@@ -37,20 +40,19 @@ func isTestCaseBase(_ TestingSuite, method reflect.Method) error {
 func buildTestCaseBase(_ TestingSuite, method reflect.Method) (TestCaseRunner, error) {
 	return func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment) {
 		suite.SetT(t)
-		if err := environment.LifeCyleCreate(); err != nil {
-			t.Fatalf("failed to run the create lifecycle: %v", err)
 
-			return
+		suiteConf.appModules["testcase"] = func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return kernel.NewModuleFunc(func(ctx context.Context) error {
+				return nil
+			}), nil
 		}
 
-		start := time.Now()
-		if err := environment.LoadFixtureSets(suiteConf.fixtureSetFactories, suiteConf.fixtureSetPostProcessorFactories...); err != nil {
-			t.Fatalf("failed to load fixtures from factories: %v", err)
+		// Use the environment's context so that lifecycle managers registered during SetupTest
+		// (e.g., SNS topics, SQS queues, DDB tables) are visible to the application's lifecycle.
+		suiteConf.appCtx = environment.Context()
 
-			return
-		}
-		environment.Logger().WithChannel("fixtures").Debug(environment.Context(), "loaded fixtures in %s", time.Since(start))
-
-		method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})
+		RunTestCaseApplication(t, suite, suiteConf, environment, func(app AppUnderTest) {
+			method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})
+		})
 	}, nil
 }

@@ -281,11 +281,9 @@ func (m *LifeCycleManager) prepareCycle(settings SettingsCycle) (enabled bool, e
 }
 
 func (m *LifeCycleManager) shouldSkip(ctx context.Context, id string, visited funk.Set[string], excludes []*regexp.Regexp) bool {
-	if visited.Contains(id) {
+	if !visited.Add(id) {
 		return true
 	}
-
-	visited.Add(id)
 
 	for _, exclude := range excludes {
 		if exclude.MatchString(id) {
