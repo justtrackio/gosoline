@@ -1,6 +1,7 @@
 package suite
 
 import (
+	"context"
 	"slices"
 
 	"github.com/justtrackio/gosoline/pkg/application"
@@ -17,6 +18,7 @@ type SuiteConfiguration struct {
 	fixtureSetFactories              []fixtures.FixtureSetsFactory
 	fixtureSetPostProcessorFactories []fixtures.PostProcessorFactory
 
+	appCtx       context.Context
 	appOptions   []application.Option
 	appModules   map[string]kernel.ModuleFactory
 	appFactories []kernel.ModuleMultiFactory
