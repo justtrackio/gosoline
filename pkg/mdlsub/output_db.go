@@ -7,12 +7,14 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/db"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const (
-	OutputTypeDb = "db"
+	MaxPersistRetries = 2
+	OutputTypeDb      = "db"
 )
 
 func init() {
@@ -38,30 +40,50 @@ type OutputDb struct {
 }
 
 func NewOutputDb(ctx context.Context, config cfg.Config, logger log.Logger) (*OutputDb, error) {
-	orm, err := db_repo.NewOrm(ctx, config, logger, "default")
+	orm, err := dbRepo.NewOrm(ctx, config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
 
+	return NewOutputDbWithInterfaces(logger, orm), nil
+}
+
+func NewOutputDbWithInterfaces(logger log.Logger, orm *gorm.DB) *OutputDb {
 	return &OutputDb{
 		logger: logger,
 		orm:    orm,
-	}, nil
+	}
 }
 
-func (p *OutputDb) Persist(_ context.Context, model Model, op string) error {
+func (p *OutputDb) Persist(ctx context.Context, model Model, op string) error {
 	addressableModel, err := ensureAddressableModel(model)
 	if err != nil {
 		return err
 	}
 
 	switch op {
-	case db_repo.Create, db_repo.Update:
-		err = p.orm.Save(addressableModel).Error
-	case db_repo.Delete:
+	case dbRepo.Create, dbRepo.Update:
+		err = p.save(ctx, addressableModel)
+	case dbRepo.Delete:
 		err = p.orm.Delete(addressableModel).Error
 	default:
 		err = fmt.Errorf("unknown operation %s in OutputDb", op)
+	}
+
+	return err
+}
+
+// save persists the model via gorm's Save. Save is not atomic (UPDATE, then
+// SELECT+INSERT on 0 rows), so we retry on duplicate-entry errors to take the UPDATE path.
+func (p *OutputDb) save(ctx context.Context, model any) error {
+	var err error
+
+	for attempt := 0; attempt <= MaxPersistRetries; attempt++ {
+		if err = p.orm.Save(model).Error; !db.IsDuplicateEntryError(err) {
+			return err
+		}
+
+		p.logger.Warn(ctx, "retrying persist after duplicate entry error (attempt %d/%d): %w", attempt+1, MaxPersistRetries, err)
 	}
 
 	return err
