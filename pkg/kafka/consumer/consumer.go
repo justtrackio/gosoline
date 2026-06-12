@@ -71,7 +71,7 @@ func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger, hand
 	defaults := getConsumerDefaultMetrics(name, fullTopicName)
 	metricWriter := metric.NewWriter(defaults...)
 
-	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManagerConsumer(name, settings.Connection, fullTopicName, conn.Brokers)); err != nil {
+	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManagerConsumer(name, fullTopicName, conn.Brokers)); err != nil {
 		return nil, fmt.Errorf("failed to add kafka consumer lifecycle manager: %w", err)
 	}
 

@@ -50,7 +50,7 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		return nil, fmt.Errorf("failed to parse kafka connection settings for connection name %q: %w", settings.Connection, err)
 	}
 
-	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManagerProducer(name, settings.Connection, fullTopicName, conn.Brokers)); err != nil {
+	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManagerProducer(name, fullTopicName, conn.Brokers)); err != nil {
 		return nil, fmt.Errorf("failed to add kafka producer lifecycle manager: %w", err)
 	}
 

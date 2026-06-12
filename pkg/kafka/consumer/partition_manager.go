@@ -66,8 +66,6 @@ func (p *PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo
 	}
 
 	for topic, partitions := range assigned {
-		p.metricWriter.WriteOne(ctx, metric.NewMetricDatum(metricNameRebalanceCount, metric.Dimensions{kafka.DimensionConsumer: p.name, kafka.DimensionTopic: topic}, 1.0, metric.UnitCount, metric.PriorityHigh))
-
 		for _, partition := range partitions {
 			p.lck.Lock()
 			if p.stopping.Load() {

@@ -70,7 +70,7 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 			waitMs := float64(c.clock.Since(waitStart).Milliseconds())
 
 			processStart := c.clock.Now()
-			handleFailed := c.handleWithRecovery(records)
+			handleFailed := c.handleWithRecovery(ctx, records)
 			processMs := float64(c.clock.Since(processStart).Milliseconds())
 
 			commitStart := c.clock.Now()
@@ -102,10 +102,10 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 	}
 }
 
-func (c *PartitionConsumer) handleWithRecovery(records []*kgo.Record) (failed bool) {
+func (c *PartitionConsumer) handleWithRecovery(ctx context.Context, records []*kgo.Record) (failed bool) {
 	defer func() {
 		if err := coffin.ResolveRecovery(recover()); err != nil {
-			c.logger.Error(context.Background(), "panic in message handler for partition %d of topic %s: %w", c.partition, c.topic, err)
+			c.logger.Error(ctx, "panic in message handler for partition %d of topic %s: %w", c.partition, c.topic, err)
 			failed = true
 		}
 	}()
