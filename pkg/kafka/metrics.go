@@ -1,0 +1,38 @@
+package kafka
+
+import (
+	"fmt"
+
+	"github.com/justtrackio/gosoline/pkg/metric"
+)
+
+// Dimension key constants for all Kafka metrics.
+const (
+	DimensionConsumer  = "Consumer"
+	DimensionProducer  = "Producer"
+	DimensionTopic     = "Topic"
+	DimensionPartition = "Partition"
+	DimensionBroker    = "Broker"
+)
+
+// MetricPair writes a metric at two granularities: topic-level (KindTotal) and
+// topic+partition level, both including the named dimension (e.g. Consumer or Producer).
+func MetricPair(dimKey, name, metricName, topic string, partition int32, value float64, unit metric.StandardUnit) metric.Data {
+	return metric.Data{
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricName,
+			Dimensions: metric.Dimensions{dimKey: name, DimensionTopic: topic},
+			Value:      value,
+			Unit:       unit,
+			Kind:       metric.KindTotal,
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricName,
+			Dimensions: metric.Dimensions{dimKey: name, DimensionTopic: topic, DimensionPartition: fmt.Sprintf("%d", partition)},
+			Value:      value,
+			Unit:       unit,
+		},
+	}
+}

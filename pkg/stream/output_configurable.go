@@ -183,7 +183,7 @@ func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log
 		MaxBatchBytes:      configuration.MaxBatchBytes,
 		LingerTimeout:      configuration.LingerTimeout,
 		RequestTimeout:     configuration.RequestTimeout,
-	})
+	}, name)
 	if err != nil {
 		return nil, nil, fmt.Errorf("can not create kafka output %s: %w", name, err)
 	}

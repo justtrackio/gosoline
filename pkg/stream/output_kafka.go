@@ -15,17 +15,15 @@ type kafkaOutput struct {
 	logger                log.Logger
 	connection            connection.Settings
 	schemaRegistryService schemaRegistry.Service
-	writer                kafkaProducer.Writer
-	maxBatchBytes         int32
-	maxBatchSize          int
+	producer              kafkaProducer.Producer
 }
 
 var _ SchemaRegistryAwareOutput = &kafkaOutput{}
 
-func NewKafkaOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *kafkaProducer.Settings) (Output, error) {
-	writer, err := kafkaProducer.NewWriter(ctx, config, logger, settings)
+func NewKafkaOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *kafkaProducer.Settings, name string) (Output, error) {
+	producer, err := kafkaProducer.NewProducer(ctx, config, logger, settings, name)
 	if err != nil {
-		return nil, fmt.Errorf("can not create kafka writer: %w", err)
+		return nil, fmt.Errorf("can not create kafka producer: %w", err)
 	}
 
 	conn, err := connection.ParseSettings(config, settings.Connection)
@@ -38,24 +36,20 @@ func NewKafkaOutput(ctx context.Context, config cfg.Config, logger log.Logger, s
 		return nil, fmt.Errorf("can not create schema registry service: %w", err)
 	}
 
-	return NewKafkaOutputWithInterfaces(logger, *conn, schemaRegistryService, writer, settings.MaxBatchBytes, settings.MaxBatchSize), nil
+	return NewKafkaOutputWithInterfaces(logger, *conn, schemaRegistryService, producer), nil
 }
 
 func NewKafkaOutputWithInterfaces(
 	logger log.Logger,
 	connection connection.Settings,
 	schemaRegistryService schemaRegistry.Service,
-	writer kafkaProducer.Writer,
-	maxBatchBytes int32,
-	maxBatchSize int,
+	producer kafkaProducer.Producer,
 ) Output {
 	return &kafkaOutput{
 		logger:                logger,
 		connection:            connection,
 		schemaRegistryService: schemaRegistryService,
-		writer:                writer,
-		maxBatchBytes:         maxBatchBytes,
-		maxBatchSize:          maxBatchSize,
+		producer:              producer,
 	}
 }
 
@@ -71,7 +65,7 @@ func (o *kafkaOutput) WriteOne(ctx context.Context, msg WritableMessage) error {
 		return nil
 	}
 
-	return o.writer.ProduceSync(ctx, message).FirstErr()
+	return o.producer.ProduceSync(ctx, message)
 }
 
 func (o *kafkaOutput) Write(ctx context.Context, batch []WritableMessage) error {
@@ -86,7 +80,7 @@ func (o *kafkaOutput) Write(ctx context.Context, batch []WritableMessage) error 
 		return nil
 	}
 
-	return o.writer.ProduceSync(ctx, messages...).FirstErr()
+	return o.producer.ProduceSync(ctx, messages...)
 }
 
 func (o *kafkaOutput) InitSchemaRegistry(ctx context.Context, settings SchemaSettingsWithEncoding) (MessageBodyEncoder, error) {

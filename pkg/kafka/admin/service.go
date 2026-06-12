@@ -10,10 +10,9 @@ import (
 type Service struct {
 	logger log.Logger
 	client Client
-	topic  string
 }
 
-func NewService(ctx context.Context, logger log.Logger, topic string, brokers []string) (*Service, error) {
+func NewService(ctx context.Context, logger log.Logger, brokers []string) (*Service, error) {
 	client, err := NewClient(ctx, logger, brokers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka admin client: %w", err)
@@ -22,21 +21,20 @@ func NewService(ctx context.Context, logger log.Logger, topic string, brokers []
 	return &Service{
 		logger: logger,
 		client: client,
-		topic:  topic,
 	}, nil
 }
 
-func (s *Service) CreateTopic(ctx context.Context) error {
+func (s *Service) CreateTopic(ctx context.Context, topic string) error {
 	topicList, err := s.client.ListTopics(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list topics: %w", err)
 	}
 
-	if topicList.Has(s.topic) {
+	if topicList.Has(topic) {
 		return nil
 	}
 
-	res, err := s.client.CreateTopic(ctx, 1, 1, nil, s.topic)
+	res, err := s.client.CreateTopic(ctx, 1, 1, nil, topic)
 	if err != nil {
 		return fmt.Errorf("failed to create topic: %w", err)
 	}

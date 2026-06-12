@@ -101,7 +101,7 @@ func newKafkaInputFromConfig(ctx context.Context, config cfg.Config, logger log.
 		return nil, fmt.Errorf("failed to unmarshal kafka input settings: %w", err)
 	}
 
-	return NewKafkaInput(ctx, config, logger, settings.Settings)
+	return NewKafkaInput(ctx, config, logger, settings.Settings, name)
 }
 
 type KinesisInputConfiguration struct {
