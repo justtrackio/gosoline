@@ -27,8 +27,8 @@ const (
 // connectivity, throttling, and produce/consume batch operations.
 type MetricsHook struct {
 	metricWriter metric.Writer
-	dimKey       string
-	name         string
+	clientType   string
+	clientName   string
 }
 
 // Compile-time interface assertions.
@@ -39,12 +39,16 @@ var (
 	_ kgo.HookFetchBatchRead      = (*MetricsHook)(nil)
 )
 
-func NewMetricsHook(metricWriter metric.Writer, dimKey, name string) *MetricsHook {
-	return &MetricsHook{metricWriter: metricWriter, dimKey: dimKey, name: name}
+func NewMetricsHook(metricWriter metric.Writer, clientType, clientName string) *MetricsHook {
+	return &MetricsHook{metricWriter: metricWriter, clientType: clientType, clientName: clientName}
 }
 
 func (h *MetricsHook) OnBrokerConnect(meta kgo.BrokerMetadata, _ time.Duration, _ net.Conn, err error) {
-	dims := metric.Dimensions{h.dimKey: h.name, DimensionBroker: fmt.Sprintf("%s:%d", meta.Host, meta.Port)}
+	dims := metric.Dimensions{
+		DimensionClientType: h.clientType,
+		DimensionClient:     h.clientName,
+		DimensionBroker:     fmt.Sprintf("%s:%d", meta.Host, meta.Port),
+	}
 
 	metricName := MetricNameBrokerConnects
 	if err != nil {
@@ -55,7 +59,11 @@ func (h *MetricsHook) OnBrokerConnect(meta kgo.BrokerMetadata, _ time.Duration, 
 }
 
 func (h *MetricsHook) OnBrokerThrottle(meta kgo.BrokerMetadata, throttleInterval time.Duration, _ bool) {
-	dims := metric.Dimensions{h.dimKey: h.name, DimensionBroker: fmt.Sprintf("%s:%d", meta.Host, meta.Port)}
+	dims := metric.Dimensions{
+		DimensionClientType: h.clientType,
+		DimensionClient:     h.clientName,
+		DimensionBroker:     fmt.Sprintf("%s:%d", meta.Host, meta.Port),
+	}
 
 	h.metricWriter.Write(context.Background(), metric.Data{
 		metric.NewMetricDatum(MetricNameBrokerThrottleCount, dims, 1.0, metric.UnitCount, metric.PriorityHigh),
@@ -65,18 +73,18 @@ func (h *MetricsHook) OnBrokerThrottle(meta kgo.BrokerMetadata, throttleInterval
 
 func (h *MetricsHook) OnProduceBatchWritten(_ kgo.BrokerMetadata, topic string, partition int32, metrics kgo.ProduceBatchMetrics) {
 	var data metric.Data
-	data = append(data, MetricPair(h.dimKey, h.name, MetricNameProduceBatchRecords, topic, partition, float64(metrics.NumRecords), metric.UnitCount)...)
-	data = append(data, MetricPair(h.dimKey, h.name, MetricNameProduceBatchBytes, topic, partition, float64(metrics.UncompressedBytes), metric.UnitCount)...)
-	data = append(data, MetricPair(h.dimKey, h.name, MetricNameProduceBatchBytesCmp, topic, partition, float64(metrics.CompressedBytes), metric.UnitCount)...)
+	data = append(data, MetricPair(h.clientType, h.clientName, MetricNameProduceBatchRecords, topic, partition, float64(metrics.NumRecords), metric.UnitCount)...)
+	data = append(data, MetricPair(h.clientType, h.clientName, MetricNameProduceBatchBytes, topic, partition, float64(metrics.UncompressedBytes), metric.UnitCount)...)
+	data = append(data, MetricPair(h.clientType, h.clientName, MetricNameProduceBatchBytesCmp, topic, partition, float64(metrics.CompressedBytes), metric.UnitCount)...)
 
 	h.metricWriter.Write(context.Background(), data)
 }
 
 func (h *MetricsHook) OnFetchBatchRead(_ kgo.BrokerMetadata, topic string, partition int32, metrics kgo.FetchBatchMetrics) {
 	var data metric.Data
-	data = append(data, MetricPair(h.dimKey, h.name, MetricNameFetchBatchRecords, topic, partition, float64(metrics.NumRecords), metric.UnitCount)...)
-	data = append(data, MetricPair(h.dimKey, h.name, MetricNameFetchBatchBytes, topic, partition, float64(metrics.UncompressedBytes), metric.UnitCount)...)
-	data = append(data, MetricPair(h.dimKey, h.name, MetricNameFetchBatchBytesCmp, topic, partition, float64(metrics.CompressedBytes), metric.UnitCount)...)
+	data = append(data, MetricPair(h.clientType, h.clientName, MetricNameFetchBatchRecords, topic, partition, float64(metrics.NumRecords), metric.UnitCount)...)
+	data = append(data, MetricPair(h.clientType, h.clientName, MetricNameFetchBatchBytes, topic, partition, float64(metrics.UncompressedBytes), metric.UnitCount)...)
+	data = append(data, MetricPair(h.clientType, h.clientName, MetricNameFetchBatchBytesCmp, topic, partition, float64(metrics.CompressedBytes), metric.UnitCount)...)
 
 	h.metricWriter.Write(context.Background(), data)
 }
