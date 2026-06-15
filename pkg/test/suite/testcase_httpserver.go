@@ -106,7 +106,7 @@ func runTestCaseHttpserver(suite TestingSuite, testCase func(suite TestingSuite,
 
 		apiDefinitions := apiDefinitionAware.SetupApiDefinitions()
 
-		suiteConf.appModules["api"] = func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+		apiModule := func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			module, err := httpserver.New("default", apiDefinitions)(ctx, config, logger)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create test http server: %w", err)
@@ -116,14 +116,6 @@ func runTestCaseHttpserver(suite TestingSuite, testCase func(suite TestingSuite,
 
 			return server, nil
 		}
-
-		suiteConf.addAppOption(application.WithConfigMap(map[string]any{
-			"httpserver": map[string]any{
-				"default": map[string]any{
-					"port": 0,
-				},
-			},
-		}))
 
 		RunTestCaseApplication(t, suite, suiteConf, environment, func(app AppUnderTest) {
 			port, err := server.GetPort()
@@ -137,6 +129,17 @@ func runTestCaseHttpserver(suite TestingSuite, testCase func(suite TestingSuite,
 			client := resty.New().SetBaseURL(url)
 
 			testCase(suite, app, client)
-		})
+		},
+			WithModule("api", apiModule),
+			func(s *SuiteConfiguration) {
+				s.addAppOption(application.WithConfigMap(map[string]any{
+					"httpserver": map[string]any{
+						"default": map[string]any{
+							"port": 0,
+						},
+					},
+				}))
+			},
+		)
 	}, nil
 }

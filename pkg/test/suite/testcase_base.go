@@ -41,18 +41,19 @@ func buildTestCaseBase(_ TestingSuite, method reflect.Method) (TestCaseRunner, e
 	return func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment) {
 		suite.SetT(t)
 
-		suiteConf.appModules["testcase"] = func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+		testcaseModule := func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return kernel.NewModuleFunc(func(ctx context.Context) error {
 				return nil
 			}), nil
 		}
 
-		// Use the environment's context so that lifecycle managers registered during SetupTest
-		// (e.g., SNS topics, SQS queues, DDB tables) are visible to the application's lifecycle.
-		suiteConf.appCtx = environment.Context()
-
 		RunTestCaseApplication(t, suite, suiteConf, environment, func(app AppUnderTest) {
 			method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})
-		})
+		},
+			WithModule("testcase", testcaseModule),
+			// Use the environment's context so lifecycle managers registered during SetupTest
+			// are visible to this application's lifecycle without leaking to later tests.
+			withAppCtx(environment.Context()),
+		)
 	}, nil
 }

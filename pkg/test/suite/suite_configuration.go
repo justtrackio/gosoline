@@ -2,6 +2,7 @@ package suite
 
 import (
 	"context"
+	"maps"
 	"slices"
 
 	"github.com/justtrackio/gosoline/pkg/application"
@@ -25,6 +26,24 @@ type SuiteConfiguration struct {
 
 	testCaseWhitelist   []string
 	testCaseRepeatCount int
+}
+
+func (s *SuiteConfiguration) clone() *SuiteConfiguration {
+	clone := &SuiteConfiguration{
+		envOptions:                       append([]env.Option(nil), s.envOptions...),
+		envSetup:                         append([]func() error(nil), s.envSetup...),
+		envIsShared:                      s.envIsShared,
+		fixtureSetFactories:              append([]fixtures.FixtureSetsFactory(nil), s.fixtureSetFactories...),
+		fixtureSetPostProcessorFactories: append([]fixtures.PostProcessorFactory(nil), s.fixtureSetPostProcessorFactories...),
+		appCtx:                           s.appCtx,
+		appOptions:                       append([]application.Option(nil), s.appOptions...),
+		appModules:                       maps.Clone(s.appModules),
+		appFactories:                     append([]kernel.ModuleMultiFactory(nil), s.appFactories...),
+		testCaseWhitelist:                append([]string(nil), s.testCaseWhitelist...),
+		testCaseRepeatCount:              s.testCaseRepeatCount,
+	}
+
+	return clone
 }
 
 func newSuiteConfiguration(options []Option) *SuiteConfiguration {
