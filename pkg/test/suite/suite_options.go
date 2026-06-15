@@ -1,6 +1,7 @@
 package suite
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -17,6 +18,12 @@ import (
 )
 
 type Option func(s *SuiteConfiguration)
+
+func withAppCtx(ctx context.Context) Option {
+	return func(s *SuiteConfiguration) {
+		s.appCtx = ctx
+	}
+}
 
 func WithClockProvider(clk clock.Clock) Option {
 	return func(s *SuiteConfiguration) {

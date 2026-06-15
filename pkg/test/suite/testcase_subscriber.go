@@ -91,14 +91,6 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (TestCaseRun
 	return func(t *testing.T, suite TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment) {
 		suite.SetT(t)
 
-		suiteConf.addAppOption(application.WithConfigMap(map[string]any{
-			"httpserver": map[string]any{
-				"default": map[string]any{
-					"port": 0,
-				},
-			},
-		}))
-
 		RunTestCaseApplication(t, suite, suiteConf, environment, func(app AppUnderTest) {
 			ret := method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})
 			err := ret[1].Interface()
@@ -149,6 +141,14 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (TestCaseRun
 			default:
 				assert.FailNow(t, "invalid subscriber output type", "the test case for the subscription of %s has an invalid output type: %s", tc.GetName(), outputType)
 			}
+		}, func(s *SuiteConfiguration) {
+			s.addAppOption(application.WithConfigMap(map[string]any{
+				"httpserver": map[string]any{
+					"default": map[string]any{
+						"port": 0,
+					},
+				},
+			}))
 		})
 	}, nil
 }

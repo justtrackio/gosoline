@@ -59,14 +59,17 @@ func buildTestCaseApplication(_ TestingSuite, method reflect.Method) (TestCaseRu
 }
 
 func RunTestCaseApplication(t *testing.T, _ TestingSuite, suiteConf *SuiteConfiguration, environment *env.Environment, testcase func(aut AppUnderTest), extraOptions ...Option) {
+	suiteConf = suiteConf.clone()
+
 	var appOptions []application.Option
+	appModules := make(map[string]kernel.ModuleFactory, len(suiteConf.appModules))
 
 	for _, opt := range extraOptions {
 		opt(suiteConf)
 	}
 
 	for k, factory := range suiteConf.appModules {
-		suiteConf.appModules[k] = newEssentialModuleFactory(factory)
+		appModules[k] = newEssentialModuleFactory(factory)
 	}
 
 	appOptions = append(appOptions, suiteConf.appOptions...)
@@ -88,7 +91,7 @@ func RunTestCaseApplication(t *testing.T, _ TestingSuite, suiteConf *SuiteConfig
 		appOptions = append(appOptions, application.WithFixtureSetFactory("default", factory))
 	}
 
-	for name, module := range suiteConf.appModules {
+	for name, module := range appModules {
 		appOptions = append(appOptions, application.WithModuleFactory(name, module))
 	}
 
