@@ -19,7 +19,7 @@ func ProducerRetryDaemonFactory(ctx context.Context, config cfg.Config, logger l
 	for name, settings := range producerRetrySettings {
 		daemon, err := ProvideProducerRetryDaemon(ctx, config, logger, settings.Output, RetryMetadata{
 			name:           name,
-			retryConfigKey: ConfigurableConsumerRetryKey(name),
+			retryConfigKey: ConfigurableProducerRetryKey(name),
 			retrySettings:  &settings.Retry,
 		})
 		if err != nil {
