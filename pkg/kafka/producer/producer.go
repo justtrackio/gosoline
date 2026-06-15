@@ -75,7 +75,7 @@ func (p *producer) ProduceSync(ctx context.Context, records ...*kgo.Record) erro
 	results := p.writer.ProduceSync(ctx, records...)
 	durationMs := float64(p.clock.Since(start).Milliseconds())
 
-	dims := metric.Dimensions{kafka.DimensionProducer: p.name, kafka.DimensionTopic: p.topicName}
+	dims := metric.Dimensions{kafka.DimensionClientType: kafka.DimensionProducer, kafka.DimensionClient: p.name, kafka.DimensionTopic: p.topicName}
 
 	data := metric.Data{
 		metric.NewMetricDatum(metricNameProduceBatchSize, dims, float64(len(records)), metric.UnitCountAverage, metric.PriorityHigh),
@@ -110,7 +110,7 @@ func (p *producer) ProduceSync(ctx context.Context, records ...*kgo.Record) erro
 }
 
 func getProducerDefaultMetrics(name, topicName string) metric.Data {
-	dims := metric.Dimensions{kafka.DimensionProducer: name, kafka.DimensionTopic: topicName}
+	dims := metric.Dimensions{kafka.DimensionClientType: kafka.DimensionProducer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName}
 
 	return metric.Data{
 		{Priority: metric.PriorityHigh, MetricName: metricNameRecordsSent, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindDefault},

@@ -282,7 +282,7 @@ func (c *consumer) processPartitions(ctx context.Context, fetches kgo.Fetches) {
 }
 
 func (c *consumer) writeMetrics(ctx context.Context, pollDurationMs float64, recordCount int) {
-	dims := metric.Dimensions{kafka.DimensionConsumer: c.name, kafka.DimensionTopic: c.fullTopicName}
+	dims := metric.Dimensions{kafka.DimensionClientType: kafka.DimensionConsumer, kafka.DimensionClient: c.name, kafka.DimensionTopic: c.fullTopicName}
 
 	c.metricWriter.Write(ctx, metric.Data{
 		metric.NewMetricDatum(metricNamePollCount, dims, 1.0, metric.UnitCount, metric.PriorityHigh),
@@ -292,7 +292,7 @@ func (c *consumer) writeMetrics(ctx context.Context, pollDurationMs float64, rec
 }
 
 func getConsumerDefaultMetrics(name, topicName string) metric.Data {
-	dims := metric.Dimensions{kafka.DimensionConsumer: name, kafka.DimensionTopic: topicName}
+	dims := metric.Dimensions{kafka.DimensionClientType: kafka.DimensionConsumer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName}
 
 	return metric.Data{
 		{Priority: metric.PriorityHigh, MetricName: metricNameRecordsConsumed, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindDefault},
