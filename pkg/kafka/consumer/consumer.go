@@ -15,6 +15,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/reslife"
+	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
@@ -132,12 +133,28 @@ func newExecutor(logger log.Logger, reader Reader, settings *Settings) exec.Exec
 		res,
 		&settings.Backoff,
 		[]exec.ErrorChecker{
+			CheckKafkaUnknownTopicError,
 			CheckKafkaRetryableError(reader),
 		},
 		exec.WithElapsedTimeTrackerFactory(func() exec.ElapsedTimeTracker {
 			return exec.NewErrorTriggeredElapsedTimeTracker()
 		}),
 	)
+}
+
+// CheckKafkaUnknownTopicError is an exec.ErrorChecker that fails fast when the consumer is configured
+// for a topic that does not exist. franz-go surfaces these as UNKNOWN_TOPIC_OR_PARTITION (or
+// UNKNOWN_TOPIC_ID) once KeepRetryableFetchErrors is enabled.
+func CheckKafkaUnknownTopicError(_ any, err error) exec.ErrorType {
+	if isUnknownTopicError(err) {
+		return exec.ErrorTypePermanent
+	}
+
+	return exec.ErrorTypeUnknown
+}
+
+func isUnknownTopicError(err error) bool {
+	return errors.Is(err, kerr.UnknownTopicOrPartition) || errors.Is(err, kerr.UnknownTopicID)
 }
 
 // CheckKafkaRetryableError is an exec.ErrorChecker that classifies Kafka errors.
@@ -258,6 +275,16 @@ func (c *consumer) pollRecords(ctx context.Context) (any, error) {
 
 		if errors.As(fetchError.Err, &errDataLoss) {
 			c.logger.Warn(ctx, "%s", fetchError.Err.Error())
+
+			continue
+		}
+
+		// KeepRetryableFetchErrors surfaces missing-topic errors so we can fail fast, but also exposes other
+		// retryable per-partition errors that franz-go recovers from internally. Ignore those and keep the
+		// records returned alongside them, rather than discarding the fetch (which could drop records).
+		if kerr.IsRetriable(fetchError.Err) && !isUnknownTopicError(fetchError.Err) {
+			c.logger.Warn(ctx, "ignoring retryable kafka fetch error (topic: %s, partition: %d): %s",
+				fetchError.Topic, fetchError.Partition, fetchError.Err.Error())
 
 			continue
 		}
