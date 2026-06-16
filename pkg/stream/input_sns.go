@@ -44,7 +44,7 @@ func (s SnsInputSettings) IsFifoEnabled() bool {
 type SnsInputTarget struct {
 	Identity   cfg.Identity
 	TopicId    string
-	Attributes map[string]string
+	Attributes map[string][]string
 	ClientName string
 }
 

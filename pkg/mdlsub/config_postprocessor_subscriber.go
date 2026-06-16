@@ -2,6 +2,7 @@ package mdlsub
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -14,7 +15,7 @@ func init() {
 }
 
 type (
-	SubscriberInputConfigPostProcessor  func(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) (cfg.Option, error)
+	SubscriberInputConfigPostProcessor  func(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings, modelIds []string) (cfg.Option, error)
 	SubscriberOutputConfigPostProcessor func(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) (cfg.Option, error)
 )
 
@@ -38,8 +39,21 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		return false, fmt.Errorf("failed to unmarshal mdlsub settings: %w", err)
 	}
 
+	// Collect all modelIds per input key so we can build filter policies
+	modelIdsByInput, err := collectModelIdsByInput(config, settings)
+	if err != nil {
+		return false, err
+	}
+
 	for name, subscriberSettings := range settings.Subscribers {
-		if err := processSubscriberConfig(config, name, subscriberSettings); err != nil {
+		inputKey, err := getInputKeyForSubscriber(config, name, subscriberSettings)
+		if err != nil {
+			return false, err
+		}
+
+		modelIds := modelIdsByInput[inputKey]
+
+		if err := processSubscriberConfig(config, name, subscriberSettings, modelIds); err != nil {
 			return false, err
 		}
 	}
@@ -47,7 +61,45 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	return true, nil
 }
 
-func processSubscriberConfig(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) error {
+func collectModelIdsByInput(config cfg.Config, settings *Settings) (map[string][]string, error) {
+	result := make(map[string][]string)
+
+	for name, subscriberSettings := range settings.Subscribers {
+		if subscriberSettings.Input != stream.InputTypeSns {
+			continue
+		}
+
+		inputKey, err := getInputKeyForSubscriber(config, name, subscriberSettings)
+		if err != nil {
+			return nil, err
+		}
+
+		sourceModel := subscriberSettings.SourceModel
+		if err := sourceModel.PadFromConfig(config); err != nil {
+			return nil, fmt.Errorf("can not pad source model for subscriber %s: %w", name, err)
+		}
+
+		modelId := sourceModel.String()
+		result[inputKey] = append(result[inputKey], modelId)
+	}
+
+	for key := range result {
+		slices.Sort(result[key])
+	}
+
+	return result, nil
+}
+
+func getInputKeyForSubscriber(config cfg.Config, name string, subscriberSettings *SubscriberSettings) (string, error) {
+	inputKey, err := getInputConfigKey(config, name, subscriberSettings.SourceModel)
+	if err != nil {
+		return "", fmt.Errorf("can not get input key for subscriber %s: %w", name, err)
+	}
+
+	return inputKey, nil
+}
+
+func processSubscriberConfig(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings, modelIds []string) error {
 	var ok bool
 	var err error
 	var consumerName string
@@ -78,7 +130,7 @@ func processSubscriberConfig(config cfg.GosoConf, name string, subscriberSetting
 	}
 
 	if inputPostProcessor, ok = subscriberInputConfigPostProcessors[subscriberSettings.Input]; ok {
-		if inputOption, err = inputPostProcessor(config, name, subscriberSettings); err != nil {
+		if inputOption, err = inputPostProcessor(config, name, subscriberSettings, modelIds); err != nil {
 			return fmt.Errorf("can not process input config for subscriber %s: %w", name, err)
 		}
 
@@ -100,7 +152,7 @@ func processSubscriberConfig(config cfg.GosoConf, name string, subscriberSetting
 	return nil
 }
 
-func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) (cfg.Option, error) {
+func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings, modelIds []string) (cfg.Option, error) {
 	var err error
 	var inputKey string
 
@@ -133,14 +185,15 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 				Application: sourceModel.Application,
 				Tags:        cfg.Tags(sourceModel.Tags),
 			},
-			TopicId: topicId,
+			TopicId:    topicId,
+			Attributes: buildSubscriberFilterAttributes(modelIds),
 		},
 	}
 
 	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting), nil
 }
 
-func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) (cfg.Option, error) {
+func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings, _ []string) (cfg.Option, error) {
 	var err error
 	var inputKey string
 
@@ -167,7 +220,7 @@ func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, s
 	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting), nil
 }
 
-func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) (cfg.Option, error) {
+func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings, _ []string) (cfg.Option, error) {
 	var err error
 	var inputKey string
 
@@ -211,6 +264,16 @@ func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string
 	kvstoreSettings.Elements = []string{kvstore.TypeRedis, kvstore.TypeDdb}
 
 	return cfg.WithConfigSetting(kvstoreKey, kvstoreSettings, cfg.SkipExisting), nil
+}
+
+func buildSubscriberFilterAttributes(modelIds []string) map[string][]string {
+	if len(modelIds) == 0 {
+		return nil
+	}
+
+	return map[string][]string{
+		AttributeModelId: modelIds,
+	}
 }
 
 func GetSubscriberFQN(config cfg.Config, name string, sourceModel SubscriberModel) (string, error) {
