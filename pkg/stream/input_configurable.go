@@ -148,9 +148,9 @@ func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.
 
 type SnsInputTargetConfiguration struct {
 	cfg.ResourceIdentifier
-	TopicId    string            `cfg:"topic_id" validate:"required"`
-	Attributes map[string]string `cfg:"attributes"`
-	ClientName string            `cfg:"client_name" default:"default"`
+	TopicId    string              `cfg:"topic_id" validate:"required"`
+	Attributes map[string][]string `cfg:"attributes"`
+	ClientName string              `cfg:"client_name" default:"default"`
 }
 
 type SnsInputConfiguration struct {

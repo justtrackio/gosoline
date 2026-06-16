@@ -58,7 +58,7 @@ func (s *Service) CreateTopic(ctx context.Context, topicName string) (string, er
 	return *out.TopicArn, nil
 }
 
-func (s *Service) SubscribeSqs(ctx context.Context, queueArn string, topicArn string, attributes map[string]string) error {
+func (s *Service) SubscribeSqs(ctx context.Context, queueArn string, topicArn string, attributes map[string][]string) error {
 	ctx = cloudAws.WithResourceTarget(ctx, topicArn)
 
 	var err error
@@ -105,7 +105,7 @@ func (s *Service) SubscribeSqs(ctx context.Context, queueArn string, topicArn st
 	return nil
 }
 
-func (s *Service) subscriptionExists(ctx context.Context, queueArn string, topicArn string, attributes map[string]string) (bool, error) {
+func (s *Service) subscriptionExists(ctx context.Context, queueArn string, topicArn string, attributes map[string][]string) (bool, error) {
 	var ok bool
 	var err error
 	var subscriptions []types.Subscription
@@ -141,7 +141,7 @@ func (s *Service) subscriptionExists(ctx context.Context, queueArn string, topic
 	return false, nil
 }
 
-func (t *Service) listSubscriptions(ctx context.Context, topicArn string) ([]types.Subscription, error) {
+func (s *Service) listSubscriptions(ctx context.Context, topicArn string) ([]types.Subscription, error) {
 	subscriptions := make([]types.Subscription, 0)
 
 	input := &sns.ListSubscriptionsByTopicInput{
@@ -152,7 +152,7 @@ func (t *Service) listSubscriptions(ctx context.Context, topicArn string) ([]typ
 	var out *sns.ListSubscriptionsByTopicOutput
 
 	for {
-		if out, err = t.client.ListSubscriptionsByTopic(ctx, input); err != nil {
+		if out, err = s.client.ListSubscriptionsByTopic(ctx, input); err != nil {
 			return nil, fmt.Errorf("can not list subscriptions by topic: %w", err)
 		}
 
@@ -168,7 +168,7 @@ func (t *Service) listSubscriptions(ctx context.Context, topicArn string) ([]typ
 	return subscriptions, nil
 }
 
-func (s *Service) subscriptionAttributesMatch(ctx context.Context, subscriptionArn *string, attributes map[string]string) (bool, error) {
+func (s *Service) subscriptionAttributesMatch(ctx context.Context, subscriptionArn *string, attributes map[string][]string) (bool, error) {
 	var ok bool
 	var err error
 	var subAttributes map[string]string

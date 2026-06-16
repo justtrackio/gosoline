@@ -57,7 +57,7 @@ func IsValidAttributeName(name string) bool {
 	return validAttributeRegex.MatchString(name)
 }
 
-func buildFilterPolicy(attributes map[string]string) (string, error) {
+func buildFilterPolicy(attributes map[string][]string) (string, error) {
 	bytes, err := json.Marshal(attributes)
 	if err != nil {
 		return "", fmt.Errorf("can not marshal attributes to json: %w", err)
