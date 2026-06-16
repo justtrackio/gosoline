@@ -80,7 +80,7 @@ func (l *lifecycleManager) Create(ctx context.Context) error {
 			return fmt.Errorf("can not create topic %s: %w", topicName, err)
 		}
 
-		if err = l.snsService.SubscribeSqs(ctx, props.Arn, topicArn, target.Attributes); err != nil {
+		if err = l.snsService.SubscribeSqs(ctx, props.Arn, topicArn, target.FilterPolicy); err != nil {
 			return fmt.Errorf("can not subscribe to queue: %w", err)
 		}
 	}

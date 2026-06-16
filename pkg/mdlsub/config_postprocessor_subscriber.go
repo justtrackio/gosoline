@@ -185,8 +185,8 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 				Application: sourceModel.Application,
 				Tags:        cfg.Tags(sourceModel.Tags),
 			},
-			TopicId:    topicId,
-			Attributes: buildSubscriberFilterAttributes(modelIds),
+			TopicId:      topicId,
+			FilterPolicy: buildSubscriberFilterPolicy(modelIds),
 		},
 	}
 
@@ -266,7 +266,7 @@ func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string
 	return cfg.WithConfigSetting(kvstoreKey, kvstoreSettings, cfg.SkipExisting), nil
 }
 
-func buildSubscriberFilterAttributes(modelIds []string) map[string][]string {
+func buildSubscriberFilterPolicy(modelIds []string) map[string][]string {
 	if len(modelIds) == 0 {
 		return nil
 	}
