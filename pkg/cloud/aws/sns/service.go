@@ -58,13 +58,13 @@ func (s *Service) CreateTopic(ctx context.Context, topicName string) (string, er
 	return *out.TopicArn, nil
 }
 
-func (s *Service) SubscribeSqs(ctx context.Context, queueArn string, topicArn string, attributes map[string][]string) error {
+func (s *Service) SubscribeSqs(ctx context.Context, queueArn string, topicArn string, filterPolicy map[string][]string) error {
 	ctx = cloudAws.WithResourceTarget(ctx, topicArn)
 
 	var err error
 	var exists bool
 
-	if exists, err = s.subscriptionExists(ctx, queueArn, topicArn, attributes); err != nil {
+	if exists, err = s.subscriptionExists(ctx, queueArn, topicArn, filterPolicy); err != nil {
 		return fmt.Errorf("can not check if the subscription exists already: %w", err)
 	}
 
@@ -84,8 +84,8 @@ func (s *Service) SubscribeSqs(ctx context.Context, queueArn string, topicArn st
 		Protocol:   aws.String("sqs"),
 	}
 
-	if len(attributes) > 0 {
-		policy, err := buildFilterPolicy(attributes)
+	if len(filterPolicy) > 0 {
+		policy, err := buildFilterPolicy(filterPolicy)
 		if err != nil {
 			return fmt.Errorf("can not build filter policy: %w", err)
 		}
@@ -105,7 +105,7 @@ func (s *Service) SubscribeSqs(ctx context.Context, queueArn string, topicArn st
 	return nil
 }
 
-func (s *Service) subscriptionExists(ctx context.Context, queueArn string, topicArn string, attributes map[string][]string) (bool, error) {
+func (s *Service) subscriptionExists(ctx context.Context, queueArn string, topicArn string, filterPolicy map[string][]string) (bool, error) {
 	var ok bool
 	var err error
 	var subscriptions []types.Subscription
@@ -119,7 +119,7 @@ func (s *Service) subscriptionExists(ctx context.Context, queueArn string, topic
 			continue
 		}
 
-		if ok, err = s.subscriptionAttributesMatch(ctx, subscription.SubscriptionArn, attributes); err != nil {
+		if ok, err = s.subscriptionAttributesMatch(ctx, subscription.SubscriptionArn, filterPolicy); err != nil {
 			return false, err
 		}
 
@@ -168,7 +168,7 @@ func (s *Service) listSubscriptions(ctx context.Context, topicArn string) ([]typ
 	return subscriptions, nil
 }
 
-func (s *Service) subscriptionAttributesMatch(ctx context.Context, subscriptionArn *string, attributes map[string][]string) (bool, error) {
+func (s *Service) subscriptionAttributesMatch(ctx context.Context, subscriptionArn *string, filterPolicy map[string][]string) (bool, error) {
 	var ok bool
 	var err error
 	var subAttributes map[string]string
@@ -190,7 +190,7 @@ func (s *Service) subscriptionAttributesMatch(ctx context.Context, subscriptionA
 
 	// we have to marshal and unmarshal this to cover the behavior of getting float64 for all numbers,
 	// if we unmarshal something into a map[string]any
-	if expectedFilterPolicy, err = json.Marshal(attributes); err != nil {
+	if expectedFilterPolicy, err = json.Marshal(filterPolicy); err != nil {
 		return false, fmt.Errorf("can not marshal expected filter policy: %w", err)
 	}
 

@@ -148,9 +148,9 @@ func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.
 
 type SnsInputTargetConfiguration struct {
 	cfg.ResourceIdentifier
-	TopicId    string              `cfg:"topic_id" validate:"required"`
-	Attributes map[string][]string `cfg:"attributes"`
-	ClientName string              `cfg:"client_name" default:"default"`
+	TopicId      string              `cfg:"topic_id" validate:"required"`
+	FilterPolicy map[string][]string `cfg:"filter_policy"`
+	ClientName   string              `cfg:"client_name" default:"default"`
 }
 
 type SnsInputConfiguration struct {
@@ -203,10 +203,10 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 		}
 
 		targets[i] = SnsInputTarget{
-			Identity:   t.ToIdentity(),
-			TopicId:    t.TopicId,
-			Attributes: t.Attributes,
-			ClientName: clientName,
+			Identity:     t.ToIdentity(),
+			TopicId:      t.TopicId,
+			FilterPolicy: t.FilterPolicy,
+			ClientName:   clientName,
 		}
 	}
 

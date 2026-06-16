@@ -10,23 +10,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBuildSubscriberFilterAttributes_Empty(t *testing.T) {
-	attrs := buildSubscriberFilterAttributes(nil)
+func TestBuildSubscriberFilterPolicy_Empty(t *testing.T) {
+	attrs := buildSubscriberFilterPolicy(nil)
 	assert.Nil(t, attrs)
 
-	attrs = buildSubscriberFilterAttributes([]string{})
+	attrs = buildSubscriberFilterPolicy([]string{})
 	assert.Nil(t, attrs)
 }
 
-func TestBuildSubscriberFilterAttributes_Single(t *testing.T) {
-	attrs := buildSubscriberFilterAttributes([]string{"mcoins.marketing.management.app"})
+func TestBuildSubscriberFilterPolicy_Single(t *testing.T) {
+	attrs := buildSubscriberFilterPolicy([]string{"mcoins.marketing.management.app"})
 	assert.Equal(t, map[string][]string{
 		"modelId": {"mcoins.marketing.management.app"},
 	}, attrs)
 }
 
-func TestBuildSubscriberFilterAttributes_Multiple(t *testing.T) {
-	attrs := buildSubscriberFilterAttributes([]string{
+func TestBuildSubscriberFilterPolicy_Multiple(t *testing.T) {
+	attrs := buildSubscriberFilterPolicy([]string{
 		"mcoins.marketing.management.app",
 		"mcoins.marketing.management.network",
 		"mcoins.marketing.management.platform",
@@ -216,5 +216,5 @@ func TestSnsSubscriberInputConfigPostProcessor_SetsFilterAttributes(t *testing.T
 	require.Len(t, inputSettings.Targets, 1)
 	assert.Equal(t, map[string][]string{
 		"modelId": {"mcoins.marketing.management.app", "mcoins.marketing.management.network"},
-	}, inputSettings.Targets[0].Attributes)
+	}, inputSettings.Targets[0].FilterPolicy)
 }
