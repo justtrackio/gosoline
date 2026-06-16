@@ -32,6 +32,10 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 		kgo.ConsumeResetOffset(settings.GetStartOffset()),
 		kgo.ConsumeStartOffset(settings.GetStartOffset()),
 		kgo.ConsumeTopics(topicName),
+		// Keep retryable fetch errors so that errors like UNKNOWN_TOPIC_OR_PARTITION are surfaced to
+		// PollRecords instead of being silently stripped by franz-go. This lets us detect a consumer
+		// that is configured for a topic which does not exist and fail fast instead of idling forever.
+		kgo.KeepRetryableFetchErrors(),
 		kgo.FetchIsolationLevel(settings.GetFetchIsolationLevel()),
 		kgo.HeartbeatInterval(settings.HeartbeatInterval),
 		kgo.RebalanceTimeout(settings.RebalanceTimeout),
