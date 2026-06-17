@@ -20,6 +20,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mapx"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/metric/calculator"
+	"github.com/justtrackio/gosoline/pkg/otel"
 	"github.com/justtrackio/gosoline/pkg/share"
 	"github.com/justtrackio/gosoline/pkg/smpl"
 	"github.com/justtrackio/gosoline/pkg/stream"
@@ -456,6 +457,34 @@ func WithMiddlewareFactory(factory kernelPkg.MiddlewareFactory, position kernelP
 			return kernelPkg.WithMiddlewareFactory(factory, position)
 		})
 	}
+}
+
+func WithOtelShutdown(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithMiddlewareFactory(func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Middleware, error) {
+			settings := &otel.ShutdownSettings{}
+			if err := config.UnmarshalKey("otel.shutdown", settings); err != nil {
+				return nil, err
+			}
+
+			logger = logger.WithChannel("otel")
+
+			return func(next kernelPkg.MiddlewareHandler) kernelPkg.MiddlewareHandler {
+				return func(ctx context.Context) {
+					next(ctx)
+
+					shutdownCtx, cancel := context.WithTimeout(context.Background(), settings.Timeout)
+					defer cancel()
+
+					logger.Info(ctx, "shutting down otel providers")
+
+					if err := otel.ShutdownAll(shutdownCtx); err != nil {
+						logger.Warn(ctx, "otel shutdown completed with errors: %s", err)
+					}
+				}
+			}, nil
+		}, kernelPkg.PositionEnd)
+	})
 }
 
 func WithModuleFactory(name string, moduleFactory kernelPkg.ModuleFactory, opts ...kernelPkg.ModuleOption) Option {

@@ -17,8 +17,8 @@ db:
     uri:
       host: 127.0.0.1
       port: 3306
-      user: mcoins
-      password: mcoins
+      user: gosoline
+      password: gosoline
       database: management
     migrations:
       enabled: true

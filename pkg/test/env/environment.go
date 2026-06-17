@@ -224,6 +224,10 @@ func (e *Environment) MySql(name string) *mysqlComponent {
 	return e.Component(componentMySql, name).(*mysqlComponent)
 }
 
+func (e *Environment) Otel(name string) *OtelComponent {
+	return e.Component(componentOtel, name).(*OtelComponent)
+}
+
 func (e *Environment) Wiremock(name string) *wiremockComponent {
 	return e.Component(componentWiremock, name).(*wiremockComponent)
 }
