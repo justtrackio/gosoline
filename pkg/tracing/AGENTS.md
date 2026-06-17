@@ -43,9 +43,15 @@ tracing.xray:
 ### OpenTelemetry specific
 ```yaml
 tracing.otel:
-  exporter: otel_http # otel_http, otel_grpc, stdout
+  exporter: otel_grpc # otel_http (legacy), otel_grpc, stdout
   sampling_ratio: 0.05
+  propagators: [tracecontext, baggage] # W3C trace context and baggage
 ```
+
+- `otel_grpc` and `stdout` exporters use the shared `otel.*` config (resource + exporter, incl.
+  TLS/mTLS); see `pkg/otel`. The legacy `otel_http` exporter reads `tracing.otel.http.*`.
+- The OTEL resource (service.name/namespace, deployment.environment) is built by `pkg/otel` so
+  traces share identical resource attributes with metrics and logs for correlation.
 
 ## Naming Pattern
 Tracing uses a naming pattern system that delegates to `cfg.Identity.Format()` for placeholder expansion.

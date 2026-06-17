@@ -37,6 +37,11 @@ type Settings struct {
 	HealthCheck HealthCheckSettings `cfg:"health_check"`
 }
 
+// ShutdownHandler releases resources when the kernel exits.
+type ShutdownHandler interface {
+	Shutdown(ctx context.Context) error
+}
+
 //go:generate go run github.com/vektra/mockery/v2 --name Kernel
 type Kernel interface {
 	HealthCheck() HealthCheckResult
@@ -68,6 +73,8 @@ type kernel struct {
 	exitCode    int
 	exitOnce    sync.Once
 	exitHandler ExitHandler
+
+	shutdownHandlers []ShutdownHandler
 }
 
 func newKernel(ctx context.Context, config cfg.Config, logger log.Logger) (*kernel, error) {
@@ -261,6 +268,13 @@ func (k *kernel) reportFailedHealthcheck(result HealthCheckResult) {
 func (k *kernel) exit() {
 	k.exitOnce.Do(func() {
 		k.logger.Info(k.ctx, "leaving kernel with exit code %d", k.exitCode)
+
+		for _, handler := range k.shutdownHandlers {
+			if err := handler.Shutdown(context.Background()); err != nil {
+				k.logger.Warn(k.ctx, "shutdown handler completed with errors: %s", err)
+			}
+		}
+
 		k.exitHandler(k.exitCode)
 	})
 }

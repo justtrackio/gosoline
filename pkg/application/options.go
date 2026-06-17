@@ -458,6 +458,20 @@ func WithMiddlewareFactory(factory kernelPkg.MiddlewareFactory, position kernelP
 	}
 }
 
+func WithOtelShutdown(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithShutdownHandler(metric.NewShutdownHandler())
+	})
+
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithShutdownHandler(tracing.NewShutdownHandler())
+	})
+
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithShutdownHandler(log.NewShutdownHandler())
+	})
+}
+
 func WithModuleFactory(name string, moduleFactory kernelPkg.ModuleFactory, opts ...kernelPkg.ModuleOption) Option {
 	return func(app *App) {
 		app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {

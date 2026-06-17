@@ -9,17 +9,22 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"go.opentelemetry.io/otel"
+	"github.com/justtrackio/gosoline/pkg/otel"
+	otelglobal "go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
+const (
+	PropagatorTraceContext = "tracecontext"
+	PropagatorBaggage      = "baggage"
+)
+
 type OtelSettings struct {
-	Exporter      string  `cfg:"exporter" default:"otel_http"`
-	SamplingRatio float64 `cfg:"sampling_ratio" default:"0.05"`
+	Exporter      string   `cfg:"exporter" default:"otel_http"`
+	SamplingRatio float64  `cfg:"sampling_ratio" default:"0.05"`
+	Propagators   []string `cfg:"propagators" default:"tracecontext,baggage"`
 	SpanLimits
 }
 
@@ -46,9 +51,9 @@ func newOtelTraceProvider(ctx context.Context, config cfg.Config, logger log.Log
 		return nil, fmt.Errorf("failed to unmarshal otel tracing settings: %w", err)
 	}
 
-	serviceName, err := resolveAppId(config)
+	res, err := otel.ProvideResource(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to format service name: %w", err)
+		return nil, fmt.Errorf("failed to build otel resource: %w", err)
 	}
 
 	otelExporterFactory, ok := otelTraceExporters[settings.Exporter]
@@ -65,12 +70,14 @@ func newOtelTraceProvider(ctx context.Context, config cfg.Config, logger log.Log
 		return nil, err
 	}
 
+	propagator, err := buildPropagator(settings.Propagators)
+	if err != nil {
+		return nil, err
+	}
+
 	tracerProvider := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceName(serviceName),
-		)),
+		sdktrace.WithResource(res),
 		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(settings.SamplingRatio))),
 		sdktrace.WithRawSpanLimits(sdktrace.SpanLimits{
 			AttributeValueLengthLimit:   settings.AttributeValueLengthLimit,
@@ -82,8 +89,30 @@ func newOtelTraceProvider(ctx context.Context, config cfg.Config, logger log.Log
 		}),
 	)
 
-	otel.SetTracerProvider(tracerProvider)
-	otel.SetTextMapPropagator(propagation.TraceContext{})
+	RegisterShutdown("otel", tracerProvider.Shutdown)
+	otelglobal.SetTracerProvider(tracerProvider)
+	otelglobal.SetTextMapPropagator(propagator)
 
-	return otel.GetTracerProvider(), nil
+	return otelglobal.GetTracerProvider(), nil
+}
+
+// buildPropagator assembles a composite text map propagator from the configured propagator names.
+func buildPropagator(names []string) (propagation.TextMapPropagator, error) {
+	if len(names) == 0 {
+		names = []string{PropagatorTraceContext, PropagatorBaggage}
+	}
+
+	propagators := make([]propagation.TextMapPropagator, 0, len(names))
+	for _, name := range names {
+		switch name {
+		case PropagatorTraceContext:
+			propagators = append(propagators, propagation.TraceContext{})
+		case PropagatorBaggage:
+			propagators = append(propagators, propagation.Baggage{})
+		default:
+			return nil, fmt.Errorf("unknown trace propagator %q (supported: tracecontext, baggage)", name)
+		}
+	}
+
+	return propagation.NewCompositeTextMapPropagator(propagators...), nil
 }

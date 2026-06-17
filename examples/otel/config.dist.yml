@@ -1,0 +1,77 @@
+# Example gosoline configuration enabling native OpenTelemetry for traces, metrics, and logs.
+#
+# Telemetry is emitted to a node-local OTEL Collector agent over OTLP/gRPC. The collector + gateway
+# (and the ClickHouse/ClickStack backend) are out of scope for the application and configured
+# separately. Metrics additionally keep the Prometheus pull endpoint (scraped by the collector).
+
+app:
+  env: dev
+  name: greeting-api
+  namespace: examples
+  tags:
+    project: gosoline
+    family: demo
+
+# Shared OTEL core: resource attributes + a single OTLP exporter reused by all signals.
+otel:
+  resource:
+    service_name_pattern: "{app.name}"
+    service_namespace_pattern: "{app.namespace}"
+    attributes:
+      # Note: gosoline config uses '.' as path separator, so use underscores for OTEL
+      # semconv attribute keys (e.g. deployment_environment instead of deployment.environment).
+      deployment_environment: "{app.env}"
+      organization: "acme"
+  exporter:
+    protocol: grpc
+    host: "localhost"   # inject the node IP via env (status.hostIP) in Kubernetes
+    port: 4317
+    insecure: true      # set false + configure tls.* for mTLS to a cross-namespace agent
+    compression: gzip
+    timeout: 10s
+    retry:
+      enabled: true
+
+httpserver:
+  default:
+    port: 8088
+
+# Traces: push via OTLP/gRPC, W3C + baggage propagation.
+tracing:
+  provider: otel
+  otel:
+    exporter: otel_grpc           # otel_http (legacy) | otel_grpc | stdout
+    sampling_ratio: 0.05
+    propagators:
+      - tracecontext
+      - baggage
+
+# Metrics: run multiple writers in parallel. "otel" pushes OTLP with semconv naming;
+# "prometheus" keeps the existing pull endpoint unchanged.
+metric:
+  enabled: true
+  interval: 60s
+  writers:
+    - otel
+    - prometheus
+  writer_settings:
+    otel:
+      aggregate: true
+      interval: 60s
+    prometheus:
+      api:
+        enabled: true
+        port: 8092
+        path: /metrics
+
+# Logs: export via OTLP using the shared otel.* config; trace_id/span_id are attached for correlation.
+log:
+  level: info
+  handlers:
+    main:
+      type: iowriter
+      formatter: json
+      writer: stdout
+    otel:
+      type: otel
+      level: info

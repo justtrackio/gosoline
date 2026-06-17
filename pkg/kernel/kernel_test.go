@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sys/unix"
 )
@@ -577,6 +578,22 @@ func (m *fakeModule) Run(_ context.Context) error {
 	return nil
 }
 
+type recordingShutdownHandler struct {
+	calls  int
+	ctx    context.Context
+	err    error
+	name   string
+	record *[]string
+}
+
+func (h *recordingShutdownHandler) Shutdown(ctx context.Context) error {
+	h.calls++
+	h.ctx = ctx
+	*h.record = append(*h.record, h.name)
+
+	return h.err
+}
+
 type realModule struct {
 	t *testing.T
 }
@@ -630,4 +647,91 @@ func (s *slowExitModule) Run(_ context.Context) error {
 	s.stop()
 
 	return nil
+}
+
+func (s *KernelTestSuite) TestShutdownHandlerRunsBeforeExit() {
+	timeout(s.T(), time.Second*3, func(t *testing.T) {
+		logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+
+		order := make([]string, 0, 2)
+		handler := &recordingShutdownHandler{name: "shutdown", record: &order}
+
+		module := kernelMocks.NewModule(t)
+		module.EXPECT().Run(matcher.Context).Return(nil).Once()
+
+		k, err := kernel.BuildKernel(s.ctx, s.config, logger, []kernel.Option{
+			kernel.WithModuleFactory("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+				return module, nil
+			}),
+			kernel.WithKillTimeout(time.Second),
+			kernel.WithShutdownHandler(handler),
+			kernel.WithExitHandler(func(code int) {
+				order = append(order, "exit")
+				assert.Equal(t, kernel.ExitCodeOk, code)
+			}),
+		})
+		assert.NoError(t, err)
+
+		k.Run()
+
+		assert.Equal(t, 1, handler.calls, "shutdown handler must run exactly once")
+		assert.Equal(t, []string{"shutdown", "exit"}, order, "log shutdown must run before the exit handler")
+	})
+}
+
+func (s *KernelTestSuite) TestShutdownHandlerUsesBackgroundContext() {
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
+	order := make([]string, 0, 1)
+	handler := &recordingShutdownHandler{name: "shutdown", record: &order}
+	module := kernelMocks.NewModule(s.T())
+	module.EXPECT().Run(matcher.Context).Return(nil).Once()
+
+	k, err := kernel.BuildKernel(s.ctx, s.config, logger, []kernel.Option{
+		kernel.WithModuleFactory("module", func(context.Context, cfg.Config, log.Logger) (kernel.Module, error) { return module, nil }),
+		kernel.WithShutdownHandler(handler),
+		kernel.WithExitHandler(func(int) {}),
+	})
+	require.NoError(s.T(), err)
+	k.Run()
+
+	assert.Equal(s.T(), context.Background(), handler.ctx)
+}
+
+func (s *KernelTestSuite) TestShutdownHandlerForTestReplacesExistingHandlers() {
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
+	order := make([]string, 0, 2)
+	module := kernelMocks.NewModule(s.T())
+	module.EXPECT().Run(matcher.Context).Return(nil).Once()
+
+	k, err := kernel.BuildKernel(s.ctx, s.config, logger, []kernel.Option{
+		kernel.WithModuleFactory("module", func(context.Context, cfg.Config, log.Logger) (kernel.Module, error) { return module, nil }),
+		kernel.WithShutdownHandler(&recordingShutdownHandler{name: "production", record: &order}),
+		kernel.WithShutdownHandlerForTest(&recordingShutdownHandler{name: "override", record: &order}),
+		kernel.WithExitHandler(func(int) { order = append(order, "exit") }),
+	})
+	require.NoError(s.T(), err)
+	k.Run()
+
+	assert.Equal(s.T(), []string{"override", "exit"}, order)
+}
+
+func (s *KernelTestSuite) TestShutdownHandlersRunInOrderAndContinueAfterError() {
+	s.expectStartupLogs()
+	s.expectShutdownLogs(1, 1, kernel.ExitCodeOk)
+	order := make([]string, 0, 4)
+	module := kernelMocks.NewModule(s.T())
+	module.EXPECT().Run(matcher.Context).Return(nil).Once()
+	s.logger.EXPECT().Warn(matcher.Context, "shutdown handler completed with errors: %s", mock.Anything).Once()
+	handlers := []kernel.Option{
+		kernel.WithModuleFactory("module", func(context.Context, cfg.Config, log.Logger) (kernel.Module, error) { return module, nil }),
+		kernel.WithShutdownHandler(&recordingShutdownHandler{name: "metrics", record: &order, err: errors.New("boom")}),
+		kernel.WithShutdownHandler(&recordingShutdownHandler{name: "tracing", record: &order}),
+		kernel.WithShutdownHandler(&recordingShutdownHandler{name: "logging", record: &order}),
+		kernel.WithExitHandler(func(int) { order = append(order, "exit") }),
+	}
+
+	k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, handlers)
+	require.NoError(s.T(), err)
+	k.Run()
+	assert.Equal(s.T(), []string{"metrics", "tracing", "logging", "exit"}, order)
 }
