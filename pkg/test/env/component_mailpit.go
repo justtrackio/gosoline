@@ -20,7 +20,7 @@ func (c *mailpitComponent) CfgOptions() []cfg.Option {
 			"default": map[string]string{
 				"type":         "smtp",
 				"server":       c.addressSmtp,
-				"from_address": "system@marketing-sandbox.info",
+				"from_address": "system@example.com",
 			},
 		}),
 	}

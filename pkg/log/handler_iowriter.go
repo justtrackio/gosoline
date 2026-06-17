@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"sync"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -62,72 +61,24 @@ func handlerIoWriterFactory(config cfg.Config, name string) (Handler, error) {
 }
 
 type handlerIoWriter struct {
-	config          cfg.Config
-	lck             sync.RWMutex
-	level           int
-	channels        map[string]*int
+	handlerBase
 	formatter       Formatter
-	name            string
 	timestampFormat string
 	writer          io.Writer
 }
 
 func NewHandlerIoWriter(config cfg.Config, levelPriority int, formatter Formatter, name string, timestampFormat string, writer io.Writer) Handler {
 	return &handlerIoWriter{
-		config:          config,
-		level:           levelPriority,
-		channels:        make(map[string]*int),
+		handlerBase: handlerBase{
+			config:   config,
+			level:    levelPriority,
+			channels: make(map[string]*int),
+			name:     name,
+		},
 		formatter:       formatter,
-		name:            name,
 		timestampFormat: timestampFormat,
 		writer:          writer,
 	}
-}
-
-// ChannelLevel returns the specific log level configured for a given channel, or an error if the channel settings are invalid.
-func (h *handlerIoWriter) ChannelLevel(name string) (level *int, err error) {
-	h.lck.RLock()
-	cached, ok := h.channels[name]
-	h.lck.RUnlock()
-
-	if ok {
-		return cached, nil
-	}
-
-	h.lck.Lock()
-	defer h.lck.Unlock()
-
-	key := fmt.Sprintf("%s.channels.%s", getHandlerConfigKey(h.name), name)
-	settings := &ChannelSetting{}
-	err = h.config.UnmarshalKey(key, settings)
-	if err != nil {
-		// store that we don't have a setting to avoid spamming errors
-		h.channels[name] = nil
-
-		return nil, fmt.Errorf("can not unmarshal channel settings: %w", err)
-	}
-
-	if settings.Level == "" {
-		h.channels[name] = nil
-
-		return nil, nil
-	}
-
-	priority, ok := LevelPriority(settings.Level)
-	if !ok {
-		h.channels[name] = nil
-
-		return nil, fmt.Errorf("invalid log level priority %q", settings.Level)
-	}
-
-	h.channels[name] = &priority
-
-	return &priority, nil
-}
-
-// Level returns the default log level priority for this handler.
-func (h *handlerIoWriter) Level() int {
-	return h.level
 }
 
 // Log writes a log entry to the configured io.Writer, formatted according to the handler's settings.

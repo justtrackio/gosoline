@@ -24,7 +24,7 @@ type factory struct {
 	stages      stages
 }
 
-func NewFactory(ctx context.Context, config cfg.Config, logger log.Logger, bp *blueprint) (*factory, error) {
+func NewFactory(ctx context.Context, config cfg.Config, logger log.GosoLogger, bp *blueprint) (*factory, error) {
 	var err error
 
 	factory := &factory{

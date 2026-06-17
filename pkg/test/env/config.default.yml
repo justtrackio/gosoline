@@ -13,6 +13,9 @@ test:
       mysql:
         repository: "mysql"
         tag: "8.0.42"
+      otel:
+        repository: "otel/opentelemetry-collector"
+        tag: "0.154.0"
       redis:
         repository: "redis"
         tag: "7-alpine"

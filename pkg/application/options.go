@@ -317,7 +317,7 @@ func WithLoggerContextFieldsMessageEncoder(app *App) {
 
 func WithLoggerContextFieldsResolver(resolver ...log.ContextFieldsResolverFunction) Option {
 	return func(app *App) {
-		app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+		app.addLoggerOption(func(_ cfg.GosoConf, logger log.GosoLogger) error {
 			return logger.Option(log.WithContextFieldsResolver(resolver...))
 		})
 	}
@@ -325,7 +325,7 @@ func WithLoggerContextFieldsResolver(resolver ...log.ContextFieldsResolverFuncti
 
 func WithLoggerHandlers(handler ...log.Handler) Option {
 	return func(app *App) {
-		app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+		app.addLoggerOption(func(_ cfg.GosoConf, logger log.GosoLogger) error {
 			return logger.Option(log.WithHandlers(handler...))
 		})
 	}
@@ -345,7 +345,7 @@ func WithLoggerHandlersFromConfig(app *App) {
 }
 
 func WithLoggerMetricHandler(app *App) {
-	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+	app.addLoggerOption(func(_ cfg.GosoConf, logger log.GosoLogger) error {
 		metricHandler := metric.NewLoggerHandler()
 
 		return logger.Option(log.WithHandlers(metricHandler))
@@ -431,7 +431,7 @@ func WithTaskRunner(app *App) {
 }
 
 func WithTracing(app *App) {
-	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+	app.addLoggerOption(func(_ cfg.GosoConf, logger log.GosoLogger) error {
 		tracingHandler := tracing.NewLoggerErrorHandler()
 
 		options := []log.Option{
@@ -456,6 +456,12 @@ func WithMiddlewareFactory(factory kernelPkg.MiddlewareFactory, position kernelP
 			return kernelPkg.WithMiddlewareFactory(factory, position)
 		})
 	}
+}
+
+func WithOtelShutdown(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithShutdownHandler(metric.NewShutdownHandler(), tracing.NewShutdownHandler())
+	})
 }
 
 func WithModuleFactory(name string, moduleFactory kernelPkg.ModuleFactory, opts ...kernelPkg.ModuleOption) Option {
