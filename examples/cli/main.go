@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cli"
 	"github.com/justtrackio/gosoline/pkg/kernel"
@@ -14,8 +15,10 @@ func main() {
 	root := cli.NewCli()
 
 	root.Cmd(cli.Cmd{
-		Name:          "test",
-		ModuleFactory: cliDebug,
+		Name: "test",
+		AppOptions: []application.Option{
+			application.WithModuleFactory("main", cliDebug),
+		},
 	})
 
 	root.Cmd(cli.Cmd{
@@ -23,7 +26,9 @@ func main() {
 		Flags: []cli.Flag{
 			{Short: "s", Long: "short", CfgKey: "", Default: "Hubert", Description: ""},
 		},
-		ModuleFactory: cliDebug,
+		AppOptions: []application.Option{
+			application.WithModuleFactory("main", cliDebug),
+		},
 	})
 
 	root.Run()

@@ -18,12 +18,14 @@ func WithVersion(version string) Option {
 	return func(cli *Cli) {
 		cli.Cmd(Cmd{
 			Name: "version",
-			ModuleFactory: func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Module, error) {
-				return kernelPkg.NewModuleFunc(func(ctx context.Context) error {
-					fmt.Println(version)
+			AppOptions: []application.Option{
+				application.WithModuleFactory("main", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Module, error) {
+					return kernelPkg.NewModuleFunc(func(ctx context.Context) error {
+						fmt.Println(version)
 
-					return nil
-				}), nil
+						return nil
+					}), nil
+				}),
 			},
 		})
 	}

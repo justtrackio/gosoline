@@ -2,7 +2,6 @@ package cli
 
 import (
 	"github.com/justtrackio/gosoline/pkg/application"
-	kernelPkg "github.com/justtrackio/gosoline/pkg/kernel"
 )
 
 type Router struct {
@@ -48,10 +47,9 @@ type Group struct {
 }
 
 type Cmd struct {
-	Name          string
-	Flags         []Flag
-	AppOptions    []application.Option
-	ModuleFactory kernelPkg.ModuleFactory
+	Name       string
+	Flags      []Flag
+	AppOptions []application.Option
 }
 type Flag struct {
 	Short       string

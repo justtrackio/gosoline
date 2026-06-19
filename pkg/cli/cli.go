@@ -46,7 +46,7 @@ func (c *Cli) Run() {
 	}
 
 	blueprint := NewBlueprint(c.Router, c.input)
-	appOptions, cmd := c.processArgs(blueprint)
+	appOptions := c.processArgs(blueprint)
 
 	appOptions = append(c.appOptions, appOptions...)
 	appOptions = append(appOptions, application.WithConfigSetting("cli.cmd", blueprint.Cmd))
@@ -63,16 +63,10 @@ func (c *Cli) Run() {
 		}
 	}
 
-	if cmd.ModuleFactory == nil {
-		fmt.Printf("no module found for arguments %s\n", c.input.Arguments)
-		os.Exit(1)
-	}
-
-	appOptions = append(appOptions, application.WithModuleFactory("main", cmd.ModuleFactory))
 	c.runApp(appOptions)
 }
 
-func (c *Cli) processArgs(blueprint *Blueprint) ([]application.Option, Cmd) {
+func (c *Cli) processArgs(blueprint *Blueprint) []application.Option {
 	var selected bool
 	var selectedCmd Cmd
 
@@ -103,7 +97,7 @@ func (c *Cli) processArgs(blueprint *Blueprint) ([]application.Option, Cmd) {
 
 	appOptions = append(appOptions, selectedCmd.AppOptions...)
 
-	return appOptions, selectedCmd
+	return appOptions
 }
 
 func (c *Cli) runApp(appOptions []application.Option) {
