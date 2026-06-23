@@ -44,6 +44,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithLoggerContextFieldsMessageEncoder,
 		WithLoggerContextFieldsResolver(log.ContextFieldsResolver),
 		WithLoggerHandlersFromConfig,
+		WithOtelShutdown,
 	}
 
 	options = append(defaults, options...)
