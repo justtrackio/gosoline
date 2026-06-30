@@ -167,6 +167,53 @@ func TestChunk(t *testing.T) {
 	}
 }
 
+func TestConcat(t *testing.T) {
+	tests := map[string]struct {
+		in  [][]int
+		out []int
+	}{
+		"no slices": {
+			in:  nil,
+			out: []int{},
+		},
+		"single slice": {
+			in:  [][]int{{1, 2, 3}},
+			out: []int{1, 2, 3},
+		},
+		"multiple slices": {
+			in:  [][]int{{1, 2}, {3, 4}, {5}},
+			out: []int{1, 2, 3, 4, 5},
+		},
+		"empty slices": {
+			in:  [][]int{{}, {}, {}},
+			out: []int{},
+		},
+		"mixed empty and non-empty slices": {
+			in:  [][]int{{}, {1, 2}, {}, {3}},
+			out: []int{1, 2, 3},
+		},
+		"nil slices": {
+			in:  [][]int{nil, {1, 2}, nil},
+			out: []int{1, 2},
+		},
+	}
+
+	for name, data := range tests {
+		t.Run(name, func(t *testing.T) {
+			res := funk.Concat(data.in...)
+			assert.Equal(t, data.out, res)
+		})
+	}
+}
+
+func TestConcatDoesNotShareBackingArray(t *testing.T) {
+	in := []int{1, 2}
+	out := funk.Concat(in)
+	in[0] = 3
+
+	assert.Equal(t, []int{1, 2}, out)
+}
+
 func TestDifference(t *testing.T) {
 	tests := map[string]struct {
 		Input1 []int

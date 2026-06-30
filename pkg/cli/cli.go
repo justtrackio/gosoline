@@ -10,6 +10,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	kernelPkg "github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -86,7 +87,7 @@ func (c *Cli) Run() {
 		os.Exit(1)
 	}
 
-	appOptions := append(c.appOptions, blueprint.AppOptions...)
+	appOptions := funk.Concat(c.appOptions, blueprint.AppOptions)
 	appOptions = append(appOptions, application.WithConfigSetting("cli.cmd", blueprint.Cmd))
 	appOptions = append(appOptions, application.WithConfigSetting("cli.args", blueprint.Args))
 
