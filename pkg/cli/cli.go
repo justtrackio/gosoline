@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/application"
@@ -13,8 +14,20 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+type cmdNotFoundError struct {
+	cmd      []string
+	helpPath []string
+}
+
+func (e *cmdNotFoundError) Error() string {
+	return fmt.Sprintf("unknown command %q", strings.Join(e.cmd, " "))
+}
+
 type Cli struct {
 	*Router
+
+	name        string
+	description string
 
 	input      *Input
 	flags      []Flag
@@ -23,7 +36,6 @@ type Cli struct {
 }
 
 func NewCli(options ...Option) *Cli {
-	input := NewInput()
 	router := NewRouter(nil)
 
 	defaultAppOptions := []application.Option{
@@ -33,7 +45,6 @@ func NewCli(options ...Option) *Cli {
 
 	return &Cli{
 		Router:     router,
-		input:      input,
 		flags:      nil,
 		cliOptions: options,
 		appOptions: defaultAppOptions,
@@ -41,21 +52,48 @@ func NewCli(options ...Option) *Cli {
 }
 
 func (c *Cli) Run() {
+	var err error
+
+	if c.input, err = NewInput(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	for _, opt := range c.cliOptions {
 		opt(c)
 	}
 
-	blueprint := NewBlueprint(c.Router, c.input)
-	appOptions := c.processArgs(blueprint)
+	if hasHelpFlag(c.input) {
+		if err := c.writeHelp(os.Stdout, c.input.Arguments...); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
-	appOptions = append(c.appOptions, appOptions...)
+		return
+	}
+
+	blueprint, err := NewBlueprint(c.Router, c.input, c.flags...)
+	if err != nil {
+		if cmdErr, ok := err.(*cmdNotFoundError); ok {
+			if err := c.writeCmdNotFound(os.Stderr, os.Stdout, cmdErr); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			}
+
+			os.Exit(1)
+		}
+
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	appOptions := append(c.appOptions, blueprint.AppOptions...)
 	appOptions = append(appOptions, application.WithConfigSetting("cli.cmd", blueprint.Cmd))
 	appOptions = append(appOptions, application.WithConfigSetting("cli.args", blueprint.Args))
 
 	for _, flag := range blueprint.Flags {
 		appOptions = append(appOptions, flag.AppOptions...)
 
-		key := fmt.Sprintf("cli.flags.%s", flag.Key)
+		key := fmt.Sprintf("cli.flags.%s", strings.ReplaceAll(flag.Key, "-", "_"))
 		appOptions = append(appOptions, application.WithConfigSetting(key, flag.Value))
 
 		if flag.CustomKey != "" {
@@ -64,40 +102,6 @@ func (c *Cli) Run() {
 	}
 
 	c.runApp(appOptions)
-}
-
-func (c *Cli) processArgs(blueprint *Blueprint) []application.Option {
-	var selected bool
-	var selectedCmd Cmd
-
-	router := c.Router
-	defaultCmd := router.defaultCmd
-	appOptions := make([]application.Option, 0)
-
-	for _, arg := range blueprint.Cmd {
-		if group, ok := router.groups[arg]; ok {
-			defaultCmd = group.child.defaultCmd
-			appOptions = append(appOptions, group.AppOptions...)
-			router = group.child
-
-			continue
-		}
-
-		if cmd, ok := router.cmds[arg]; ok {
-			selected = true
-			selectedCmd = cmd
-
-			break
-		}
-	}
-
-	if !selected {
-		selectedCmd = defaultCmd
-	}
-
-	appOptions = append(appOptions, selectedCmd.AppOptions...)
-
-	return appOptions
 }
 
 func (c *Cli) runApp(appOptions []application.Option) {
@@ -109,7 +113,7 @@ func (c *Cli) runApp(appOptions []application.Option) {
 		},
 	})
 
-	logger := log.NewLoggerWithInterfaces(clock.NewRealClock(), []log.Handler{LogHandler{}})
+	logger := log.NewLoggerWithInterfaces(clock.NewRealClock(), []log.Handler{})
 
 	var err error
 	var ker kernelPkg.Kernel

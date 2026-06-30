@@ -2,6 +2,7 @@
 /vendor/
 .idea
 .vscode
+.codegraph
 
 /*.out
 

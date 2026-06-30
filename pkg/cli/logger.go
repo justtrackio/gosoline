@@ -9,9 +9,11 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+//nolint:unused // will get improved in the next iteration
 func newCliLogger(config cfg.Config) (log.Logger, error) {
 	var err error
 	var writer io.Writer
@@ -26,18 +28,35 @@ func newCliLogger(config cfg.Config) (log.Logger, error) {
 	return logger, nil
 }
 
-type LogHandler struct {
+func LogHandler(channels ...string) logHandler {
+	return logHandler{
+		channels: channels,
+	}
 }
 
-func (l LogHandler) ChannelLevel(name string) (level *int, err error) {
-	return nil, nil
+type logHandler struct {
+	channels []string
 }
 
-func (l LogHandler) Level() int {
+func (l logHandler) ChannelLevel(name string) (*int, error) {
+	if len(l.channels) == 0 {
+		return nil, nil
+	}
+
+	if !funk.Contains(l.channels, name) {
+		return nil, nil
+	}
+
+	level := log.PriorityDebug
+
+	return &level, nil
+}
+
+func (l logHandler) Level() int {
 	return log.PriorityDebug
 }
 
-func (l LogHandler) Log(ctx context.Context, timestamp time.Time, level int, msg string, args []any, logErr error, data log.Data) error {
+func (l logHandler) Log(ctx context.Context, timestamp time.Time, level int, msg string, args []any, logErr error, data log.Data) error {
 	var err error
 	var bytes []byte
 	timestampStr := timestamp.Format("15:04:05.000")

@@ -5,3 +5,16 @@ golangci-lint = "2.10.1"
 mockery = "2.53.0"
 protoc = "24.2"
 protoc-gen-go = "1.36.9"
+
+[tasks.codegraph]
+description = "Initialize or sync codegraph index"
+run = """
+  command -v codegraph >/dev/null 2>&1 || exit 0
+  if [ ! -f .codegraph/codegraph.db ]; then
+    codegraph init
+  fi
+  codegraph sync
+"""
+
+[hooks]
+enter = { task = "codegraph" }
