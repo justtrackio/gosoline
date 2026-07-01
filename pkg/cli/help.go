@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+const defaultHelpLineLength = 120
+
 func (c *Cli) writeCmdNotFound(errW io.Writer, helpW io.Writer, err *cmdNotFoundError) error {
 	if err := fprintf(errW, "%s\n", err); err != nil {
 		return err
@@ -34,7 +36,9 @@ func (c *Cli) writeHelp(w io.Writer, args ...string) error {
 		return fmt.Errorf("unknown command %q", strings.Join(args, " "))
 	}
 
-	if err := writeSection(w, ctx.description); err != nil {
+	lineLength := c.normalizedHelpLineLength()
+
+	if err := writeSection(w, ctx.description, lineLength); err != nil {
 		return err
 	}
 
@@ -42,21 +46,29 @@ func (c *Cli) writeHelp(w io.Writer, args ...string) error {
 		return err
 	}
 
-	if err := writeExamples(w, ctx.cmd); err != nil {
-		return err
-	}
-
 	if ctx.cmd == nil {
-		if err := writeCommands(w, ctx.router); err != nil {
+		if err := writeCommands(w, ctx.router, lineLength); err != nil {
 			return err
 		}
 	}
 
-	if err := writeFlags(w, append(c.flags, ctx.flags...)); err != nil {
+	if err := writeFlags(w, append(c.flags, ctx.flags...), lineLength); err != nil {
+		return err
+	}
+
+	if err := writeExamples(w, ctx.cmd, lineLength); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (c *Cli) normalizedHelpLineLength() int {
+	if c.helpLineLength == 0 {
+		return defaultHelpLineLength
+	}
+
+	return c.helpLineLength
 }
 
 func (c *Cli) findHelpContext(args []string) (helpContext, bool) {
@@ -98,12 +110,16 @@ func (c *Cli) findHelpContext(args []string) (helpContext, bool) {
 	}, true
 }
 
-func writeSection(w io.Writer, text string) error {
+func writeSection(w io.Writer, text string, lineLength int) error {
 	if text == "" {
 		return nil
 	}
 
-	return fprintf(w, "\n  %s\n", text)
+	if err := fprintf(w, "\n"); err != nil {
+		return err
+	}
+
+	return writeWrappedLines(w, "  ", text, lineLength)
 }
 
 func writeUsage(w io.Writer, name string, path []string, cmd *Cmd) error {
@@ -119,7 +135,7 @@ func writeUsage(w io.Writer, name string, path []string, cmd *Cmd) error {
 	return fprintf(w, "\n  USAGE\n\n    %s\n", strings.Join(usageParts, " "))
 }
 
-func writeExamples(w io.Writer, cmd *Cmd) error {
+func writeExamples(w io.Writer, cmd *Cmd, lineLength int) error {
 	if cmd == nil || len(cmd.Examples) == 0 {
 		return nil
 	}
@@ -128,8 +144,8 @@ func writeExamples(w io.Writer, cmd *Cmd) error {
 		return err
 	}
 
-	for _, example := range cmd.Examples {
-		if err := fprintf(w, "    %s\n", example); err != nil {
+	for i, example := range cmd.Examples {
+		if err := writeExample(w, i, example, lineLength); err != nil {
 			return err
 		}
 	}
@@ -137,7 +153,120 @@ func writeExamples(w io.Writer, cmd *Cmd) error {
 	return nil
 }
 
-func writeCommands(w io.Writer, router *Router) error {
+func writeExample(w io.Writer, index int, example CmdExample, lineLength int) error {
+	if index > 0 {
+		if err := fprintf(w, "\n"); err != nil {
+			return err
+		}
+	}
+
+	if err := fprintf(w, "    Example %d:\n\n", index+1); err != nil {
+		return err
+	}
+
+	if example.Description != "" {
+		if err := writeWrappedLines(w, "    ", example.Description, lineLength); err != nil {
+			return err
+		}
+
+		if err := fprintf(w, "\n"); err != nil {
+			return err
+		}
+	}
+
+	if example.Args != "" {
+		if err := writeIndentedLines(w, "        ", example.Args); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func writeIndentedLines(w io.Writer, indent string, text string) error {
+	for _, line := range strings.Split(text, "\n") {
+		if err := fprintf(w, "%s%s\n", indent, line); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func writeWrappedLines(w io.Writer, indent string, text string, lineLength int) error {
+	for _, line := range strings.Split(text, "\n") {
+		wrapped := wrapLine(line, indent, lineLength)
+
+		for _, wrappedLine := range wrapped {
+			if err := fprintf(w, "%s%s\n", indent, wrappedLine); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func writeHelpEntry(w io.Writer, entry helpEntry, usageWidth int, lineLength int) error {
+	prefix := fmt.Sprintf("    %-*s  ", usageWidth, entry.usage)
+	wrapped := wrapLine(entry.description, prefix, lineLength)
+
+	if len(wrapped) == 0 {
+		return fprintf(w, "%s\n", strings.TrimRight(prefix, " "))
+	}
+
+	if err := fprintf(w, "%s%s\n", prefix, wrapped[0]); err != nil {
+		return err
+	}
+
+	continuationPrefix := strings.Repeat(" ", len(prefix))
+	for _, line := range wrapped[1:] {
+		if err := fprintf(w, "%s%s\n", continuationPrefix, line); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func wrapLine(line string, prefix string, lineLength int) []string {
+	if line == "" {
+		return []string{""}
+	}
+
+	if lineLength <= 0 || len(prefix)+len(line) <= lineLength {
+		return []string{line}
+	}
+
+	available := lineLength - len(prefix)
+	if available <= 0 {
+		return []string{line}
+	}
+
+	words := strings.Fields(line)
+	if len(words) == 0 {
+		return []string{""}
+	}
+
+	lines := make([]string, 0)
+	current := words[0]
+	for _, word := range words[1:] {
+		if len(current)+1+len(word) <= available {
+			current += " " + word
+
+			continue
+		}
+
+		lines = append(lines, current)
+		current = word
+	}
+
+	lines = append(lines, current)
+
+	return lines
+}
+
+func writeCommands(w io.Writer, router *Router, lineLength int) error {
 	entries := helpEntries(router)
 	if len(entries) == 0 {
 		return nil
@@ -150,7 +279,7 @@ func writeCommands(w io.Writer, router *Router) error {
 	}
 
 	for _, entry := range entries {
-		if err := fprintf(w, "    %-*s  %s\n", width, entry.usage, entry.description); err != nil {
+		if err := writeHelpEntry(w, entry, width, lineLength); err != nil {
 			return err
 		}
 	}
@@ -195,7 +324,7 @@ func commandUsage(cmd Cmd) string {
 	return fmt.Sprintf("%s [--flags]", cmd.Name)
 }
 
-func writeFlags(w io.Writer, flags []Flag) error {
+func writeFlags(w io.Writer, flags []Flag, lineLength int) error {
 	entries := flagEntries(flags)
 	if len(entries) == 0 {
 		return nil
@@ -208,7 +337,7 @@ func writeFlags(w io.Writer, flags []Flag) error {
 	}
 
 	for _, entry := range entries {
-		if err := fprintf(w, "    %-*s  %s\n", width, entry.usage, entry.description); err != nil {
+		if err := writeHelpEntry(w, entry, width, lineLength); err != nil {
 			return err
 		}
 	}
@@ -219,7 +348,7 @@ func writeFlags(w io.Writer, flags []Flag) error {
 func flagEntries(flags []Flag) []helpEntry {
 	entries := make([]helpEntry, 0, len(flags)+1)
 	entries = append(entries, helpEntry{
-		usage:       "-h --help",
+		usage:       "-h, --help",
 		description: "Show help for this command.",
 	})
 
@@ -248,11 +377,12 @@ func flagDescription(flag Flag) string {
 func flagUsage(flag Flag) string {
 	parts := make([]string, 0, 2)
 
-	if flag.Short != "" {
+	switch {
+	case flag.Short != "" && flag.Long != "":
+		parts = append(parts, fmt.Sprintf("-%s, --%s", flag.Short, flag.Long))
+	case flag.Short != "":
 		parts = append(parts, "-"+flag.Short)
-	}
-
-	if flag.Long != "" {
+	case flag.Long != "":
 		parts = append(parts, "--"+flag.Long)
 	}
 

@@ -50,6 +50,7 @@ func (s *FactoryTestSuite) SetupTest() {
 func (s *FactoryTestSuite) TestNoModules() {
 	_, err := kernel.BuildFactory(s.ctx, s.config, s.logger, []kernel.Option{})
 	s.EqualError(err, "can not build kernel factory: no modules to run")
+	s.ErrorIs(err, kernel.ErrNoModulesToRun)
 }
 
 func (s *FactoryTestSuite) TestNoForegroundModules() {

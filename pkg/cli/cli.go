@@ -2,7 +2,9 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -24,11 +26,13 @@ func (e *cmdNotFoundError) Error() string {
 	return fmt.Sprintf("unknown command %q", strings.Join(e.cmd, " "))
 }
 
+// Cli wires command routing, option parsing, and gosoline application startup for command line programs.
 type Cli struct {
 	*Router
 
-	name        string
-	description string
+	name           string
+	description    string
+	helpLineLength int
 
 	input      *Input
 	flags      []Flag
@@ -36,6 +40,7 @@ type Cli struct {
 	appOptions []application.Option
 }
 
+// NewCli creates a CLI with the default router and applies the provided options when Run is called.
 func NewCli(options ...Option) *Cli {
 	router := NewRouter(nil)
 
@@ -45,13 +50,15 @@ func NewCli(options ...Option) *Cli {
 	}
 
 	return &Cli{
-		Router:     router,
-		flags:      nil,
-		cliOptions: options,
-		appOptions: defaultAppOptions,
+		Router:         router,
+		helpLineLength: defaultHelpLineLength,
+		flags:          nil,
+		cliOptions:     options,
+		appOptions:     defaultAppOptions,
 	}
 }
 
+// Run parses process arguments, resolves the selected command, and starts the configured gosoline application.
 func (c *Cli) Run() {
 	var err error
 
@@ -102,10 +109,10 @@ func (c *Cli) Run() {
 		}
 	}
 
-	c.runApp(appOptions)
+	c.runApp(appOptions, blueprint.Cmd)
 }
 
-func (c *Cli) runApp(appOptions []application.Option) {
+func (c *Cli) runApp(appOptions []application.Option, helpPath []string) {
 	ctx := appctx.WithContainer(context.Background())
 	config := cfg.New(map[string]any{
 		"app": map[string]any{
@@ -119,9 +126,27 @@ func (c *Cli) runApp(appOptions []application.Option) {
 	var err error
 	var ker kernelPkg.Kernel
 	if ker, err = application.NewWithInterfaces(ctx, config, logger, appOptions...); err != nil {
+		if c.writeHelpForNoModules(err, os.Stdout, os.Stderr, helpPath) {
+			os.Exit(1)
+		}
+
 		fmt.Printf("can not build application: %v\n", err)
 		os.Exit(1)
 	}
 
 	ker.Run()
+}
+
+func (c *Cli) writeHelpForNoModules(err error, helpW io.Writer, errW io.Writer, helpPath []string) bool {
+	if !errors.Is(err, kernelPkg.ErrNoModulesToRun) {
+		return false
+	}
+
+	if err := c.writeHelp(helpW, helpPath...); err != nil {
+		if err := fprintf(errW, "%s\n", err); err != nil {
+			return true
+		}
+	}
+
+	return true
 }

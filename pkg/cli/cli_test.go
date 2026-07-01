@@ -2,8 +2,10 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -82,4 +84,59 @@ func TestWriteCmdNotFound_GroupHelp(t *testing.T) {
 	assert.Contains(t, helpBuf.String(), "Manage the API.")
 	assert.Contains(t, helpBuf.String(), "app api <command> [--flags]")
 	assert.Contains(t, helpBuf.String(), "serve  Serve requests.")
+}
+
+func TestWriteHelpForNoModules_RootHelp(t *testing.T) {
+	router := NewRouter(nil)
+	router.Cmd(Cmd{Name: "serve", Description: "Serve requests."})
+
+	cli := &Cli{
+		Router:      router,
+		name:        "app",
+		description: "Run the app.",
+	}
+	helpBuf := bytes.Buffer{}
+	errBuf := bytes.Buffer{}
+	err := fmt.Errorf("can not build application: can not build kernel factory: %w", kernel.ErrNoModulesToRun)
+
+	handled := cli.writeHelpForNoModules(err, &helpBuf, &errBuf, nil)
+
+	assert.True(t, handled)
+	assert.Empty(t, errBuf.String())
+	assert.Contains(t, helpBuf.String(), "Run the app.")
+	assert.Contains(t, helpBuf.String(), "app <command> [--flags]")
+	assert.Contains(t, helpBuf.String(), "serve  Serve requests.")
+}
+
+func TestWriteHelpForNoModules_CommandHelp(t *testing.T) {
+	router := NewRouter(nil)
+	router.Cmd(Cmd{Name: "serve", Description: "Serve requests."})
+
+	cli := &Cli{
+		Router: router,
+		name:   "app",
+	}
+	helpBuf := bytes.Buffer{}
+	errBuf := bytes.Buffer{}
+	err := fmt.Errorf("can not build application: can not build kernel factory: %w", kernel.ErrNoModulesToRun)
+
+	handled := cli.writeHelpForNoModules(err, &helpBuf, &errBuf, []string{"serve"})
+
+	assert.True(t, handled)
+	assert.Empty(t, errBuf.String())
+	assert.Contains(t, helpBuf.String(), "Serve requests.")
+	assert.Contains(t, helpBuf.String(), "app serve")
+	assert.NotContains(t, helpBuf.String(), "app <command> [--flags]")
+}
+
+func TestWriteHelpForNoModules_OtherError(t *testing.T) {
+	cli := &Cli{Router: NewRouter(nil)}
+	helpBuf := bytes.Buffer{}
+	errBuf := bytes.Buffer{}
+
+	handled := cli.writeHelpForNoModules(fmt.Errorf("other error"), &helpBuf, &errBuf, nil)
+
+	assert.False(t, handled)
+	assert.Empty(t, helpBuf.String())
+	assert.Empty(t, errBuf.String())
 }

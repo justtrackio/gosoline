@@ -11,6 +11,7 @@ type Input struct {
 	Flags     []InputFlag
 }
 
+// InputFlag is a parsed command line flag name and value pair.
 type InputFlag struct {
 	Name  string
 	Value string
@@ -21,6 +22,7 @@ func NewInput() (*Input, error) {
 	return NewInputWithArgs(os.Args[1:])
 }
 
+// NewInputWithArgs parses the provided command line arguments into positional arguments and flags.
 func NewInputWithArgs(args []string) (*Input, error) {
 	input := &Input{
 		Arguments: make([]string, 0),

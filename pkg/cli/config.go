@@ -6,6 +6,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
+// UnmarshalFlags unmarshals CLI flag values from the application's cli.flags configuration section.
 func UnmarshalFlags[T any](config cfg.Config) (*T, error) {
 	settings := new(T)
 

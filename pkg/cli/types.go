@@ -10,6 +10,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+// Router stores the command and group hierarchy used to resolve CLI input.
 type Router struct {
 	parent *Router
 
@@ -20,6 +21,7 @@ type Router struct {
 	defaultCmd Cmd
 }
 
+// NewRouter creates an empty router with an optional parent router for nested command groups.
 func NewRouter(parent *Router) *Router {
 	return &Router{
 		parent: parent,
@@ -28,6 +30,7 @@ func NewRouter(parent *Router) *Router {
 	}
 }
 
+// Group registers a command group and optional subcommands, returning the group's child router.
 func (r *Router) Group(group Group, subCommands ...Cmd) *Router {
 	group.child = NewRouter(r)
 
@@ -44,6 +47,7 @@ func (r *Router) Group(group Group, subCommands ...Cmd) *Router {
 	return group.child
 }
 
+// Cmd registers a command on the router.
 func (r *Router) Cmd(cmd Cmd) *Router {
 	if _, ok := r.cmds[cmd.Name]; !ok {
 		r.cmdNames = append(r.cmdNames, cmd.Name)
@@ -54,12 +58,14 @@ func (r *Router) Cmd(cmd Cmd) *Router {
 	return r
 }
 
+// DefaultCmd sets the command used when no explicit command matches the input.
 func (r *Router) DefaultCmd(cmd Cmd) *Router {
 	r.defaultCmd = cmd
 
 	return r
 }
 
+// Group defines a named command namespace with shared flags and application options.
 type Group struct {
 	child *Router
 
@@ -69,21 +75,26 @@ type Group struct {
 	AppOptions  []application.Option
 }
 
+// Cmd defines an executable command with help metadata, flags, and application options.
 type Cmd struct {
 	Name        string
 	Description string
-	Examples    []string
+	Examples    []CmdExample
 	Flags       []Flag
 	AppOptions  []application.Option
 }
 
+// FlagKind identifies how a CLI flag value is parsed.
 type FlagKind string
 
 const (
+	// FlagKindString parses a flag as a single string value where the last occurrence wins.
 	FlagKindString FlagKind = "string"
-	FlagKindList   FlagKind = "list"
+	// FlagKindList parses every occurrence of a flag into a string slice.
+	FlagKindList FlagKind = "list"
 )
 
+// Flag defines a supported CLI flag and how it maps into application configuration.
 type Flag struct {
 	Short       string
 	Long        string
@@ -94,6 +105,7 @@ type Flag struct {
 	AppOptions  []application.Option
 }
 
+// Module builds a main application module from a typed dependency factory and command handler.
 func Module[T any](fac func(ctx context.Context, config cfg.Config, logger log.Logger) (T, error), call func(m T) Handler) application.Option {
 	module := func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		var err error
@@ -111,4 +123,11 @@ func Module[T any](fac func(ctx context.Context, config cfg.Config, logger log.L
 	return application.WithModuleFactory("main", module)
 }
 
+// Handler is the function executed by a CLI command module.
 type Handler = kernel.ModuleRunFunc
+
+// CmdExample describes a command example rendered in help output.
+type CmdExample struct {
+	Description string
+	Args        string
+}

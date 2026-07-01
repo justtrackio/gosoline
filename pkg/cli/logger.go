@@ -28,6 +28,7 @@ func newCliLogger(config cfg.Config) (log.Logger, error) {
 	return logger, nil
 }
 
+// LogHandler creates a CLI log handler that writes debug output for the selected channels.
 func LogHandler(channels ...string) logHandler {
 	return logHandler{
 		channels: channels,

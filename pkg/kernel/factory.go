@@ -2,12 +2,16 @@ package kernel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
+
+// ErrNoModulesToRun is returned when a kernel blueprint did not produce any modules.
+var ErrNoModulesToRun = errors.New("no modules to run")
 
 type factory struct {
 	ctx       context.Context
@@ -82,7 +86,7 @@ func (f *factory) build() (err error) {
 	}
 
 	if !f.stages.hasModules() {
-		return fmt.Errorf("no modules to run")
+		return ErrNoModulesToRun
 	}
 
 	if f.stages.countForegroundModules() == 0 {

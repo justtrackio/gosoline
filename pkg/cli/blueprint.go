@@ -6,6 +6,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/application"
 )
 
+// Blueprint describes the command, arguments, flags, and application options selected from parsed CLI input.
 type Blueprint struct {
 	Cmd        []string
 	Args       []string
@@ -13,6 +14,7 @@ type Blueprint struct {
 	AppOptions []application.Option
 }
 
+// BlueprintFlag contains the resolved value and configuration bindings for a matched CLI flag.
 type BlueprintFlag struct {
 	Key        string
 	CustomKey  string
@@ -20,6 +22,7 @@ type BlueprintFlag struct {
 	AppOptions []application.Option
 }
 
+// NewBlueprint resolves parsed input against a router and returns the command blueprint to execute.
 func NewBlueprint(router *Router, input *Input, globalFlags ...Flag) (*Blueprint, error) {
 	if err := validateRouter(router); err != nil {
 		return nil, err
