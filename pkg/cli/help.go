@@ -132,6 +132,10 @@ func writeUsage(w io.Writer, name string, path []string, cmd *Cmd) error {
 		usageParts = append(usageParts, "[--flags]")
 	}
 
+	if cmd != nil {
+		usageParts = appendCommandArguments(usageParts, cmd.Arguments)
+	}
+
 	return fprintf(w, "\n  USAGE\n\n    %s\n", strings.Join(usageParts, " "))
 }
 
@@ -317,11 +321,26 @@ func helpEntries(router *Router) []helpEntry {
 }
 
 func commandUsage(cmd Cmd) string {
-	if len(cmd.Flags) == 0 {
-		return cmd.Name
+	usageParts := []string{cmd.Name}
+
+	if len(cmd.Flags) > 0 {
+		usageParts = append(usageParts, "[--flags]")
 	}
 
-	return fmt.Sprintf("%s [--flags]", cmd.Name)
+	usageParts = appendCommandArguments(usageParts, cmd.Arguments)
+
+	return strings.Join(usageParts, " ")
+}
+
+func appendCommandArguments(usageParts []string, arguments CmdArguments) []string {
+	switch arguments {
+	case CmdArgumentsSingle:
+		return append(usageParts, "<arg>")
+	case CmdArgumentsMultiple:
+		return append(usageParts, "<args...>")
+	default:
+		return usageParts
+	}
 }
 
 func writeFlags(w io.Writer, flags []Flag, lineLength int) error {

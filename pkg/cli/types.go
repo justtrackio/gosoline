@@ -79,10 +79,23 @@ type Group struct {
 type Cmd struct {
 	Name        string
 	Description string
+	Arguments   CmdArguments
 	Examples    []CmdExample
 	Flags       []Flag
 	AppOptions  []application.Option
 }
+
+// CmdArguments identifies whether a CLI command accepts positional arguments.
+type CmdArguments string
+
+const (
+	// CmdArgumentsNone documents that a command does not accept positional arguments.
+	CmdArgumentsNone CmdArguments = ""
+	// CmdArgumentsSingle documents that a command accepts one positional argument.
+	CmdArgumentsSingle CmdArguments = "single"
+	// CmdArgumentsMultiple documents that a command accepts multiple positional arguments.
+	CmdArgumentsMultiple CmdArguments = "multiple"
+)
 
 // FlagKind identifies how a CLI flag value is parsed.
 type FlagKind string

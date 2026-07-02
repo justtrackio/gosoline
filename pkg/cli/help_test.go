@@ -86,6 +86,67 @@ func TestWriteHelp_CommandWithoutExamples(t *testing.T) {
 	assert.NotContains(t, buf.String(), "EXAMPLES")
 }
 
+func TestWriteHelp_CommandWithSingleArgument(t *testing.T) {
+	router := NewRouter(nil)
+	router.Cmd(Cmd{
+		Name:      "close",
+		Arguments: CmdArgumentsSingle,
+	})
+
+	cli := &Cli{
+		Router: router,
+		name:   "glab issue",
+	}
+
+	buf := bytes.Buffer{}
+	err := cli.writeHelp(&buf, "close")
+
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "    glab issue close <arg>\n")
+}
+
+func TestWriteHelp_CommandWithMultipleArguments(t *testing.T) {
+	router := NewRouter(nil)
+	router.Cmd(Cmd{
+		Name:      "run",
+		Arguments: CmdArgumentsMultiple,
+		Flags: []Flag{
+			{Long: "env", Description: "Select an environment."},
+		},
+	})
+
+	cli := &Cli{
+		Router: router,
+		name:   "app",
+	}
+
+	buf := bytes.Buffer{}
+	err := cli.writeHelp(&buf, "run")
+
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "    app run [--flags] <args...>\n")
+}
+
+func TestWriteHelp_CommandListShowsArguments(t *testing.T) {
+	router := NewRouter(nil)
+	router.Cmd(Cmd{
+		Name:        "run",
+		Description: "Run files.",
+		Arguments:   CmdArgumentsMultiple,
+	})
+
+	cli := &Cli{
+		Router: router,
+		name:   "app",
+	}
+
+	buf := bytes.Buffer{}
+	err := cli.writeHelp(&buf)
+
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "    run <args...>  Run files.")
+}
+
 func TestWriteHelp_DefaultLineLengthWrapsDescription(t *testing.T) {
 	router := NewRouter(nil)
 	router.Cmd(Cmd{

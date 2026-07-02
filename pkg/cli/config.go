@@ -16,3 +16,8 @@ func UnmarshalFlags[T any](config cfg.Config) (*T, error) {
 
 	return settings, nil
 }
+
+// GetArguments returns the positional arguments from the application's cli.args configuration section.
+func GetArguments(config cfg.Config) ([]string, error) {
+	return config.GetStringSlice("cli.args", []string{})
+}
