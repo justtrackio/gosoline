@@ -540,6 +540,80 @@ func (_c *Client_PublishBatch_Call) RunAndReturn(run func(context.Context, *sns.
 	return _c
 }
 
+// SetSubscriptionAttributes provides a mock function with given fields: ctx, params, optFns
+func (_m *Client) SetSubscriptionAttributes(ctx context.Context, params *sns.SetSubscriptionAttributesInput, optFns ...func(*sns.Options)) (*sns.SetSubscriptionAttributesOutput, error) {
+	_va := make([]interface{}, len(optFns))
+	for _i := range optFns {
+		_va[_i] = optFns[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, params)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetSubscriptionAttributes")
+	}
+
+	var r0 *sns.SetSubscriptionAttributesOutput
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *sns.SetSubscriptionAttributesInput, ...func(*sns.Options)) (*sns.SetSubscriptionAttributesOutput, error)); ok {
+		return rf(ctx, params, optFns...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *sns.SetSubscriptionAttributesInput, ...func(*sns.Options)) *sns.SetSubscriptionAttributesOutput); ok {
+		r0 = rf(ctx, params, optFns...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sns.SetSubscriptionAttributesOutput)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *sns.SetSubscriptionAttributesInput, ...func(*sns.Options)) error); ok {
+		r1 = rf(ctx, params, optFns...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Client_SetSubscriptionAttributes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetSubscriptionAttributes'
+type Client_SetSubscriptionAttributes_Call struct {
+	*mock.Call
+}
+
+// SetSubscriptionAttributes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sns.SetSubscriptionAttributesInput
+//   - optFns ...func(*sns.Options)
+func (_e *Client_Expecter) SetSubscriptionAttributes(ctx interface{}, params interface{}, optFns ...interface{}) *Client_SetSubscriptionAttributes_Call {
+	return &Client_SetSubscriptionAttributes_Call{Call: _e.mock.On("SetSubscriptionAttributes",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_SetSubscriptionAttributes_Call) Run(run func(ctx context.Context, params *sns.SetSubscriptionAttributesInput, optFns ...func(*sns.Options))) *Client_SetSubscriptionAttributes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sns.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sns.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sns.SetSubscriptionAttributesInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_SetSubscriptionAttributes_Call) Return(_a0 *sns.SetSubscriptionAttributesOutput, _a1 error) *Client_SetSubscriptionAttributes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SetSubscriptionAttributes_Call) RunAndReturn(run func(context.Context, *sns.SetSubscriptionAttributesInput, ...func(*sns.Options)) (*sns.SetSubscriptionAttributesOutput, error)) *Client_SetSubscriptionAttributes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Subscribe provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) Subscribe(ctx context.Context, params *sns.SubscribeInput, optFns ...func(*sns.Options)) (*sns.SubscribeOutput, error) {
 	_va := make([]interface{}, len(optFns))

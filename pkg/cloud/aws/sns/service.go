@@ -131,11 +131,13 @@ func (s *Service) subscriptionExists(ctx context.Context, queueArn string, topic
 			"topicArn":        *subscription.TopicArn,
 			"subscriptionArt": *subscription.SubscriptionArn,
 			"queueArn":        queueArn,
-		}).Info(ctx, "found not matching subscription for queue %s, deleting %s", queueArn, *subscription.SubscriptionArn)
+		}).Info(ctx, "found not matching subscription for queue %s, updating %s", queueArn, *subscription.SubscriptionArn)
 
-		if err = s.deleteSubscription(ctx, subscription.SubscriptionArn); err != nil {
-			return false, fmt.Errorf("can not delete subscription: %w", err)
+		if err = s.setSubscriptionFilterPolicy(ctx, subscription.SubscriptionArn, filterPolicy); err != nil {
+			return false, fmt.Errorf("can not update subscription: %w", err)
 		}
+
+		return true, nil
 	}
 
 	return false, nil
@@ -218,13 +220,23 @@ func (s *Service) getSubscriptionAttributes(ctx context.Context, subscriptionArn
 	return out.Attributes, nil
 }
 
-func (s *Service) deleteSubscription(ctx context.Context, subscriptionArn *string) error {
-	input := &sns.UnsubscribeInput{
+func (s *Service) setSubscriptionFilterPolicy(ctx context.Context, subscriptionArn *string, filterPolicy map[string][]string) error {
+	policy := "{}"
+	if len(filterPolicy) > 0 {
+		var err error
+		if policy, err = buildFilterPolicy(filterPolicy); err != nil {
+			return fmt.Errorf("can not build filter policy: %w", err)
+		}
+	}
+
+	input := &sns.SetSubscriptionAttributesInput{
+		AttributeName:   aws.String("FilterPolicy"),
+		AttributeValue:  aws.String(policy),
 		SubscriptionArn: subscriptionArn,
 	}
 
-	if _, err := s.client.Unsubscribe(ctx, input); err != nil {
-		return fmt.Errorf("can not unsubscribe from sns topic: %w", err)
+	if _, err := s.client.SetSubscriptionAttributes(ctx, input); err != nil {
+		return fmt.Errorf("can not set subscription attributes: %w", err)
 	}
 
 	return nil

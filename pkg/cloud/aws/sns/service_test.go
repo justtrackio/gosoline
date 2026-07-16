@@ -106,19 +106,12 @@ func (s *ServiceTestSuite) TestSubscribeSqsExistsWithDifferentAttributes() {
 	}
 	s.client.EXPECT().GetSubscriptionAttributes(matcher.Context, getAttributesInput).Return(getAttributesOutput, nil).Once()
 
-	unsubscribeInput := &awsSns.UnsubscribeInput{SubscriptionArn: aws.String("subscriptionArn")}
-	unsubscribeOutput := &awsSns.UnsubscribeOutput{}
-	s.client.EXPECT().Unsubscribe(matcher.Context, unsubscribeInput).Return(unsubscribeOutput, nil).Once()
-
-	subInput := &awsSns.SubscribeInput{
-		Attributes: map[string]string{
-			"FilterPolicy": `{"model":["goso"]}`,
-		},
-		Endpoint: aws.String("queueArn"),
-		Protocol: aws.String("sqs"),
-		TopicArn: aws.String("topicArn"),
+	setAttributesInput := &awsSns.SetSubscriptionAttributesInput{
+		AttributeName:   aws.String("FilterPolicy"),
+		AttributeValue:  aws.String(`{"model":["goso"]}`),
+		SubscriptionArn: aws.String("subscriptionArn"),
 	}
-	s.client.EXPECT().Subscribe(matcher.Context, subInput).Return(nil, nil).Once()
+	s.client.EXPECT().SetSubscriptionAttributes(matcher.Context, setAttributesInput).Return(&awsSns.SetSubscriptionAttributesOutput{}, nil).Once()
 
 	err := s.service.SubscribeSqs(s.T().Context(), "queueArn", "topicArn", map[string][]string{
 		"model": {"goso"},
@@ -187,20 +180,12 @@ func (s *ServiceTestSuite) TestSubscribeSqsExistsWithArrayFilterPolicy() {
 	}
 	s.client.EXPECT().GetSubscriptionAttributes(matcher.Context, getAttributesInput).Return(getAttributesOutput, nil).Once()
 
-	// Existing policy has ["model.a","model.b"] but we want ["model.a","model.b","model.c"], so it should delete and re-subscribe
-	unsubscribeInput := &awsSns.UnsubscribeInput{SubscriptionArn: aws.String("subscriptionArn")}
-	unsubscribeOutput := &awsSns.UnsubscribeOutput{}
-	s.client.EXPECT().Unsubscribe(matcher.Context, unsubscribeInput).Return(unsubscribeOutput, nil).Once()
-
-	subInput := &awsSns.SubscribeInput{
-		Attributes: map[string]string{
-			"FilterPolicy": `{"modelId":["model.a","model.b","model.c"]}`,
-		},
-		Endpoint: aws.String("queueArn"),
-		Protocol: aws.String("sqs"),
-		TopicArn: aws.String("topicArn"),
+	setAttributesInput := &awsSns.SetSubscriptionAttributesInput{
+		AttributeName:   aws.String("FilterPolicy"),
+		AttributeValue:  aws.String(`{"modelId":["model.a","model.b","model.c"]}`),
+		SubscriptionArn: aws.String("subscriptionArn"),
 	}
-	s.client.EXPECT().Subscribe(matcher.Context, subInput).Return(nil, nil).Once()
+	s.client.EXPECT().SetSubscriptionAttributes(matcher.Context, setAttributesInput).Return(&awsSns.SetSubscriptionAttributesOutput{}, nil).Once()
 
 	err := s.service.SubscribeSqs(s.ctx, "queueArn", "topicArn", map[string][]string{
 		"modelId": {"model.a", "model.b", "model.c"},
