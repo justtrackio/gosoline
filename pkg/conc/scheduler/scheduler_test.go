@@ -44,7 +44,7 @@ func TestScheduler(t *testing.T) {
 		RunnerCount:  5,
 		MaxBatchSize: 8,
 	})
-	err = runner.RunTask(taskScheduler)
+	err = runner.RunTask(ctx, taskScheduler)
 	assert.NoError(t, err)
 
 	var wg sync.WaitGroup
