@@ -73,10 +73,10 @@ func WithExitHandler(handler func(code int)) Option {
 	}
 }
 
-func WithShutdownHandler(handler ShutdownHandler) Option {
+func WithShutdownHandler(handler ...ShutdownHandler) Option {
 	return func(bp *blueprint) {
 		bp.kernelOptions = append(bp.kernelOptions, func(k *kernel) {
-			k.shutdownHandlers = append(k.shutdownHandlers, handler)
+			k.shutdownHandlers = append(k.shutdownHandlers, handler...)
 		})
 	}
 }
