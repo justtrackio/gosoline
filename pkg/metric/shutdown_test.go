@@ -5,43 +5,51 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestShutdownHandler_Empty(t *testing.T) {
-	ResetShutdownRegistry()
-	t.Cleanup(ResetShutdownRegistry)
+func TestShutdownHandler_NoProvider(t *testing.T) {
+	ctx := appctx.WithContainer(context.Background())
 
-	assert.NoError(t, NewShutdownHandler().Shutdown(t.Context()))
+	err := NewShutdownHandler().Shutdown(ctx)
+	assert.NoError(t, err)
 }
 
-func TestShutdownHandler_RunsInRegistrationOrderAndContinues(t *testing.T) {
-	ResetShutdownRegistry()
-	t.Cleanup(ResetShutdownRegistry)
+func TestShutdownHandler_CallsProvider(t *testing.T) {
+	ctx := appctx.WithContainer(context.Background())
 
-	firstErr := errors.New("first boom")
-	secondErr := errors.New("second boom")
-	var calls []string
-	RegisterShutdown("first-failure", func(context.Context) error {
-		calls = append(calls, "first-failure")
+	called := false
+	_, err := appctx.Provide(ctx, metricShutdownKey{}, func() (func(context.Context) error, error) {
+		return func(context.Context) error {
+			called = true
 
-		return firstErr
+			return nil
+		}, nil
 	})
-	RegisterShutdown("successful", func(context.Context) error {
-		calls = append(calls, "successful")
+	assert.NoError(t, err)
 
-		return nil
+	err = NewShutdownHandler().Shutdown(ctx)
+	assert.NoError(t, err)
+	assert.True(t, called)
+}
+
+func TestShutdownHandler_PropagatesError(t *testing.T) {
+	ctx := appctx.WithContainer(context.Background())
+	expected := errors.New("shutdown failed")
+
+	_, err := appctx.Provide(ctx, metricShutdownKey{}, func() (func(context.Context) error, error) {
+		return func(context.Context) error {
+			return expected
+		}, nil
 	})
-	RegisterShutdown("second-failure", func(context.Context) error {
-		calls = append(calls, "second-failure")
+	assert.NoError(t, err)
 
-		return secondErr
-	})
+	err = NewShutdownHandler().Shutdown(ctx)
+	assert.ErrorIs(t, err, expected)
+}
 
+func TestShutdownHandler_NoContainer(t *testing.T) {
 	err := NewShutdownHandler().Shutdown(context.Background())
-	assert.ErrorContains(t, err, "first-failure: first boom")
-	assert.ErrorContains(t, err, "second-failure: second boom")
-	assert.ErrorIs(t, err, firstErr)
-	assert.ErrorIs(t, err, secondErr)
-	assert.Equal(t, []string{"first-failure", "successful", "second-failure"}, calls)
+	assert.NoError(t, err)
 }

@@ -2,66 +2,38 @@ package metric
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"sync"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 )
 
-type shutdownEntry struct {
-	name string
-	fn   func(context.Context) error
-}
+type metricShutdownKey struct{}
 
-var (
-	shutdownMu      sync.Mutex
-	shutdownEntries []shutdownEntry
-)
-
-// RegisterShutdown registers a metric provider shutdown function to be executed when the
-// application exits. Functions run in registration order.
-func RegisterShutdown(name string, fn func(context.Context) error) {
-	shutdownMu.Lock()
-	defer shutdownMu.Unlock()
-
-	shutdownEntries = append(shutdownEntries, shutdownEntry{
-		name: name,
-		fn:   fn,
-	})
-}
-
-// ResetShutdownRegistry clears the shutdown registry. Intended for testing only.
-func ResetShutdownRegistry() {
-	shutdownMu.Lock()
-	defer shutdownMu.Unlock()
-
-	shutdownEntries = nil
-}
-
-// NewShutdownHandler returns a ShutdownHandler backed by the package-level registry.
+// NewShutdownHandler returns a ShutdownHandler that retrieves the metric provider's
+// shutdown function from the appctx container and invokes it.
 func NewShutdownHandler() kernel.ShutdownHandler {
-	return registryShutdownHandler{}
+	return shutdownHandler{}
 }
 
-type registryShutdownHandler struct{}
+type shutdownHandler struct{}
 
-var _ kernel.ShutdownHandler = registryShutdownHandler{}
+var _ kernel.ShutdownHandler = shutdownHandler{}
 
-// Shutdown runs all registered metric provider shutdown functions in registration order.
-// It aggregates errors and continues on failure so every provider can flush.
-func (registryShutdownHandler) Shutdown(ctx context.Context) error {
-	shutdownMu.Lock()
-	entries := make([]shutdownEntry, len(shutdownEntries))
-	copy(entries, shutdownEntries)
-	shutdownMu.Unlock()
-
-	var errs []error
-	for _, entry := range entries {
-		if err := entry.fn(ctx); err != nil {
-			errs = append(errs, fmt.Errorf("%s: %w", entry.name, err))
-		}
+// Shutdown retrieves the registered metric provider shutdown function from the appctx
+// container. If no provider was registered, it is a no-op.
+func (shutdownHandler) Shutdown(ctx context.Context) error {
+	shutdownFn, err := appctx.Get[func(context.Context) error](ctx, metricShutdownKey{})
+	if err != nil {
+		return nil
 	}
 
-	return errors.Join(errs...)
+	return shutdownFn(ctx)
+}
+
+// ProvideShutdownForTest stores a shutdown function in the container for testing.
+// Intended for test use only.
+func ProvideShutdownForTest(ctx context.Context, fn func(context.Context) error) {
+	appctx.Provide(ctx, metricShutdownKey{}, func() (func(context.Context) error, error) { //nolint:errcheck
+		return fn, nil
+	})
 }
