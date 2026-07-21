@@ -34,10 +34,7 @@ type (
 	SetupOption  func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error
 )
 
-// ContextValueFactory defines a factory for providing values to the application context container.
-type ContextValueFactory[T any] func() (key any, provider func(ctx context.Context, config cfg.Config, logger log.Logger) (T, error))
-
-func WithAppCtxValue[T any](valueFactory ContextValueFactory[T]) Option {
+func WithAppCtxValue[T any](valueFactory appctx.ContextValueFactory[T]) Option {
 	return func(app *App) {
 		app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
 			key, provider := valueFactory()
