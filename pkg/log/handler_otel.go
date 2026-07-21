@@ -54,17 +54,16 @@ func handlerOtelFactory(ctx context.Context, config cfg.Config, name string) (Ha
 		sdklog.WithProcessor(sdklog.NewBatchProcessor(exporter)),
 	)
 
-	setShutdownFn(ctx, provider.Shutdown)
-
-	return NewHandlerOtel(config, priority, name, provider.Logger(otelLoggerName)), nil
+	return NewHandlerOtel(config, priority, name, provider), nil
 }
 
 type handlerOtel struct {
 	handlerBase
-	logger otellog.Logger
+	provider *sdklog.LoggerProvider
+	logger   otellog.Logger
 }
 
-func NewHandlerOtel(config cfg.Config, levelPriority int, name string, logger otellog.Logger) Handler {
+func NewHandlerOtel(config cfg.Config, levelPriority int, name string, provider *sdklog.LoggerProvider) Handler {
 	return &handlerOtel{
 		handlerBase: handlerBase{
 			config:   config,
@@ -72,7 +71,8 @@ func NewHandlerOtel(config cfg.Config, levelPriority int, name string, logger ot
 			channels: make(map[string]*int),
 			name:     name,
 		},
-		logger: logger,
+		provider: provider,
+		logger:   provider.Logger(otelLoggerName),
 	}
 }
 
@@ -110,6 +110,10 @@ func (h *handlerOtel) Log(ctx context.Context, timestamp time.Time, level int, m
 	h.logger.Emit(ctx, record)
 
 	return nil
+}
+
+func (h *handlerOtel) Close(ctx context.Context) error {
+	return h.provider.Shutdown(ctx)
 }
 
 func toOtelSeverity(level int) otellog.Severity {

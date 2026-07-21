@@ -55,7 +55,7 @@ type kernelOption func(k *kernel)
 type kernel struct {
 	ctx    context.Context
 	clock  clock.Clock
-	logger log.Logger
+	logger log.GosoLogger
 
 	middlewareCtx    context.Context
 	middlewareCancel func()
@@ -77,14 +77,14 @@ type kernel struct {
 	shutdownHandlers []ShutdownHandler
 }
 
-func newKernel(ctx context.Context, config cfg.Config, logger log.Logger) (*kernel, error) {
+func newKernel(ctx context.Context, config cfg.Config, logger log.GosoLogger) (*kernel, error) {
 	settings, err := readSettings(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read kernel settings: %w", err)
 	}
 
 	k := &kernel{
-		logger: logger.WithChannel("kernel"),
+		logger: logger.WithChannel("kernel").(log.GosoLogger),
 		clock:  clock.NewRealClock(),
 
 		ctx:      ctx,
@@ -273,6 +273,11 @@ func (k *kernel) exit() {
 			if err := handler.Shutdown(k.ctx); err != nil {
 				k.logger.Warn(k.ctx, "shutdown handler completed with errors: %s", err)
 			}
+		}
+
+		if err := k.logger.Close(k.ctx); err != nil {
+			fmt.Println("close logger completed with errors: %s", err)
+			k.exitCode = ExitCodeErr
 		}
 
 		k.exitHandler(k.exitCode)

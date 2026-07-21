@@ -16,6 +16,10 @@ type Handler interface {
 	Log(ctx context.Context, timestamp time.Time, level int, msg string, args []any, err error, data Data) error
 }
 
+type ClosingHandler interface {
+	Close(ctx context.Context) error
+}
+
 // HandlerFactory is a function type for creating new handlers from configuration.
 type HandlerFactory func(ctx context.Context, config cfg.Config, name string) (Handler, error)
 
