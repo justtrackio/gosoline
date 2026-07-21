@@ -8,9 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHandlerOtelFactory_RegistersShutdown(t *testing.T) {
-	ResetShutdownRegistry()
-	t.Cleanup(ResetShutdownRegistry)
+func TestHandlerOtelFactory_ProvidesShutdown(t *testing.T) {
+	ctx := WithShutdownContainer(t.Context())
 
 	config := cfg.New()
 	err := config.Option(cfg.WithConfigMap(map[string]any{
@@ -29,11 +28,11 @@ func TestHandlerOtelFactory_RegistersShutdown(t *testing.T) {
 	}))
 	require.NoError(t, err)
 
-	require.Empty(t, shutdownEntries, "registry should start empty")
-
-	_, err = handlerOtelFactory(config, "otel")
+	_, err = handlerOtelFactory(ctx, config, "otel")
 	require.NoError(t, err)
 
-	require.Len(t, shutdownEntries, 1, "otel handler must register exactly one shutdown entry")
-	assert.Equal(t, "otel", shutdownEntries[0].name)
+	// Verify shutdown was stored in container
+	c, ok := ctx.Value(logShutdownKey{}).(*shutdownContainer)
+	require.True(t, ok)
+	assert.NotNil(t, c.fn)
 }

@@ -42,7 +42,9 @@ func Start(handlerFactory HandlerFactory, configOptions ...cfg.Option) {
 		return
 	}
 
-	if handlers, err = log.NewHandlersFromConfig(config); err != nil {
+	ctx = log.WithShutdownContainer(ctx)
+
+	if handlers, err = log.NewHandlersFromConfig(ctx, config); err != nil {
 		defaultErrorHandler(ctx, "can not create handlers from config: %w", err)
 
 		return

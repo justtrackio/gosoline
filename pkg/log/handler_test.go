@@ -1,6 +1,7 @@
 package log_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -17,7 +18,7 @@ func TestCreateFromConfig(t *testing.T) {
 	var err error
 	var handlers []log.Handler
 
-	if handlers, err = log.NewHandlersFromConfig(config); err != nil {
+	if handlers, err = log.NewHandlersFromConfig(context.Background(), config); err != nil {
 		assert.FailNow(t, "can not create logger: %s", err)
 	}
 

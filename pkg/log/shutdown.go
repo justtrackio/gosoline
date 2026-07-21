@@ -2,71 +2,77 @@ package log
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"sync"
 )
 
-// ShutdownHandler drains the registered log backend shutdown functions. It is implemented
+type logShutdownKey struct{}
+
+type shutdownContainer struct {
+	mu sync.Mutex
+	fn func(context.Context) error
+}
+
+// WithShutdownContainer returns a new context with an empty shutdown container installed.
+// This must be called before NewHandlersFromConfig so that handler factories can register
+// their shutdown functions.
+func WithShutdownContainer(ctx context.Context) context.Context {
+	return context.WithValue(ctx, logShutdownKey{}, &shutdownContainer{})
+}
+
+func setShutdownFn(ctx context.Context, fn func(context.Context) error) {
+	c, ok := ctx.Value(logShutdownKey{}).(*shutdownContainer)
+	if !ok || c == nil {
+		return
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.fn = fn
+}
+
+// ShutdownHandler drains the registered log backend shutdown function. It is implemented
 // by the value returned from NewShutdownHandler and consumed by the kernel, which runs it
 // after emitting the final exit-code log line.
 type ShutdownHandler interface {
 	Shutdown(ctx context.Context) error
 }
 
-type shutdownEntry struct {
-	name string
-	fn   func(ctx context.Context) error
-}
-
-var (
-	shutdownMu      sync.Mutex
-	shutdownEntries []shutdownEntry
-)
-
-// RegisterShutdown registers a log backend shutdown/flush function to be executed when the
-// application exits, after the final log line has been emitted. Functions run in
-// registration order. It is safe to call from init/bootstrap code before the kernel exists.
-func RegisterShutdown(name string, fn func(ctx context.Context) error) {
-	shutdownMu.Lock()
-	defer shutdownMu.Unlock()
-
-	shutdownEntries = append(shutdownEntries, shutdownEntry{
-		name: name,
-		fn:   fn,
-	})
-}
-
-// ResetShutdownRegistry clears the shutdown registry. Intended for testing only.
-func ResetShutdownRegistry() {
-	shutdownMu.Lock()
-	defer shutdownMu.Unlock()
-
-	shutdownEntries = nil
-}
-
-// NewShutdownHandler returns a ShutdownHandler backed by the package-level registry.
+// NewShutdownHandler returns a ShutdownHandler that retrieves the log provider's
+// shutdown function from the context and invokes it.
 func NewShutdownHandler() ShutdownHandler {
-	return registryShutdownHandler{}
+	return shutdownHandler{}
 }
 
-type registryShutdownHandler struct{}
+type shutdownHandler struct{}
 
-// Shutdown runs all registered shutdown functions in registration order. It aggregates
-// errors and continues on failure so that a single failing backend does not prevent the
-// others from flushing.
-func (registryShutdownHandler) Shutdown(ctx context.Context) error {
-	shutdownMu.Lock()
-	entries := make([]shutdownEntry, len(shutdownEntries))
-	copy(entries, shutdownEntries)
-	shutdownMu.Unlock()
-
-	var errs []error
-	for _, entry := range entries {
-		if err := entry.fn(ctx); err != nil {
-			errs = append(errs, fmt.Errorf("%s: %w", entry.name, err))
-		}
+// Shutdown retrieves the registered log provider shutdown function from the context.
+// If no provider was registered, it is a no-op.
+func (shutdownHandler) Shutdown(ctx context.Context) error {
+	c, ok := ctx.Value(logShutdownKey{}).(*shutdownContainer)
+	if !ok || c == nil {
+		return nil
 	}
 
-	return errors.Join(errs...)
+	c.mu.Lock()
+	fn := c.fn
+	c.mu.Unlock()
+
+	if fn == nil {
+		return nil
+	}
+
+	return fn(ctx)
+}
+
+// ProvideShutdownForTest sets the shutdown function in the context's container.
+// If no container exists, it installs one first. Intended for test use only.
+func ProvideShutdownForTest(ctx context.Context, fn func(context.Context) error) context.Context {
+	if _, ok := ctx.Value(logShutdownKey{}).(*shutdownContainer); !ok {
+		ctx = WithShutdownContainer(ctx)
+	}
+
+	setShutdownFn(ctx, fn)
+
+	return ctx
 }

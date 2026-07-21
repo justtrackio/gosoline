@@ -69,15 +69,7 @@ func TestDefaultDoesNotInstallOtelShutdownHandlers(t *testing.T) {
 }
 
 func TestWithOtelShutdownRunsHandlersInOrder(t *testing.T) {
-	log.ResetShutdownRegistry()
-	t.Cleanup(log.ResetShutdownRegistry)
-
 	order := []string{}
-	log.RegisterShutdown("log", func(context.Context) error {
-		order = append(order, "log")
-
-		return nil
-	})
 
 	app := application.New(
 		application.WithOtelShutdown,
@@ -90,6 +82,11 @@ func TestWithOtelShutdownRunsHandlersInOrder(t *testing.T) {
 			})
 			tracing.ProvideShutdownForTest(ctx, func(context.Context) error {
 				order = append(order, "tracing")
+
+				return nil
+			})
+			log.ProvideShutdownForTest(ctx, func(context.Context) error {
+				order = append(order, "log")
 
 				return nil
 			})

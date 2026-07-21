@@ -26,7 +26,7 @@ type ChannelSetting struct {
 	Level string `cfg:"level"`
 }
 
-func handlerIoWriterFactory(config cfg.Config, name string) (Handler, error) {
+func handlerIoWriterFactory(_ context.Context, config cfg.Config, name string) (Handler, error) {
 	handlerConfigKey := getHandlerConfigKey(name)
 
 	settings := &HandlerIoWriterSettings{}

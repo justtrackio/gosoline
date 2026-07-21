@@ -95,8 +95,10 @@ func NewWithInterfaces(ctx context.Context, config cfg.GosoConf, logger log.Goso
 		return nil, fmt.Errorf("can not apply post processor on config: %w", err)
 	}
 
+	ctx = log.WithShutdownContainer(ctx)
+
 	for _, opt := range app.loggerOptions {
-		if err = opt(config, logger); err != nil {
+		if err = opt(ctx, config, logger); err != nil {
 			return nil, fmt.Errorf("can not apply logger options on application: %w", err)
 		}
 	}

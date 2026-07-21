@@ -12,7 +12,7 @@ func init() {
 	log.AddHandlerFactory("metric", LoggerHandlerFactory)
 }
 
-func LoggerHandlerFactory(_ cfg.Config, _ string) (log.Handler, error) {
+func LoggerHandlerFactory(_ context.Context, _ cfg.Config, _ string) (log.Handler, error) {
 	return NewLoggerHandler(), nil
 }
 

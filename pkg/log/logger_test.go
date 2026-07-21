@@ -2,6 +2,7 @@ package log_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -99,7 +100,7 @@ func TestConfigureLoggerIoChannels(t *testing.T) {
 	err := config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
 	assert.NoError(t, err)
 
-	handlers, err := log.NewHandlersFromConfig(config)
+	handlers, err := log.NewHandlersFromConfig(context.Background(), config)
 	assert.NoError(t, err)
 
 	logger := log.NewLogger()
