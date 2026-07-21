@@ -45,7 +45,7 @@ func camelToSnake(segment string) string {
 	var b strings.Builder
 
 	for i, r := range runes {
-		if unicode.IsUpper(r) && i > 0 {
+		if (unicode.IsUpper(r) || unicode.IsDigit(r)) && i > 0 {
 			prev := runes[i-1]
 
 			var next rune
@@ -53,7 +53,7 @@ func camelToSnake(segment string) string {
 				next = runes[i+1]
 			}
 
-			startsNewWord := !unicode.IsUpper(prev) || (next != 0 && unicode.IsLower(next))
+			startsNewWord := !unicode.IsUpper(prev) && !unicode.IsDigit(prev) || (next != 0 && unicode.IsLower(next))
 			if startsNewWord && prev != '_' {
 				b.WriteRune('_')
 			}

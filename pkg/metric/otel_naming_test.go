@@ -17,6 +17,7 @@ func TestFormatOtelMetricName(t *testing.T) {
 		"already_snake":          "already_snake",
 		"stream.consumer.errors": "stream.consumer.errors",
 		"Mixed Sep-Here":         "mixed.sep.here",
+		"HTTPStatus2XXPerRoute":  "http_status_2xx_per_route",
 	}
 
 	for input, expected := range cases {

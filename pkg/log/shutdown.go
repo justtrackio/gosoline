@@ -5,6 +5,18 @@ import (
 	"sync"
 )
 
+func setShutdownFn(ctx context.Context, fn func(context.Context) error) {
+	c, ok := ctx.Value(logShutdownKey{}).(*shutdownContainer)
+	if !ok || c == nil {
+		return
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.fn = fn
+}
+
 type logShutdownKey struct{}
 
 type shutdownContainer struct {
