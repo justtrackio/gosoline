@@ -19,18 +19,6 @@ func WithShutdownContainer(ctx context.Context) context.Context {
 	return context.WithValue(ctx, logShutdownKey{}, &shutdownContainer{})
 }
 
-func setShutdownFn(ctx context.Context, fn func(context.Context) error) {
-	c, ok := ctx.Value(logShutdownKey{}).(*shutdownContainer)
-	if !ok || c == nil {
-		return
-	}
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.fn = fn
-}
-
 // ShutdownHandler drains the registered log backend shutdown function. It is implemented
 // by the value returned from NewShutdownHandler and consumed by the kernel, which runs it
 // after emitting the final exit-code log line.
@@ -63,16 +51,4 @@ func (shutdownHandler) Shutdown(ctx context.Context) error {
 	}
 
 	return fn(ctx)
-}
-
-// ProvideShutdownForTest sets the shutdown function in the context's container.
-// If no container exists, it installs one first. Intended for test use only.
-func ProvideShutdownForTest(ctx context.Context, fn func(context.Context) error) context.Context {
-	if _, ok := ctx.Value(logShutdownKey{}).(*shutdownContainer); !ok {
-		ctx = WithShutdownContainer(ctx)
-	}
-
-	setShutdownFn(ctx, fn)
-
-	return ctx
 }
