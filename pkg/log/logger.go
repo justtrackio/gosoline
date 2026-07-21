@@ -96,6 +96,8 @@ type Logger interface {
 }
 
 // GosoLogger extends the Logger interface with the ability to apply functional options after creation.
+//
+//go:generate go run github.com/vektra/mockery/v2 --name GosoLogger
 type GosoLogger interface {
 	Logger
 	Option(opt ...Option) error

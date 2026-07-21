@@ -146,7 +146,7 @@ func (s *OtelTestSuite) TestLogExport() {
 	)
 
 	// Create the gosoline OTel log handler and emit logs
-	handler := log.NewHandlerOtel(config, log.PriorityInfo, "otel", provider.Logger("test"))
+	handler := log.NewHandlerOtel(config, log.PriorityInfo, "otel", provider)
 
 	err = handler.Log(ctx, time.Now(), log.PriorityInfo, "user %s logged in", []any{"alice"}, nil, log.Data{
 		Channel:       "auth",

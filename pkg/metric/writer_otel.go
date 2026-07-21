@@ -170,7 +170,14 @@ func (w *otelWriter) effectiveKind(datum *Datum) kind {
 	switch datum.Unit {
 	case UnitCount:
 		return kindCounter
-	case UnitMilliseconds, UnitSeconds:
+	case UnitMilliseconds,
+		UnitMillisecondsMaximum,
+		UnitMillisecondsMinimum,
+		UnitMillisecondsAverage,
+		UnitSeconds,
+		UnitSecondsMaximum,
+		UnitSecondsMinimum,
+		UnitSecondsAverage:
 		return kindHistogram
 	default:
 		return kindGauge
