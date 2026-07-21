@@ -270,7 +270,7 @@ func (k *kernel) exit() {
 		k.logger.Info(k.ctx, "leaving kernel with exit code %d", k.exitCode)
 
 		for _, handler := range k.shutdownHandlers {
-			if err := handler.Shutdown(context.Background()); err != nil {
+			if err := handler.Shutdown(k.ctx); err != nil {
 				k.logger.Warn(k.ctx, "shutdown handler completed with errors: %s", err)
 			}
 		}

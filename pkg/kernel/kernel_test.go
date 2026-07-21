@@ -679,7 +679,7 @@ func (s *KernelTestSuite) TestShutdownHandlerRunsBeforeExit() {
 	})
 }
 
-func (s *KernelTestSuite) TestShutdownHandlerUsesBackgroundContext() {
+func (s *KernelTestSuite) TestShutdownHandlerUsesAppContext() {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	order := make([]string, 0, 1)
 	handler := &recordingShutdownHandler{name: "shutdown", record: &order}
@@ -694,7 +694,7 @@ func (s *KernelTestSuite) TestShutdownHandlerUsesBackgroundContext() {
 	require.NoError(s.T(), err)
 	k.Run()
 
-	assert.Equal(s.T(), context.Background(), handler.ctx)
+	assert.Equal(s.T(), s.ctx, handler.ctx)
 }
 
 func (s *KernelTestSuite) TestShutdownHandlerForTestReplacesExistingHandlers() {
