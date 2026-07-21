@@ -33,7 +33,7 @@ func (shutdownHandler) Shutdown(ctx context.Context) error {
 // ProvideShutdownForTest stores a shutdown function in the container for testing.
 // Intended for test use only.
 func ProvideShutdownForTest(ctx context.Context, fn func(context.Context) error) {
-	appctx.Provide(ctx, metricShutdownKey{}, func() (func(context.Context) error, error) { //nolint:errcheck
+	appctx.Provide(ctx, metricShutdownKey{}, func() (func(context.Context) error, error) { //nolint:errcheck // test helper, factory cannot fail
 		return fn, nil
 	})
 }
