@@ -29,7 +29,7 @@ import (
 type (
 	Option       func(app *App)
 	ConfigOption func(config cfg.GosoConf) error
-	LoggerOption func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error
+	LoggerOption func(config cfg.GosoConf, logger log.GosoLogger) error
 	KernelOption func(config cfg.GosoConf) kernelPkg.Option
 	SetupOption  func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error
 )
@@ -277,7 +277,7 @@ func WithKinsumerAutoscaleModule(kinsumerInputName string) Option {
 
 func WithLoggerApplicationTag(tag string) Option {
 	return func(app *App) {
-		app.addLoggerOption(func(_ context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
+		app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 			identity, err := cfg.GetAppIdentity(config)
 			if err != nil {
 				return fmt.Errorf("can not get app identity to set tag on logger: %w", err)
@@ -295,7 +295,7 @@ func WithLoggerApplicationTag(tag string) Option {
 }
 
 func WithLoggerApplicationName(app *App) {
-	app.addLoggerOption(func(_ context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
+	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		identity, err := cfg.GetAppIdentity(config)
 		if err != nil {
 			return fmt.Errorf("can not get app identity to set application on logger: %w", err)
@@ -308,7 +308,7 @@ func WithLoggerApplicationName(app *App) {
 }
 
 func WithLoggerContextFieldsMessageEncoder(app *App) {
-	app.addLoggerOption(func(_ context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
+	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		stream.AddDefaultEncodeHandler(log.NewMessageWithLoggingFieldsEncoder(config, logger))
 
 		return nil
@@ -317,7 +317,7 @@ func WithLoggerContextFieldsMessageEncoder(app *App) {
 
 func WithLoggerContextFieldsResolver(resolver ...log.ContextFieldsResolverFunction) Option {
 	return func(app *App) {
-		app.addLoggerOption(func(_ context.Context, _ cfg.GosoConf, logger log.GosoLogger) error {
+		app.addLoggerOption(func(_ cfg.GosoConf, logger log.GosoLogger) error {
 			return logger.Option(log.WithContextFieldsResolver(resolver...))
 		})
 	}
@@ -325,18 +325,18 @@ func WithLoggerContextFieldsResolver(resolver ...log.ContextFieldsResolverFuncti
 
 func WithLoggerHandlers(handler ...log.Handler) Option {
 	return func(app *App) {
-		app.addLoggerOption(func(_ context.Context, _ cfg.GosoConf, logger log.GosoLogger) error {
+		app.addLoggerOption(func(_ cfg.GosoConf, logger log.GosoLogger) error {
 			return logger.Option(log.WithHandlers(handler...))
 		})
 	}
 }
 
 func WithLoggerHandlersFromConfig(app *App) {
-	app.addLoggerOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
+	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		var err error
 		var handlers []log.Handler
 
-		if handlers, err = log.NewHandlersFromConfig(ctx, config); err != nil {
+		if handlers, err = log.NewHandlersFromConfig(config); err != nil {
 			return fmt.Errorf("can not create handlers from config: %w", err)
 		}
 
@@ -345,7 +345,7 @@ func WithLoggerHandlersFromConfig(app *App) {
 }
 
 func WithLoggerMetricHandler(app *App) {
-	app.addLoggerOption(func(_ context.Context, _ cfg.GosoConf, logger log.GosoLogger) error {
+	app.addLoggerOption(func(_ cfg.GosoConf, logger log.GosoLogger) error {
 		metricHandler := metric.NewLoggerHandler()
 
 		return logger.Option(log.WithHandlers(metricHandler))
@@ -354,7 +354,7 @@ func WithLoggerMetricHandler(app *App) {
 
 func WithLoggerSentryHandler(contextProvider ...log.SentryContextProvider) Option {
 	return func(app *App) {
-		app.addLoggerOption(func(_ context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
+		app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 			var err error
 			var sentryHandler *log.HandlerSentry
 
@@ -395,7 +395,7 @@ func WithProfiling(app *App) {
 }
 
 func WithSampling(app *App) {
-	app.addLoggerOption(func(_ context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
+	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		var enabled bool
 		var err error
 
@@ -431,7 +431,7 @@ func WithTaskRunner(app *App) {
 }
 
 func WithTracing(app *App) {
-	app.addLoggerOption(func(_ context.Context, _ cfg.GosoConf, logger log.GosoLogger) error {
+	app.addLoggerOption(func(_ cfg.GosoConf, logger log.GosoLogger) error {
 		tracingHandler := tracing.NewLoggerErrorHandler()
 
 		options := []log.Option{
@@ -460,7 +460,7 @@ func WithMiddlewareFactory(factory kernelPkg.MiddlewareFactory, position kernelP
 
 func WithOtelShutdown(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
-		return kernelPkg.WithShutdownHandler(metric.NewShutdownHandler(), tracing.NewShutdownHandler(), log.NewShutdownHandler())
+		return kernelPkg.WithShutdownHandler(metric.NewShutdownHandler(), tracing.NewShutdownHandler())
 	})
 }
 

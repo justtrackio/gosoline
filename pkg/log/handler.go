@@ -21,7 +21,7 @@ type ClosingHandler interface {
 }
 
 // HandlerFactory is a function type for creating new handlers from configuration.
-type HandlerFactory func(ctx context.Context, config cfg.Config, name string) (Handler, error)
+type HandlerFactory func(config cfg.Config, name string) (Handler, error)
 
 var handlerFactories = map[string]HandlerFactory{}
 
@@ -33,7 +33,7 @@ func AddHandlerFactory(typ string, factory HandlerFactory) {
 
 // NewHandlersFromConfig creates a slice of log handlers based on the provided configuration.
 // It parses the "log.handlers" section of the config and instantiates the corresponding handlers.
-func NewHandlersFromConfig(ctx context.Context, config cfg.Config) ([]Handler, error) {
+func NewHandlersFromConfig(config cfg.Config) ([]Handler, error) {
 	settings := &LoggerSettings{}
 	if err := config.UnmarshalKey("log", settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal logger settings: %w", err)
@@ -50,7 +50,7 @@ func NewHandlersFromConfig(ctx context.Context, config cfg.Config) ([]Handler, e
 			return nil, fmt.Errorf("there is no logging handler of type %s", handlerSettings.Type)
 		}
 
-		if handlers[i], err = handlerFactory(ctx, config, name); err != nil {
+		if handlers[i], err = handlerFactory(config, name); err != nil {
 			return nil, fmt.Errorf("can not create logging handler of type %s on index %d: %w", handlerSettings.Type, i, err)
 		}
 

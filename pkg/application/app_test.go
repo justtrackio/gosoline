@@ -85,18 +85,13 @@ func TestWithOtelShutdownRunsHandlersInOrder(t *testing.T) {
 
 				return nil
 			})
-			log.ProvideShutdownForTest(ctx, func(context.Context) error {
-				order = append(order, "log")
-
-				return nil
-			})
 
 			return kernel.NewModuleFunc(func(context.Context) error { return nil }), nil
 		}),
 	)
 	app.Run()
 
-	assert.Equal(t, []string{"metric", "tracing", "log"}, order)
+	assert.Equal(t, []string{"metric", "tracing"}, order)
 }
 
 func runTestApp(t *testing.T, f func()) {

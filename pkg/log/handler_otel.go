@@ -23,7 +23,7 @@ type HandlerOtelSettings struct {
 	Level string `cfg:"level" default:"info"`
 }
 
-func handlerOtelFactory(ctx context.Context, config cfg.Config, name string) (Handler, error) {
+func handlerOtelFactory(config cfg.Config, name string) (Handler, error) {
 	settings := &HandlerOtelSettings{}
 	if err := UnmarshalHandlerSettingsFromConfig(config, name, settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal otel handler settings: %w", err)
@@ -38,6 +38,8 @@ func handlerOtelFactory(ctx context.Context, config cfg.Config, name string) (Ha
 	if err != nil {
 		return nil, err
 	}
+
+	ctx := context.Background()
 
 	res, err := otel.BuildResource(config, otelSettings.Resource)
 	if err != nil {
