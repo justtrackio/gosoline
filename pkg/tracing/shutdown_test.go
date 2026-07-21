@@ -5,44 +5,46 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestShutdownHandler_Empty(t *testing.T) {
-	tracing.ResetShutdownRegistry()
-	t.Cleanup(tracing.ResetShutdownRegistry)
+func TestShutdownHandler_NoProvider(t *testing.T) {
+	ctx := appctx.WithContainer(context.Background())
 
-	assert.NoError(t, tracing.NewShutdownHandler().Shutdown(t.Context()))
+	err := tracing.NewShutdownHandler().Shutdown(ctx)
+	assert.NoError(t, err)
 }
 
-func TestShutdownHandler_RunsInRegistrationOrderAndContinues(t *testing.T) {
-	tracing.ResetShutdownRegistry()
-	t.Cleanup(tracing.ResetShutdownRegistry)
+func TestShutdownHandler_CallsProvider(t *testing.T) {
+	ctx := appctx.WithContainer(context.Background())
 
-	firstErr := errors.New("first boom")
-	secondErr := errors.New("second boom")
-	var calls []string
-	tracing.RegisterShutdown("first-failure", func(context.Context) error {
-		calls = append(calls, "first-failure")
-
-		return firstErr
-	})
-	tracing.RegisterShutdown("successful", func(context.Context) error {
-		calls = append(calls, "successful")
+	called := false
+	tracing.ProvideShutdownForTest(ctx, func(context.Context) error {
+		called = true
 
 		return nil
 	})
-	tracing.RegisterShutdown("second-failure", func(context.Context) error {
-		calls = append(calls, "second-failure")
 
-		return secondErr
+	err := tracing.NewShutdownHandler().Shutdown(ctx)
+	assert.NoError(t, err)
+	assert.True(t, called)
+}
+
+func TestShutdownHandler_PropagatesError(t *testing.T) {
+	ctx := appctx.WithContainer(context.Background())
+	expected := errors.New("shutdown failed")
+
+	tracing.ProvideShutdownForTest(ctx, func(context.Context) error {
+		return expected
 	})
 
-	err := tracing.NewShutdownHandler().Shutdown(t.Context())
-	assert.ErrorContains(t, err, "first-failure: first boom")
-	assert.ErrorContains(t, err, "second-failure: second boom")
-	assert.ErrorIs(t, err, firstErr)
-	assert.ErrorIs(t, err, secondErr)
-	assert.Equal(t, []string{"first-failure", "successful", "second-failure"}, calls)
+	err := tracing.NewShutdownHandler().Shutdown(ctx)
+	assert.ErrorIs(t, err, expected)
+}
+
+func TestShutdownHandler_NoContainer(t *testing.T) {
+	err := tracing.NewShutdownHandler().Shutdown(context.Background())
+	assert.NoError(t, err)
 }

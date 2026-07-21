@@ -69,24 +69,10 @@ func TestDefaultDoesNotInstallOtelShutdownHandlers(t *testing.T) {
 }
 
 func TestWithOtelShutdownRunsHandlersInOrder(t *testing.T) {
-	metric.ResetShutdownRegistry()
-	tracing.ResetShutdownRegistry()
 	log.ResetShutdownRegistry()
-	t.Cleanup(metric.ResetShutdownRegistry)
-	t.Cleanup(tracing.ResetShutdownRegistry)
 	t.Cleanup(log.ResetShutdownRegistry)
 
 	order := []string{}
-	metric.RegisterShutdown("metric", func(context.Context) error {
-		order = append(order, "metric")
-
-		return nil
-	})
-	tracing.RegisterShutdown("tracing", func(context.Context) error {
-		order = append(order, "tracing")
-
-		return nil
-	})
 	log.RegisterShutdown("log", func(context.Context) error {
 		order = append(order, "log")
 
@@ -96,7 +82,18 @@ func TestWithOtelShutdownRunsHandlersInOrder(t *testing.T) {
 	app := application.New(
 		application.WithOtelShutdown,
 		application.WithKernelExitHandler(func(int) {}),
-		application.WithModuleFactory("module", func(context.Context, cfg.Config, log.Logger) (kernel.Module, error) {
+		application.WithModuleFactory("module", func(ctx context.Context, _ cfg.Config, _ log.Logger) (kernel.Module, error) {
+			metric.ProvideShutdownForTest(ctx, func(context.Context) error {
+				order = append(order, "metric")
+
+				return nil
+			})
+			tracing.ProvideShutdownForTest(ctx, func(context.Context) error {
+				order = append(order, "tracing")
+
+				return nil
+			})
+
 			return kernel.NewModuleFunc(func(context.Context) error { return nil }), nil
 		}),
 	)

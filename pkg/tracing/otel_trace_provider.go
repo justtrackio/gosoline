@@ -89,7 +89,12 @@ func newOtelTraceProvider(ctx context.Context, config cfg.Config, logger log.Log
 		}),
 	)
 
-	RegisterShutdown("otel", tracerProvider.Shutdown)
+	if _, err = appctx.Provide(ctx, tracingShutdownKey{}, func() (func(context.Context) error, error) {
+		return tracerProvider.Shutdown, nil
+	}); err != nil {
+		return nil, fmt.Errorf("could not provide tracing shutdown handler: %w", err)
+	}
+
 	otelglobal.SetTracerProvider(tracerProvider)
 	otelglobal.SetTextMapPropagator(propagator)
 
