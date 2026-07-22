@@ -37,6 +37,11 @@ type Settings struct {
 	HealthCheck HealthCheckSettings `cfg:"health_check"`
 }
 
+// ShutdownHandler releases resources when the kernel exits.
+type ShutdownHandler interface {
+	Shutdown(ctx context.Context) error
+}
+
 //go:generate go run github.com/vektra/mockery/v2 --name Kernel
 type Kernel interface {
 	HealthCheck() HealthCheckResult
@@ -50,7 +55,7 @@ type kernelOption func(k *kernel)
 type kernel struct {
 	ctx    context.Context
 	clock  clock.Clock
-	logger log.Logger
+	logger log.GosoLogger
 
 	middlewareCtx    context.Context
 	middlewareCancel func()
@@ -68,16 +73,18 @@ type kernel struct {
 	exitCode    int
 	exitOnce    sync.Once
 	exitHandler ExitHandler
+
+	shutdownHandlers []ShutdownHandler
 }
 
-func newKernel(ctx context.Context, config cfg.Config, logger log.Logger) (*kernel, error) {
+func newKernel(ctx context.Context, config cfg.Config, logger log.GosoLogger) (*kernel, error) {
 	settings, err := readSettings(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read kernel settings: %w", err)
 	}
 
 	k := &kernel{
-		logger: logger.WithChannel("kernel"),
+		logger: logger.WithChannel("kernel").(log.GosoLogger),
 		clock:  clock.NewRealClock(),
 
 		ctx:      ctx,
@@ -261,6 +268,18 @@ func (k *kernel) reportFailedHealthcheck(result HealthCheckResult) {
 func (k *kernel) exit() {
 	k.exitOnce.Do(func() {
 		k.logger.Info(k.ctx, "leaving kernel with exit code %d", k.exitCode)
+
+		for _, handler := range k.shutdownHandlers {
+			if err := handler.Shutdown(k.ctx); err != nil {
+				k.logger.Warn(k.ctx, "shutdown handler completed with errors: %s", err)
+			}
+		}
+
+		if err := k.logger.Close(k.ctx); err != nil {
+			fmt.Printf("close logger completed with errors: %s\n", err)
+			k.exitCode = ExitCodeErr
+		}
+
 		k.exitHandler(k.exitCode)
 	})
 }

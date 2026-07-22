@@ -1,0 +1,47 @@
+app:
+  env: test
+  name: otel-integration-test
+  namespace: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+  tags:
+    project: gosoline
+    family: test
+    group: grp
+  model_id:
+    domain_pattern: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
+
+otel:
+  exporter:
+    protocol: grpc
+    insecure: true
+    compression: gzip
+    timeout: 5s
+    retry:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 5s
+      max_elapsed_time: 30s
+
+tracing:
+  provider: otel
+  otel:
+    exporter: otel_grpc
+    sampling_ratio: 1.0
+
+metric:
+  enabled: true
+  interval: 1s
+  writers:
+    - otel
+  writer_settings:
+    otel:
+      aggregate: false
+      interval: 1s
+
+log:
+  handlers:
+    main:
+      type: iowriter
+      level: debug
+    otel:
+      type: otel
+      level: info

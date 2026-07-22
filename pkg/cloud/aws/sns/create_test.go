@@ -16,14 +16,14 @@ func TestCreateTopic(t *testing.T) {
 	ctx := t.Context()
 	client := gosoSnsMocks.NewClient(t)
 	client.EXPECT().CreateTopic(ctx, &awsSns.CreateTopicInput{
-		Name: aws.String("mcoins-test-analytics-topicker-topic"),
+		Name: aws.String("acme-test-events-notifier-topic"),
 	}).Return(&awsSns.CreateTopicOutput{
 		TopicArn: aws.String("arn"),
 	}, nil)
 
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
-	arn, err := gosoSns.CreateTopic(ctx, logger, client, "mcoins-test-analytics-topicker-topic")
+	arn, err := gosoSns.CreateTopic(ctx, logger, client, "acme-test-events-notifier-topic")
 
 	assert.Equal(t, "arn", arn)
 	assert.NoError(t, err)
@@ -33,12 +33,12 @@ func TestCreateTopicFailing(t *testing.T) {
 	ctx := t.Context()
 	client := gosoSnsMocks.NewClient(t)
 	client.EXPECT().CreateTopic(ctx, &awsSns.CreateTopicInput{
-		Name: aws.String("mcoins-test-analytics-topicker-topic"),
+		Name: aws.String("acme-test-events-notifier-topic"),
 	}).Return(nil, errors.New(""))
 
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
-	arn, err := gosoSns.CreateTopic(ctx, logger, client, "mcoins-test-analytics-topicker-topic")
+	arn, err := gosoSns.CreateTopic(ctx, logger, client, "acme-test-events-notifier-topic")
 
 	assert.Equal(t, "", arn)
 	assert.Error(t, err)

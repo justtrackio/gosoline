@@ -3,12 +3,15 @@ package application_test
 import (
 	"context"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -51,6 +54,44 @@ func TestDefaultConfigParser(t *testing.T) {
 		app := application.Default(config, exitCodeHandler, moduleOption)
 		app.Run()
 	})
+}
+
+func TestDefaultDoesNotInstallOtelShutdownHandlers(t *testing.T) {
+	app := application.Default(
+		application.WithKernelExitHandler(func(int) {}),
+		application.WithModuleFactory("module", func(context.Context, cfg.Config, log.Logger) (kernel.Module, error) {
+			return kernel.NewModuleFunc(func(context.Context) error { return nil }), nil
+		}),
+	)
+	shutdownHandlers := reflect.ValueOf(app).Elem().FieldByName("shutdownHandlers")
+
+	assert.Zero(t, shutdownHandlers.Len())
+}
+
+func TestWithOtelShutdownRunsHandlersInOrder(t *testing.T) {
+	order := []string{}
+
+	app := application.New(
+		application.WithOtelShutdown,
+		application.WithKernelExitHandler(func(int) {}),
+		application.WithModuleFactory("module", func(ctx context.Context, _ cfg.Config, _ log.Logger) (kernel.Module, error) {
+			metric.ProvideShutdownForTest(ctx, func(context.Context) error {
+				order = append(order, "metric")
+
+				return nil
+			})
+			tracing.ProvideShutdownForTest(ctx, func(context.Context) error {
+				order = append(order, "tracing")
+
+				return nil
+			})
+
+			return kernel.NewModuleFunc(func(context.Context) error { return nil }), nil
+		}),
+	)
+	app.Run()
+
+	assert.Equal(t, []string{"metric", "tracing"}, order)
 }
 
 func runTestApp(t *testing.T, f func()) {
