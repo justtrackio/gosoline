@@ -276,7 +276,7 @@ func (k *kernel) exit() {
 		}
 
 		if err := k.logger.Close(k.ctx); err != nil {
-			fmt.Println("close logger completed with errors: %s", err)
+			fmt.Printf("close logger completed with errors: %s\n", err)
 			k.exitCode = ExitCodeErr
 		}
 

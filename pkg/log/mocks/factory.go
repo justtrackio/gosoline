@@ -1,6 +1,7 @@
 package mocks
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -32,7 +33,7 @@ type Mock interface {
 }
 
 type LoggerMock interface {
-	log.Logger
+	log.GosoLogger
 	Mock
 	EXPECT() *Logger_Expecter
 }
@@ -59,6 +60,14 @@ type pendingLogMessage struct {
 	channel   string
 	fields    log.Fields
 	timestamp time.Time
+}
+
+func (l *loggerMock) Option(opt ...log.Option) error {
+	return nil
+}
+
+func (l *loggerMock) Close(ctx context.Context) error {
+	return nil
 }
 
 func (l *loggerMock) WithChannel(channel string) log.Logger {
