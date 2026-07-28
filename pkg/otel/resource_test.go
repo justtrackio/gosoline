@@ -45,6 +45,10 @@ func TestBuildResource(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "production", env.AsString())
 
+	serviceNamespace, ok := attrs.Value(semconv.ServiceNamespaceKey)
+	require.True(t, ok)
+	assert.Equal(t, "examples", serviceNamespace.AsString())
+
 	org, ok := attrs.Value("organization")
 	require.True(t, ok)
 	assert.Equal(t, "acme", org.AsString())
@@ -52,4 +56,57 @@ func TestBuildResource(t *testing.T) {
 	team, ok := attrs.Value("team")
 	require.True(t, ok)
 	assert.Equal(t, "gosoline", team.AsString())
+}
+
+func TestBuildResource_ServiceNamespacePattern(t *testing.T) {
+	settings := otel.ResourceSettings{
+		ServiceNamePattern: "{app.name}",
+		Delimiter:          "-",
+	}
+
+	t.Run("missing namespace", func(t *testing.T) {
+		config := cfg.New(map[string]any{
+			"app": map[string]any{
+				"env":  "production",
+				"name": "greeting-api",
+			},
+		})
+		settings.ServiceNamespacePattern = "{app.namespace}"
+
+		_, err := otel.BuildResource(config, settings)
+
+		require.EqualError(t, err, "could not format service namespace from pattern \"{app.namespace}\": placeholder {app.namespace} resolved to an empty value in pattern \"{app.namespace}\"")
+	})
+
+	t.Run("missing tag", func(t *testing.T) {
+		config := cfg.New(map[string]any{
+			"app": map[string]any{
+				"env":       "production",
+				"name":      "greeting-api",
+				"namespace": "examples",
+			},
+		})
+		settings.ServiceNamespacePattern = "{app.tags.missing}"
+
+		_, err := otel.BuildResource(config, settings)
+
+		require.EqualError(t, err, "could not format service namespace from pattern \"{app.tags.missing}\": unknown placeholder {app.tags.missing} in pattern \"{app.tags.missing}\"")
+	})
+
+	t.Run("empty pattern disables namespace", func(t *testing.T) {
+		config := cfg.New(map[string]any{
+			"app": map[string]any{
+				"env":       "production",
+				"name":      "greeting-api",
+				"namespace": "examples",
+			},
+		})
+		settings.ServiceNamespacePattern = ""
+
+		res, err := otel.BuildResource(config, settings)
+		require.NoError(t, err)
+
+		_, ok := res.Set().Value(semconv.ServiceNamespaceKey)
+		assert.False(t, ok)
+	})
 }

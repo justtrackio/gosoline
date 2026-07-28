@@ -32,7 +32,7 @@ type Settings struct {
 type ResourceSettings struct {
 	// ServiceNamePattern is expanded via cfg.Identity.Format (placeholders: {app.name}, {app.env}, {app.namespace}, {app.tags.x}).
 	ServiceNamePattern string `cfg:"service_name_pattern,nodecode" default:"{app.name}"`
-	// ServiceNamespacePattern maps to the service.namespace resource attribute.
+	// ServiceNamespacePattern maps to the service.namespace resource attribute. An empty pattern disables the attribute.
 	ServiceNamespacePattern string `cfg:"service_namespace_pattern,nodecode" default:"{app.namespace}"`
 	// Delimiter is used when joining namespace parts during pattern expansion.
 	Delimiter string `cfg:"delimiter" default:"-"`

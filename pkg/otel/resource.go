@@ -30,7 +30,12 @@ func BuildResource(config cfg.Config, settings ResourceSettings) (*resource.Reso
 		semconv.DeploymentEnvironment(identity.Env),
 	}
 
-	if serviceNamespace, err := identity.Format(settings.ServiceNamespacePattern, settings.Delimiter); err == nil {
+	if settings.ServiceNamespacePattern != "" {
+		serviceNamespace, err := identity.Format(settings.ServiceNamespacePattern, settings.Delimiter)
+		if err != nil {
+			return nil, fmt.Errorf("could not format service namespace from pattern %q: %w", settings.ServiceNamespacePattern, err)
+		}
+
 		attributes = append(attributes, semconv.ServiceNamespace(serviceNamespace))
 	}
 
