@@ -2,6 +2,7 @@ package log
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -282,6 +283,7 @@ func (l *gosoLogger) err(err error) {
 
 func (l *gosoLogger) Close(ctx context.Context) error {
 	var ok bool
+	var err error
 	var closingHandler ClosingHandler
 
 	for _, handler := range l.handlers {
@@ -289,10 +291,8 @@ func (l *gosoLogger) Close(ctx context.Context) error {
 			continue
 		}
 
-		if err := closingHandler.Close(ctx); err != nil {
-			return nil
-		}
+		err = errors.Join(err, closingHandler.Close(ctx))
 	}
 
-	return nil
+	return err
 }
