@@ -3,6 +3,8 @@
 package otel_test
 
 import (
+	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -89,25 +91,12 @@ func (s *OtelTestSuite) TestMetricExport() {
 	// Flush metrics to the collector
 	s.NoError(provider.ForceFlush(ctx))
 
-	// Allow collector to process and output
-	time.Sleep(500 * time.Millisecond)
-
-	// Verify metrics arrived at the collector with correct OTel naming
-	found, err := s.client.ContainsMetric("test_counter")
-	s.NoError(err)
-	s.True(found, "expected metric 'test_counter' in collector output")
-
-	found, err = s.client.ContainsMetric("request_duration")
-	s.NoError(err)
-	s.True(found, "expected metric 'request_duration' in collector output")
-
-	found, err = s.client.ContainsMetric("active_connections")
-	s.NoError(err)
-	s.True(found, "expected metric 'active_connections' in collector output")
-
-	// Verify metric types
-	metrics, err := s.client.Metrics()
-	s.NoError(err)
+	metrics, err := waitForCollector(ctx, s.client, s.client.Metrics, func(metrics []otelcol.Metric) bool {
+		return findMetric(metrics, "test_counter") != nil &&
+			findMetric(metrics, "request_duration") != nil &&
+			findMetric(metrics, "active_connections") != nil
+	})
+	s.Require().NoError(err)
 
 	counterMetric := findMetric(metrics, "test_counter")
 	s.NotNil(counterMetric, "test_counter not found in metrics")
@@ -163,21 +152,11 @@ func (s *OtelTestSuite) TestLogExport() {
 	// Flush logs to the collector
 	s.NoError(provider.ForceFlush(ctx))
 
-	// Allow collector to process and output
-	time.Sleep(500 * time.Millisecond)
-
-	// Verify log records arrived at the collector
-	found, err := s.client.ContainsLogRecord("user alice logged in")
-	s.NoError(err)
-	s.True(found, "expected log 'user alice logged in' in collector output")
-
-	found, err = s.client.ContainsLogRecord("database connection failed")
-	s.NoError(err)
-	s.True(found, "expected log 'database connection failed' in collector output")
-
-	// Verify log record details
-	records, err := s.client.LogRecords()
-	s.NoError(err)
+	records, err := waitForCollector(ctx, s.client, s.client.LogRecords, func(records []otelcol.LogRecord) bool {
+		return findLogRecord(records, "user alice logged in") != nil &&
+			findLogRecord(records, "database connection failed") != nil
+	})
+	s.Require().NoError(err)
 
 	infoLog := findLogRecord(records, "user alice logged in")
 	s.NotNil(infoLog, "info log not found")
@@ -227,21 +206,11 @@ func (s *OtelTestSuite) TestTraceExport() {
 	// Flush spans to the collector
 	s.NoError(tp.ForceFlush(ctx))
 
-	// Allow collector to process and output
-	time.Sleep(500 * time.Millisecond)
-
-	// Verify spans arrived at the collector
-	found, err := s.client.ContainsSpan("otel-integration-parent")
-	s.NoError(err)
-	s.True(found, "expected span 'otel-integration-parent' in collector output")
-
-	found, err = s.client.ContainsSpan("otel-integration-child")
-	s.NoError(err)
-	s.True(found, "expected span 'otel-integration-child' in collector output")
-
-	// Verify parent-child relationship via shared trace ID
-	spans, err := s.client.Spans()
-	s.NoError(err)
+	spans, err := waitForCollector(ctx, s.client, s.client.Spans, func(spans []otelcol.Span) bool {
+		return findSpan(spans, "otel-integration-parent") != nil &&
+			findSpan(spans, "otel-integration-child") != nil
+	})
+	s.Require().NoError(err)
 
 	parentOtel := findSpan(spans, "otel-integration-parent")
 	childOtel := findSpan(spans, "otel-integration-child")
@@ -257,6 +226,35 @@ func (s *OtelTestSuite) TestTraceExport() {
 
 func TestOtel(t *testing.T) {
 	suite.Run(t, new(OtelTestSuite))
+}
+
+func waitForCollector[T any](ctx context.Context, client *otelcol.Client, read func() ([]T, error), ready func([]T) bool) ([]T, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		telemetry, err := read()
+		if err != nil {
+			return nil, fmt.Errorf("poll collector telemetry: %w", err)
+		}
+		if ready(telemetry) {
+			return telemetry, nil
+		}
+
+		select {
+		case <-ctx.Done():
+			output, err := client.Logs()
+			if err != nil {
+				return nil, fmt.Errorf("poll collector telemetry: %w; failed to read final collector output: %v", ctx.Err(), err)
+			}
+
+			return nil, fmt.Errorf("poll collector telemetry: %w\nfinal collector output:\n%s", ctx.Err(), output)
+		case <-ticker.C:
+		}
+	}
 }
 
 func findMetric(metrics []otelcol.Metric, name string) *otelcol.Metric {
