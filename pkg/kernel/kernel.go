@@ -37,11 +37,6 @@ type Settings struct {
 	HealthCheck HealthCheckSettings `cfg:"health_check"`
 }
 
-// ShutdownHandler releases resources when the kernel exits.
-type ShutdownHandler interface {
-	Shutdown(ctx context.Context) error
-}
-
 //go:generate go run github.com/vektra/mockery/v2 --name Kernel
 type Kernel interface {
 	HealthCheck() HealthCheckResult
@@ -104,12 +99,6 @@ func newKernel(ctx context.Context, config cfg.Config, logger log.GosoLogger) (*
 	})
 
 	return k, err
-}
-
-func (k *kernel) init(ctx context.Context, middlewares []Middleware, stages map[int]*stage) {
-	k.middlewares = middlewares
-	k.middlewareCtx, k.middlewareCancel = context.WithCancel(ctx)
-	k.stages = stages
 }
 
 // Run will boot and run the modules added to the kernel.

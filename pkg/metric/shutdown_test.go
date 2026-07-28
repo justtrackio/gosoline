@@ -1,55 +1,63 @@
-package metric
+package metric_test
 
 import (
 	"context"
 	"errors"
 	"testing"
 
-	"github.com/justtrackio/gosoline/pkg/appctx"
+	gosolineMetric "github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/stretchr/testify/assert"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
 func TestShutdownHandler_NoProvider(t *testing.T) {
-	ctx := appctx.WithContainer(context.Background())
-
-	err := NewShutdownHandler().Shutdown(ctx)
+	err := (&gosolineMetric.ShutdownHandler{}).Shutdown(context.Background())
 	assert.NoError(t, err)
 }
 
 func TestShutdownHandler_CallsProvider(t *testing.T) {
-	ctx := appctx.WithContainer(context.Background())
+	exporter := &shutdownExporter{}
+	handler := &gosolineMetric.ShutdownHandler{}
+	handler.AddProvider(sdkmetric.NewMeterProvider(sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter))))
 
-	called := false
-	_, err := appctx.Provide(ctx, metricShutdownKey{}, func() (func(context.Context) error, error) {
-		return func(context.Context) error {
-			called = true
-
-			return nil
-		}, nil
-	})
+	err := handler.Shutdown(context.Background())
 	assert.NoError(t, err)
-
-	err = NewShutdownHandler().Shutdown(ctx)
-	assert.NoError(t, err)
-	assert.True(t, called)
+	assert.True(t, exporter.called)
 }
 
 func TestShutdownHandler_PropagatesError(t *testing.T) {
-	ctx := appctx.WithContainer(context.Background())
 	expected := errors.New("shutdown failed")
+	handler := &gosolineMetric.ShutdownHandler{}
+	handler.AddProvider(sdkmetric.NewMeterProvider(sdkmetric.WithReader(sdkmetric.NewPeriodicReader(&shutdownExporter{err: expected}))))
 
-	_, err := appctx.Provide(ctx, metricShutdownKey{}, func() (func(context.Context) error, error) {
-		return func(context.Context) error {
-			return expected
-		}, nil
-	})
-	assert.NoError(t, err)
-
-	err = NewShutdownHandler().Shutdown(ctx)
+	err := handler.Shutdown(context.Background())
 	assert.ErrorIs(t, err, expected)
 }
 
-func TestShutdownHandler_NoContainer(t *testing.T) {
-	err := NewShutdownHandler().Shutdown(context.Background())
-	assert.NoError(t, err)
+type shutdownExporter struct {
+	called bool
+	err    error
+}
+
+func (e *shutdownExporter) Temporality(sdkmetric.InstrumentKind) metricdata.Temporality {
+	return metricdata.CumulativeTemporality
+}
+
+func (e *shutdownExporter) Aggregation(kind sdkmetric.InstrumentKind) sdkmetric.Aggregation {
+	return sdkmetric.DefaultAggregationSelector(kind)
+}
+
+func (e *shutdownExporter) Export(context.Context, *metricdata.ResourceMetrics) error {
+	return nil
+}
+
+func (e *shutdownExporter) ForceFlush(context.Context) error {
+	return nil
+}
+
+func (e *shutdownExporter) Shutdown(context.Context) error {
+	e.called = true
+
+	return e.err
 }

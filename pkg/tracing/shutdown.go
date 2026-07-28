@@ -2,38 +2,46 @@ package tracing
 
 import (
 	"context"
+	"errors"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/log"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
-type tracingShutdownKey struct{}
+type (
+	tracingShutdownKey struct{}
+)
 
-// NewShutdownHandler returns a ShutdownHandler that retrieves the tracing provider's
-// shutdown function from the appctx container and invokes it.
-func NewShutdownHandler() kernel.ShutdownHandler {
-	return shutdownHandler{}
+var _ kernel.ShutdownHandler = &ShutdownHandler{}
+
+// ProvideShutdownHandler returns the tracing provider shutdown handler from the appctx container.
+func ProvideShutdownHandler(ctx context.Context, config cfg.Config, logger log.Logger) (*ShutdownHandler, error) {
+	return appctx.Provide(ctx, tracingShutdownKey{}, func() (*ShutdownHandler, error) {
+		return &ShutdownHandler{}, nil
+	})
 }
 
-type shutdownHandler struct{}
+type ShutdownHandler struct {
+	providers []*sdktrace.TracerProvider
+}
 
-var _ kernel.ShutdownHandler = shutdownHandler{}
+// AddProvider registers a tracer provider to shut down when the application stops.
+func (h *ShutdownHandler) AddProvider(provider *sdktrace.TracerProvider) {
+	h.providers = append(h.providers, provider)
+}
 
-// Shutdown retrieves the registered tracing provider shutdown function from the appctx
-// container. If no provider was registered, it is a no-op.
-func (shutdownHandler) Shutdown(ctx context.Context) error {
-	shutdownFn, err := appctx.Get[func(context.Context) error](ctx, tracingShutdownKey{})
-	if err != nil {
-		return nil
+// Shutdown shuts down all registered tracing providers. If no provider was registered, it is a no-op.
+func (h *ShutdownHandler) Shutdown(ctx context.Context) error {
+	var err error
+
+	for _, p := range h.providers {
+		if sErr := p.Shutdown(ctx); sErr != nil {
+			err = errors.Join(err, sErr)
+		}
 	}
 
-	return shutdownFn(ctx)
-}
-
-// ProvideShutdownForTest stores a shutdown function in the container for testing.
-// Intended for test use only.
-func ProvideShutdownForTest(ctx context.Context, fn func(context.Context) error) {
-	appctx.Provide(ctx, tracingShutdownKey{}, func() (func(context.Context) error, error) { //nolint:errcheck // test helper, factory cannot fail
-		return fn, nil
-	})
+	return err
 }

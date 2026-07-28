@@ -84,11 +84,11 @@ func NewOtelWriter(ctx context.Context, config cfg.Config, logger log.Logger) (W
 		sdkmetric.WithReader(reader),
 	)
 
-	if _, err = appctx.Provide(ctx, metricShutdownKey{}, func() (func(context.Context) error, error) {
-		return provider.Shutdown, nil
-	}); err != nil {
-		return nil, fmt.Errorf("could not provide metric shutdown handler: %w", err)
+	shutdownHandler, err := ProvideShutdownHandler(ctx, config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("could not create shutdown handler: %w", err)
 	}
+	shutdownHandler.AddProvider(provider)
 
 	return NewOtelWriterWithInterfaces(logger, provider.Meter(otelInstrumentationName)), nil
 }

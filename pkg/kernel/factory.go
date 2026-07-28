@@ -19,9 +19,10 @@ type factory struct {
 	logger    log.Logger
 	blueprint *blueprint
 
-	kernel      *kernel
-	middlewares []Middleware
-	stages      stages
+	kernel           *kernel
+	middlewares      []Middleware
+	shutdownHandlers []ShutdownHandler
+	stages           stages
 }
 
 func NewFactory(ctx context.Context, config cfg.Config, logger log.GosoLogger, bp *blueprint) (*factory, error) {
@@ -49,7 +50,10 @@ func NewFactory(ctx context.Context, config cfg.Config, logger log.GosoLogger, b
 }
 
 func (f *factory) GetKernel() (Kernel, error) {
-	f.kernel.init(f.ctx, f.middlewares, f.stages)
+	f.kernel.middlewares = f.middlewares
+	f.kernel.middlewareCtx, f.kernel.middlewareCancel = context.WithCancel(f.ctx)
+	f.kernel.stages = f.stages
+	f.kernel.shutdownHandlers = f.shutdownHandlers
 
 	for _, opt := range f.blueprint.kernelOptions {
 		opt(f.kernel)
@@ -81,6 +85,12 @@ func (f *factory) build() (err error) {
 
 	for _, mf := range f.blueprint.multiModuleFactories {
 		if err := f.buildMultiModuleFactory(mf); err != nil {
+			return err
+		}
+	}
+
+	for _, sf := range f.blueprint.shutdownHandlerFactories {
+		if err := f.buildShutdownHandler(sf); err != nil {
 			return err
 		}
 	}
@@ -145,6 +155,19 @@ func (f *factory) buildMiddleware(middlewareFactory MiddlewareFactory, position 
 	} else {
 		f.middlewares = append(f.middlewares, middleware)
 	}
+
+	return nil
+}
+
+func (f *factory) buildShutdownHandler(factory ShutdownHandlerFactory) error {
+	var err error
+	var shutdownHandler ShutdownHandler
+
+	if shutdownHandler, err = factory(f.ctx, f.config, f.logger); err != nil {
+		return fmt.Errorf("can not create shutdown handler: %w", err)
+	}
+
+	f.shutdownHandlers = append(f.shutdownHandlers, shutdownHandler)
 
 	return nil
 }
