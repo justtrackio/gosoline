@@ -6,6 +6,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/otel"
 	"github.com/justtrackio/gosoline/pkg/test/env/otelcol"
 )
 
@@ -65,16 +66,30 @@ func (f *otelFactory) DescribeContainers(settings any) ComponentContainerDescrip
 	}
 }
 
-func (f *otelFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*Container, _ any) (Component, error) {
+func (f *otelFactory) Component(config cfg.Config, _ log.Logger, containers map[string]*Container, _ any) (Component, error) {
+	var err error
+	var protocol string
+
 	main := containers["main"]
 	grpcBinding := main.bindings["grpc"]
 	httpBinding := main.bindings["http"]
 
+	if protocol, err = config.GetString("otel.exporter.protocol", otel.ProtocolGrpc); err != nil {
+		return nil, fmt.Errorf("can not read otel exporter protocol: %w", err)
+	}
+
+	exporterBinding := grpcBinding
+	if protocol == otel.ProtocolHttp {
+		exporterBinding = httpBinding
+	}
+
 	return &OtelComponent{
-		baseComponent: baseComponent{},
-		grpcAddress:   fmt.Sprintf("%s:%s", grpcBinding.host, grpcBinding.port),
-		httpAddress:   fmt.Sprintf("%s:%s", httpBinding.host, httpBinding.port),
-		client:        otelcol.NewClient(main.name),
+		baseComponent:   baseComponent{},
+		protocol:        protocol,
+		exporterBinding: exporterBinding,
+		grpcAddress:     grpcBinding.getAddress(),
+		httpAddress:     httpBinding.getAddress(),
+		client:          otelcol.NewClient(main.name),
 	}, nil
 }
 

@@ -20,6 +20,10 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
+func TestOtelTestSuite(t *testing.T) {
+	suite.Run(t, new(OtelTestSuite))
+}
+
 type OtelTestSuite struct {
 	suite.Suite
 	client *otelcol.Client
@@ -222,10 +226,6 @@ func (s *OtelTestSuite) TestTraceExport() {
 	s.NotEmpty(parentOtel.SpanID)
 
 	s.NoError(tp.Shutdown(ctx))
-}
-
-func TestOtel(t *testing.T) {
-	suite.Run(t, new(OtelTestSuite))
 }
 
 func waitForCollector[T any](ctx context.Context, client *otelcol.Client, read func() ([]T, error), ready func([]T) bool) ([]T, error) {
