@@ -53,9 +53,10 @@ type Kernel interface {
 type kernelOption func(k *kernel)
 
 type kernel struct {
-	ctx    context.Context
-	clock  clock.Clock
-	logger log.GosoLogger
+	ctx        context.Context
+	clock      clock.Clock
+	logger     log.Logger
+	rootLogger log.GosoLogger
 
 	middlewareCtx    context.Context
 	middlewareCancel func()
@@ -84,8 +85,9 @@ func newKernel(ctx context.Context, config cfg.Config, logger log.GosoLogger) (*
 	}
 
 	k := &kernel{
-		logger: logger.WithChannel("kernel").(log.GosoLogger),
-		clock:  clock.NewRealClock(),
+		logger:     logger.WithChannel("kernel"),
+		rootLogger: logger,
+		clock:      clock.NewRealClock(),
 
 		ctx:      ctx,
 		running:  make(chan struct{}),
@@ -275,7 +277,7 @@ func (k *kernel) exit() {
 			}
 		}
 
-		if err := k.logger.Close(k.ctx); err != nil {
+		if err := k.rootLogger.Close(k.ctx); err != nil {
 			fmt.Printf("close logger completed with errors: %s\n", err)
 			k.exitCode = ExitCodeErr
 		}
