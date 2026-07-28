@@ -143,7 +143,7 @@ func (w *otelWriter) record(ctx context.Context, datum *Datum) error {
 		}
 		instrument.Add(ctx, datum.Value, attrs)
 	case kindHistogram, kindSummary:
-		instrument, err := w.histogram(name, unit, datum.Kind.help)
+		instrument, err := w.histogram(name, unit, datum.Kind.help, datum.Kind.buckets)
 		if err != nil {
 			return err
 		}
@@ -234,7 +234,7 @@ func (w *otelWriter) gauge(name, unit, help string) (otelmetric.Float64Gauge, er
 	return instrument, nil
 }
 
-func (w *otelWriter) histogram(name, unit, help string) (otelmetric.Float64Histogram, error) {
+func (w *otelWriter) histogram(name, unit, help string, buckets []float64) (otelmetric.Float64Histogram, error) {
 	w.lck.Lock()
 	defer w.lck.Unlock()
 
@@ -242,7 +242,15 @@ func (w *otelWriter) histogram(name, unit, help string) (otelmetric.Float64Histo
 		return instrument, nil
 	}
 
-	instrument, err := w.meter.Float64Histogram(name, otelmetric.WithUnit(unit), otelmetric.WithDescription(help))
+	options := []otelmetric.Float64HistogramOption{
+		otelmetric.WithUnit(unit),
+		otelmetric.WithDescription(help),
+	}
+	if len(buckets) > 0 {
+		options = append(options, otelmetric.WithExplicitBucketBoundaries(buckets...))
+	}
+
+	instrument, err := w.meter.Float64Histogram(name, options...)
 	if err != nil {
 		return nil, err
 	}
