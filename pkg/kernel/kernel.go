@@ -270,14 +270,17 @@ func (k *kernel) reportFailedHealthcheck(result HealthCheckResult) {
 func (k *kernel) exit() {
 	k.exitOnce.Do(func() {
 		k.logger.Info(k.ctx, "leaving kernel with exit code %d", k.exitCode)
+		shutdownCtx := context.WithoutCancel(k.ctx)
+		shutdownCtx, cancel := context.WithTimeout(shutdownCtx, k.killTimeout)
+		defer cancel()
 
 		for _, handler := range k.shutdownHandlers {
-			if err := handler.Shutdown(k.ctx); err != nil {
+			if err := handler.Shutdown(shutdownCtx); err != nil {
 				k.logger.Warn(k.ctx, "shutdown handler completed with errors: %s", err)
 			}
 		}
 
-		if err := k.rootLogger.Close(k.ctx); err != nil {
+		if err := k.rootLogger.Close(shutdownCtx); err != nil {
 			fmt.Printf("close logger completed with errors: %s\n", err)
 			k.exitCode = ExitCodeErr
 		}
