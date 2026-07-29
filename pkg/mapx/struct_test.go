@@ -893,6 +893,63 @@ func TestMapStructIO_WriteMap(t *testing.T) {
 	assert.Equal(t, expected, source)
 }
 
+func TestMapStructIO_WriteJSONMap(t *testing.T) {
+	type jsonStringMap map[string]string
+	type sourceStruct struct {
+		Attributes jsonStringMap `cfg:"attributes"`
+	}
+
+	tests := []struct {
+		name  string
+		value any
+	}{
+		{
+			name:  "string",
+			value: `{"clientId":"906","platform":"ios"}`,
+		},
+		{
+			name:  "bytes",
+			value: []byte(`{"clientId":"906","platform":"ios"}`),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := &sourceStruct{}
+			ms, err := mapx.NewStruct(source, &mapx.StructSettings{
+				FieldTag: "cfg",
+				Casters:  []mapx.MapStructCaster{mapx.MapStructJSONCaster},
+			})
+			assert.NoError(t, err)
+
+			err = ms.Write(mapx.NewMapX(map[string]any{"attributes": tt.value}))
+
+			assert.NoError(t, err)
+			assert.Equal(t, jsonStringMap{
+				"clientId": "906",
+				"platform": "ios",
+			}, source.Attributes)
+		})
+	}
+}
+
+func TestMapStructIO_WriteJSONMapInvalid(t *testing.T) {
+	type sourceStruct struct {
+		Attributes map[string]string `cfg:"attributes"`
+	}
+
+	source := &sourceStruct{}
+	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
+		FieldTag: "cfg",
+		Casters:  []mapx.MapStructCaster{mapx.MapStructJSONCaster},
+	})
+	assert.NoError(t, err)
+
+	err = ms.Write(mapx.NewMapX(map[string]any{"attributes": "not-json"}))
+
+	assert.Error(t, err)
+}
+
 func TestMapStructIO_WriteStructNested(t *testing.T) {
 	type nestedStruct struct {
 		S string `cfg:"s"`

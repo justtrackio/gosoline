@@ -700,6 +700,16 @@ func (s *Struct) doWriteValue(tag *StructTag, matchedKey string, sourceValues *M
 	}
 
 	if targetValue.Kind() == reflect.Map {
+		if sourceValue != nil && reflect.TypeOf(sourceValue).Kind() != reflect.Map {
+			if sourceValue, err = s.decodeAndCastValue(tag, targetValue.Type(), sourceValue); err != nil {
+				return fmt.Errorf("can not decode and cast value for key %s: %w", tag.Name, err)
+			}
+
+			targetValue.Set(reflect.ValueOf(sourceValue))
+
+			return nil
+		}
+
 		if err := s.doWriteMap(tag, matchedKey, targetValue, sourceValues); err != nil {
 			return err
 		}
