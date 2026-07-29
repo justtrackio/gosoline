@@ -64,11 +64,12 @@ type kernel struct {
 	stopOnce          sync.Once
 	foregroundModules int32
 
-	killTimeout time.Duration
-	killOnce    sync.Once
-	exitCode    int
-	exitOnce    sync.Once
-	exitHandler ExitHandler
+	killTimeout     time.Duration
+	killOnce        sync.Once
+	exitCode        int32
+	exitOnce        sync.Once
+	exitHandlerOnce sync.Once
+	exitHandler     ExitHandler
 
 	shutdownHandlers []ShutdownHandler
 }
@@ -109,7 +110,7 @@ func (k *kernel) Run() {
 	defer func() {
 		if err := coffin.ResolveRecovery(recover()); err != nil {
 			k.logger.Error(k.ctx, "failed to run kernel: %w", err)
-			k.exitCode = ExitCodeErr
+			k.setExitCode(ExitCodeErr)
 		}
 	}()
 
@@ -170,7 +171,7 @@ func (k *kernel) Run() {
 		}
 
 		if !hasErr {
-			k.exitCode = ExitCodeOk
+			k.setExitCode(ExitCodeOk)
 		}
 	}
 
@@ -256,9 +257,46 @@ func (k *kernel) reportFailedHealthcheck(result HealthCheckResult) {
 	k.logger.Error(k.ctx, "healthcheck failed, unhealthy modules: %s\n%s", unhealthy, string(buf))
 }
 
+func (k *kernel) killIfNotStopped() {
+	k.killOnce.Do(func() {
+		go func() {
+			timer := time.NewTimer(k.killTimeout)
+			defer timer.Stop()
+
+			select {
+			case <-timer.C:
+				err := fmt.Errorf("kernel was not able to shutdown in %v", k.killTimeout)
+				k.logger.Error(k.ctx, "kernel shutdown seems to be blocking.. exiting...: %w", err)
+
+				k.forceExit()
+			case <-k.stopped.Channel():
+				return
+			}
+		}()
+	})
+}
+
+func (k *kernel) forceExit() {
+	// we don't need to iterate in order, but doing so is much nicer, so let's do it
+	for _, stageIndex := range k.stages.getIndices() {
+		s := k.stages[stageIndex]
+		for name, ms := range s.modules.modules {
+			if atomic.LoadInt32(&ms.isRunning) != 0 {
+				k.logger.Info(k.ctx, "module in stage %d blocking the shutdown: %s", stageIndex, name)
+			}
+		}
+	}
+
+	// Keep the forced code sticky for the concurrently running graceful exit path.
+	atomic.StoreInt32(&k.exitCode, ExitCodeForced)
+	k.callExitHandler(ExitCodeForced)
+}
+
 func (k *kernel) exit() {
 	k.exitOnce.Do(func() {
-		k.logger.Info(k.ctx, "leaving kernel with exit code %d", k.exitCode)
+		exitCode := atomic.LoadInt32(&k.exitCode)
+		k.logger.Info(k.ctx, "leaving kernel with exit code %d", int(exitCode))
+
 		shutdownCtx := context.WithoutCancel(k.ctx)
 		shutdownCtx, cancel := context.WithTimeout(shutdownCtx, k.killTimeout)
 		defer cancel()
@@ -271,11 +309,29 @@ func (k *kernel) exit() {
 
 		if err := k.rootLogger.Close(shutdownCtx); err != nil {
 			fmt.Printf("close logger completed with errors: %s\n", err)
-			k.exitCode = ExitCodeErr
+
+			k.setExitCode(ExitCodeErr)
+			exitCode = atomic.LoadInt32(&k.exitCode)
 		}
 
-		k.exitHandler(k.exitCode)
+		k.callExitHandler(int(exitCode))
 	})
+}
+
+func (k *kernel) callExitHandler(code int) {
+	k.exitHandlerOnce.Do(func() {
+		k.exitHandler(code)
+	})
+}
+
+func (k *kernel) setExitCode(code int32) {
+	// Retry concurrent updates while keeping a forced exit from being overwritten.
+	for {
+		current := atomic.LoadInt32(&k.exitCode)
+		if current == ExitCodeForced || atomic.CompareAndSwapInt32(&k.exitCode, current, code) {
+			return
+		}
+	}
 }
 
 func (k *kernel) runStages() error {
@@ -384,40 +440,6 @@ func (k *kernel) waitAllStagesDone() conc.SignalOnce {
 	}()
 
 	return done
-}
-
-func (k *kernel) killIfNotStopped() {
-	k.killOnce.Do(func() {
-		go func() {
-			timer := time.NewTimer(k.killTimeout)
-			defer timer.Stop()
-
-			select {
-			case <-timer.C:
-				err := fmt.Errorf("kernel was not able to shutdown in %v", k.killTimeout)
-				k.logger.Error(k.ctx, "kernel shutdown seems to be blocking.. exiting...: %w", err)
-
-				k.forceExit()
-			case <-k.stopped.Channel():
-				return
-			}
-		}()
-	})
-}
-
-func (k *kernel) forceExit() {
-	// we don't need to iterate in order, but doing so is much nicer, so let's do it
-	for _, stageIndex := range k.stages.getIndices() {
-		s := k.stages[stageIndex]
-		for name, ms := range s.modules.modules {
-			if atomic.LoadInt32(&ms.isRunning) != 0 {
-				k.logger.Info(k.ctx, "module in stage %d blocking the shutdown: %s", stageIndex, name)
-			}
-		}
-	}
-
-	k.exitCode = ExitCodeForced
-	k.exit()
 }
 
 func readSettings(config cfg.Config) (Settings, error) {

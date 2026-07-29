@@ -471,7 +471,7 @@ func (s *KernelTestSuite) TestStageStopped() {
 func (s *KernelTestSuite) Test_RunRealModule() {
 	// test that we can run the kernel multiple times
 	// if this does not work, the next test does not make sense
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		s.T().Run(fmt.Sprintf("fake iteration %d", i), func(t *testing.T) {
 			s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(t))
 			s.expectStartupLogs()
@@ -491,7 +491,7 @@ func (s *KernelTestSuite) Test_RunRealModule() {
 
 	// test for a race condition on kernel shutdown
 	// in the past, this would panic in a close on closed channel in the tomb module
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		s.T().Run(fmt.Sprintf("real iteration %d", i), func(t *testing.T) {
 			s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(t))
 			s.expectStartupLogs()
@@ -576,12 +576,6 @@ type fakeModule struct{}
 
 func (m *fakeModule) Run(_ context.Context) error {
 	return nil
-}
-
-type shutdownHandlerFunc func(ctx context.Context) error
-
-func (f shutdownHandlerFunc) Shutdown(ctx context.Context) error {
-	return f(ctx)
 }
 
 type realModule struct {
@@ -678,7 +672,8 @@ func (s *KernelTestSuite) TestShutdownHandlerUsesBoundedLiveAppContext() {
 	type contextKey struct{}
 	appCtx, cancel := context.WithCancel(context.WithValue(s.ctx, contextKey{}, "value"))
 	handlerCalled := false
-	handler := shutdownHandlerFunc(func(ctx context.Context) error {
+	handler := kernelMocks.NewShutdownHandler(s.T())
+	handler.EXPECT().Shutdown(matcher.Context).Run(func(ctx context.Context) {
 		handlerCalled = true
 		assert.NoError(s.T(), ctx.Err())
 		assert.Equal(s.T(), "value", ctx.Value(contextKey{}))
@@ -687,9 +682,7 @@ func (s *KernelTestSuite) TestShutdownHandlerUsesBoundedLiveAppContext() {
 		assert.True(s.T(), ok)
 		assert.Positive(s.T(), time.Until(deadline))
 		assert.LessOrEqual(s.T(), time.Until(deadline), time.Second)
-
-		return nil
-	})
+	}).Return(nil).Once()
 	module := kernelMocks.NewModule(s.T())
 	module.EXPECT().Run(matcher.Context).Run(func(context.Context) {
 		cancel()
@@ -714,12 +707,11 @@ func (s *KernelTestSuite) TestShutdownHandlerContextExpiresAfterKillTimeout() {
 		logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 		module := kernelMocks.NewModule(t)
 		module.EXPECT().Run(matcher.Context).Return(nil).Once()
-		handler := shutdownHandlerFunc(func(ctx context.Context) error {
+		handler := kernelMocks.NewShutdownHandler(t)
+		handler.EXPECT().Shutdown(matcher.Context).Run(func(ctx context.Context) {
 			<-ctx.Done()
 			assert.ErrorIs(t, ctx.Err(), context.DeadlineExceeded)
-
-			return nil
-		})
+		}).Return(nil).Once()
 
 		k, err := kernel.BuildKernel(s.ctx, s.config, logger, []kernel.Option{
 			kernel.WithModuleFactory("module", func(context.Context, cfg.Config, log.Logger) (kernel.Module, error) { return module, nil }),
