@@ -1,6 +1,7 @@
 package mapx
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -81,6 +82,30 @@ func MapStructDurationCaster(targetType reflect.Type, value any) (any, error) {
 	default:
 		return nil, nil
 	}
+}
+
+// MapStructJSONCaster casts JSON strings or bytes to map fields.
+func MapStructJSONCaster(targetType reflect.Type, value any) (any, error) {
+	if targetType.Kind() != reflect.Map {
+		return nil, nil
+	}
+
+	var data []byte
+	switch typedValue := value.(type) {
+	case string:
+		data = []byte(typedValue)
+	case []byte:
+		data = typedValue
+	default:
+		return nil, nil
+	}
+
+	decoded := reflect.New(targetType)
+	if err := json.Unmarshal(data, decoded.Interface()); err != nil {
+		return nil, err
+	}
+
+	return decoded.Elem().Interface(), nil
 }
 
 var mapStructSliceCasters = map[reflect.Kind]MapStructCaster{
