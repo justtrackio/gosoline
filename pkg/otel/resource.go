@@ -6,7 +6,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 // BuildResource constructs an OTEL resource from the application identity and the configured
@@ -48,7 +48,12 @@ func BuildResource(config cfg.Config, settings ResourceSettings) (*resource.Reso
 		attributes = append(attributes, attribute.String(key, formatted))
 	}
 
-	return resource.NewWithAttributes(semconv.SchemaURL, attributes...), nil
+	res, err := resource.Merge(resource.Default(), resource.NewWithAttributes(semconv.SchemaURL, attributes...))
+	if err != nil {
+		return nil, fmt.Errorf("could not merge default and configured resources: %w", err)
+	}
+
+	return res, nil
 }
 
 // ProvideResource builds the OTEL resource for the given config. It is a thin wrapper over

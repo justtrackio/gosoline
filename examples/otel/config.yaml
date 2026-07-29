@@ -11,7 +11,6 @@ otel:
     service_name_pattern: "{app.name}"
     service_namespace_pattern: "{app.namespace}"
     attributes:
-      deployment_environment: "{app.env}"
       demo: "true"
   exporter:
     protocol: grpc

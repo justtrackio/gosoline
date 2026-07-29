@@ -18,9 +18,6 @@ otel:
     service_name_pattern: "{app.name}"
     service_namespace_pattern: "{app.namespace}"
     attributes:
-      # Note: gosoline config uses '.' as path separator, so use underscores for OTEL
-      # semconv attribute keys (e.g. deployment_environment instead of deployment.environment).
-      deployment_environment: "{app.env}"
       organization: "acme"
   exporter:
     protocol: grpc

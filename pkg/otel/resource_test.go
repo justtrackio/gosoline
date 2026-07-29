@@ -7,10 +7,13 @@ import (
 	"github.com/justtrackio/gosoline/pkg/otel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	"go.opentelemetry.io/otel/sdk"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 func TestBuildResource(t *testing.T) {
+	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "operator.attribute=from-env,service.name=from-env")
+
 	config := cfg.New(map[string]any{
 		"app": map[string]any{
 			"env":       "production",
@@ -56,6 +59,24 @@ func TestBuildResource(t *testing.T) {
 	team, ok := attrs.Value("team")
 	require.True(t, ok)
 	assert.Equal(t, "gosoline", team.AsString())
+
+	operatorAttribute, ok := attrs.Value("operator.attribute")
+	require.True(t, ok)
+	assert.Equal(t, "from-env", operatorAttribute.AsString())
+
+	telemetrySDKName, ok := attrs.Value(semconv.TelemetrySDKNameKey)
+	require.True(t, ok)
+	assert.Equal(t, "opentelemetry", telemetrySDKName.AsString())
+
+	telemetrySDKLanguage, ok := attrs.Value(semconv.TelemetrySDKLanguageKey)
+	require.True(t, ok)
+	assert.Equal(t, "go", telemetrySDKLanguage.AsString())
+
+	telemetrySDKVersion, ok := attrs.Value(semconv.TelemetrySDKVersionKey)
+	require.True(t, ok)
+	assert.Equal(t, sdk.Version(), telemetrySDKVersion.AsString())
+
+	assert.Equal(t, semconv.SchemaURL, res.SchemaURL())
 }
 
 func TestBuildResource_ServiceNamespacePattern(t *testing.T) {
