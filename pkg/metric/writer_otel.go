@@ -30,8 +30,6 @@ func init() {
 var _ Writer = &otelWriter{}
 
 type OtelWriterSettings struct {
-	// Aggregate controls whether this writer receives daemon-aggregated batches (true) or raw data points (false).
-	Aggregate bool `cfg:"aggregate" default:"false"`
 	// Interval is the OTLP push (PeriodicReader) export interval.
 	Interval time.Duration `cfg:"interval" default:"15s"`
 }

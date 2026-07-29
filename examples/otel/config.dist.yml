@@ -53,7 +53,6 @@ metric:
     - prometheus
   writer_settings:
     otel:
-      aggregate: true
       interval: 60s
     prometheus:
       api:

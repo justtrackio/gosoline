@@ -33,7 +33,6 @@ type TimeoutSettings struct {
 }
 
 type PrometheusSettings struct {
-	Aggregate bool `cfg:"aggregate" default:"false"`
 	// MetricLimit is used to avoid having metrics for which the name is programmatically generated (or have large number
 	// of possible dimensions) which could lead in a memory leak.
 	MetricLimit    int64                    `cfg:"metric_limit" default:"10000"`

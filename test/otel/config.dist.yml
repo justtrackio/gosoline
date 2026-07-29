@@ -34,7 +34,6 @@ metric:
     - otel
   writer_settings:
     otel:
-      aggregate: false
       interval: 1s
 
 log:
