@@ -65,6 +65,7 @@ type handlerOtel struct {
 	logger   otellog.Logger
 }
 
+// NewHandlerOtel creates a handler backed by the provided OpenTelemetry logger provider.
 func NewHandlerOtel(config cfg.Config, levelPriority int, name string, provider *sdklog.LoggerProvider) Handler {
 	return &handlerOtel{
 		handlerBase: handlerBase{

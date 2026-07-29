@@ -16,6 +16,7 @@ type Handler interface {
 	Log(ctx context.Context, timestamp time.Time, level int, msg string, args []any, err error, data Data) error
 }
 
+// ClosingHandler is implemented by handlers that release resources during logger shutdown.
 type ClosingHandler interface {
 	Close(ctx context.Context) error
 }
