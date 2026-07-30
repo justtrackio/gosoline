@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"runtime"
+	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -16,6 +17,40 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
+
+var sensitiveKeyPatterns = []string{
+	"password", "secret", "token", "key", "dsn", "credential",
+}
+
+func maskSecrets(m map[string]any) map[string]any {
+	masked := make(map[string]any, len(m))
+	for k, v := range m {
+		if isSensitiveKey(k) {
+			masked[k] = "***"
+
+			continue
+		}
+		if nested, ok := v.(map[string]any); ok {
+			masked[k] = maskSecrets(nested)
+
+			continue
+		}
+		masked[k] = v
+	}
+
+	return masked
+}
+
+func isSensitiveKey(key string) bool {
+	lower := strings.ToLower(key)
+	for _, pattern := range sensitiveKeyPatterns {
+		if strings.Contains(lower, pattern) {
+			return true
+		}
+	}
+
+	return false
+}
 
 func init() {
 	dx.RegisterRandomizablePortSetting("appctx.metadata.server.port")
@@ -107,7 +142,7 @@ func (s *MetadataServer) handleMetadata(metadata *appctx.Metadata) func(http.Res
 func (s *MetadataServer) handleConfig(writer http.ResponseWriter, request *http.Request) {
 	ctx := request.Context()
 	settings := s.config.AllSettings()
-	s.formattedResponse(ctx, writer, request, settings)
+	s.formattedResponse(ctx, writer, request, maskSecrets(settings))
 }
 
 func (s *MetadataServer) handleMemory(writer http.ResponseWriter, request *http.Request) {
