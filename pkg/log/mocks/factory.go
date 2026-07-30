@@ -70,7 +70,7 @@ type gosoLoggerMock struct {
 }
 
 func (l *gosoLoggerMock) Option(options ...log.Option) error {
-	if hasExpectedCall(l.GosoLogger.ExpectedCalls, "Option") {
+	if hasExpectedCall(l.ExpectedCalls, "Option") {
 		return l.GosoLogger.Option(options...)
 	}
 
@@ -78,7 +78,7 @@ func (l *gosoLoggerMock) Option(options ...log.Option) error {
 }
 
 func (l *gosoLoggerMock) Close(ctx context.Context) error {
-	if hasExpectedCall(l.GosoLogger.ExpectedCalls, "Close") {
+	if hasExpectedCall(l.ExpectedCalls, "Close") {
 		return l.GosoLogger.Close(ctx)
 	}
 
@@ -145,7 +145,7 @@ func hasExpectedCall(expectedCalls []*mock.Call, method string) bool {
 
 func (l *loggerMock) WithChannel(channel string) log.Logger {
 	// forward potential calls to the underlying mock if we expect some
-	if hasExpectedCall(l.Logger.ExpectedCalls, "WithChannel") {
+	if hasExpectedCall(l.ExpectedCalls, "WithChannel") {
 		l.Logger.WithChannel(channel)
 	}
 
@@ -157,7 +157,7 @@ func (l *loggerMock) WithChannel(channel string) log.Logger {
 
 func (l *loggerMock) WithFields(fields log.Fields) log.Logger {
 	// forward potential calls to the underlying mock if we expect some
-	if hasExpectedCall(l.Logger.ExpectedCalls, "WithFields") {
+	if hasExpectedCall(l.ExpectedCalls, "WithFields") {
 		l.Logger.WithFields(fields)
 	}
 
@@ -169,7 +169,7 @@ func (l *loggerMock) WithFields(fields log.Fields) log.Logger {
 
 func (l *gosoLoggerMock) WithChannel(channel string) log.Logger {
 	// forward potential calls to the underlying mock if we expect some
-	if hasExpectedCall(l.GosoLogger.ExpectedCalls, "WithChannel") {
+	if hasExpectedCall(l.ExpectedCalls, "WithChannel") {
 		l.GosoLogger.WithChannel(channel)
 	}
 
@@ -181,7 +181,7 @@ func (l *gosoLoggerMock) WithChannel(channel string) log.Logger {
 
 func (l *gosoLoggerMock) WithFields(fields log.Fields) log.Logger {
 	// forward potential calls to the underlying mock if we expect some
-	if hasExpectedCall(l.GosoLogger.ExpectedCalls, "WithFields") {
+	if hasExpectedCall(l.ExpectedCalls, "WithFields") {
 		l.GosoLogger.WithFields(fields)
 	}
 
