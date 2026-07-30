@@ -24,10 +24,10 @@ func TestMiddleWareTestSuite(t *testing.T) {
 type MiddleWareTestSuite struct {
 	suite.Suite
 
-	ctx    context.Context
-	config *cfgMocks.Config
-	logger logMocks.LoggerMock
-	module *kernelMocks.FullModule
+	ctx        context.Context
+	config     *cfgMocks.Config
+	gosoLogger logMocks.GosoLoggerMock
+	module     *kernelMocks.FullModule
 }
 
 func (s *MiddleWareTestSuite) SetupTest() {
@@ -43,10 +43,11 @@ func (s *MiddleWareTestSuite) SetupTest() {
 		}).
 		Return(nil)
 
-	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
-	s.logger.EXPECT().WithChannel(mock.AnythingOfType("string")).Return(s.logger)
-	s.logger.EXPECT().Info(matcher.Context, mock.Anything)
-	s.logger.EXPECT().Info(matcher.Context, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	s.gosoLogger = logMocks.NewGosoLoggerMock(logMocks.WithTestingT(s.T()))
+	s.gosoLogger.EXPECT().Close(matcher.Context).Return(nil)
+	s.gosoLogger.EXPECT().WithChannel(mock.AnythingOfType("string")).Return(s.gosoLogger)
+	s.gosoLogger.EXPECT().Info(matcher.Context, mock.Anything)
+	s.gosoLogger.EXPECT().Info(matcher.Context, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
 	s.module = kernelMocks.NewFullModule(s.T())
 	s.module.EXPECT().IsEssential().Return(false).Once()
@@ -62,7 +63,7 @@ func (s *MiddleWareTestSuite) TestMiddleware() {
 		callstack = append(callstack, "module")
 	}).Return(nil).Once()
 
-	k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
+	k, err := kernel.BuildKernel(s.ctx, s.config, s.gosoLogger, []kernel.Option{
 		kernel.WithMiddlewareFactory(kernel.BuildSimpleMiddleware(func(next kernel.MiddlewareHandler) {
 			callstack = append(callstack, "mid1 start")
 			next(s.ctx)
