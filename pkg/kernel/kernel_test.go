@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sys/unix"
 )
@@ -37,17 +38,17 @@ func TestKernelTestSuite(t *testing.T) {
 type KernelTestSuite struct {
 	suite.Suite
 
-	ctx    context.Context
-	config *cfgMocks.Config
-	logger logMocks.LoggerMock
-	module *kernelMocks.FullModule
+	ctx        context.Context
+	config     *cfgMocks.Config
+	gosoLogger logMocks.GosoLoggerMock
+	module     *kernelMocks.FullModule
 }
 
 func (s *KernelTestSuite) SetupTest() {
 	s.ctx = appctx.WithContainer(s.T().Context())
 
 	s.config = cfgMocks.NewConfig(s.T())
-	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
+	s.gosoLogger = logMocks.NewGosoLoggerMock(logMocks.WithTestingT(s.T()))
 	s.module = kernelMocks.NewFullModule(s.T())
 
 	s.config.EXPECT().UnmarshalKey("kernel", mock.AnythingOfType("*kernel.Settings")).
@@ -96,8 +97,7 @@ func timeout(t *testing.T, d time.Duration, f func(t *testing.T)) {
 
 func (s *KernelTestSuite) TestHangingModule() {
 	timeout(s.T(), time.Second*3, func(t *testing.T) {
-		logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
-
+		logger := logMocks.NewGosoLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 		options := []kernel.Option{
 			s.mockExitHandler(kernel.ExitCodeErr),
 		}
@@ -171,7 +171,7 @@ func (s *KernelTestSuite) TestRunSuccess() {
 	s.module.EXPECT().Run(matcher.Context).Return(nil).Once()
 
 	s.NotPanics(func() {
-		k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
+		k, err := kernel.BuildKernel(s.ctx, s.config, s.gosoLogger, []kernel.Option{
 			kernel.WithModuleFactory("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 				return s.module, nil
 			}),
@@ -187,8 +187,8 @@ func (s *KernelTestSuite) TestRunSuccess() {
 func (s *KernelTestSuite) TestRunFailure() {
 	s.expectStartupLogs()
 	s.expectShutdownLogs(1, 1, kernel.ExitCodeErr)
-	s.logger.EXPECT().Error(matcher.Context, "error during the execution of stage %d: %w", kernel.StageApplication, mock.Anything).Once()
-	s.logger.EXPECT().Error(matcher.Context, "error running %s module %s: %w", "foreground", "module", mock.Anything).Once()
+	s.gosoLogger.EXPECT().Error(matcher.Context, "error during the execution of stage %d: %w", kernel.StageApplication, mock.Anything).Once()
+	s.gosoLogger.EXPECT().Error(matcher.Context, "error running %s module %s: %w", "foreground", "module", mock.Anything).Once()
 
 	s.expectModuleLifecycle(s.module, false, kernel.StageApplication)
 	s.module.EXPECT().Run(matcher.Context).Run(func(ctx context.Context) {
@@ -196,7 +196,7 @@ func (s *KernelTestSuite) TestRunFailure() {
 	}).Once()
 
 	s.NotPanics(func() {
-		k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
+		k, err := kernel.BuildKernel(s.ctx, s.config, s.gosoLogger, []kernel.Option{
 			kernel.WithModuleFactory("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 				return s.module, nil
 			}),
@@ -222,7 +222,7 @@ func (s *KernelTestSuite) TestStop() {
 		<-ctx.Done()
 	}).Return(nil).Once()
 
-	k, err = kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
+	k, err = kernel.BuildKernel(s.ctx, s.config, s.gosoLogger, []kernel.Option{
 		kernel.WithModuleFactory("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return s.module, nil
 		}),
@@ -248,7 +248,7 @@ func (s *KernelTestSuite) TestRunningType() {
 		<-ctx.Done()
 	}).Return(nil).Once()
 
-	k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
+	k, err := kernel.BuildKernel(s.ctx, s.config, s.gosoLogger, []kernel.Option{
 		kernel.WithModuleFactory("foreground", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return mf, nil
 		}),
@@ -278,7 +278,7 @@ func (s *KernelTestSuite) TestMultipleStages() {
 	wg.Add(maxStage)
 
 	s.expectShutdownLogs(maxStage, maxStage, kernel.ExitCodeOk)
-	s.logger.EXPECT().Info(matcher.Context, "stage %d: ctx done", mock.AnythingOfType("int")).Times(maxStage)
+	s.gosoLogger.EXPECT().Info(matcher.Context, "stage %d: ctx done", mock.AnythingOfType("int")).Times(maxStage)
 
 	for stage := 0; stage < maxStage; stage++ {
 		thisStage := stage
@@ -292,7 +292,7 @@ func (s *KernelTestSuite) TestMultipleStages() {
 			wg.Wait()
 			<-ctx.Done()
 
-			s.logger.Info(ctx, "stage %d: ctx done", thisStage)
+			s.gosoLogger.Info(ctx, "stage %d: ctx done", thisStage)
 
 			for i := 0; i <= thisStage; i++ {
 				s.GreaterOrEqual(stageStatus[i], 1, fmt.Sprintf("stage %d: expected stage %d to be at least running", thisStage, i))
@@ -311,7 +311,7 @@ func (s *KernelTestSuite) TestMultipleStages() {
 		}))
 	}
 
-	k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, options)
+	k, err := kernel.BuildKernel(s.ctx, s.config, s.gosoLogger, options)
 	s.NoError(err)
 
 	go func() {
@@ -325,8 +325,8 @@ func (s *KernelTestSuite) TestMultipleStages() {
 func (s *KernelTestSuite) TestForcedExit() {
 	s.expectStartupLogs()
 	s.expectShutdownLogs(2, 2, kernel.ExitCodeForced)
-	s.logger.EXPECT().Error(matcher.Context, "kernel shutdown seems to be blocking.. exiting...: %w", mock.AnythingOfType("*errors.errorString")).Once()
-	s.logger.EXPECT().Info(matcher.Context, "module in stage %d blocking the shutdown: %s", mock.AnythingOfType("int"), mock.AnythingOfType("string")).Once()
+	s.gosoLogger.EXPECT().Error(matcher.Context, "kernel shutdown seems to be blocking.. exiting...: %w", mock.AnythingOfType("*errors.errorString")).Once()
+	s.gosoLogger.EXPECT().Info(matcher.Context, "module in stage %d blocking the shutdown: %s", mock.AnythingOfType("int"), mock.AnythingOfType("string")).Once()
 
 	mayStop := conc.NewSignalOnce()
 	appStopped := conc.NewSignalOnce()
@@ -344,7 +344,7 @@ func (s *KernelTestSuite) TestForcedExit() {
 		s.True(appStopped.Signaled())
 	}).Return(nil).Once()
 
-	k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
+	k, err := kernel.BuildKernel(s.ctx, s.config, s.gosoLogger, []kernel.Option{
 		kernel.WithModuleFactory("m", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return m, nil
 		}, kernel.ModuleStage(kernel.StageService), kernel.ModuleType(kernel.TypeForeground)),
@@ -374,8 +374,8 @@ func (s *KernelTestSuite) TestForcedExit() {
 func (s *KernelTestSuite) TestForcedExit_InverseOrder() {
 	s.expectStartupLogs()
 	s.expectShutdownLogs(2, 2, kernel.ExitCodeForced)
-	s.logger.EXPECT().Error(matcher.Context, "kernel shutdown seems to be blocking.. exiting...: %w", mock.AnythingOfType("*errors.errorString")).Once()
-	s.logger.EXPECT().Info(matcher.Context, "module in stage %d blocking the shutdown: %s", mock.AnythingOfType("int"), mock.AnythingOfType("string")).Twice()
+	s.gosoLogger.EXPECT().Error(matcher.Context, "kernel shutdown seems to be blocking.. exiting...: %w", mock.AnythingOfType("*errors.errorString")).Once()
+	s.gosoLogger.EXPECT().Info(matcher.Context, "module in stage %d blocking the shutdown: %s", mock.AnythingOfType("int"), mock.AnythingOfType("string")).Twice()
 
 	mayStop := conc.NewSignalOnce()
 	appStopped := conc.NewSignalOnce()
@@ -393,7 +393,7 @@ func (s *KernelTestSuite) TestForcedExit_InverseOrder() {
 		s.False(appStopped.Signaled())
 	}).Return(nil).Once()
 
-	k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
+	k, err := kernel.BuildKernel(s.ctx, s.config, s.gosoLogger, []kernel.Option{
 		kernel.WithModuleFactory("m", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return m, nil
 		}, kernel.ModuleStage(kernel.StageApplication), kernel.ModuleType(kernel.TypeForeground)),
@@ -448,7 +448,7 @@ func (s *KernelTestSuite) TestStageStopped() {
 	s.expectModuleLifecycle(m, true, 777)
 	m.EXPECT().Run(matcher.Context).Return(nil).Once()
 
-	k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
+	k, err := kernel.BuildKernel(s.ctx, s.config, s.gosoLogger, []kernel.Option{
 		kernel.WithModuleFactory("m", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return m, nil
 		}),
@@ -470,13 +470,13 @@ func (s *KernelTestSuite) TestStageStopped() {
 func (s *KernelTestSuite) Test_RunRealModule() {
 	// test that we can run the kernel multiple times
 	// if this does not work, the next test does not make sense
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		s.T().Run(fmt.Sprintf("fake iteration %d", i), func(t *testing.T) {
-			s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(t))
+			s.gosoLogger = logMocks.NewGosoLoggerMock(logMocks.WithTestingT(t))
 			s.expectStartupLogs()
 			s.expectShutdownLogs(1, 1, kernel.ExitCodeOk)
 
-			k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
+			k, err := kernel.BuildKernel(s.ctx, s.config, s.gosoLogger, []kernel.Option{
 				s.mockExitHandler(kernel.ExitCodeOk),
 				kernel.WithModuleFactory("main", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 					return &fakeModule{}, nil
@@ -490,14 +490,14 @@ func (s *KernelTestSuite) Test_RunRealModule() {
 
 	// test for a race condition on kernel shutdown
 	// in the past, this would panic in a close on closed channel in the tomb module
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		s.T().Run(fmt.Sprintf("real iteration %d", i), func(t *testing.T) {
-			s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(t))
+			s.gosoLogger = logMocks.NewGosoLoggerMock(logMocks.WithTestingT(t))
 			s.expectStartupLogs()
 			s.expectShutdownLogs(1, 1, kernel.ExitCodeOk)
-			s.logger.EXPECT().Error(matcher.Context, "error running %s module %s: %w", "foreground", "main", context.Canceled).Maybe()
+			s.gosoLogger.EXPECT().Error(matcher.Context, "error running %s module %s: %w", "foreground", "main", context.Canceled).Maybe()
 
-			k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
+			k, err := kernel.BuildKernel(s.ctx, s.config, s.gosoLogger, []kernel.Option{
 				s.mockExitHandler(kernel.ExitCodeOk),
 				kernel.WithModuleFactory("main", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 					return &realModule{
@@ -535,7 +535,7 @@ func (s *KernelTestSuite) TestModuleFastShutdown() {
 		}, kernel.ModuleStage(s)))
 	}
 
-	k, err = kernel.BuildKernel(s.ctx, s.config, s.logger, options)
+	k, err = kernel.BuildKernel(s.ctx, s.config, s.gosoLogger, options)
 	s.NoError(err)
 
 	k.Run()
@@ -555,20 +555,19 @@ func (s *KernelTestSuite) expectModuleLifecycle(module *kernelMocks.FullModule, 
 }
 
 func (s *KernelTestSuite) expectStartupLogs() {
-	s.logger.EXPECT().WithChannel("kernel").Return(s.logger)
-	s.logger.EXPECT().Info(matcher.Context, "starting kernel").Once()
-	s.logger.EXPECT().Info(matcher.Context, "kernel up and running after %s", mock.AnythingOfType("time.Duration")).Once()
-	s.logger.EXPECT().Info(matcher.Context, "stage %d up and running with %d modules", mock.AnythingOfType("int"), mock.AnythingOfType("int"))
-	s.logger.EXPECT().Info(matcher.Context, "running %s module %s in stage %d", mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("int"))
+	s.gosoLogger.EXPECT().Info(matcher.Context, "starting kernel").Once()
+	s.gosoLogger.EXPECT().Info(matcher.Context, "kernel up and running after %s", mock.AnythingOfType("time.Duration")).Once()
+	s.gosoLogger.EXPECT().Info(matcher.Context, "stage %d up and running with %d modules", mock.AnythingOfType("int"), mock.AnythingOfType("int"))
+	s.gosoLogger.EXPECT().Info(matcher.Context, "running %s module %s in stage %d", mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("int"))
 }
 
 func (s *KernelTestSuite) expectShutdownLogs(numStages int, numModules int, exitCode int) {
-	s.logger.EXPECT().Info(matcher.Context, "stopping kernel due to: %s", mock.AnythingOfType("string")).Once()
-	s.logger.EXPECT().Info(matcher.Context, "stopping stage %d", mock.AnythingOfType("int")).Times(numStages)
-	s.logger.EXPECT().Info(matcher.Context, "stopped %s module %s", mock.AnythingOfType("string"), mock.AnythingOfType("string")).Times(numModules)
+	s.gosoLogger.EXPECT().Info(matcher.Context, "stopping kernel due to: %s", mock.AnythingOfType("string")).Once()
+	s.gosoLogger.EXPECT().Info(matcher.Context, "stopping stage %d", mock.AnythingOfType("int")).Times(numStages)
+	s.gosoLogger.EXPECT().Info(matcher.Context, "stopped %s module %s", mock.AnythingOfType("string"), mock.AnythingOfType("string")).Times(numModules)
 	// we can't count on this to be called because it is called in an uncontrolled go routine after the stage has exited
-	s.logger.EXPECT().Info(matcher.Context, "stopped stage %d", mock.AnythingOfType("int")).Maybe()
-	s.logger.EXPECT().Info(matcher.Context, "leaving kernel with exit code %d", exitCode).Once()
+	s.gosoLogger.EXPECT().Info(matcher.Context, "stopped stage %d", mock.AnythingOfType("int")).Maybe()
+	s.gosoLogger.EXPECT().Info(matcher.Context, "leaving kernel with exit code %d", exitCode).Once()
 }
 
 type fakeModule struct{}
@@ -630,4 +629,136 @@ func (s *slowExitModule) Run(_ context.Context) error {
 	s.stop()
 
 	return nil
+}
+
+func (s *KernelTestSuite) TestShutdownHandlerRunsBeforeExit() {
+	timeout(s.T(), time.Second*3, func(t *testing.T) {
+		logger := logMocks.NewGosoLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+		order := make([]string, 0, 2)
+		handler := kernelMocks.NewShutdownHandler(t)
+		handler.EXPECT().Shutdown(matcher.Context).Run(func(context.Context) {
+			order = append(order, "shutdown")
+		}).Return(nil).Once()
+
+		module := kernelMocks.NewModule(t)
+		module.EXPECT().Run(matcher.Context).Return(nil).Once()
+
+		k, err := kernel.BuildKernel(s.ctx, s.config, logger, []kernel.Option{
+			kernel.WithModuleFactory("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+				return module, nil
+			}),
+			kernel.WithKillTimeout(time.Second),
+			kernel.WithShutdownHandlerFactory(func(context.Context, cfg.Config, log.Logger) (kernel.ShutdownHandler, error) {
+				return handler, nil
+			}),
+			kernel.WithExitHandler(func(code int) {
+				order = append(order, "exit")
+				assert.Equal(t, kernel.ExitCodeOk, code)
+			}),
+		})
+		assert.NoError(t, err)
+
+		k.Run()
+
+		assert.Equal(t, []string{"shutdown", "exit"}, order, "log shutdown must run before the exit handler")
+	})
+}
+
+func (s *KernelTestSuite) TestShutdownHandlerUsesBoundedLiveAppContext() {
+	logger := logMocks.NewGosoLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
+	type contextKey struct{}
+	appCtx, cancel := context.WithCancel(context.WithValue(s.ctx, contextKey{}, "value"))
+	handlerCalled := false
+	handler := kernelMocks.NewShutdownHandler(s.T())
+	handler.EXPECT().Shutdown(matcher.Context).Run(func(ctx context.Context) {
+		handlerCalled = true
+		assert.NoError(s.T(), ctx.Err())
+		assert.Equal(s.T(), "value", ctx.Value(contextKey{}))
+
+		deadline, ok := ctx.Deadline()
+		assert.True(s.T(), ok)
+		assert.Positive(s.T(), time.Until(deadline))
+		assert.LessOrEqual(s.T(), time.Until(deadline), time.Second)
+	}).Return(nil).Once()
+	module := kernelMocks.NewModule(s.T())
+	module.EXPECT().Run(matcher.Context).Run(func(context.Context) {
+		cancel()
+	}).Return(nil).Once()
+
+	k, err := kernel.BuildKernel(appCtx, s.config, logger, []kernel.Option{
+		kernel.WithModuleFactory("module", func(context.Context, cfg.Config, log.Logger) (kernel.Module, error) { return module, nil }),
+		kernel.WithKillTimeout(time.Second),
+		kernel.WithShutdownHandlerFactory(func(context.Context, cfg.Config, log.Logger) (kernel.ShutdownHandler, error) {
+			return handler, nil
+		}),
+		kernel.WithExitHandler(func(int) {}),
+	})
+	require.NoError(s.T(), err)
+	k.Run()
+
+	assert.True(s.T(), handlerCalled)
+}
+
+func (s *KernelTestSuite) TestShutdownHandlerContextExpiresAfterKillTimeout() {
+	timeout(s.T(), time.Second, func(t *testing.T) {
+		logger := logMocks.NewGosoLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+		module := kernelMocks.NewModule(t)
+		module.EXPECT().Run(matcher.Context).Return(nil).Once()
+		handler := kernelMocks.NewShutdownHandler(t)
+		handler.EXPECT().Shutdown(matcher.Context).Run(func(ctx context.Context) {
+			<-ctx.Done()
+			assert.ErrorIs(t, ctx.Err(), context.DeadlineExceeded)
+		}).Return(nil).Once()
+
+		k, err := kernel.BuildKernel(s.ctx, s.config, logger, []kernel.Option{
+			kernel.WithModuleFactory("module", func(context.Context, cfg.Config, log.Logger) (kernel.Module, error) { return module, nil }),
+			kernel.WithKillTimeout(20 * time.Millisecond),
+			kernel.WithShutdownHandlerFactory(func(context.Context, cfg.Config, log.Logger) (kernel.ShutdownHandler, error) {
+				return handler, nil
+			}),
+			kernel.WithExitHandler(func(int) {}),
+		})
+		require.NoError(t, err)
+
+		k.Run()
+	})
+}
+
+func (s *KernelTestSuite) TestShutdownHandlersRunInOrderAndContinueAfterError() {
+	s.expectStartupLogs()
+	s.expectShutdownLogs(1, 1, kernel.ExitCodeOk)
+	order := make([]string, 0, 4)
+	module := kernelMocks.NewModule(s.T())
+	module.EXPECT().Run(matcher.Context).Return(nil).Once()
+	s.gosoLogger.EXPECT().Warn(matcher.Context, "shutdown handler completed with errors: %s", mock.Anything).Once()
+	metricsHandler := kernelMocks.NewShutdownHandler(s.T())
+	metricsHandler.EXPECT().Shutdown(matcher.Context).Run(func(context.Context) {
+		order = append(order, "metrics")
+	}).Return(errors.New("boom")).Once()
+	tracingHandler := kernelMocks.NewShutdownHandler(s.T())
+	tracingHandler.EXPECT().Shutdown(matcher.Context).Run(func(context.Context) {
+		order = append(order, "tracing")
+	}).Return(nil).Once()
+	loggingHandler := kernelMocks.NewShutdownHandler(s.T())
+	loggingHandler.EXPECT().Shutdown(matcher.Context).Run(func(context.Context) {
+		order = append(order, "logging")
+	}).Return(nil).Once()
+	handlers := []kernel.Option{
+		kernel.WithModuleFactory("module", func(context.Context, cfg.Config, log.Logger) (kernel.Module, error) { return module, nil }),
+		kernel.WithShutdownHandlerFactory(func(context.Context, cfg.Config, log.Logger) (kernel.ShutdownHandler, error) {
+			return metricsHandler, nil
+		}),
+		kernel.WithShutdownHandlerFactory(func(context.Context, cfg.Config, log.Logger) (kernel.ShutdownHandler, error) {
+			return tracingHandler, nil
+		}),
+		kernel.WithShutdownHandlerFactory(func(context.Context, cfg.Config, log.Logger) (kernel.ShutdownHandler, error) {
+			return loggingHandler, nil
+		}),
+		kernel.WithExitHandler(func(int) { order = append(order, "exit") }),
+	}
+
+	k, err := kernel.BuildKernel(s.ctx, s.config, s.gosoLogger, handlers)
+	require.NoError(s.T(), err)
+	k.Run()
+	assert.Equal(s.T(), []string{"metrics", "tracing", "logging", "exit"}, order)
 }

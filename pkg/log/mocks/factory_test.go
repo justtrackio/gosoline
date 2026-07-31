@@ -13,3 +13,11 @@ func TestFactory(t *testing.T) {
 	logger.Warn(t.Context(), "warn message")
 	logger.Error(t.Context(), "error message")
 }
+
+func TestGosoLoggerFactory(t *testing.T) {
+	logger := mocks.NewGosoLoggerMock(mocks.WithTestingT(t), mocks.WithMockAll)
+	logger.Debug(t.Context(), "debug message")
+	logger.Info(t.Context(), "info message")
+	logger.Warn(t.Context(), "warn message")
+	logger.Error(t.Context(), "error message")
+}

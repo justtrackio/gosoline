@@ -25,9 +25,9 @@ func TestFactoryTestSuite(t *testing.T) {
 type FactoryTestSuite struct {
 	suite.Suite
 
-	ctx    context.Context
-	config *cfgMocks.Config
-	logger logMocks.LoggerMock
+	ctx        context.Context
+	config     *cfgMocks.Config
+	gosoLogger logMocks.GosoLoggerMock
 }
 
 func (s *FactoryTestSuite) SetupTest() {
@@ -43,12 +43,13 @@ func (s *FactoryTestSuite) SetupTest() {
 		}).
 		Return(nil)
 
-	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
-	s.logger.EXPECT().WithChannel(mock.AnythingOfType("string")).Return(s.logger)
+	s.gosoLogger = logMocks.NewGosoLoggerMock(logMocks.WithTestingT(s.T()))
+	s.gosoLogger.EXPECT().WithChannel(mock.AnythingOfType("string")).Return(s.gosoLogger)
 }
 
 func (s *FactoryTestSuite) TestNoModules() {
-	_, err := kernel.BuildFactory(s.ctx, s.config, s.logger, []kernel.Option{})
+	s.gosoLogger.On("WithChannel", mock.AnythingOfType("string")).Return(s.gosoLogger)
+	_, err := kernel.BuildFactory(s.ctx, s.config, s.gosoLogger, []kernel.Option{})
 	s.EqualError(err, "can not build kernel factory: no modules to run")
 	s.ErrorIs(err, kernel.ErrNoModulesToRun)
 }
@@ -59,7 +60,7 @@ func (s *FactoryTestSuite) TestNoForegroundModules() {
 	module.EXPECT().IsBackground().Return(true).Once()
 	module.EXPECT().GetStage().Return(kernel.StageApplication).Once()
 
-	_, err := kernel.BuildFactory(s.ctx, s.config, s.logger, []kernel.Option{
+	_, err := kernel.BuildFactory(s.ctx, s.config, s.gosoLogger, []kernel.Option{
 		kernel.WithModuleFactory("background", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return module, nil
 		}),
@@ -70,7 +71,7 @@ func (s *FactoryTestSuite) TestNoForegroundModules() {
 func (s *FactoryTestSuite) TestModuleMultiFactoryError() {
 	factoryErr := fmt.Errorf("error in module factory")
 
-	_, err := kernel.BuildFactory(s.ctx, s.config, s.logger, []kernel.Option{
+	_, err := kernel.BuildFactory(s.ctx, s.config, s.gosoLogger, []kernel.Option{
 		kernel.WithModuleMultiFactory(func(context.Context, cfg.Config, log.Logger) (map[string]kernel.ModuleFactory, error) {
 			return nil, factoryErr
 		}),
@@ -80,7 +81,7 @@ func (s *FactoryTestSuite) TestModuleMultiFactoryError() {
 }
 
 func (s *FactoryTestSuite) TestModuleMultiFactoryPanic() {
-	_, err := kernel.BuildFactory(s.ctx, s.config, s.logger, []kernel.Option{
+	_, err := kernel.BuildFactory(s.ctx, s.config, s.gosoLogger, []kernel.Option{
 		kernel.WithModuleMultiFactory(func(context.Context, cfg.Config, log.Logger) (map[string]kernel.ModuleFactory, error) {
 			panic("panic in module multi factory")
 		}),
@@ -90,7 +91,7 @@ func (s *FactoryTestSuite) TestModuleMultiFactoryPanic() {
 }
 
 func (s *FactoryTestSuite) TestModuleFactoryPanic() {
-	_, err := kernel.BuildFactory(s.ctx, s.config, s.logger, []kernel.Option{
+	_, err := kernel.BuildFactory(s.ctx, s.config, s.gosoLogger, []kernel.Option{
 		kernel.WithModuleFactory("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			panic("panic in module factory")
 		}),

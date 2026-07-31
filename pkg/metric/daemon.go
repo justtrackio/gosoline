@@ -56,10 +56,6 @@ type Daemon struct {
 	errorThrottles    map[string]bool
 }
 
-func metricWriterAggrKey(typ string) string {
-	return fmt.Sprintf("metric.writer_settings.%s.aggregate", typ)
-}
-
 func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	settings, err := GetMetricSettings(config)
 	if err != nil {
@@ -83,6 +79,9 @@ func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) 
 		aggWriter, err := config.GetBool(metricWriterAggrCnfKey, false)
 		if err != nil {
 			return nil, fmt.Errorf("can not get bool from config at %s: %w", metricWriterAggrCnfKey, err)
+		}
+		if aggWriter && !metricWriterSupportsAggregation(typ) {
+			return nil, fmt.Errorf("metric writer %s does not support aggregation: %s must not be true", typ, metricWriterAggrCnfKey)
 		}
 
 		factory, ok := writerFactories[typ]
@@ -289,4 +288,12 @@ func (d *Daemon) throttleError(err string) bool {
 	}()
 
 	return true
+}
+
+func metricWriterAggrKey(typ string) string {
+	return fmt.Sprintf("metric.writer_settings.%s.aggregate", typ)
+}
+
+func metricWriterSupportsAggregation(typ string) bool {
+	return typ != WriterTypePrometheus && typ != WriterTypeOtel
 }

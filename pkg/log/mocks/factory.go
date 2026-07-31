@@ -1,6 +1,7 @@
 package mocks
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -37,6 +38,12 @@ type LoggerMock interface {
 	EXPECT() *Logger_Expecter
 }
 
+type GosoLoggerMock interface {
+	log.GosoLogger
+	Mock
+	EXPECT() *GosoLogger_Expecter
+}
+
 type loggerMockOptions struct {
 	t              *testing.T
 	mockUntilLevel *int
@@ -44,13 +51,38 @@ type loggerMockOptions struct {
 
 type LoggerMockOption func(*loggerMockOptions)
 
-type loggerMock struct {
-	*Logger
+type loggerMockState struct {
 	t              *testing.T
 	currentChannel string
 	currentFields  log.Fields
 	lck            *sync.Mutex
 	pendingLogs    map[string][]pendingLogMessage
+}
+
+type loggerMock struct {
+	*Logger
+	*loggerMockState
+}
+
+type gosoLoggerMock struct {
+	*GosoLogger
+	*loggerMockState
+}
+
+func (l *gosoLoggerMock) Option(options ...log.Option) error {
+	if hasExpectedCall(l.ExpectedCalls, "Option") {
+		return l.GosoLogger.Option(options...)
+	}
+
+	return nil
+}
+
+func (l *gosoLoggerMock) Close(ctx context.Context) error {
+	if hasExpectedCall(l.ExpectedCalls, "Close") {
+		return l.GosoLogger.Close(ctx)
+	}
+
+	return nil
 }
 
 type pendingLogMessage struct {
@@ -61,16 +93,30 @@ type pendingLogMessage struct {
 	timestamp time.Time
 }
 
-func (l *loggerMock) WithChannel(channel string) log.Logger {
-	// forward potential calls to the underlying mock if we expect some
-	if _, ok := funk.FindFirstFunc(l.ExpectedCalls, func(call *mock.Call) bool {
-		return call.Method == "WithChannel"
-	}); ok {
-		l.Logger.WithChannel(channel)
+func newLoggerMockState(t *testing.T) *loggerMockState {
+	state := &loggerMockState{
+		t:              t,
+		currentChannel: "main",
+		currentFields:  log.Fields{},
+		lck:            &sync.Mutex{},
+		pendingLogs:    map[string][]pendingLogMessage{},
 	}
 
-	return &loggerMock{
-		Logger:         l.Logger,
+	if state.t != nil {
+		state.t.Cleanup(func() {
+			if !state.t.Failed() {
+				return
+			}
+
+			state.printLogs()
+		})
+	}
+
+	return state
+}
+
+func (l *loggerMockState) withChannel(channel string) *loggerMockState {
+	return &loggerMockState{
 		t:              l.t,
 		currentChannel: channel,
 		currentFields:  l.currentFields,
@@ -79,21 +125,69 @@ func (l *loggerMock) WithChannel(channel string) log.Logger {
 	}
 }
 
-func (l *loggerMock) WithFields(fields log.Fields) log.Logger {
-	// forward potential calls to the underlying mock if we expect some
-	if _, ok := funk.FindFirstFunc(l.ExpectedCalls, func(call *mock.Call) bool {
-		return call.Method == "WithFields"
-	}); ok {
-		l.Logger.WithFields(fields)
-	}
-
-	return &loggerMock{
-		Logger:         l.Logger,
+func (l *loggerMockState) withFields(fields log.Fields) *loggerMockState {
+	return &loggerMockState{
 		t:              l.t,
 		currentChannel: l.currentChannel,
 		currentFields:  funk.MergeMaps(l.currentFields, fields),
 		lck:            l.lck,
 		pendingLogs:    l.pendingLogs,
+	}
+}
+
+func hasExpectedCall(expectedCalls []*mock.Call, method string) bool {
+	_, ok := funk.FindFirstFunc(expectedCalls, func(call *mock.Call) bool {
+		return call.Method == method
+	})
+
+	return ok
+}
+
+func (l *loggerMock) WithChannel(channel string) log.Logger {
+	// forward potential calls to the underlying mock if we expect some
+	if hasExpectedCall(l.ExpectedCalls, "WithChannel") {
+		l.Logger.WithChannel(channel)
+	}
+
+	return &loggerMock{
+		Logger:          l.Logger,
+		loggerMockState: l.withChannel(channel),
+	}
+}
+
+func (l *loggerMock) WithFields(fields log.Fields) log.Logger {
+	// forward potential calls to the underlying mock if we expect some
+	if hasExpectedCall(l.ExpectedCalls, "WithFields") {
+		l.Logger.WithFields(fields)
+	}
+
+	return &loggerMock{
+		Logger:          l.Logger,
+		loggerMockState: l.withFields(fields),
+	}
+}
+
+func (l *gosoLoggerMock) WithChannel(channel string) log.Logger {
+	// forward potential calls to the underlying mock if we expect some
+	if hasExpectedCall(l.ExpectedCalls, "WithChannel") {
+		l.GosoLogger.WithChannel(channel)
+	}
+
+	return &gosoLoggerMock{
+		GosoLogger:      l.GosoLogger,
+		loggerMockState: l.withChannel(channel),
+	}
+}
+
+func (l *gosoLoggerMock) WithFields(fields log.Fields) log.Logger {
+	// forward potential calls to the underlying mock if we expect some
+	if hasExpectedCall(l.ExpectedCalls, "WithFields") {
+		l.GosoLogger.WithFields(fields)
+	}
+
+	return &gosoLoggerMock{
+		GosoLogger:      l.GosoLogger,
+		loggerMockState: l.withFields(fields),
 	}
 }
 
@@ -133,29 +227,44 @@ func NewLoggerMock(opts ...LoggerMockOption) LoggerMock {
 	}
 
 	logger := &loggerMock{
-		Logger:         baseLogger,
-		t:              options.t,
-		currentChannel: "main",
-		currentFields:  log.Fields{},
-		lck:            &sync.Mutex{},
-		pendingLogs:    map[string][]pendingLogMessage{},
-	}
-
-	if logger.t != nil {
-		logger.t.Cleanup(func() {
-			if !logger.t.Failed() {
-				return
-			}
-
-			logger.printLogs()
-		})
+		Logger:          baseLogger,
+		loggerMockState: newLoggerMockState(options.t),
 	}
 
 	if options.mockUntilLevel != nil {
-		logger.mockLoggerMethod("Debug", log.LevelDebug, *options.mockUntilLevel >= log.PriorityDebug)
-		logger.mockLoggerMethod("Info", log.LevelInfo, *options.mockUntilLevel >= log.PriorityInfo)
-		logger.mockLoggerMethod("Warn", log.LevelWarn, *options.mockUntilLevel >= log.PriorityWarn)
-		logger.mockLoggerMethod("Error", log.LevelError, *options.mockUntilLevel >= log.PriorityError)
+		logger.mockLoggerMethod(logger.On, logger, "Debug", log.LevelDebug, *options.mockUntilLevel >= log.PriorityDebug)
+		logger.mockLoggerMethod(logger.On, logger, "Info", log.LevelInfo, *options.mockUntilLevel >= log.PriorityInfo)
+		logger.mockLoggerMethod(logger.On, logger, "Warn", log.LevelWarn, *options.mockUntilLevel >= log.PriorityWarn)
+		logger.mockLoggerMethod(logger.On, logger, "Error", log.LevelError, *options.mockUntilLevel >= log.PriorityError)
+	}
+
+	return logger
+}
+
+// NewGosoLoggerMock creates a new GosoLogger mock with the given options.
+func NewGosoLoggerMock(opts ...LoggerMockOption) GosoLoggerMock {
+	var options loggerMockOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	var baseLogger *GosoLogger
+	if options.t != nil {
+		baseLogger = NewGosoLogger(options.t)
+	} else {
+		baseLogger = new(GosoLogger)
+	}
+
+	logger := &gosoLoggerMock{
+		GosoLogger:      baseLogger,
+		loggerMockState: newLoggerMockState(options.t),
+	}
+
+	if options.mockUntilLevel != nil {
+		logger.mockLoggerMethod(logger.On, logger, "Debug", log.LevelDebug, *options.mockUntilLevel >= log.PriorityDebug)
+		logger.mockLoggerMethod(logger.On, logger, "Info", log.LevelInfo, *options.mockUntilLevel >= log.PriorityInfo)
+		logger.mockLoggerMethod(logger.On, logger, "Warn", log.LevelWarn, *options.mockUntilLevel >= log.PriorityWarn)
+		logger.mockLoggerMethod(logger.On, logger, "Error", log.LevelError, *options.mockUntilLevel >= log.PriorityError)
 	}
 
 	return logger
@@ -175,18 +284,18 @@ func NewLoggerMockedUntilLevel(level int, opts ...LoggerMockOption) LoggerMock {
 	return NewLoggerMock(append([]LoggerMockOption{WithMockUntilLevel(level)}, opts...)...)
 }
 
-func (l *loggerMock) mockLoggerMethod(method string, level string, allowed bool) {
+func (l *loggerMockState) mockLoggerMethod(on func(string, ...any) *mock.Call, returnValue any, method string, level string, allowed bool) {
 	anythings := make(mock.Arguments, 0)
 	f := l.inspectLogFunction(level, allowed)
 
 	for i := 0; i < 10; i++ {
 		anythings = append(anythings, mock.Anything)
 		anythingsWithCtx := append([]any{matcher.Context}, anythings...)
-		l.On(method, anythingsWithCtx...).Run(f).Return(l).Maybe()
+		on(method, anythingsWithCtx...).Run(f).Return(returnValue).Maybe()
 	}
 }
 
-func (l *loggerMock) inspectLogFunction(level string, allowed bool) func(args mock.Arguments) {
+func (l *loggerMockState) inspectLogFunction(level string, allowed bool) func(args mock.Arguments) {
 	return func(args mock.Arguments) {
 		msg := args.Get(1).(string)
 		msg = fmt.Sprintf(msg, args[2:]...)
@@ -215,7 +324,7 @@ func (l *loggerMock) inspectLogFunction(level string, allowed bool) func(args mo
 	}
 }
 
-func (l *loggerMock) printLogs() {
+func (l *loggerMockState) printLogs() {
 	_, err := fmt.Println("--- LOGS FROM FAILED TEST:")
 	assert.NoError(l.t, err, "Failed to write to stdout")
 

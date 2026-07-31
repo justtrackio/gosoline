@@ -14,10 +14,11 @@ type blueprintModule struct {
 }
 
 type blueprint struct {
-	multiModuleFactories []ModuleMultiFactory
-	middlewareFactories  []blueprintMiddleware
-	moduleFactories      []blueprintModule
-	kernelOptions        []kernelOption
+	kernelOptions            []kernelOption
+	middlewareFactories      []blueprintMiddleware
+	moduleFactories          []blueprintModule
+	multiModuleFactories     []ModuleMultiFactory
+	shutdownHandlerFactories []ShutdownHandlerFactory
 }
 
 type Option func(bp *blueprint)
@@ -70,5 +71,11 @@ func WithExitHandler(handler func(code int)) Option {
 		bp.kernelOptions = append(bp.kernelOptions, func(k *kernel) {
 			k.exitHandler = handler
 		})
+	}
+}
+
+func WithShutdownHandlerFactory(factories ...ShutdownHandlerFactory) Option {
+	return func(bp *blueprint) {
+		bp.shutdownHandlerFactories = append(bp.shutdownHandlerFactories, factories...)
 	}
 }

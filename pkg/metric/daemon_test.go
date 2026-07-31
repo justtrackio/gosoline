@@ -2,6 +2,7 @@ package metric_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -116,4 +117,36 @@ func TestWriteLotsOfBadMetrics(t *testing.T) {
 
 	err = cfn.Wait()
 	assert.NoError(t, err)
+}
+
+func TestNewDaemonModuleRejectsAggregationForRawWriters(t *testing.T) {
+	tests := []string{
+		metric.WriterTypePrometheus,
+		metric.WriterTypeOtel,
+	}
+
+	for _, writerType := range tests {
+		t.Run(writerType, func(t *testing.T) {
+			config := cfg.New(map[string]any{
+				"metric": map[string]any{
+					"enabled": true,
+					"writers": []string{writerType},
+					"writer_settings": map[string]any{
+						writerType: map[string]any{
+							"aggregate": true,
+						},
+					},
+				},
+			})
+
+			daemon, err := metric.NewDaemonModule(t.Context(), config, log.NewCliLogger())
+
+			assert.Nil(t, daemon)
+			assert.EqualError(t, err, fmt.Sprintf(
+				"metric writer %s does not support aggregation: metric.writer_settings.%s.aggregate must not be true",
+				writerType,
+				writerType,
+			))
+		})
+	}
 }

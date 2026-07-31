@@ -1,0 +1,40 @@
+app:
+  env: dev
+  name: otel-metrics-demo
+  namespace: examples
+  tags:
+    project: gosoline
+    family: otel-demo
+
+otel:
+  resource:
+    service_name_pattern: "{app.name}"
+    service_namespace_pattern: "{app.namespace}"
+    attributes:
+      demo: "true"
+  exporter:
+    protocol: grpc
+    host: localhost
+    port: 4317
+    insecure: true
+    compression: none
+    timeout: 10s
+    retry:
+      enabled: true
+
+metric:
+  enabled: true
+  interval: 10s
+  writers:
+    - otel
+  writer_settings:
+    otel:
+      interval: 10s
+
+log:
+  level: info
+  handlers:
+    main:
+      type: iowriter
+      formatter: json
+      writer: stdout

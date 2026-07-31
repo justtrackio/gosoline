@@ -7,7 +7,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-func BuildFactory(ctx context.Context, config cfg.Config, logger log.Logger, options []Option) (*factory, error) {
+func BuildFactory(ctx context.Context, config cfg.Config, logger log.GosoLogger, options []Option) (*factory, error) {
 	blueprint := NewBlueprint(options...)
 
 	var err error
@@ -20,7 +20,7 @@ func BuildFactory(ctx context.Context, config cfg.Config, logger log.Logger, opt
 	return factory, nil
 }
 
-func BuildKernel(ctx context.Context, config cfg.Config, logger log.Logger, options []Option) (Kernel, error) {
+func BuildKernel(ctx context.Context, config cfg.Config, logger log.GosoLogger, options []Option) (Kernel, error) {
 	var err error
 	var factory *factory
 

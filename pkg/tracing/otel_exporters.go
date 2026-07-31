@@ -7,8 +7,19 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"github.com/justtrackio/gosoline/pkg/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+)
+
+const (
+	// ExporterOtelHttp pushes spans via OTLP/HTTP (legacy config under tracing.otel.http).
+	ExporterOtelHttp = "otel_http"
+	// ExporterOtelGrpc pushes spans via OTLP/gRPC using the shared otel.exporter config.
+	ExporterOtelGrpc = "otel_grpc"
+	// ExporterStdout writes spans to stdout (local/dev).
+	ExporterStdout = "stdout"
 )
 
 type OtelExporterSettings struct {
@@ -27,17 +38,22 @@ type RetryConfig struct {
 	MaxElapsedTime  time.Duration `cfg:"max_elapsed_time" default:"300s"`
 }
 
-type OtelExporterFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (*otlptrace.Exporter, error)
+// OtelExporterFactory builds an OTEL span exporter. It returns the SpanExporter interface so
+// OTLP (http/grpc) and non-OTLP (stdout) exporters can be registered uniformly.
+type OtelExporterFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (sdktrace.SpanExporter, error)
 
 func AddOtelTraceExporter(name string, exporter OtelExporterFactory) {
 	otelTraceExporters[name] = exporter
 }
 
 var otelTraceExporters = map[string]OtelExporterFactory{
-	"otel_http": NewOtelHttpTracer,
+	ExporterOtelHttp: NewOtelHttpTracer,
+	ExporterOtelGrpc: NewOtelGrpcTracer,
+	ExporterStdout:   NewStdoutTracer,
 }
 
-func NewOtelHttpTracer(ctx context.Context, config cfg.Config, _ log.Logger) (*otlptrace.Exporter, error) {
+// NewOtelHttpTracer builds an OTLP/HTTP span exporter from the legacy tracing.otel.http config.
+func NewOtelHttpTracer(ctx context.Context, config cfg.Config, _ log.Logger) (sdktrace.SpanExporter, error) {
 	settings := &OtelExporterSettings{}
 	if err := config.UnmarshalKey("tracing.otel.http", settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal otel http exporter settings: %w", err)
@@ -67,4 +83,22 @@ func NewOtelHttpTracer(ctx context.Context, config cfg.Config, _ log.Logger) (*o
 	}
 
 	return otlptracehttp.New(ctx, opts...)
+}
+
+// NewOtelGrpcTracer builds an OTLP/gRPC span exporter from the shared otel.exporter config (forced to gRPC).
+func NewOtelGrpcTracer(ctx context.Context, config cfg.Config, _ log.Logger) (sdktrace.SpanExporter, error) {
+	settings, err := otel.ReadSettings(config)
+	if err != nil {
+		return nil, err
+	}
+
+	exporterSettings := settings.Exporter
+	exporterSettings.Protocol = otel.ProtocolGrpc
+
+	return otel.BuildTraceExporter(ctx, exporterSettings)
+}
+
+// NewStdoutTracer writes spans to stdout, useful for local development.
+func NewStdoutTracer(_ context.Context, _ cfg.Config, _ log.Logger) (sdktrace.SpanExporter, error) {
+	return stdouttrace.New(stdouttrace.WithPrettyPrint())
 }

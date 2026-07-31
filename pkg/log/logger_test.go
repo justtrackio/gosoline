@@ -2,6 +2,8 @@ package log_test
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -14,6 +16,15 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/stretchr/testify/assert"
 )
+
+type closingHandler struct {
+	log.Handler
+	close func(ctx context.Context) error
+}
+
+func (h closingHandler) Close(ctx context.Context) error {
+	return h.close(ctx)
+}
 
 func TestLoggerIoWriter(t *testing.T) {
 	config := cfg.New(map[string]any{
@@ -137,6 +148,37 @@ func TestLoggerContextFields(t *testing.T) {
 	assert.JSONEq(t, `{"channel":"main","level":3,"level_name":"warn","timestamp":"1984-04-04T00:00:00Z","message":"foo with context","fields":{},"context":{"foo":"bar"}}`, lines[1])
 
 	fmt.Println(lines[1])
+}
+
+func TestLoggerCloseClosesAllHandlersAndReturnsErrors(t *testing.T) {
+	firstErr := errors.New("first handler failed")
+	lastErr := errors.New("last handler failed")
+	closed := make([]int, 0, 3)
+
+	handlers := []log.Handler{
+		closingHandler{close: func(context.Context) error {
+			closed = append(closed, 1)
+
+			return firstErr
+		}},
+		closingHandler{close: func(context.Context) error {
+			closed = append(closed, 2)
+
+			return nil
+		}},
+		closingHandler{close: func(context.Context) error {
+			closed = append(closed, 3)
+
+			return lastErr
+		}},
+	}
+
+	logger := log.NewLoggerWithInterfaces(clock.NewFakeClock(), handlers)
+	err := logger.Close(t.Context())
+
+	assert.Equal(t, []int{1, 2, 3}, closed)
+	assert.ErrorIs(t, err, firstErr)
+	assert.ErrorIs(t, err, lastErr)
 }
 
 func getBufferedLogger(t *testing.T, config cfg.Config) (log.Logger, *bytes.Buffer) {

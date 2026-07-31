@@ -2,6 +2,7 @@ package log
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -96,9 +97,12 @@ type Logger interface {
 }
 
 // GosoLogger extends the Logger interface with the ability to apply functional options after creation.
+//
+//go:generate go run github.com/vektra/mockery/v2 --name GosoLogger
 type GosoLogger interface {
 	Logger
 	Option(opt ...Option) error
+	Close(ctx context.Context) error
 }
 
 // LoggerSettings holds the configuration for the main logger, specifically its handlers.
@@ -111,7 +115,7 @@ type HandlerSettings struct {
 	Type string `cfg:"type"`
 }
 
-var _ Logger = &gosoLogger{}
+var _ GosoLogger = &gosoLogger{}
 
 type gosoLogger struct {
 	clock           clock.Clock
@@ -275,4 +279,20 @@ func (l *gosoLogger) shouldLog(current string, level int, h Handler) (bool, erro
 
 func (l *gosoLogger) err(err error) {
 	_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %s\n", err)
+}
+
+func (l *gosoLogger) Close(ctx context.Context) error {
+	var ok bool
+	var err error
+	var closingHandler ClosingHandler
+
+	for _, handler := range l.handlers {
+		if closingHandler, ok = handler.(ClosingHandler); !ok {
+			continue
+		}
+
+		err = errors.Join(err, closingHandler.Close(ctx))
+	}
+
+	return err
 }
