@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/sdk"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 )
 
 func TestBuildResource(t *testing.T) {
@@ -44,7 +44,7 @@ func TestBuildResource(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "greeting-api", serviceName.AsString())
 
-	env, ok := attrs.Value(semconv.DeploymentEnvironmentKey)
+	env, ok := attrs.Value(semconv.DeploymentEnvironmentNameKey)
 	require.True(t, ok)
 	assert.Equal(t, "production", env.AsString())
 

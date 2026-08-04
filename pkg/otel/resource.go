@@ -6,7 +6,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 )
 
 // BuildResource constructs an OTEL resource from the application identity and the configured
@@ -27,7 +27,7 @@ func BuildResource(config cfg.Config, settings ResourceSettings) (*resource.Reso
 
 	attributes := []attribute.KeyValue{
 		semconv.ServiceName(serviceName),
-		semconv.DeploymentEnvironment(identity.Env),
+		semconv.DeploymentEnvironmentNameKey.String(identity.Env),
 	}
 
 	if settings.ServiceNamespacePattern != "" {
