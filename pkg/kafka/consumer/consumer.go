@@ -84,7 +84,7 @@ func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger, hand
 		logger:           logger,
 		clock:            clock.Provider,
 		healthCheckTimer: healthCheckTimer,
-		partitionManager: NewPartitionManager(logger, clock.Provider, metricWriter, handler, name),
+		partitionManager: newPartitionManager(logger, clock.Provider, metricWriter, handler, name, settings.ConsumeDelay, healthCheckTimer, settings.Healthcheck.Timeout),
 		readerFactory:    readerFactory,
 		settings:         settings,
 		stopped:          make(chan struct{}),
@@ -111,7 +111,7 @@ func NewConsumerWithInterfaces(
 		logger:           logger,
 		clock:            clk,
 		healthCheckTimer: healthCheckTimer,
-		partitionManager: NewPartitionManager(logger, clk, metricWriter, handler, name),
+		partitionManager: newPartitionManager(logger, clk, metricWriter, handler, name, settings.ConsumeDelay, healthCheckTimer, settings.Healthcheck.Timeout),
 		readerFactory:    readerFactory,
 		settings:         settings,
 		stopped:          make(chan struct{}),
@@ -193,6 +193,8 @@ func (c *consumer) Run(ctx context.Context) error {
 			return ctx.Err()
 		case <-c.stopped:
 			return nil
+		case err := <-c.partitionManager.errors:
+			return err
 		default:
 		}
 
@@ -221,7 +223,13 @@ func (c *consumer) Run(ctx context.Context) error {
 		}
 
 		c.writeMetrics(ctx, pollDuration, countRecords(fetches))
-		c.processPartitions(ctx, fetches)
+		c.processPartitions(ctx, c.stopped, fetches)
+
+		select {
+		case err := <-c.partitionManager.errors:
+			return err
+		default:
+		}
 
 		c.pollingOrRebalancing.Store(true)
 		c.reader.AllowRebalance()
@@ -296,10 +304,10 @@ func (c *consumer) pollRecords(ctx context.Context) (any, error) {
 	return fetches, errs
 }
 
-func (c *consumer) processPartitions(ctx context.Context, fetches kgo.Fetches) {
+func (c *consumer) processPartitions(ctx context.Context, stopped <-chan struct{}, fetches kgo.Fetches) {
 	fetches.EachPartition(func(p kgo.FetchTopicPartition) {
 		if c.isReadOnly {
-			c.partitionManager.HandleWithoutCommit(p.Records)
+			c.partitionManager.handleWithoutCommit(ctx, stopped, p.Records)
 		} else {
 			c.partitionManager.Handle(ctx, p.Topic, p.Partition, p.Records)
 		}
@@ -329,6 +337,7 @@ func getConsumerDefaultMetrics(name, topicName string) metric.Data {
 		{Priority: metric.PriorityHigh, MetricName: metricNamePollDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindDefault},
 		{Priority: metric.PriorityHigh, MetricName: metricNameProcessDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindDefault},
 		{Priority: metric.PriorityHigh, MetricName: metricNameWaitDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindDefault},
+		{Priority: metric.PriorityHigh, MetricName: metricNameSleepDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindDefault},
 		{Priority: metric.PriorityHigh, MetricName: metricNameCommitDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindDefault},
 		{Priority: metric.PriorityHigh, MetricName: metricNameCommitFailures, Dimensions: partitionDims, Unit: metric.UnitCount, Kind: metric.KindDefault},
 		{Priority: metric.PriorityHigh, MetricName: metricNameRebalanceCount, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindDefault},

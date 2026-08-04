@@ -49,6 +49,8 @@ and transport-specific settings. Redis naming is handled by the Redis client's o
 **Kafka/Kinesis inputs** (`KafkaInputConfiguration`, `KinesisInputConfiguration`) embed their transport
 `Settings` struct directly (`kafkaConsumer.Settings`, `kinesis.Settings`), which themselves embed
 `cfg.ResourceIdentifier`. The config keys are therefore also flat (`application`, `env`, `tags`).
+Both support `consume_delay`: Kafka waits until the newest record in a partition batch reaches the configured age,
+while Kinesis waits per record.
 
 ### Output example (SQS)
 ```yaml
