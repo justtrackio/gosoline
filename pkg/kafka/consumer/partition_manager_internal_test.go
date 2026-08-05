@@ -452,6 +452,82 @@ func (s *PartitionManagerInternalTestSuite) TestPartitionConsumerRevocationDurin
 	}
 }
 
+func (s *PartitionManagerInternalTestSuite) TestPartitionConsumerDrainProcessesQueuedBatchAndCommits() {
+	t := s.T()
+	client := kafkaConsumerMocks.NewPartitionClient(t)
+	handler := kafkaConsumerMocks.NewKafkaMessageHandler(t)
+	metricWriter := metricMocks.NewWriter(t)
+	partition := map[string][]int32{"topic": {1}}
+	records := []*kgo.Record{{Offset: 1}}
+
+	client.EXPECT().PauseFetchPartitions(partition).Return(nil).Once()
+	handler.EXPECT().Handle(records).Once()
+	client.EXPECT().CommitRecords(mock.Anything, records[0]).Return(nil).Once()
+	client.EXPECT().ResumeFetchPartitions(partition).Once()
+	metricWriter.EXPECT().Write(mock.Anything, mock.Anything).Once()
+
+	partitionConsumer := newPartitionConsumer(
+		log.NewLogger(),
+		clock.NewFakeClock(),
+		metricWriter,
+		handler,
+		client,
+		"consumer",
+		"topic",
+		1,
+		true,
+		func(context.Context, <-chan struct{}, []*kgo.Record) bool { return true },
+	)
+
+	partitionConsumer.Assign(t.Context(), records)
+	partitionConsumer.Drain()
+
+	s.NoError(partitionConsumer.Consume(t.Context()))
+}
+
+func (s *PartitionManagerInternalTestSuite) TestPartitionConsumerDrainHonorsContextCancellation() {
+	t := s.T()
+	client := kafkaConsumerMocks.NewPartitionClient(t)
+	handler := kafkaConsumerMocks.NewKafkaMessageHandler(t)
+	metricWriter := metricMocks.NewWriter(t)
+	partition := map[string][]int32{"topic": {1}}
+	records := []*kgo.Record{{Offset: 1}}
+	delayStarted := make(chan struct{})
+	ctx, cancel := context.WithCancel(t.Context())
+
+	client.EXPECT().PauseFetchPartitions(partition).Return(nil).Once()
+	client.EXPECT().ResumeFetchPartitions(partition).Once()
+
+	partitionConsumer := newPartitionConsumer(
+		log.NewLogger(),
+		clock.NewFakeClock(),
+		metricWriter,
+		handler,
+		client,
+		"consumer",
+		"topic",
+		1,
+		true,
+		func(ctx context.Context, _ <-chan struct{}, _ []*kgo.Record) bool {
+			close(delayStarted)
+			<-ctx.Done()
+
+			return false
+		},
+	)
+	partitionConsumer.Assign(t.Context(), records)
+	partitionConsumer.Drain()
+	result := make(chan error, 1)
+	go func() {
+		result <- partitionConsumer.Consume(ctx)
+	}()
+
+	<-delayStarted
+	cancel()
+
+	s.NoError(waitForConsumeResult(t, result))
+}
+
 func (s *PartitionManagerInternalTestSuite) TestPartitionConsumerCommitFailureResumesPartition() {
 	t := s.T()
 	client := kafkaConsumerMocks.NewPartitionClient(t)

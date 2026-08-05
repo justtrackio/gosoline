@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -110,6 +111,9 @@ func (p *PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo
 func (p *PartitionManager) consumePartition(ctx context.Context, partitionConsumer *PartitionConsumer) error {
 	err := partitionConsumer.Consume(ctx)
 	if err == nil {
+		return nil
+	}
+	if p.stopping.Load() && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
 		return nil
 	}
 
@@ -243,7 +247,7 @@ func (p *PartitionManager) Stop(ctx context.Context) {
 
 	p.lck.Lock()
 	for assignment, consumer := range p.consumers {
-		consumer.Stop()
+		consumer.Drain()
 		delete(p.consumers, assignment)
 	}
 	p.lck.Unlock()

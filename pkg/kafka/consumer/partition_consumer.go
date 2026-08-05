@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -43,7 +44,10 @@ type PartitionConsumer struct {
 	kafkaClient    partitionClient
 	assignedBatch  chan []*kgo.Record
 	stop           chan struct{}
+	drain          chan struct{}
 	done           chan struct{}
+	stopOnce       sync.Once
+	drainOnce      sync.Once
 	delayConsume   func(ctx context.Context, stopped <-chan struct{}, records []*kgo.Record) bool
 	pauseFetch     bool
 	paused         atomic.Bool
@@ -76,6 +80,7 @@ func newPartitionConsumer(
 		kafkaClient:    kafkaClient,
 		assignedBatch:  make(chan []*kgo.Record, batchBufferSize),
 		stop:           make(chan struct{}),
+		drain:          make(chan struct{}),
 		done:           make(chan struct{}),
 		delayConsume:   consumeDelay,
 		pauseFetch:     pauseFetch,
@@ -95,6 +100,8 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 			return ctx.Err()
 		case <-c.stop:
 			return nil
+		case <-c.drain:
+			return c.consumePending(ctx, waitStart)
 		case records := <-c.assignedBatch:
 			if len(records) == 0 {
 				continue
@@ -120,6 +127,33 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 	}
 }
 
+func (c *PartitionConsumer) consumePending(ctx context.Context, waitStart time.Time) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-c.stop:
+			return nil
+		case records := <-c.assignedBatch:
+			if len(records) == 0 {
+				continue
+			}
+
+			keepConsuming, err := c.consumeBatch(ctx, records, waitStart)
+			if err != nil {
+				return err
+			}
+			if !keepConsuming {
+				return nil
+			}
+
+			waitStart = c.clock.Now()
+		default:
+			return nil
+		}
+	}
+}
+
 func (c *PartitionConsumer) Assign(ctx context.Context, records []*kgo.Record) {
 	if len(records) == 0 {
 		return
@@ -128,6 +162,7 @@ func (c *PartitionConsumer) Assign(ctx context.Context, records []*kgo.Record) {
 	select {
 	case <-ctx.Done():
 	case <-c.stop:
+	case <-c.drain:
 	case <-c.done:
 	default:
 		if c.pauseFetch {
@@ -137,18 +172,12 @@ func (c *PartitionConsumer) Assign(ctx context.Context, records []*kgo.Record) {
 
 		select {
 		case c.assignedBatch <- records:
+			return
 		case <-ctx.Done():
 		case <-c.stop:
+		case <-c.drain:
 		case <-c.done:
 		}
-	}
-
-	select {
-	case <-ctx.Done():
-	case <-c.stop:
-	case <-c.done:
-	default:
-		return
 	}
 
 	c.resumeFetch()
@@ -240,7 +269,15 @@ func (c *PartitionConsumer) handleWithRecovery(ctx context.Context, records []*k
 }
 
 func (c *PartitionConsumer) Stop() {
-	close(c.stop)
+	c.stopOnce.Do(func() {
+		close(c.stop)
+	})
+}
+
+func (c *PartitionConsumer) Drain() {
+	c.drainOnce.Do(func() {
+		close(c.drain)
+	})
 }
 
 func isRebalanceCommitError(err error) bool {

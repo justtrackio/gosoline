@@ -176,7 +176,12 @@ func CheckKafkaRetryableError(kafkaReader Reader) func(_ any, err error) exec.Er
 }
 
 func (c *consumer) Run(ctx context.Context) error {
-	reader, err := c.readerFactory(ctx, c.partitionManager)
+	workerParentCtx, cancelWorkers := context.WithCancel(ctx)
+	workerCtx, stopWorkerCtx := exec.WithDelayedCancelContext(workerParentCtx, c.settings.ConsumeGraceTime)
+	defer stopWorkerCtx()
+	defer cancelWorkers()
+
+	reader, err := c.readerFactory(workerCtx, c.partitionManager)
 	if err != nil {
 		return fmt.Errorf("failed to create kafka reader: %w", err)
 	}
@@ -184,8 +189,11 @@ func (c *consumer) Run(ctx context.Context) error {
 	c.reader = reader
 	c.executor = newExecutor(c.logger, reader, &c.settings)
 
-	defer c.partitionManager.Stop(ctx)
 	defer c.reader.CloseAllowingRebalance()
+	defer func() {
+		cancelWorkers()
+		c.partitionManager.Stop(workerCtx)
+	}()
 
 	for {
 		select {
@@ -223,7 +231,7 @@ func (c *consumer) Run(ctx context.Context) error {
 		}
 
 		c.writeMetrics(ctx, pollDuration, countRecords(fetches))
-		c.processPartitions(ctx, c.stopped, fetches)
+		c.processPartitions(workerCtx, c.stopped, fetches)
 
 		select {
 		case err := <-c.partitionManager.errors:

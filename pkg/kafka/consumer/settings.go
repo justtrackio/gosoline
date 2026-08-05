@@ -47,6 +47,8 @@ type Settings struct {
 	SessionTimeout    time.Duration `cfg:"session_timeout"    default:"45s"`
 	HeartbeatInterval time.Duration `cfg:"heartbeat_interval" default:"3s"`
 	IdleWaitTime      time.Duration `cfg:"idle_wait_time"     default:"500ms"`
+	// ConsumeGraceTime bounds how long already-polled batches may continue processing and committing during shutdown.
+	ConsumeGraceTime time.Duration `cfg:"consume_grace_time" default:"5s" validate:"min=0"`
 	// ConsumeDelay delays handling a batch until the newest record has reached this age.
 	// For grouped consumers, enabling it pauses fetching from the partition while waiting. franz-go
 	// discards buffered records for paused partitions and refetches them after fetching resumes, which
