@@ -26,7 +26,7 @@ func TestLoggerTestSuite(t *testing.T) {
 
 func (s *LoggerTestSuite) SetupTest() {
 	s.baseLogger = logMocks.NewLogger(s.T())
-	s.baseLogger.EXPECT().WithChannel("stream.kafka").Return(s.baseLogger).Once()
+	s.baseLogger.EXPECT().WithChannel("kafka").Return(s.baseLogger).Once()
 	s.logger = logging.NewKafkaLogger(context.Background(), s.baseLogger)
 }
 

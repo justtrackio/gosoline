@@ -87,6 +87,7 @@ func (p *PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo
 	for topic, partitions := range assigned {
 		for _, partition := range partitions {
 			p.lck.Lock()
+
 			if p.stopping.Load() {
 				p.lck.Unlock()
 				p.logger.Info(ctx, "ignoring partition assignment for partition %d of topic %s while partition manager is stopping", partition, topic)
@@ -99,7 +100,7 @@ func (p *PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo
 			p.consumers[assignment{topic, partition}] = partitionConsumer
 			p.lck.Unlock()
 
-			p.logger.Debug(ctx, "starting to consume records for partition %d of topic %s", partition, topic)
+			p.logger.Info(ctx, "starting to consume records for partition %d of topic %s", partition, topic)
 
 			p.cfn.Go(func() error {
 				return p.consumePartition(ctx, partitionConsumer)
@@ -147,7 +148,7 @@ func (p *PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo
 			}
 
 			partitionConsumer.Stop()
-			p.logger.Debug(ctx, "waiting for work to finish for lost/revoked partition %d of topic %s", partition, topic)
+			p.logger.Info(ctx, "waiting for work to finish for lost/revoked partition %d of topic %s", partition, topic)
 
 			// as long as we are here we are blocking a rebalance.
 			// we should take advantage of that and wait until all consumers for the revoked partitions are done.
@@ -217,8 +218,10 @@ func (p *PartitionManager) waitConsumeDelay(ctx context.Context, stopped <-chan 
 
 	var healthTicker clock.Ticker
 	var healthTickerChan <-chan time.Time
+
 	if keepHealthy && p.healthCheck != nil && p.healthTimeout > 0 {
 		healthInterval := p.healthTimeout / 2
+
 		if healthInterval <= 0 {
 			healthInterval = p.healthTimeout
 		}
@@ -246,6 +249,10 @@ func (p *PartitionManager) Stop(ctx context.Context) {
 	p.stopping.Store(true)
 
 	p.lck.Lock()
+	partitionCount := len(p.consumers)
+
+	p.logger.Info(ctx, "draining %d Kafka partitions for consumer %s", partitionCount, p.name)
+
 	for assignment, consumer := range p.consumers {
 		consumer.Drain()
 		delete(p.consumers, assignment)
@@ -257,6 +264,12 @@ func (p *PartitionManager) Stop(ctx context.Context) {
 	// Partition errors are escalated through p.errors and logged by the module owner.
 	// Waiting here must not report the coffin's copy of the same error again.
 	<-p.cfn.Dead()
+
+	if err := ctx.Err(); err != nil {
+		p.logger.Warn(ctx, "Kafka partition drain for consumer %s ended after the grace period: %s", p.name, err)
+	} else {
+		p.logger.Info(ctx, "successfully drained %d Kafka partitions for consumer %s", partitionCount, p.name)
+	}
 
 	p.messageHandler.Stop()
 }

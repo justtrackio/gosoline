@@ -12,6 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kafka"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	kafkaErrors "github.com/justtrackio/gosoline/pkg/kafka/errors"
+	"github.com/justtrackio/gosoline/pkg/kafka/logging"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/reslife"
@@ -54,6 +55,8 @@ type consumer struct {
 }
 
 func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger, handler KafkaMessageHandler, settings Settings, name string) (Consumer, error) {
+	consumerLogger := logger.WithChannel(logging.KafkaLoggingChannel).WithFields(log.Fields{"name": name})
+
 	conn, err := connection.ParseSettings(config, settings.Connection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse kafka connection settings for connection name %q: %w", settings.Connection, err)
@@ -81,10 +84,10 @@ func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger, hand
 	}
 
 	return &consumer{
-		logger:           logger,
+		logger:           consumerLogger,
 		clock:            clock.Provider,
 		healthCheckTimer: healthCheckTimer,
-		partitionManager: newPartitionManager(logger, clock.Provider, metricWriter, handler, name, settings.ConsumeDelay, healthCheckTimer, settings.Healthcheck.Timeout),
+		partitionManager: newPartitionManager(consumerLogger, clock.Provider, metricWriter, handler, name, settings.ConsumeDelay, healthCheckTimer, settings.Healthcheck.Timeout),
 		readerFactory:    readerFactory,
 		settings:         settings,
 		stopped:          make(chan struct{}),
@@ -107,6 +110,8 @@ func NewConsumerWithInterfaces(
 	isReadOnly bool,
 	name string,
 ) Consumer {
+	logger = logger.WithChannel(logging.KafkaLoggingChannel).WithFields(log.Fields{"name": name})
+
 	return &consumer{
 		logger:           logger,
 		clock:            clk,

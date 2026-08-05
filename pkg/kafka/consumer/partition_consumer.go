@@ -88,7 +88,7 @@ func newPartitionConsumer(
 }
 
 func (c *PartitionConsumer) Consume(ctx context.Context) error {
-	defer c.logger.Debug(ctx, "done consuming partition %d of topic %s", c.partition, c.topic)
+	defer c.logger.Info(ctx, "done consuming partition %d of topic %s", c.partition, c.topic)
 	defer c.resumeFetch()
 	defer close(c.done)
 

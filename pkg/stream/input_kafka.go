@@ -22,21 +22,23 @@ type kafkaInput struct {
 var _ SchemaRegistryAwareInput = &kafkaInput{}
 
 func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, settings kafkaConsumer.Settings, name string) (Input, error) {
+	var err error
+	var consumer kafkaConsumer.Consumer
+	var conn *connection.Settings
+	var schemaRegistryService schemaRegistry.Service
+
 	channel := make(chan *Message)
 	handler := NewKafkaMessageHandler(channel)
 
-	consumer, err := kafkaConsumer.NewConsumer(ctx, config, logger, handler, settings, name)
-	if err != nil {
+	if consumer, err = kafkaConsumer.NewConsumer(ctx, config, logger, handler, settings, name); err != nil {
 		return nil, fmt.Errorf("can not create kafka consumer: %w", err)
 	}
 
-	conn, err := connection.ParseSettings(config, settings.Connection)
-	if err != nil {
+	if conn, err = connection.ParseSettings(config, settings.Connection); err != nil {
 		return nil, fmt.Errorf("failed to parse kafka connection settings for connection name %q: %w", settings.Connection, err)
 	}
 
-	schemaRegistryService, err := schemaRegistry.NewService(config, logger, settings.Connection, *conn)
-	if err != nil {
+	if schemaRegistryService, err = schemaRegistry.NewService(config, logger, settings.Connection, *conn); err != nil {
 		return nil, fmt.Errorf("can not create schema registry service: %w", err)
 	}
 

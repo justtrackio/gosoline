@@ -702,7 +702,9 @@ func (s *PartitionManagerInternalTestSuite) TestStopDoesNotLogReportedPartitionC
 	records := []*kgo.Record{{Offset: 1}}
 	commitError := errors.New("commit failed")
 
-	logger.EXPECT().Debug(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Once()
+	logger.EXPECT().Info(mock.Anything, "done consuming partition %d of topic %s", int32(1), "topic").Once()
+	logger.EXPECT().Info(mock.Anything, "draining %d Kafka partitions for consumer %s", 1, "consumer").Once()
+	logger.EXPECT().Info(mock.Anything, "successfully drained %d Kafka partitions for consumer %s", 1, "consumer").Once()
 	messageHandler.EXPECT().Handle(records).Once()
 	messageHandler.EXPECT().Stop().Once()
 	client.EXPECT().CommitRecords(mock.Anything, records[0]).Return(commitError).Once()
