@@ -19,7 +19,10 @@ type kafkaInput struct {
 	channel               chan *Message
 }
 
-var _ SchemaRegistryAwareInput = &kafkaInput{}
+var (
+	_ SchemaRegistryAwareInput = &kafkaInput{}
+	_ AcknowledgeableInput     = &kafkaInput{}
+)
 
 func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, settings kafkaConsumer.Settings, name string) (Input, error) {
 	channel := make(chan *Message)
@@ -67,6 +70,38 @@ func (i *kafkaInput) Stop(ctx context.Context) {
 
 func (i *kafkaInput) Data() <-chan *Message {
 	return i.channel
+}
+
+// Ack marks the message as processed so that the offsets of the batch it belongs to can be committed once all of its
+// messages are done. Kafka commits offsets sequentially, so a negative acknowledgement records a failure but does not
+// prevent the batch from being committed.
+func (i *kafkaInput) Ack(_ context.Context, msg *Message, ack bool) error {
+	if msg == nil {
+		return nil
+	}
+
+	completion, ok := msg.metaData[metaDataKafkaBatchCompletion].(*kafkaBatchCompletion)
+	if !ok {
+		return nil
+	}
+
+	completion.complete(ack)
+
+	return nil
+}
+
+func (i *kafkaInput) AckBatch(ctx context.Context, msgs []*Message, acks []bool) error {
+	if len(msgs) != len(acks) {
+		return fmt.Errorf("the number of messages (%d) does not match the number of acknowledgements (%d)", len(msgs), len(acks))
+	}
+
+	for idx, msg := range msgs {
+		if err := i.Ack(ctx, msg, acks[idx]); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (i *kafkaInput) IsHealthy() bool {

@@ -60,5 +60,7 @@ func TestNewConsumer_FailsWithoutAppContext(t *testing.T) {
 
 type noopHandler struct{}
 
-func (h *noopHandler) Handle(_ []*kgo.Record) {}
-func (h *noopHandler) Stop()                  {}
+func (h *noopHandler) Handle(_ []*kgo.Record) consumer.BatchCompletion {
+	return completedBatch(0)
+}
+func (h *noopHandler) Stop() {}

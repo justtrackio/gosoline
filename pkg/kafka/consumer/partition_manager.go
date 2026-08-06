@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
@@ -19,16 +20,17 @@ const (
 )
 
 type PartitionManager struct {
-	logger         log.Logger
-	clock          clock.Clock
-	metricWriter   metric.Writer
-	name           string
-	cfn            coffin.Coffin
-	consumers      map[assignment]*PartitionConsumer
-	lck            sync.RWMutex
-	messageHandler KafkaMessageHandler
-	done           chan struct{}
-	stopping       atomic.Bool
+	logger            log.Logger
+	clock             clock.Clock
+	metricWriter      metric.Writer
+	name              string
+	cfn               coffin.Coffin
+	consumers         map[assignment]*PartitionConsumer
+	lck               sync.RWMutex
+	messageHandler    KafkaMessageHandler
+	commitWaitTimeout time.Duration
+	done              chan struct{}
+	stopping          atomic.Bool
 }
 
 type assignment struct {
@@ -36,7 +38,7 @@ type assignment struct {
 	partition int32
 }
 
-func NewPartitionManager(logger log.Logger, clk clock.Clock, metricWriter metric.Writer, messageHandler KafkaMessageHandler, name string) *PartitionManager {
+func NewPartitionManager(logger log.Logger, clk clock.Clock, metricWriter metric.Writer, messageHandler KafkaMessageHandler, commitWaitTimeout time.Duration, name string) *PartitionManager {
 	cfn := coffin.New()
 	done := make(chan struct{})
 
@@ -47,14 +49,15 @@ func NewPartitionManager(logger log.Logger, clk clock.Clock, metricWriter metric
 	})
 
 	return &PartitionManager{
-		logger:         logger,
-		clock:          clk,
-		metricWriter:   metricWriter,
-		name:           name,
-		cfn:            cfn,
-		consumers:      make(map[assignment]*PartitionConsumer),
-		messageHandler: messageHandler,
-		done:           done,
+		logger:            logger,
+		clock:             clk,
+		metricWriter:      metricWriter,
+		name:              name,
+		cfn:               cfn,
+		consumers:         make(map[assignment]*PartitionConsumer),
+		messageHandler:    messageHandler,
+		commitWaitTimeout: commitWaitTimeout,
+		done:              done,
 	}
 }
 
@@ -75,7 +78,7 @@ func (p *PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo
 				continue
 			}
 
-			partitionConsumer := NewPartitionConsumer(p.logger, p.clock, p.metricWriter, p.messageHandler, client, p.name, topic, partition)
+			partitionConsumer := NewPartitionConsumer(p.logger, p.clock, p.metricWriter, p.messageHandler, client, p.commitWaitTimeout, p.name, topic, partition)
 
 			p.consumers[assignment{topic, partition}] = partitionConsumer
 			p.lck.Unlock()
@@ -121,11 +124,9 @@ func (p *PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo
 			// we should take advantage of that and wait until all consumers for the revoked partitions are done.
 			// otherwise we would allow a rebalance of the revoked partitions while we are still processing potentially uncommitted messages,
 			// which would then be processed again by another consumer.
-			wg.Add(1)
-			go func() {
+			wg.Go(func() {
 				<-partitionConsumer.done
-				wg.Done()
-			}()
+			})
 		}
 	}
 }

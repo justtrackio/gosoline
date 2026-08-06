@@ -132,6 +132,10 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerD
 	if ctx, _, err = c.encoder.Decode(ctx, cdata.msg, &batch); err != nil {
 		c.handleError(ctx, err, "an error occurred during disaggregation of the message")
 
+		// we can not do anything with this message, but we still have to acknowledge it negatively so an input
+		// which tracks the completion of its messages does not stall
+		c.Acknowledge(ctx, cdata, false)
+
 		return
 	}
 
@@ -187,15 +191,19 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 	defer c.healthCheckTimer.MarkHealthy()
 	defer c.recover(ctx, msg)
 
-	// if we are shutting down, don't acknowledge any messages and try to retry them if needed
-	select {
-	case <-ctx.Done():
-		if !hasNativeRetry {
-			c.retry(ctx, msg)
-		}
+	// If we are shutting down, don't acknowledge any messages and try to retry them if needed. We may only do this if
+	// the message can reach us again afterwards - otherwise (e.g. for Kafka, where the offset might already have been
+	// committed) dropping it here would lose it for good, so we rather finish processing it within our grace time.
+	if c.canRedeliver() {
+		select {
+		case <-ctx.Done():
+			if !hasNativeRetry {
+				c.retry(ctx, msg)
+			}
 
-		return false
-	default:
+			return false
+		default:
+		}
 	}
 
 	var err error

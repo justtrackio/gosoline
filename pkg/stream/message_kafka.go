@@ -2,6 +2,7 @@ package stream
 
 import (
 	"fmt"
+	"sync/atomic"
 
 	kafkaConsumer "github.com/justtrackio/gosoline/pkg/kafka/consumer"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -10,6 +11,10 @@ import (
 const (
 	AttributeKafkaKey            = "KafkaKey"
 	MetaDataKafkaOriginalMessage = "KafkaOriginal"
+
+	// metaDataKafkaBatchCompletion carries the kafkaBatchCompletion of the batch a message was part of. It is not
+	// exported as it is purely internal plumbing between the kafka input and the consumer.
+	metaDataKafkaBatchCompletion = "KafkaBatchCompletion"
 )
 
 type KafkaSourceMessage struct {
@@ -101,16 +106,71 @@ func NewKafkaMessageHandler(data chan *Message) kafkaConsumer.KafkaMessageHandle
 	}
 }
 
-func (h *kafkaMessageHandler) Handle(kafkaRecords []*kgo.Record) {
+func (h *kafkaMessageHandler) Handle(kafkaRecords []*kgo.Record) kafkaConsumer.BatchCompletion {
+	messages := make([]*Message, 0, len(kafkaRecords))
+
 	for _, record := range kafkaRecords {
 		if record == nil {
 			continue
 		}
 
-		h.data <- KafkaToGosoMessage(*record)
+		messages = append(messages, KafkaToGosoMessage(*record))
 	}
+
+	// the completion has to know the final number of records before we hand out the first message, otherwise it could
+	// already report the batch as done while we are still pushing messages into the channel
+	completion := newKafkaBatchCompletion(len(messages))
+
+	for _, msg := range messages {
+		msg.metaData[metaDataKafkaBatchCompletion] = completion
+		h.data <- msg
+	}
+
+	return completion
 }
 
 func (h *kafkaMessageHandler) Stop() {
 	close(h.data)
+}
+
+// kafkaBatchCompletion counts down the records of a single batch until all of them have been processed.
+type kafkaBatchCompletion struct {
+	pending atomic.Int64
+	failed  atomic.Int64
+	done    chan struct{}
+}
+
+func newKafkaBatchCompletion(count int) *kafkaBatchCompletion {
+	completion := &kafkaBatchCompletion{
+		done: make(chan struct{}),
+	}
+	completion.pending.Store(int64(count))
+
+	if count == 0 {
+		close(completion.done)
+	}
+
+	return completion
+}
+
+// Done implements kafkaConsumer.BatchCompletion.
+func (c *kafkaBatchCompletion) Done() <-chan struct{} {
+	return c.done
+}
+
+// FailedCount implements kafkaConsumer.BatchCompletion.
+func (c *kafkaBatchCompletion) FailedCount() int {
+	return int(c.failed.Load())
+}
+
+// complete marks a single record of the batch as processed. Should it ever be called more often than there are records
+// in the batch, the counter simply drops below zero and we never close the channel a second time.
+func (c *kafkaBatchCompletion) complete(success bool) {
+	if !success {
+		c.failed.Add(1)
+	}
+
+	if c.pending.Add(-1) == 0 {
+		close(c.done)
+	}
 }

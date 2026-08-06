@@ -110,6 +110,31 @@ stream:
         enabled: true
 ```
 
+## Delivery semantics and message loss
+
+Inputs fall into two groups, and the consumer behaves differently for each.
+
+**Inputs which can redeliver** (`sqs`, `sns` - anything implementing `RetryingInput`, plus any consumer with
+`retry.enabled: true`): not acknowledging a message hands it back to us later. When the kernel
+context gets cancelled the consumer therefore stops processing immediately and lets the messages be redelivered.
+
+**Inputs which can not redeliver** (`kafka` without a retry handler): a Kafka consumer commits offsets sequentially
+and has no way to negatively acknowledge a single record, so a dropped message is lost for good. For those inputs the
+consumer keeps processing the messages which are already in flight during shutdown, bounded by `consume_grace_time`
+and ultimately by `kernel.kill_timeout`.
+
+Kafka implements `AcknowledgeableInput`: the partition consumer only commits the offsets of a batch once every record
+of it has been acknowledged. Consequences:
+
+- Kafka is **at-least-once**: a crash or rebalance mid-batch reprocesses the batch, so consumers must be idempotent.
+- Acknowledging a Kafka message negatively only records a failure (`RecordsConsumedFailed`); it does **not** prevent
+  the commit. Use `retry.enabled: true` if failed messages must be handled.
+- If a message can neither be processed nor retried, the consumer logs an error and increments `DroppedCount`. Alert
+  on that metric - it means data was lost.
+
+Any code path taking a message out of the consumer channel must call `Acknowledge`/`AcknowledgeBatch` exactly once,
+otherwise a Kafka partition stalls until `commit_wait_timeout` elapses (reported via `CommitWaitTimeouts`).
+
 ## Related packages
 - `pkg/cloud/aws/sqs`, `sns`, `kinesis` - AWS transport clients
 - `pkg/kafka` - Kafka client integration
