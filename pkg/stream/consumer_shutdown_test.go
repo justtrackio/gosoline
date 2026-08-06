@@ -48,9 +48,10 @@ func newShutdownConsumerFixture(t *testing.T, input stream.Input, inputData chan
 	mw.EXPECT().Write(matcher.Context, mock.Anything).Return().Maybe()
 
 	settings := stream.ConsumerSettings{
-		Input:       "test",
-		RunnerCount: 1,
-		IdleTimeout: time.Second,
+		Input:            "test",
+		RunnerCount:      1,
+		IdleTimeout:      time.Second,
+		ConsumeGraceTime: 20 * time.Millisecond,
 		Retry: stream.ConsumerRetrySettings{
 			Enabled: retryEnabled,
 		},
@@ -91,10 +92,9 @@ func newShutdownConsumerFixture(t *testing.T, input stream.Input, inputData chan
 	}
 }
 
-// TestConsumerShutdown_DrainsInputWhichCanNotRedeliver makes sure we keep processing the messages which are already in
-// flight once the kernel context got cancelled, as long as the input has no way of handing them to us again. Dropping
-// them - which is what we did before - loses them for good on every deployment, because the Kafka offsets of those
-// records may already have been committed.
+// TestConsumerShutdown_DrainsInputWhichCanNotRedeliver makes sure we attempt to finish messages which are already in
+// flight once the kernel context got cancelled. For Kafka, dropping them would complete and commit the containing batch
+// without processing them.
 func TestConsumerShutdown_DrainsInputWhichCanNotRedeliver(t *testing.T) {
 	inputData := make(chan *stream.Message, 10)
 	var stopOnce sync.Once
@@ -144,9 +144,10 @@ func (i redeliveringInput) GetRetryHandler() (stream.Input, stream.RetryHandler)
 	return stream.NewNoopInput(), stream.NewRetryHandlerNoopWithInterfaces()
 }
 
-// TestConsumerShutdown_SkipsInputWhichCanRedeliver is the counterpart: for an input which hands us the message again
-// (SQS and friends) we still want to stop as fast as possible instead of processing during shutdown.
-func TestConsumerShutdown_SkipsInputWhichCanRedeliver(t *testing.T) {
+// TestConsumerShutdown_DrainsInputWhichCanRedeliver applies the same shutdown behavior to an input which could
+// redeliver. This keeps shutdown independent of transport capabilities and gives all in-flight work the configured
+// consume grace time.
+func TestConsumerShutdown_DrainsInputWhichCanRedeliver(t *testing.T) {
 	inputData := make(chan *stream.Message, 10)
 	var stopOnce sync.Once
 
@@ -155,7 +156,7 @@ func TestConsumerShutdown_SkipsInputWhichCanRedeliver(t *testing.T) {
 	input.EXPECT().Stop(matcher.Context).Run(func(context.Context) {
 		stopOnce.Do(func() { close(inputData) })
 	}).Once()
-	input.EXPECT().Ack(matcher.Context, mock.Anything, false).Return(nil).Twice()
+	input.EXPECT().Ack(matcher.Context, mock.Anything, true).Return(nil).Twice()
 
 	fixture := newShutdownConsumerFixture(t, redeliveringInput{AcknowledgeableInput: input}, inputData, false)
 
@@ -169,9 +170,64 @@ func TestConsumerShutdown_SkipsInputWhichCanRedeliver(t *testing.T) {
 		Return(nil).
 		Once()
 
+	var consumed atomic.Int32
+	fixture.callback.EXPECT().GetModel(mock.Anything).Return(mdl.Box(""), nil).Twice()
+	fixture.callback.EXPECT().
+		Consume(matcher.Context, mock.Anything, mock.Anything).
+		Run(func(context.Context, any, map[string]string) {
+			consumed.Add(1)
+		}).
+		Return(true, nil).
+		Twice()
+
 	err := fixture.consumer.Run(fixture.kernelCtx)
 	require.NoError(t, err)
-	// the callback mock asserts on cleanup that Consume was never called
+	require.Equal(t, int32(2), consumed.Load(), "in-flight messages should be processed regardless of redelivery support")
+}
+
+func TestConsumerShutdown_CancelsProcessingAfterGraceTime(t *testing.T) {
+	inputData := make(chan *stream.Message, 1)
+	var stopOnce sync.Once
+
+	input := mocks.NewAcknowledgeableInput(t)
+	input.EXPECT().Data().Return(inputData)
+	input.EXPECT().Stop(matcher.Context).Run(func(context.Context) {
+		stopOnce.Do(func() { close(inputData) })
+	}).Once()
+	input.EXPECT().Ack(matcher.Context, mock.Anything, false).Return(nil).Once()
+
+	fixture := newShutdownConsumerFixture(t, input, inputData, false)
+	input.EXPECT().
+		Run(matcher.Context).
+		Run(func(context.Context) {
+			fixture.kernelCancel()
+			inputData <- stream.NewJsonMessage(`"foo"`)
+		}).
+		Return(nil).
+		Once()
+
+	callbackCancelled := make(chan struct{})
+	fixture.callback.EXPECT().GetModel(mock.Anything).Return(mdl.Box(""), nil).Once()
+	fixture.callback.EXPECT().
+		Consume(matcher.Context, mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx context.Context, _ any, _ map[string]string) (bool, error) {
+			<-ctx.Done()
+			close(callbackCancelled)
+
+			return false, ctx.Err()
+		}).
+		Once()
+
+	err := fixture.consumer.Run(fixture.kernelCtx)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		select {
+		case <-callbackCancelled:
+			return true
+		default:
+			return false
+		}
+	}, time.Second, time.Millisecond, "the callback context should be cancelled after the consume grace time")
 }
 
 // TestKafkaMessageHandlerCompletion covers the handshake the Kafka partition consumer relies on: the batch is only

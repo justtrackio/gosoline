@@ -112,16 +112,10 @@ stream:
 
 ## Delivery semantics and message loss
 
-Inputs fall into two groups, and the consumer behaves differently for each.
-
-**Inputs which can redeliver** (`sqs`, `sns` - anything implementing `RetryingInput`, plus any consumer with
-`retry.enabled: true`): not acknowledging a message hands it back to us later. When the kernel
-context gets cancelled the consumer therefore stops processing immediately and lets the messages be redelivered.
-
-**Inputs which can not redeliver** (`kafka` without a retry handler): a Kafka consumer commits offsets sequentially
-and has no way to negatively acknowledge a single record, so a dropped message is lost for good. For those inputs the
-consumer keeps processing the messages which are already in flight during shutdown, bounded by `consume_grace_time`
-and ultimately by `kernel.kill_timeout`.
+During shutdown, consumers attempt to finish all messages which are already in flight. Callback cancellation is delayed
+by `consume_grace_time`; callbacks are expected to return when that context is cancelled. Exceeding the grace time is
+logged as an error. The result is then handled according to the input: SQS/SNS can redeliver a negatively acknowledged
+message, while Kafka completes the containing batch and requires `retry.enabled: true` to preserve a failed message.
 
 Kafka implements `AcknowledgeableInput`: the partition consumer only commits the offsets of a batch once every record
 of it has been acknowledged. Consequences:

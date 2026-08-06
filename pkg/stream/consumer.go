@@ -93,6 +93,9 @@ func (c *Consumer) readData(ctx context.Context) error {
 	defer c.logger.Debug(ctx, "read from input is ending")
 	defer c.wg.Done()
 
+	consumeCtx, stop := exec.WithDelayedCancelContext(ctx, c.settings.ConsumeGraceTime)
+	defer stop()
+
 	// ticker to mark us as healthy should we not get any messages to process
 	// (thus, the only way to get unhealthy would be if the consumer callback
 	// takes too long to process a single message)
@@ -110,9 +113,9 @@ func (c *Consumer) readData(ctx context.Context) error {
 			c.healthCheckTimer.MarkHealthy()
 
 			if _, ok := cdata.msg.Attributes[AttributeAggregate]; ok {
-				c.processAggregateMessage(ctx, cdata)
+				c.processAggregateMessage(consumeCtx, cdata)
 			} else {
-				c.processSingleMessage(ctx, cdata)
+				c.processSingleMessage(consumeCtx, cdata)
 			}
 
 		case <-ticker.Chan():
@@ -191,21 +194,6 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 	defer c.healthCheckTimer.MarkHealthy()
 	defer c.recover(ctx, msg)
 
-	// If we are shutting down, don't acknowledge any messages and try to retry them if needed. We may only do this if
-	// the message can reach us again afterwards - otherwise (e.g. for Kafka, where the offset might already have been
-	// committed) dropping it here would lose it for good, so we rather finish processing it within our grace time.
-	if c.canRedeliver() {
-		select {
-		case <-ctx.Done():
-			if !hasNativeRetry {
-				c.retry(ctx, msg)
-			}
-
-			return false
-		default:
-		}
-	}
-
 	var err error
 	var ack bool
 	var model any
@@ -263,11 +251,11 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 		}).Debug(ctx, "processing sqs message")
 	}
 
-	delayedCtx, stop := exec.WithDelayedCancelContext(ctx, c.settings.ConsumeGraceTime)
-	defer stop()
-
-	if ack, err = c.callback.Consume(delayedCtx, model, attributes); err != nil {
+	if ack, err = c.callback.Consume(ctx, model, attributes); err != nil {
 		c.handleError(ctx, err, "an error occurred during the consume operation")
+	}
+	if ctx.Err() != nil {
+		c.logger.Error(ctx, "consumer %s did not finish processing a message within the consume grace time of %s", c.name, c.settings.ConsumeGraceTime)
 	}
 
 	if !ack && !hasNativeRetry {

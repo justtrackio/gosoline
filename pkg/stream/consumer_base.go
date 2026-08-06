@@ -452,7 +452,7 @@ func (c *baseConsumer) hasNativeRetry() bool {
 // notably Kafka without `stream.consumer.<name>.retry.enabled`. In that case the message is lost for good, so make
 // as much noise about it as we can.
 func (c *baseConsumer) reportDroppedMessage(ctx context.Context) {
-	if c.canRedeliver() {
+	if c.hasNativeRetry() || c.settings.Retry.Enabled {
 		return
 	}
 
@@ -474,17 +474,6 @@ func (c *baseConsumer) reportDroppedMessage(ctx context.Context) {
 			Value: 1.0,
 		},
 	})
-}
-
-// canRedeliver reports whether a message which we do not acknowledge positively will be handed to us again by some
-// other means. This is the case if the input knows how to retry messages itself or if we can put the message into a
-// dedicated retry handler. AcknowledgeableInput alone does not imply redelivery: Kafka uses acknowledgements only to
-// track when processing completes and commits both positive and negative acknowledgements.
-//
-// Inputs for which this returns false - most notably Kafka, where offsets are committed sequentially and there is no
-// way to negatively acknowledge a single record - lose a message for good if we stop processing it.
-func (c *baseConsumer) canRedeliver() bool {
-	return c.hasNativeRetry() || c.settings.Retry.Enabled
 }
 
 func (c *baseConsumer) buildRetryMessage(msg *Message) (retryMsg *Message, retryId string) {

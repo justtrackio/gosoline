@@ -65,7 +65,7 @@ func NewPartitionConsumer(
 }
 
 func (c *PartitionConsumer) Consume(ctx context.Context) error {
-	defer c.logger.Debug(ctx, "done consuming partition %d of topic %s", c.partition, c.topic)
+	defer c.logger.Info(ctx, "done consuming partition %d of topic %s", c.partition, c.topic)
 	defer close(c.done)
 
 	waitStart := c.clock.Now()
@@ -95,6 +95,7 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 			data = append(data, kafka.MetricPair(kafka.DimensionConsumer, c.name, metricNameWaitDuration, c.topic, c.partition, waitMs, metric.UnitMillisecondsAverage)...)
 			data = append(data, kafka.MetricPair(kafka.DimensionConsumer, c.name, metricNameProcessDuration, c.topic, c.partition, processMs, metric.UnitMillisecondsAverage)...)
 			data = append(data, kafka.MetricPair(kafka.DimensionConsumer, c.name, metricNameCommitDuration, c.topic, c.partition, commitMs, metric.UnitMillisecondsAverage)...)
+			data = append(data, kafka.MetricPair(kafka.DimensionConsumer, c.name, metricNameRecordsConsumedFailed, c.topic, c.partition, float64(failedCount), metric.UnitCount)...)
 
 			if err != nil {
 				data = append(data, kafka.MetricPair(kafka.DimensionConsumer, c.name, metricNameCommitFailures, c.topic, c.partition, 1.0, metric.UnitCount)...)
@@ -104,10 +105,6 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 				offset := records[len(records)-1].Offset + 1
 
 				return fmt.Errorf("failed to commit offset %d for partition %d of topic %s: %w", offset, c.partition, c.topic, err)
-			}
-
-			if failedCount > 0 {
-				data = append(data, kafka.MetricPair(kafka.DimensionConsumer, c.name, metricNameRecordsConsumedFailed, c.topic, c.partition, float64(failedCount), metric.UnitCount)...)
 			}
 
 			c.metricWriter.Write(ctx, data)

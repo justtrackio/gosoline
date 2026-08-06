@@ -83,7 +83,7 @@ func (p *PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo
 			p.consumers[assignment{topic, partition}] = partitionConsumer
 			p.lck.Unlock()
 
-			p.logger.Debug(ctx, "starting to consume records for partition %d of topic %s", partition, topic)
+			p.logger.Info(ctx, "starting to consume records for partition %d of topic %s", partition, topic)
 
 			p.cfn.Go(func() error {
 				err := partitionConsumer.Consume(ctx)
@@ -118,7 +118,7 @@ func (p *PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo
 			}
 
 			partitionConsumer.Stop()
-			p.logger.Debug(ctx, "waiting for work to finish for lost/revoked partition %d of topic %s", partition, topic)
+			p.logger.Info(ctx, "waiting for work to finish for lost/revoked partition %d of topic %s", partition, topic)
 
 			// as long as we are here we are blocking a rebalance.
 			// we should take advantage of that and wait until all consumers for the revoked partitions are done.

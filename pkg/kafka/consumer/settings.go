@@ -47,7 +47,7 @@ type Settings struct {
 	// anyway. It is a safety valve against a consumer which never reports a record as processed, not a limit for slow
 	// processing: keep it at or below RebalanceTimeout, as a consumer blocking longer than that gets kicked out of the
 	// group regardless. Reaching this timeout means messages might get lost and is reported via CommitWaitTimeouts.
-	CommitWaitTimeout time.Duration `cfg:"commit_wait_timeout" default:"60s"`
+	CommitWaitTimeout time.Duration `cfg:"commit_wait_timeout" default:"50s"`
 	RebalanceTimeout  time.Duration `cfg:"rebalance_timeout"  default:"60s"`
 	SessionTimeout    time.Duration `cfg:"session_timeout"    default:"45s"`
 	HeartbeatInterval time.Duration `cfg:"heartbeat_interval" default:"3s"`

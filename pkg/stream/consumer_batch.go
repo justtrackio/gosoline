@@ -93,7 +93,10 @@ func (c *BatchConsumer) Run(kernelCtx context.Context) error {
 func (c *BatchConsumer) readFromInput(ctx context.Context) error {
 	defer c.logger.Debug(ctx, "run is ending")
 	defer c.wg.Done()
-	defer c.processBatch(ctx)
+
+	consumeCtx, stop := exec.WithDelayedCancelContext(ctx, c.settings.ConsumeGraceTime)
+	defer stop()
+	defer c.processBatch(consumeCtx)
 
 	for {
 		force := false
@@ -105,9 +108,9 @@ func (c *BatchConsumer) readFromInput(ctx context.Context) error {
 			}
 
 			if _, ok := cdata.msg.Attributes[AttributeAggregate]; ok {
-				c.processAggregateMessage(ctx, cdata)
+				c.processAggregateMessage(consumeCtx, cdata)
 			} else {
-				c.processSingleMessage(ctx, cdata)
+				c.processSingleMessage(consumeCtx, cdata)
 			}
 
 		case <-c.ticker.C:
@@ -115,7 +118,7 @@ func (c *BatchConsumer) readFromInput(ctx context.Context) error {
 		}
 
 		if len(c.batch) >= c.settings.BatchSize || force {
-			c.processBatch(ctx)
+			c.processBatch(consumeCtx)
 		}
 	}
 }
@@ -177,17 +180,10 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData,
 	defer acknowledger.acknowledgeRemaining(ctx)
 	defer c.recover(ctx, nil)
 
-	if c.stopProcessingOnShutdown(ctx, batch) {
-		return
-	}
-
 	start := c.clock.Now()
 
-	delayedCtx, stop := exec.WithDelayedCancelContext(ctx, c.settings.ConsumeGraceTime)
-	defer stop()
-
 	// make sure to create new context as we can't rely on the tracer to create a new one
-	batchCtx, cancel := context.WithCancel(delayedCtx)
+	batchCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	var span tracing.Span
@@ -213,6 +209,9 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData,
 	if err != nil {
 		c.logger.Error(batchCtx, "an error occurred during the consume batch operation: %w", err)
 	}
+	if batchCtx.Err() != nil {
+		c.logger.Error(ctx, "consumer %s did not finish processing a batch within the consume grace time of %s", c.name, c.settings.ConsumeGraceTime)
+	}
 
 	acks = c.alignAcks(batchCtx, acks, len(decoded.batch))
 
@@ -237,29 +236,6 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData,
 	atomic.AddInt32(&c.processed, int32(len(decoded.batch)))
 
 	c.writeMetricDurationAndProcessedCount(batchCtx, duration, len(decoded.batch))
-}
-
-// stopProcessingOnShutdown reports whether we should stop processing the batch because the kernel context got
-// cancelled. We may only do so if the messages can reach us again afterwards - otherwise (e.g. for Kafka, where the
-// offsets might already have been committed) dropping them here would lose them for good, so we rather finish
-// processing them within our grace time.
-func (c *BatchConsumer) stopProcessingOnShutdown(ctx context.Context, batch []*consumerData) bool {
-	if !c.canRedeliver() {
-		return false
-	}
-
-	select {
-	case <-ctx.Done():
-		if !c.hasNativeRetry() {
-			for _, cdata := range batch {
-				c.retry(ctx, cdata.msg)
-			}
-		}
-
-		return true
-	default:
-		return false
-	}
 }
 
 // alignAcks makes sure we have exactly as many acks as we have messages in the batch, defaulting to a negative

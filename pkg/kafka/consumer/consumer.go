@@ -12,6 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kafka"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	kafkaErrors "github.com/justtrackio/gosoline/pkg/kafka/errors"
+	"github.com/justtrackio/gosoline/pkg/kafka/logging"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/reslife"
@@ -54,6 +55,8 @@ type consumer struct {
 }
 
 func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger, handler KafkaMessageHandler, settings Settings, name string) (Consumer, error) {
+	logger = logger.WithChannel(logging.ConsumerLoggingChannel)
+
 	conn, err := connection.ParseSettings(config, settings.Connection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse kafka connection settings for connection name %q: %w", settings.Connection, err)
