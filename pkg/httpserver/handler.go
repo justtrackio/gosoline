@@ -469,6 +469,12 @@ func parseUrl(ctx *gin.Context) (*url.URL, error) {
 }
 
 func handleError(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, ginError gin.Error) {
+	if statusCode == http.StatusInternalServerError {
+		if mappedStatusCode, handled := errorStatusCodeFromMappers(ginError.Err); handled {
+			statusCode = mappedStatusCode
+		}
+	}
+
 	//nolint:errcheck // we just want to add the error to the context and are not interested in the result
 	_ = ginCtx.Error(&ginError)
 	resp := errHandler(statusCode, ginError.Err)
