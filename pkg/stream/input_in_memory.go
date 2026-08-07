@@ -69,12 +69,17 @@ func (i *InMemoryInput) Publish(messages ...*Message) {
 }
 
 func (i *InMemoryInput) Run(ctx context.Context) error {
+	i.lck.Lock()
+	stopped := i.stopped
+	channel := i.channel
+	i.lck.Unlock()
+
 	select {
 	case <-ctx.Done():
-	case <-i.stopped:
+	case <-stopped:
 	}
 
-	close(i.channel)
+	close(channel)
 
 	return nil
 }

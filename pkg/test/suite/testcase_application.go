@@ -123,6 +123,7 @@ func RunTestCaseApplication(t *testing.T, _ TestingSuite, suiteConf *SuiteConfig
 	}
 
 	appUnderTest := newAppUnderTest(appCtx, app, appDone)
+	defer appUnderTest.WaitDone()
 
 	go func() {
 		app.Run()

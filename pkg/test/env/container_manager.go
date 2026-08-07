@@ -124,6 +124,10 @@ func (m *containerManager) RunContainers(ctx context.Context, skeletons []*compo
 	}
 
 	if err := cfn.Wait(); err != nil {
+		if stopErr := m.Stop(ctx); stopErr != nil {
+			return fmt.Errorf("could not run all containers: %w; failed to clean up containers: %w", err, stopErr)
+		}
+
 		return fmt.Errorf("could not run all containers: %w", err)
 	}
 

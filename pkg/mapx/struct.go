@@ -675,57 +675,32 @@ func (s *Struct) doWriteField(targetField reflect.StructField, targetValue refle
 	return s.doWriteValue(tag, matchedKey, sourceValues, targetValue)
 }
 
-func (s *Struct) doWriteValue(tag *StructTag, matchedKey string, sourceValues *MapX, targetValue reflect.Value) (err error) {
+func (s *Struct) doWriteValue(tag *StructTag, matchedKey string, sourceValues *MapX, targetValue reflect.Value) error {
 	sourceValue := sourceValues.Get(matchedKey).Data()
 
-	// For pointer types, try casters first with the original pointer type
-	// This allows casters like MapStructTimeCaster to handle *time.Time directly
-	if targetValue.Type().Kind() == reflect.Ptr {
-		// Try to cast/decode with the pointer type first
-		castedValue, castErr := s.decodeAndCastValue(tag, targetValue.Type(), sourceValue)
-		if castErr == nil && castedValue != nil {
-			targetValue.Set(reflect.ValueOf(castedValue))
-
-			return nil
-		}
-
-		// If cast failed or returned nil, fall through to standard pointer handling
-		// but only if sourceValue is not nil (nil means keep zero value)
-		if sourceValue == nil {
-			return nil
-		}
-
-		targetValue.Set(reflect.New(targetValue.Type().Elem()))
-		targetValue = targetValue.Elem()
+	var handled bool
+	var err error
+	targetValue, handled, err = s.doWritePointerValue(tag, targetValue, sourceValue)
+	if err != nil {
+		return err
 	}
-
-	if targetValue.Kind() == reflect.Map {
-		if sourceValue != nil && reflect.TypeOf(sourceValue).Kind() != reflect.Map {
-			if sourceValue, err = s.decodeAndCastValue(tag, targetValue.Type(), sourceValue); err != nil {
-				return fmt.Errorf("can not decode and cast value for key %s: %w", tag.Name, err)
-			}
-
-			targetValue.Set(reflect.ValueOf(sourceValue))
-
-			return nil
-		}
-
-		if err := s.doWriteMap(tag, matchedKey, targetValue, sourceValues); err != nil {
-			return err
-		}
-
+	if handled {
 		return nil
 	}
 
-	if targetValue.Kind() == reflect.Slice {
+	switch targetValue.Kind() {
+	case reflect.Map:
+		return s.doWriteMapValue(tag, matchedKey, sourceValue, targetValue, sourceValues)
+	case reflect.Slice:
 		if err := s.doWriteSlice(tag, matchedKey, targetValue, sourceValues); err != nil {
 			return err
 		}
 
 		return nil
-	}
-
-	if targetValue.Kind() == reflect.Struct && targetValue.Type() != reflect.TypeOf(time.Time{}) {
+	case reflect.Struct:
+		if targetValue.Type() == reflect.TypeOf(time.Time{}) {
+			break
+		}
 		if err := s.doWriteStruct(tag.Name, matchedKey, targetValue, sourceValues); err != nil {
 			return err
 		}
@@ -738,6 +713,43 @@ func (s *Struct) doWriteValue(tag *StructTag, matchedKey string, sourceValues *M
 	}
 
 	targetValue.Set(reflect.ValueOf(sourceValue))
+
+	return nil
+}
+
+func (s *Struct) doWritePointerValue(tag *StructTag, targetValue reflect.Value, sourceValue any) (reflect.Value, bool, error) {
+	if targetValue.Kind() != reflect.Ptr {
+		return targetValue, false, nil
+	}
+
+	// Try the pointer type first so casters can handle values such as *time.Time.
+	castedValue, err := s.decodeAndCastValue(tag, targetValue.Type(), sourceValue)
+	if err == nil && castedValue != nil {
+		targetValue.Set(reflect.ValueOf(castedValue))
+
+		return targetValue, true, nil
+	}
+
+	if sourceValue == nil {
+		return targetValue, true, nil
+	}
+
+	targetValue.Set(reflect.New(targetValue.Type().Elem()))
+
+	return targetValue.Elem(), false, nil
+}
+
+func (s *Struct) doWriteMapValue(tag *StructTag, matchedKey string, sourceValue any, targetValue reflect.Value, sourceValues *MapX) error {
+	if sourceValue == nil || reflect.TypeOf(sourceValue).Kind() == reflect.Map {
+		return s.doWriteMap(tag, matchedKey, targetValue, sourceValues)
+	}
+
+	castedValue, err := s.decodeAndCastValue(tag, targetValue.Type(), sourceValue)
+	if err != nil {
+		return fmt.Errorf("can not decode and cast value for key %s: %w", tag.Name, err)
+	}
+
+	targetValue.Set(reflect.ValueOf(castedValue))
 
 	return nil
 }
