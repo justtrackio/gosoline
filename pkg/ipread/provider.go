@@ -9,6 +9,7 @@ import (
 	"github.com/oschwald/geoip2-golang"
 )
 
+//go:generate go run github.com/vektra/mockery/v2 --name Provider
 type Provider interface {
 	City(ipAddress net.IP) (*geoip2.City, error)
 	Refresh(ctx context.Context) error
