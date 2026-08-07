@@ -15,6 +15,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kafka/consumer"
 	kafkaConsumerMocks "github.com/justtrackio/gosoline/pkg/kafka/consumer/mocks"
 	"github.com/justtrackio/gosoline/pkg/log"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
@@ -60,6 +61,30 @@ func TestConsumerRunStopReturns(t *testing.T) {
 
 	err := c.Run(ctx)
 	assert.NoError(t, err)
+}
+
+func TestNewConsumerWithInterfacesAddsKafkaLogContext(t *testing.T) {
+	logger := logMocks.NewLogger(t)
+	channelLogger := logMocks.NewLogger(t)
+	consumerLogger := logMocks.NewLogger(t)
+	handler := kafkaConsumerMocks.NewKafkaMessageHandler(t)
+	metricWriter := metricMocks.NewWriter(t)
+
+	logger.EXPECT().WithChannel("kafka").Return(channelLogger).Once()
+	channelLogger.EXPECT().WithFields(log.Fields{"name": "test-consumer"}).Return(consumerLogger).Once()
+
+	consumer.NewConsumerWithInterfaces(
+		logger,
+		clock.NewFakeClock(),
+		clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute),
+		handler,
+		nil,
+		consumer.Settings{},
+		metricWriter,
+		"test-topic",
+		false,
+		"test-consumer",
+	)
 }
 
 func TestConsumerIsHealthy(t *testing.T) {

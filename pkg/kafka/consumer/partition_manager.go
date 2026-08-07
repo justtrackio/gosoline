@@ -2,9 +2,11 @@ package consumer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
@@ -28,7 +30,11 @@ type PartitionManager struct {
 	lck            sync.RWMutex
 	messageHandler KafkaMessageHandler
 	done           chan struct{}
+	errors         chan error
 	stopping       atomic.Bool
+	consumeDelay   time.Duration
+	healthCheck    clock.HealthCheckTimer
+	healthTimeout  time.Duration
 }
 
 type assignment struct {
@@ -36,7 +42,16 @@ type assignment struct {
 	partition int32
 }
 
-func NewPartitionManager(logger log.Logger, clk clock.Clock, metricWriter metric.Writer, messageHandler KafkaMessageHandler, name string) *PartitionManager {
+func newPartitionManager(
+	logger log.Logger,
+	clk clock.Clock,
+	metricWriter metric.Writer,
+	messageHandler KafkaMessageHandler,
+	name string,
+	consumeDelay time.Duration,
+	healthCheck clock.HealthCheckTimer,
+	healthTimeout time.Duration,
+) *PartitionManager {
 	cfn := coffin.New()
 	done := make(chan struct{})
 
@@ -55,6 +70,10 @@ func NewPartitionManager(logger log.Logger, clk clock.Clock, metricWriter metric
 		consumers:      make(map[assignment]*PartitionConsumer),
 		messageHandler: messageHandler,
 		done:           done,
+		errors:         make(chan error, 1),
+		consumeDelay:   consumeDelay,
+		healthCheck:    healthCheck,
+		healthTimeout:  healthTimeout,
 	}
 }
 
@@ -68,6 +87,7 @@ func (p *PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo
 	for topic, partitions := range assigned {
 		for _, partition := range partitions {
 			p.lck.Lock()
+
 			if p.stopping.Load() {
 				p.lck.Unlock()
 				p.logger.Info(ctx, "ignoring partition assignment for partition %d of topic %s while partition manager is stopping", partition, topic)
@@ -75,23 +95,36 @@ func (p *PartitionManager) OnPartitionsAssigned(ctx context.Context, client *kgo
 				continue
 			}
 
-			partitionConsumer := NewPartitionConsumer(p.logger, p.clock, p.metricWriter, p.messageHandler, client, p.name, topic, partition)
+			partitionConsumer := newPartitionConsumer(p.logger, p.clock, p.metricWriter, p.messageHandler, client, p.name, topic, partition, p.consumeDelay > 0, p.delayConsume)
 
 			p.consumers[assignment{topic, partition}] = partitionConsumer
 			p.lck.Unlock()
 
-			p.logger.Debug(ctx, "starting to consume records for partition %d of topic %s", partition, topic)
+			p.logger.Info(ctx, "starting to consume records for partition %d of topic %s", partition, topic)
 
 			p.cfn.Go(func() error {
-				err := partitionConsumer.Consume(ctx)
-				if err != nil {
-					return fmt.Errorf("failed to consume records for partition %d of topic %s: %w", partition, topic, err)
-				}
-
-				return nil
+				return p.consumePartition(ctx, partitionConsumer)
 			})
 		}
 	}
+}
+
+func (p *PartitionManager) consumePartition(ctx context.Context, partitionConsumer *PartitionConsumer) error {
+	err := partitionConsumer.Consume(ctx)
+	if err == nil {
+		return nil
+	}
+	if p.stopping.Load() && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+		return nil
+	}
+
+	err = fmt.Errorf("failed to consume records for partition %d of topic %s: %w", partitionConsumer.partition, partitionConsumer.topic, err)
+	select {
+	case p.errors <- err:
+	default:
+	}
+
+	return err
 }
 
 func (p *PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo.Client, lost map[string][]int32) {
@@ -115,7 +148,7 @@ func (p *PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo
 			}
 
 			partitionConsumer.Stop()
-			p.logger.Debug(ctx, "waiting for work to finish for lost/revoked partition %d of topic %s", partition, topic)
+			p.logger.Info(ctx, "waiting for work to finish for lost/revoked partition %d of topic %s", partition, topic)
 
 			// as long as we are here we are blocking a rebalance.
 			// we should take advantage of that and wait until all consumers for the revoked partitions are done.
@@ -132,9 +165,9 @@ func (p *PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo
 
 func (p *PartitionManager) Handle(ctx context.Context, topic string, partition int32, records []*kgo.Record) {
 	p.lck.RLock()
-	defer p.lck.RUnlock()
-
 	consumer, ok := p.consumers[assignment{topic, partition}]
+	p.lck.RUnlock()
+
 	if !ok {
 		// at the time Handle is called, we are blocking a rebalance and OnPartitionsLostOrRevoked is only called once a rebalance is allowed again, so this should never happen
 		p.logger.Error(ctx, "no consumer found for partition %d of topic %s", partition, topic)
@@ -142,27 +175,100 @@ func (p *PartitionManager) Handle(ctx context.Context, topic string, partition i
 		return
 	}
 
-	consumer.assignedBatch <- records
+	consumer.Assign(ctx, records)
 }
 
-func (p *PartitionManager) HandleWithoutCommit(records []*kgo.Record) {
-	p.messageHandler.Handle(records)
+func (p *PartitionManager) handleWithoutCommit(ctx context.Context, stopped <-chan struct{}, records []*kgo.Record) {
+	if p.delayConsumeReadOnly(ctx, stopped, records) {
+		p.messageHandler.Handle(records)
+	}
+}
+
+func (p *PartitionManager) delayConsume(ctx context.Context, stopped <-chan struct{}, records []*kgo.Record) bool {
+	return p.waitConsumeDelay(ctx, stopped, records, false)
+}
+
+func (p *PartitionManager) delayConsumeReadOnly(ctx context.Context, stopped <-chan struct{}, records []*kgo.Record) bool {
+	return p.waitConsumeDelay(ctx, stopped, records, true)
+}
+
+func (p *PartitionManager) waitConsumeDelay(ctx context.Context, stopped <-chan struct{}, records []*kgo.Record, keepHealthy bool) bool {
+	if p.consumeDelay == 0 {
+		return true
+	}
+
+	var latestTimestamp time.Time
+	for _, record := range records {
+		if record != nil && record.Timestamp.After(latestTimestamp) {
+			latestTimestamp = record.Timestamp
+		}
+	}
+
+	durationToSleep := p.consumeDelay - p.clock.Since(latestTimestamp)
+	if durationToSleep <= 0 {
+		return true
+	}
+
+	timer := p.clock.NewTimer(durationToSleep)
+	defer timer.Stop()
+
+	if keepHealthy && p.healthCheck != nil {
+		p.healthCheck.MarkHealthy()
+	}
+
+	var healthTicker clock.Ticker
+	var healthTickerChan <-chan time.Time
+
+	if keepHealthy && p.healthCheck != nil && p.healthTimeout > 0 {
+		healthInterval := p.healthTimeout / 2
+
+		if healthInterval <= 0 {
+			healthInterval = p.healthTimeout
+		}
+
+		healthTicker = p.clock.NewTicker(healthInterval)
+		healthTickerChan = healthTicker.Chan()
+		defer healthTicker.Stop()
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return false
+		case <-stopped:
+			return false
+		case <-timer.Chan():
+			return true
+		case <-healthTickerChan:
+			p.healthCheck.MarkHealthy()
+		}
+	}
 }
 
 func (p *PartitionManager) Stop(ctx context.Context) {
 	p.stopping.Store(true)
 
 	p.lck.Lock()
+	partitionCount := len(p.consumers)
+
+	p.logger.Info(ctx, "draining %d Kafka partitions for consumer %s", partitionCount, p.name)
+
 	for assignment, consumer := range p.consumers {
-		consumer.Stop()
+		consumer.Drain()
 		delete(p.consumers, assignment)
 	}
 	p.lck.Unlock()
 
 	close(p.done)
 
-	if err := p.cfn.Wait(); err != nil {
-		p.logger.Error(ctx, "failed to stop partition consumers: %w", err)
+	// Partition errors are escalated through p.errors and logged by the module owner.
+	// Waiting here must not report the coffin's copy of the same error again.
+	<-p.cfn.Dead()
+
+	if err := ctx.Err(); err != nil {
+		p.logger.Warn(ctx, "Kafka partition drain for consumer %s ended after the grace period: %s", p.name, err)
+	} else {
+		p.logger.Info(ctx, "successfully drained %d Kafka partitions for consumer %s", partitionCount, p.name)
 	}
 
 	p.messageHandler.Stop()

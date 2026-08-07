@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	KafkaLoggingChannel     = "stream.kafka"
+	KafkaLoggingChannel     = "kafka"
 	KgoGroupManageLoopError = "group manage loop errored"
 )
 
