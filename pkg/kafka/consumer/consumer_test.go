@@ -25,6 +25,23 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// testBatchCompletion is an already finished consumer.BatchCompletion, used wherever a test does not care about the
+// completion handshake between the message handler and the partition consumer.
+type testBatchCompletion struct {
+	done   chan struct{}
+	failed int
+}
+
+func completedBatch(failed int) consumer.BatchCompletion {
+	done := make(chan struct{})
+	close(done)
+
+	return testBatchCompletion{done: done, failed: failed}
+}
+
+func (c testBatchCompletion) Done() <-chan struct{} { return c.done }
+func (c testBatchCompletion) FailedCount() int      { return c.failed }
+
 func TestConsumerRunStopReturns(t *testing.T) {
 	reader := kafkaConsumerMocks.NewReader(t)
 	handler := kafkaConsumerMocks.NewKafkaMessageHandler(t)
@@ -321,7 +338,7 @@ func TestConsumerRunIgnoresRetryableFetchError(t *testing.T) {
 	reader.EXPECT().AllowRebalance().Once()
 	reader.EXPECT().CloseAllowingRebalance().Once()
 
-	handler.EXPECT().Handle(records).Once()
+	handler.EXPECT().Handle(records).Return(completedBatch(0)).Once()
 	handler.EXPECT().Stop().Once()
 
 	dims := metric.Dimensions{

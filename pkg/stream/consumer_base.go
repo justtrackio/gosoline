@@ -24,6 +24,7 @@ import (
 const (
 	metricNameConsumerDuration          = "Duration"
 	metricNameConsumerError             = "Error"
+	metricNameConsumerDroppedCount      = "DroppedCount"
 	metricNameConsumerProcessedCount    = "ProcessedCount"
 	metricNameConsumerRetryGetCount     = "RetryGetCount"
 	metricNameConsumerRetryPutCount     = "RetryPutCount"
@@ -418,6 +419,8 @@ func (c *baseConsumer) recover(ctx context.Context, msg *Message) {
 
 func (c *baseConsumer) retry(ctx context.Context, msg *Message) {
 	if !c.settings.Retry.Enabled {
+		c.reportDroppedMessage(ctx)
+
 		return
 	}
 
@@ -442,6 +445,35 @@ func (c *baseConsumer) hasNativeRetry() bool {
 	_, ok := c.input.(RetryingInput)
 
 	return ok
+}
+
+// reportDroppedMessage logs and counts a message we could neither process nor hand back to anyone. This only happens
+// for inputs which can not redeliver a message on their own and for which no retry handler is configured - most
+// notably Kafka without `stream.consumer.<name>.retry.enabled`. In that case the message is lost for good, so make
+// as much noise about it as we can.
+func (c *baseConsumer) reportDroppedMessage(ctx context.Context) {
+	if c.hasNativeRetry() || c.settings.Retry.Enabled {
+		return
+	}
+
+	c.logger.Error(
+		ctx,
+		"dropping message of consumer %s: it could not be processed, the input %s can not redeliver it and no retry handler is configured",
+		c.name,
+		c.settings.Input,
+	)
+
+	c.metricWriter.Write(ctx, metric.Data{
+		&metric.Datum{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameConsumerDroppedCount,
+			Dimensions: map[string]string{
+				"Consumer": c.name,
+			},
+			Unit:  metric.UnitCount,
+			Value: 1.0,
+		},
+	})
 }
 
 func (c *baseConsumer) buildRetryMessage(msg *Message) (retryMsg *Message, retryId string) {
@@ -537,6 +569,15 @@ func getConsumerDefaultMetrics(name string) metric.Data {
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerError,
+			Dimensions: map[string]string{
+				"Consumer": name,
+			},
+			Unit:  metric.UnitCount,
+			Value: 0.0,
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameConsumerDroppedCount,
 			Dimensions: map[string]string{
 				"Consumer": name,
 			},

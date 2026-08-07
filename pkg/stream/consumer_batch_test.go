@@ -257,11 +257,14 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 
 	processed := 0
 	acks := []bool{true, true}
+	// Only the aggregate itself is acknowledged: the messages it was expanded from have no identity on the transport
+	// (they carry no receipt handle of their own) and therefore must not be acknowledged individually.
+	var ackedMessages []*stream.Message
 	s.input.
 		EXPECT().
-		AckBatch(matcher.Context, mock.AnythingOfType("[]*stream.Message"), acks).
+		AckBatch(matcher.Context, mock.AnythingOfType("[]*stream.Message"), []bool{true}).
 		Run(func(ctx context.Context, msgs []*stream.Message, acks []bool) {
-			processed = len(msgs)
+			ackedMessages = msgs
 			s.kernelCancel()
 		}).
 		Return(nil).
@@ -274,6 +277,9 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 
 	s.callback.EXPECT().
 		Consume(matcher.Context, mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
+		Run(func(ctx context.Context, models []any, attributes []map[string]string) {
+			processed = len(models)
+		}).
 		Return(acks, nil).
 		Once()
 
@@ -286,5 +292,7 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 	err = s.batchConsumer.Run(s.kernelCtx)
 
 	s.Nil(err, "there should be no error returned on consume")
-	s.Equal(processed, 2)
+	s.Equal(2, processed, "both messages of the aggregate should have been consumed")
+	s.Len(ackedMessages, 1, "only the aggregate itself should be acknowledged")
+	s.Equal(aggregate, ackedMessages[0])
 }

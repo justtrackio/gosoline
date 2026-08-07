@@ -12,6 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kafka"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	kafkaErrors "github.com/justtrackio/gosoline/pkg/kafka/errors"
+	"github.com/justtrackio/gosoline/pkg/kafka/logging"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/reslife"
@@ -54,6 +55,8 @@ type consumer struct {
 }
 
 func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger, handler KafkaMessageHandler, settings Settings, name string) (Consumer, error) {
+	logger = logger.WithChannel(logging.ConsumerLoggingChannel)
+
 	conn, err := connection.ParseSettings(config, settings.Connection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse kafka connection settings for connection name %q: %w", settings.Connection, err)
@@ -84,7 +87,7 @@ func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger, hand
 		logger:           logger,
 		clock:            clock.Provider,
 		healthCheckTimer: healthCheckTimer,
-		partitionManager: NewPartitionManager(logger, clock.Provider, metricWriter, handler, name),
+		partitionManager: NewPartitionManager(logger, clock.Provider, metricWriter, handler, settings.CommitWaitTimeout, name),
 		readerFactory:    readerFactory,
 		settings:         settings,
 		stopped:          make(chan struct{}),
@@ -111,7 +114,7 @@ func NewConsumerWithInterfaces(
 		logger:           logger,
 		clock:            clk,
 		healthCheckTimer: healthCheckTimer,
-		partitionManager: NewPartitionManager(logger, clk, metricWriter, handler, name),
+		partitionManager: NewPartitionManager(logger, clk, metricWriter, handler, settings.CommitWaitTimeout, name),
 		readerFactory:    readerFactory,
 		settings:         settings,
 		stopped:          make(chan struct{}),
@@ -184,8 +187,11 @@ func (c *consumer) Run(ctx context.Context) error {
 	c.reader = reader
 	c.executor = newExecutor(c.logger, reader, &c.settings)
 
-	defer c.partitionManager.Stop(ctx)
+	// Defers run in LIFO order: we first stop the partition manager, which drains and commits the records still in
+	// flight, and only close the client afterwards. Closing the client first would make those final commits fail with
+	// a "client closed" error and thus reprocess the records after a restart.
 	defer c.reader.CloseAllowingRebalance()
+	defer c.partitionManager.Stop(ctx)
 
 	for {
 		select {
@@ -331,6 +337,7 @@ func getConsumerDefaultMetrics(name, topicName string) metric.Data {
 		{Priority: metric.PriorityHigh, MetricName: metricNameWaitDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindDefault},
 		{Priority: metric.PriorityHigh, MetricName: metricNameCommitDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindDefault},
 		{Priority: metric.PriorityHigh, MetricName: metricNameCommitFailures, Dimensions: partitionDims, Unit: metric.UnitCount, Kind: metric.KindDefault},
+		{Priority: metric.PriorityHigh, MetricName: metricNameCommitWaitTimeouts, Dimensions: partitionDims, Unit: metric.UnitCount, Kind: metric.KindDefault},
 		{Priority: metric.PriorityHigh, MetricName: metricNameRebalanceCount, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindDefault},
 	}
 }

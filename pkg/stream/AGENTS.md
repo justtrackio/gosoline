@@ -110,6 +110,25 @@ stream:
         enabled: true
 ```
 
+## Delivery semantics and message loss
+
+During shutdown, consumers attempt to finish all messages which are already in flight. Callback cancellation is delayed
+by `consume_grace_time`; callbacks are expected to return when that context is cancelled. Exceeding the grace time is
+logged as an error. The result is then handled according to the input: SQS/SNS can redeliver a negatively acknowledged
+message, while Kafka completes the containing batch and requires `retry.enabled: true` to preserve a failed message.
+
+Kafka implements `AcknowledgeableInput`: the partition consumer only commits the offsets of a batch once every record
+of it has been acknowledged. Consequences:
+
+- Kafka is **at-least-once**: a crash or rebalance mid-batch reprocesses the batch, so consumers must be idempotent.
+- Acknowledging a Kafka message negatively only records a failure (`RecordsConsumedFailed`); it does **not** prevent
+  the commit. Use `retry.enabled: true` if failed messages must be handled.
+- If a message can neither be processed nor retried, the consumer logs an error and increments `DroppedCount`. Alert
+  on that metric - it means data was lost.
+
+Any code path taking a message out of the consumer channel must call `Acknowledge`/`AcknowledgeBatch` exactly once,
+otherwise a Kafka partition stalls until `commit_wait_timeout` elapses (reported via `CommitWaitTimeouts`).
+
 ## Related packages
 - `pkg/cloud/aws/sqs`, `sns`, `kinesis` - AWS transport clients
 - `pkg/kafka` - Kafka client integration

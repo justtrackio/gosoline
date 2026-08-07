@@ -9,6 +9,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -37,10 +38,13 @@ type BatchConsumerSettings struct {
 
 type BatchConsumer struct {
 	*baseConsumer
-	batch    []*consumerData
-	callback UntypedBatchConsumerCallback
-	ticker   *time.Ticker
-	settings *BatchConsumerSettings
+	batch []*consumerData
+	// aggregates holds the messages the current batch got expanded from. They have to be acknowledged as well once
+	// the batch was consumed, otherwise inputs which track the completion of their messages would stall.
+	aggregates []*consumerData
+	callback   UntypedBatchConsumerCallback
+	ticker     *time.Ticker
+	settings   *BatchConsumerSettings
 }
 
 func NewUntypedBatchConsumer(name string, callbackFactory UntypedBatchConsumerCallbackFactory) kernel.ModuleFactory {
@@ -89,7 +93,10 @@ func (c *BatchConsumer) Run(kernelCtx context.Context) error {
 func (c *BatchConsumer) readFromInput(ctx context.Context) error {
 	defer c.logger.Debug(ctx, "run is ending")
 	defer c.wg.Done()
-	defer c.processBatch(ctx)
+
+	consumeCtx, stop := exec.WithDelayedCancelContext(ctx, c.settings.ConsumeGraceTime)
+	defer stop()
+	defer c.processBatch(consumeCtx)
 
 	for {
 		force := false
@@ -101,9 +108,9 @@ func (c *BatchConsumer) readFromInput(ctx context.Context) error {
 			}
 
 			if _, ok := cdata.msg.Attributes[AttributeAggregate]; ok {
-				c.processAggregateMessage(ctx, cdata)
+				c.processAggregateMessage(consumeCtx, cdata)
 			} else {
-				c.processSingleMessage(ctx, cdata)
+				c.processSingleMessage(consumeCtx, cdata)
 			}
 
 		case <-c.ticker.C:
@@ -111,7 +118,7 @@ func (c *BatchConsumer) readFromInput(ctx context.Context) error {
 		}
 
 		if len(c.batch) >= c.settings.BatchSize || force {
-			c.processBatch(ctx)
+			c.processBatch(consumeCtx)
 		}
 	}
 }
@@ -124,15 +131,26 @@ func (c *BatchConsumer) processAggregateMessage(ctx context.Context, cdata *cons
 	if err != nil {
 		c.logger.Error(ctx, "an error occurred during disaggregation of the message: %w", err)
 
+		// we can not do anything with this message, but we still have to acknowledge it negatively so an input
+		// which tracks the completion of its messages does not stall
+		c.Acknowledge(ctx, cdata, false)
+
 		return
 	}
 
 	for _, msg := range batch {
+		// the disaggregated messages have no identity on the transport itself (an SQS message from an aggregate has
+		// no receipt handle of its own, a Kafka record is a single record regardless of how many messages it holds),
+		// so they must never be acknowledged - only the aggregate they came from is
 		c.batch = append(c.batch, &consumerData{
-			msg:   msg,
-			input: cdata.input,
+			msg: msg,
+			src: cdata.src,
 		})
 	}
+
+	// the aggregate itself is acknowledged once the batch containing its messages was consumed. All messages of an
+	// aggregate are appended in one go and can therefore never be split across two batches.
+	c.aggregates = append(c.aggregates, cdata)
 }
 
 func (c *BatchConsumer) processSingleMessage(_ context.Context, cdata *consumerData) {
@@ -141,37 +159,31 @@ func (c *BatchConsumer) processSingleMessage(_ context.Context, cdata *consumerD
 
 func (c *BatchConsumer) processBatch(ctx context.Context) {
 	batch := c.batch
+	aggregates := c.aggregates
 
 	c.batch = make([]*consumerData, 0, c.settings.BatchSize)
+	c.aggregates = nil
 	c.ticker.Stop()
 	c.ticker = time.NewTicker(c.settings.IdleTimeout)
 
-	c.consumeBatch(ctx, batch)
+	c.consumeBatch(ctx, batch, aggregates)
 }
 
-func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData) {
+// consumeBatch processes the given batch and acknowledges every message of it exactly once - including the aggregate
+// messages it was expanded from, the messages we could not decode, and the cases where we return early or panic.
+// Inputs which track the completion of their messages (like Kafka, which may only commit an offset once the
+// corresponding record was processed) would stall otherwise.
+func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData, aggregates []*consumerData) {
+	acknowledger := newBatchAcknowledger(c, batch, aggregates)
+
+	// registered before the recover below so that it runs afterwards and acknowledges everything we did not get to
+	defer acknowledger.acknowledgeRemaining(ctx)
 	defer c.recover(ctx, nil)
-
-	// if we are shutting down, don't acknowledge any messages and try to retry them if needed
-	select {
-	case <-ctx.Done():
-		if !c.hasNativeRetry() {
-			for _, msg := range batch {
-				c.retry(ctx, msg.msg)
-			}
-		}
-
-		return
-	default:
-	}
 
 	start := c.clock.Now()
 
-	delayedCtx, stop := exec.WithDelayedCancelContext(ctx, c.settings.ConsumeGraceTime)
-	defer stop()
-
 	// make sure to create new context as we can't rely on the tracer to create a new one
-	batchCtx, cancel := context.WithCancel(delayedCtx)
+	batchCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	var span tracing.Span
@@ -179,57 +191,148 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData)
 	defer span.Finish()
 
 	if len(batch) == 0 {
+		acknowledger.acknowledge(batchCtx, aggregates, funk.Repeat(true, len(aggregates)))
+
 		return
 	}
 
-	batch, models, attributes, subSpans := c.decodeMessages(batchCtx, batch)
+	decoded := c.decodeMessages(batchCtx, batch)
 	defer func() {
-		for i := range subSpans {
-			subSpans[i].Finish()
+		for i := range decoded.spans {
+			decoded.spans[i].Finish()
 		}
 	}()
 
-	acks, err := c.callback.Consume(batchCtx, models, attributes)
+	acknowledger.acknowledge(batchCtx, decoded.skipped, decoded.skippedAcks)
+
+	acks, err := c.callback.Consume(batchCtx, decoded.models, decoded.attributes)
 	if err != nil {
 		c.logger.Error(batchCtx, "an error occurred during the consume batch operation: %w", err)
 	}
-
-	if len(batch) != len(acks) {
-		c.logger.Error(batchCtx, "number of acks does not match number of messages in batch: %d != %d", len(acks), len(batch))
-
-		// make sure we have as many acks as we have messages
-		for len(acks) < len(batch) {
-			acks = append(acks, false)
-		}
-
-		// and drop any acks we have too many
-		acks = acks[:len(batch)]
+	if batchCtx.Err() != nil {
+		c.logger.Error(ctx, "consumer %s did not finish processing a batch within the consume grace time of %s", c.name, c.settings.ConsumeGraceTime)
 	}
 
-	ackMessages := make([]*consumerData, 0, len(batch))
+	acks = c.alignAcks(batchCtx, acks, len(decoded.batch))
+
+	ackMessages := make([]*consumerData, 0, len(decoded.batch)+len(aggregates))
+	ackValues := make([]bool, 0, len(decoded.batch)+len(aggregates))
 	for i, ack := range acks {
-		ackMessages = append(ackMessages, batch[i])
+		ackMessages = append(ackMessages, decoded.batch[i])
+		ackValues = append(ackValues, ack)
+
 		if !ack && !c.hasNativeRetry() {
-			c.retry(batchCtx, batch[i].msg)
+			c.retry(batchCtx, decoded.batch[i].msg)
 		}
 	}
 
-	c.AcknowledgeBatch(batchCtx, ackMessages, acks)
+	// acknowledge the aggregates together with the messages they were expanded from, so we only need a single call
+	ackMessages = append(ackMessages, aggregates...)
+	ackValues = append(ackValues, funk.Repeat(true, len(aggregates))...)
+
+	acknowledger.acknowledge(batchCtx, ackMessages, ackValues)
 
 	duration := c.clock.Now().Sub(start)
-	atomic.AddInt32(&c.processed, int32(len(ackMessages)))
+	atomic.AddInt32(&c.processed, int32(len(decoded.batch)))
 
-	c.writeMetricDurationAndProcessedCount(batchCtx, duration, len(batch))
+	c.writeMetricDurationAndProcessedCount(batchCtx, duration, len(decoded.batch))
 }
 
-func (c *BatchConsumer) decodeMessages(
-	batchCtx context.Context,
-	batch []*consumerData,
-) (newBatch []*consumerData, models []any, attributes []map[string]string, spans []tracing.Span) {
-	models = make([]any, 0, len(batch))
-	attributes = make([]map[string]string, 0, len(batch))
-	spans = make([]tracing.Span, 0, len(batch))
-	newBatch = make([]*consumerData, 0, len(batch))
+// alignAcks makes sure we have exactly as many acks as we have messages in the batch, defaulting to a negative
+// acknowledgement for the ones a misbehaving callback did not report.
+func (c *BatchConsumer) alignAcks(ctx context.Context, acks []bool, size int) []bool {
+	if len(acks) == size {
+		return acks
+	}
+
+	c.logger.Error(ctx, "number of acks does not match number of messages in batch: %d != %d", len(acks), size)
+
+	for len(acks) < size {
+		acks = append(acks, false)
+	}
+
+	return acks[:size]
+}
+
+// batchAcknowledger makes sure every message of a batch gets acknowledged exactly once, no matter which of the many
+// exits of consumeBatch we take.
+type batchAcknowledger struct {
+	consumer *BatchConsumer
+	pending  map[*consumerData]struct{}
+}
+
+func newBatchAcknowledger(consumer *BatchConsumer, groups ...[]*consumerData) *batchAcknowledger {
+	pending := make(map[*consumerData]struct{})
+	for _, group := range groups {
+		for _, cdata := range group {
+			pending[cdata] = struct{}{}
+		}
+	}
+
+	return &batchAcknowledger{
+		consumer: consumer,
+		pending:  pending,
+	}
+}
+
+// acknowledge acknowledges all of the given messages which have not been acknowledged yet.
+func (a *batchAcknowledger) acknowledge(ctx context.Context, cdata []*consumerData, acks []bool) {
+	msgs := make([]*consumerData, 0, len(cdata))
+	msgAcks := make([]bool, 0, len(cdata))
+
+	for i := range cdata {
+		if _, ok := a.pending[cdata[i]]; !ok {
+			continue
+		}
+
+		delete(a.pending, cdata[i])
+		msgs = append(msgs, cdata[i])
+		msgAcks = append(msgAcks, acks[i])
+	}
+
+	if len(msgs) > 0 {
+		a.consumer.AcknowledgeBatch(ctx, msgs, msgAcks)
+	}
+}
+
+// acknowledgeRemaining negatively acknowledges every message we did not get to, for example because we returned early
+// or panicked while consuming the batch.
+func (a *batchAcknowledger) acknowledgeRemaining(ctx context.Context) {
+	if len(a.pending) == 0 {
+		return
+	}
+
+	msgs := make([]*consumerData, 0, len(a.pending))
+	for cdata := range a.pending {
+		msgs = append(msgs, cdata)
+	}
+
+	a.acknowledge(ctx, msgs, make([]bool, len(msgs)))
+}
+
+// decodedBatch holds the messages of a batch which could be decoded, alongside the ones we had to skip and the
+// acknowledgement each of those skipped messages should get.
+type decodedBatch struct {
+	batch       []*consumerData
+	models      []any
+	attributes  []map[string]string
+	spans       []tracing.Span
+	skipped     []*consumerData
+	skippedAcks []bool
+}
+
+func (d *decodedBatch) skip(cdata *consumerData, ack bool) {
+	d.skipped = append(d.skipped, cdata)
+	d.skippedAcks = append(d.skippedAcks, ack)
+}
+
+func (c *BatchConsumer) decodeMessages(batchCtx context.Context, batch []*consumerData) decodedBatch {
+	decoded := decodedBatch{
+		batch:      make([]*consumerData, 0, len(batch)),
+		models:     make([]any, 0, len(batch)),
+		attributes: make([]map[string]string, 0, len(batch)),
+		spans:      make([]tracing.Span, 0, len(batch)),
+	}
 
 	for _, cdata := range batch {
 		model, err := c.callback.GetModel(cdata.msg.Attributes)
@@ -249,10 +352,14 @@ func (c *BatchConsumer) decodeMessages(
 			if errors.As(err, &ignorableErr) && ignorableErr.IsIgnorableWithSettings(c.baseConsumer.settings.IgnoreOnGetModelError) {
 				c.logger.Info(batchCtx, "ignoring message due to ignorable GetModel error: %s", err.Error())
 
+				// the message is skipped on purpose, so acknowledge it positively
+				decoded.skip(cdata, true)
+
 				continue
 			}
 
 			c.logger.Error(batchCtx, "an error occurred during the batch GetModel operation: %w", err)
+			decoded.skip(cdata, false)
 
 			continue
 		}
@@ -260,17 +367,18 @@ func (c *BatchConsumer) decodeMessages(
 		msgCtx, attribute, err := c.encoder.Decode(batchCtx, cdata.msg, model)
 		if err != nil {
 			c.logger.Error(msgCtx, "an error occurred during the batch decode message operation: %w", err)
+			decoded.skip(cdata, false)
 
 			continue
 		}
 
-		models = append(models, model)
-		attributes = append(attributes, attribute)
-		newBatch = append(newBatch, cdata)
+		decoded.models = append(decoded.models, model)
+		decoded.attributes = append(decoded.attributes, attribute)
+		decoded.batch = append(decoded.batch, cdata)
 
 		_, span := c.tracer.StartSubSpan(msgCtx, c.id)
-		spans = append(spans, span)
+		decoded.spans = append(decoded.spans, span)
 	}
 
-	return newBatch, models, attributes, spans
+	return decoded
 }

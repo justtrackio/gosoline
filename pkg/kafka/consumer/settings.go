@@ -42,7 +42,12 @@ type Settings struct {
 
 	// MaxPollRecords should not be too large as exceeding the RebalanceTimeout while still processing records
 	// will get the consumer kicked out of the group and lead to duplicate message processing
-	MaxPollRecords    int           `cfg:"max_poll_records"   default:"100"`
+	MaxPollRecords int `cfg:"max_poll_records"   default:"100"`
+	// CommitWaitTimeout bounds how long we wait for a batch of records to be processed before we commit its offsets
+	// anyway. It is a safety valve against a consumer which never reports a record as processed, not a limit for slow
+	// processing: keep it at or below RebalanceTimeout, as a consumer blocking longer than that gets kicked out of the
+	// group regardless. Reaching this timeout means messages might get lost and is reported via CommitWaitTimeouts.
+	CommitWaitTimeout time.Duration `cfg:"commit_wait_timeout" default:"50s"`
 	RebalanceTimeout  time.Duration `cfg:"rebalance_timeout"  default:"60s"`
 	SessionTimeout    time.Duration `cfg:"session_timeout"    default:"45s"`
 	HeartbeatInterval time.Duration `cfg:"heartbeat_interval" default:"3s"`

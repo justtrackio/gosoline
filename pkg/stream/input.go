@@ -28,13 +28,14 @@ type Input interface {
 	IsHealthy() bool
 }
 
-// An AcknowledgeableInput is an Input with the additional ability to mark messages as successfully consumed. For example,
-// an SQS queue would provide a message after its visibility timeout a second time if we didn't acknowledge it.
+// An AcknowledgeableInput is an Input which needs to know when processing of a message finished. The ack flag reports
+// whether processing succeeded. Its transport-specific effect differs: SQS deletes a successfully processed message,
+// while Kafka uses either value to mark processing complete before committing the containing batch.
 //
 //go:generate go run github.com/vektra/mockery/v2 --name AcknowledgeableInput
 type AcknowledgeableInput interface {
 	Input
-	// Ack acknowledges a single message. If possible, prefer calling AckBatch as it is more efficient.
+	// Ack reports the processing result of a single message. If possible, prefer calling AckBatch as it is more efficient.
 	Ack(ctx context.Context, msg *Message, ack bool) error
 	// AckBatch does the same as calling Ack for every single message would, but it might use fewer calls to an external
 	// service.

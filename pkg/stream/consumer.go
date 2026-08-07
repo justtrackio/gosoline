@@ -93,6 +93,9 @@ func (c *Consumer) readData(ctx context.Context) error {
 	defer c.logger.Debug(ctx, "read from input is ending")
 	defer c.wg.Done()
 
+	consumeCtx, stop := exec.WithDelayedCancelContext(ctx, c.settings.ConsumeGraceTime)
+	defer stop()
+
 	// ticker to mark us as healthy should we not get any messages to process
 	// (thus, the only way to get unhealthy would be if the consumer callback
 	// takes too long to process a single message)
@@ -110,9 +113,9 @@ func (c *Consumer) readData(ctx context.Context) error {
 			c.healthCheckTimer.MarkHealthy()
 
 			if _, ok := cdata.msg.Attributes[AttributeAggregate]; ok {
-				c.processAggregateMessage(ctx, cdata)
+				c.processAggregateMessage(consumeCtx, cdata)
 			} else {
-				c.processSingleMessage(ctx, cdata)
+				c.processSingleMessage(consumeCtx, cdata)
 			}
 
 		case <-ticker.Chan():
@@ -131,6 +134,10 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerD
 
 	if ctx, _, err = c.encoder.Decode(ctx, cdata.msg, &batch); err != nil {
 		c.handleError(ctx, err, "an error occurred during disaggregation of the message")
+
+		// we can not do anything with this message, but we still have to acknowledge it negatively so an input
+		// which tracks the completion of its messages does not stall
+		c.Acknowledge(ctx, cdata, false)
 
 		return
 	}
@@ -186,17 +193,6 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 	// once we processed a message, we made progress and are thus healthy
 	defer c.healthCheckTimer.MarkHealthy()
 	defer c.recover(ctx, msg)
-
-	// if we are shutting down, don't acknowledge any messages and try to retry them if needed
-	select {
-	case <-ctx.Done():
-		if !hasNativeRetry {
-			c.retry(ctx, msg)
-		}
-
-		return false
-	default:
-	}
 
 	var err error
 	var ack bool
@@ -255,11 +251,11 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 		}).Debug(ctx, "processing sqs message")
 	}
 
-	delayedCtx, stop := exec.WithDelayedCancelContext(ctx, c.settings.ConsumeGraceTime)
-	defer stop()
-
-	if ack, err = c.callback.Consume(delayedCtx, model, attributes); err != nil {
+	if ack, err = c.callback.Consume(ctx, model, attributes); err != nil {
 		c.handleError(ctx, err, "an error occurred during the consume operation")
+	}
+	if ctx.Err() != nil {
+		c.logger.Error(ctx, "consumer %s did not finish processing a message within the consume grace time of %s", c.name, c.settings.ConsumeGraceTime)
 	}
 
 	if !ack && !hasNativeRetry {
