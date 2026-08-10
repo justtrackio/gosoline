@@ -13,7 +13,6 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/imdario/mergo"
 	"github.com/justtrackio/gosoline/pkg/coffin"
-	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/validation"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
@@ -266,16 +265,6 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 
 		err = handler.Handle(ginCtx, reqCtx, request)
 		if err != nil {
-			validErr := &validation.Error{}
-			if errors.As(err, &validErr) {
-				handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
-					Err:  validErr,
-					Type: gin.ErrorTypePrivate,
-				})
-
-				return
-			}
-
 			handleError(ginCtx, errHandler, http.StatusInternalServerError, gin.Error{
 				Err:  err,
 				Type: gin.ErrorTypePrivate,
@@ -368,35 +357,6 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input any, errHand
 
 	resp, err := handler.Handle(reqCtx, request)
 
-	if errors.Is(err, ErrAccessForbidden) {
-		handleForbidden(ginCtx, errHandler, http.StatusForbidden, gin.Error{
-			Err:  err,
-			Type: gin.ErrorTypePrivate,
-		})
-
-		return
-	}
-
-	if exec.IsRequestCanceled(err) {
-		handleError(ginCtx, errHandler, HttpStatusClientWentAway, gin.Error{
-			Err:  err,
-			Type: gin.ErrorTypePrivate,
-		})
-
-		return
-	}
-
-	validErr := &validation.Error{}
-	if errors.As(err, &validErr) {
-		handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
-			// only pass the validation error in case it is wrapped in something else
-			Err:  validErr,
-			Type: gin.ErrorTypePrivate,
-		})
-
-		return
-	}
-
 	if err != nil {
 		handleError(ginCtx, errHandler, http.StatusInternalServerError, gin.Error{
 			Err:  err,
@@ -475,19 +435,17 @@ func handleError(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, g
 		}
 	}
 
-	//nolint:errcheck // we just want to add the error to the context and are not interested in the result
-	_ = ginCtx.Error(&ginError)
-	resp := errHandler(statusCode, ginError.Err)
-
-	writer, err := mkResponseBodyWriter(resp)
-	if err != nil {
-		panic(errors.WithMessage(err, "Error creating writer for error handler"))
+	validErr := &validation.Error{}
+	if errors.As(ginError.Err, &validErr) {
+		// only pass the validation error in case it is wrapped in something else
+		ginError.Err = validErr
 	}
 
-	writer(ginCtx)
-}
+	if statusCode != http.StatusForbidden {
+		//nolint:errcheck // we just want to add the error to the context and are not interested in the result
+		_ = ginCtx.Error(&ginError)
+	}
 
-func handleForbidden(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, ginError gin.Error) {
 	resp := errHandler(statusCode, ginError.Err)
 
 	writer, err := mkResponseBodyWriter(resp)
