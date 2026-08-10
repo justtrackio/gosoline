@@ -429,10 +429,8 @@ func parseUrl(ctx *gin.Context) (*url.URL, error) {
 }
 
 func handleError(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, ginError gin.Error) {
-	if statusCode == http.StatusInternalServerError {
-		if mappedStatusCode, handled := errorStatusCodeFromMappers(ginError.Err); handled {
-			statusCode = mappedStatusCode
-		}
+	if mappedStatusCode, handled := errorStatusCodeFromMappers(ginError.Err); handled {
+		statusCode = mappedStatusCode
 	}
 
 	validErr := &validation.Error{}
