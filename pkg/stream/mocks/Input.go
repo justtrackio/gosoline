@@ -22,53 +22,6 @@ func (_m *Input) EXPECT() *Input_Expecter {
 	return &Input_Expecter{mock: &_m.Mock}
 }
 
-// Data provides a mock function with no fields
-func (_m *Input) Data() <-chan *stream.Message {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for Data")
-	}
-
-	var r0 <-chan *stream.Message
-	if rf, ok := ret.Get(0).(func() <-chan *stream.Message); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(<-chan *stream.Message)
-		}
-	}
-
-	return r0
-}
-
-// Input_Data_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Data'
-type Input_Data_Call struct {
-	*mock.Call
-}
-
-// Data is a helper method to define mock.On call
-func (_e *Input_Expecter) Data() *Input_Data_Call {
-	return &Input_Data_Call{Call: _e.mock.On("Data")}
-}
-
-func (_c *Input_Data_Call) Run(run func()) *Input_Data_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *Input_Data_Call) Return(_a0 <-chan *stream.Message) *Input_Data_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *Input_Data_Call) RunAndReturn(run func() <-chan *stream.Message) *Input_Data_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // IsHealthy provides a mock function with no fields
 func (_m *Input) IsHealthy() bool {
 	ret := _m.Called()
@@ -114,17 +67,17 @@ func (_c *Input_IsHealthy_Call) RunAndReturn(run func() bool) *Input_IsHealthy_C
 	return _c
 }
 
-// Run provides a mock function with given fields: ctx
-func (_m *Input) Run(ctx context.Context) error {
-	ret := _m.Called(ctx)
+// Run provides a mock function with given fields: ctx, process
+func (_m *Input) Run(ctx context.Context, process stream.InputProcess) error {
+	ret := _m.Called(ctx, process)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Run")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, stream.InputProcess) error); ok {
+		r0 = rf(ctx, process)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -139,13 +92,14 @@ type Input_Run_Call struct {
 
 // Run is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *Input_Expecter) Run(ctx interface{}) *Input_Run_Call {
-	return &Input_Run_Call{Call: _e.mock.On("Run", ctx)}
+//   - process stream.InputProcess
+func (_e *Input_Expecter) Run(ctx interface{}, process interface{}) *Input_Run_Call {
+	return &Input_Run_Call{Call: _e.mock.On("Run", ctx, process)}
 }
 
-func (_c *Input_Run_Call) Run(run func(ctx context.Context)) *Input_Run_Call {
+func (_c *Input_Run_Call) Run(run func(ctx context.Context, process stream.InputProcess)) *Input_Run_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].(stream.InputProcess))
 	})
 	return _c
 }
@@ -155,7 +109,7 @@ func (_c *Input_Run_Call) Return(_a0 error) *Input_Run_Call {
 	return _c
 }
 
-func (_c *Input_Run_Call) RunAndReturn(run func(context.Context) error) *Input_Run_Call {
+func (_c *Input_Run_Call) RunAndReturn(run func(context.Context, stream.InputProcess) error) *Input_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }

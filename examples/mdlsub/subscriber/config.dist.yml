@@ -31,5 +31,4 @@ stream:
   input:
     subscriber-random-number:
       backoff:
-        blocking: true
         enabled: true

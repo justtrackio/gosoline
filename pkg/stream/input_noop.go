@@ -16,12 +16,11 @@ func NewNoopInput() Input {
 	}
 }
 
-func (i *noopInput) Data() <-chan *Message {
-	return i.ch
-}
-
-func (i *noopInput) Run(context.Context) error {
-	<-i.ch
+func (i *noopInput) Run(ctx context.Context, _ InputProcess) error {
+	select {
+	case <-ctx.Done():
+	case <-i.ch:
+	}
 
 	return nil
 }

@@ -213,6 +213,9 @@ func (q *queue) DeleteMessage(ctx context.Context, receiptHandle string) error {
 }
 
 func (q *queue) DeleteMessageBatch(ctx context.Context, receiptHandles []string) error {
+	var err error
+	var output *sqs.DeleteMessageBatchOutput
+
 	input := &sqs.DeleteMessageBatchInput{
 		QueueUrl: aws.String(q.properties.Url),
 	}
@@ -239,8 +242,18 @@ func (q *queue) DeleteMessageBatch(ctx context.Context, receiptHandles []string)
 
 		input.Entries = entries[i:j]
 
-		if _, err := q.client.DeleteMessageBatch(ctx, input); err != nil {
+		if output, err = q.client.DeleteMessageBatch(ctx, input); err != nil {
 			multiError = multierror.Append(multiError, err)
+
+			continue
+		}
+
+		if output == nil {
+			continue
+		}
+
+		for _, failed := range output.Failed {
+			multiError = multierror.Append(multiError, fmt.Errorf("failed to delete message batch entry %s: %s", aws.ToString(failed.Id), aws.ToString(failed.Message)))
 		}
 	}
 

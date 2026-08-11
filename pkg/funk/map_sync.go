@@ -242,3 +242,16 @@ func (m *mapSynced[K, V]) Filter(filter func(key K, value V) bool) Maper[K, V] {
 
 	return filtered
 }
+
+func (m *mapSynced[K, V]) Any(predicate func(key K, value V) bool) bool {
+	m.lck.RLock()
+	defer m.lck.RUnlock()
+
+	for key, value := range m.values {
+		if predicate(key, value) {
+			return true
+		}
+	}
+
+	return false
+}

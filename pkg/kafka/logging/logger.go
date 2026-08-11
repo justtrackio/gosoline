@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	KafkaLoggingChannel     = "stream.kafka"
+	FranzGoLoggingChannel   = "franz-go"
 	KgoGroupManageLoopError = "group manage loop errored"
 )
 
@@ -22,7 +22,7 @@ type kafkaLogger struct {
 func NewKafkaLogger(ctx context.Context, logger log.Logger) kgo.Logger {
 	return kafkaLogger{
 		ctx:    ctx,
-		logger: logger.WithChannel(KafkaLoggingChannel),
+		logger: logger.WithChannel(FranzGoLoggingChannel),
 	}
 }
 

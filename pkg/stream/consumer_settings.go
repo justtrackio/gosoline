@@ -15,12 +15,17 @@ const (
 )
 
 type ConsumerSettings struct {
-	Input                 string                        `cfg:"input" default:"consumer" validate:"required"`
-	RunnerCount           int                           `cfg:"runner_count" default:"1" validate:"min=1"`
-	Encoding              EncodingType                  `cfg:"encoding" default:"application/json"`
-	IdleTimeout           time.Duration                 `cfg:"idle_timeout" default:"10s"`
-	AcknowledgeGraceTime  time.Duration                 `cfg:"acknowledge_grace_time" default:"10s"`
-	ConsumeGraceTime      time.Duration                 `cfg:"consume_grace_time" default:"10s"`
+	Input       string        `cfg:"input" default:"consumer" validate:"required"`
+	Encoding    EncodingType  `cfg:"encoding" default:"application/json"`
+	IdleTimeout time.Duration `cfg:"idle_timeout" default:"10s"`
+	// GraceTime is the maximum time a record has to be processed once the consumer stops. It is the single
+	// authoritative processing deadline and applies to every input, both the primary and the retry one: inputs must
+	// stop fetching new messages, while messages they already fetched are processed until this shared deadline. When
+	// it expires, in-flight callback contexts are canceled so the inputs can nack or retry any remaining messages.
+	//
+	// Inputs do not define a processing deadline of their own. Their own grace_time bounds how long they get to
+	// acknowledge or commit what was processed, which is a window that only starts once this deadline expired.
+	GraceTime             time.Duration                 `cfg:"grace_time" default:"10s"`
 	Retry                 ConsumerRetrySettings         `cfg:"retry"`
 	Healthcheck           health.HealthCheckSettings    `cfg:"healthcheck"`
 	AggregateMessageMode  string                        `cfg:"aggregate_message_mode" default:"atMostOnce" validate:"oneof=atLeastOnce atMostOnce"`

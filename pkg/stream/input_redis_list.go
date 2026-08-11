@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -24,6 +26,7 @@ type RedisListInputSettings struct {
 	Key                string
 	WaitTime           time.Duration
 	HealthcheckTimeout time.Duration
+	RunnerCount        int
 }
 
 type redisListInput struct {
@@ -33,9 +36,10 @@ type redisListInput struct {
 	settings         *RedisListInputSettings
 	healthCheckTimer clock.HealthCheckTimer
 
-	channel chan *Message
-	stopped bool
+	stopped conc.SignalOnce
 }
+
+var _ Input = &redisListInput{}
 
 func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *RedisListInputSettings) (Input, error) {
 	var err error
@@ -70,25 +74,52 @@ func NewRedisListInputWithInterfaces(
 		settings:         settings,
 		healthCheckTimer: healthCheckTimer,
 		mw:               mw,
-		channel:          make(chan *Message),
+		stopped:          conc.NewSignalOnce(),
 	}
 }
 
-func (i *redisListInput) Data() <-chan *Message {
-	return i.channel
-}
-
-func (i *redisListInput) Run(ctx context.Context) error {
-	defer close(i.channel)
-
+func (i *redisListInput) Run(ctx context.Context, process InputProcess) error {
 	if i.settings.WaitTime == 0 {
 		return errors.New("wait time should be bigger than 0")
 	}
 
-	go i.runMetricLoop(ctx)
+	runnerCount := i.settings.RunnerCount
+	if runnerCount <= 0 {
+		runnerCount = 1
+	}
 
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go func() {
+		select {
+		case <-i.stopped.Channel():
+			cancel()
+		case <-runCtx.Done():
+		}
+	}()
+
+	messages := make(chan *Message)
+	var workers sync.WaitGroup
+	for range runnerCount {
+		workers.Go(func() {
+			for msg := range messages {
+				process(ctx, msg)
+			}
+		})
+	}
+	defer func() {
+		close(messages)
+		workers.Wait()
+	}()
+
+	go i.runMetricLoop(runCtx)
+
+	return i.runMessageLoop(ctx, runCtx, messages)
+}
+
+func (i *redisListInput) runMessageLoop(ctx context.Context, runCtx context.Context, messages chan<- *Message) error {
 	for {
-		if i.stopped {
+		if runCtx.Err() != nil {
 			return nil
 		}
 
@@ -98,7 +129,7 @@ func (i *redisListInput) Run(ctx context.Context) error {
 
 		if err != nil && err.Error() != redis.Nil.Error() {
 			i.logger.Error(ctx, "could not BLPop from redis: %w", err)
-			i.stopped = true
+			i.stopped.Signal()
 
 			return err
 		}
@@ -115,13 +146,13 @@ func (i *redisListInput) Run(ctx context.Context) error {
 			continue
 		}
 
-		i.channel <- &msg
+		messages <- &msg
 		i.writeListReadMetric(ctx)
 	}
 }
 
-func (i *redisListInput) Stop(ctx context.Context) {
-	i.stopped = true
+func (i *redisListInput) Stop(_ context.Context) {
+	i.stopped.Signal()
 }
 
 func (i *redisListInput) IsHealthy() bool {
@@ -130,10 +161,16 @@ func (i *redisListInput) IsHealthy() bool {
 
 func (i *redisListInput) runMetricLoop(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 
 	for {
 		i.writeListLengthMetric(ctx)
-		<-ticker.C
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
 	}
 }
 

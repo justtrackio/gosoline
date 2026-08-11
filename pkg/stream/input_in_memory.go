@@ -3,6 +3,8 @@ package stream
 import (
 	"context"
 	"sync"
+
+	"github.com/justtrackio/gosoline/pkg/coffin"
 )
 
 var (
@@ -20,8 +22,11 @@ func ResetInMemoryInputs() {
 }
 
 type InMemorySettings struct {
-	Size int `cfg:"size" default:"1"`
+	Size        int `cfg:"size" default:"1"`
+	RunnerCount int `cfg:"runner_count" default:"1" validate:"min=1"`
 }
+
+var _ Input = &InMemoryInput{}
 
 type InMemoryInput struct {
 	lck           sync.Mutex
@@ -45,6 +50,10 @@ func ProvideInMemoryInput(name string, settings *InMemorySettings) *InMemoryInpu
 }
 
 func NewInMemoryInput(settings *InMemorySettings) *InMemoryInput {
+	if settings.RunnerCount <= 0 {
+		settings.RunnerCount = 1
+	}
+
 	return &InMemoryInput{
 		channel:       make(chan *Message, settings.Size),
 		stopped:       make(chan struct{}),
@@ -64,24 +73,70 @@ func (i *InMemoryInput) Reset() {
 
 func (i *InMemoryInput) Publish(messages ...*Message) {
 	for _, msg := range messages {
-		i.channel <- msg
+		i.lck.Lock()
+		channel := i.channel
+		stopped := i.stopped
+		i.lck.Unlock()
+
+		select {
+		case channel <- msg:
+		case <-stopped:
+			return
+		}
 	}
 }
 
-func (i *InMemoryInput) Run(ctx context.Context) error {
+func (i *InMemoryInput) Run(ctx context.Context, process InputProcess) error {
 	i.lck.Lock()
 	stopped := i.stopped
 	channel := i.channel
 	i.lck.Unlock()
 
-	select {
-	case <-ctx.Done():
-	case <-stopped:
+	cfn := coffin.New()
+
+	for range i.settings.RunnerCount {
+		cfn.Gof(func() error {
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-stopped:
+					// messages which got published before the input was stopped still have to be processed.
+					// as soon as both the stopped channel and the message channel are ready, select would
+					// pick one of them at random and we would drop those messages.
+					drainInMemoryInput(ctx, channel, process)
+
+					return nil
+				case <-cfn.Dying():
+					return nil
+				case msg := <-channel:
+					process(ctx, msg)
+				}
+			}
+		}, "panic in in-memory input runner")
 	}
 
-	close(channel)
+	return cfn.Wait()
+}
 
-	return nil
+// drainInMemoryInput processes all messages which are currently buffered in the given channel. It returns as soon
+// as the channel is empty or the context got canceled.
+func drainInMemoryInput(ctx context.Context, channel <-chan *Message, process InputProcess) {
+	for {
+		// check the context first, otherwise select would randomly keep draining a canceled context
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		select {
+		case msg := <-channel:
+			process(ctx, msg)
+		default:
+			return
+		}
+	}
 }
 
 func (i *InMemoryInput) Stop(ctx context.Context) {
@@ -96,8 +151,4 @@ func (i *InMemoryInput) Stop(ctx context.Context) {
 
 func (i *InMemoryInput) IsHealthy() bool {
 	return true
-}
-
-func (i *InMemoryInput) Data() <-chan *Message {
-	return i.channel
 }

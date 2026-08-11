@@ -10,9 +10,10 @@ import (
 )
 
 type kinesisInput struct {
-	client  kinesis.Kinsumer
-	channel chan *Message
+	client kinesis.Kinsumer
 }
+
+var _ Input = &kinesisInput{}
 
 func NewKinesisInput(ctx context.Context, config cfg.Config, logger log.Logger, settings kinesis.Settings) (Input, error) {
 	client, err := kinesis.NewKinsumer(ctx, config, logger, &settings)
@@ -21,13 +22,26 @@ func NewKinesisInput(ctx context.Context, config cfg.Config, logger log.Logger, 
 	}
 
 	return &kinesisInput{
-		client:  client,
-		channel: make(chan *Message),
+		client: client,
 	}, nil
 }
 
-func (i *kinesisInput) Run(ctx context.Context) error {
-	return i.client.Run(ctx, NewKinesisMessageHandler(i.channel))
+func (i *kinesisInput) Run(ctx context.Context, process InputProcess) error {
+	return i.client.Run(ctx, func(ctx context.Context, rawMessage []byte) error {
+		msg := Message{}
+		if err := msg.UnmarshalFromBytes(rawMessage); err != nil {
+			return fmt.Errorf("failed to unmarshal message: %w", err)
+		}
+
+		// Kinesis advances handled records like Kafka commits them; consumer retries are handled separately. Once
+		// process returned, the record was handled and has to be checkpointed, no matter whether it was acknowledged
+		// and no matter whether the context expired in the meantime: reporting a cancellation here would make the
+		// shard reader stop checkpointing before this record, so it would be consumed again although the consumer
+		// already put it into the retry queue.
+		process(ctx, &msg)
+
+		return nil
+	})
 }
 
 func (i *kinesisInput) Stop(ctx context.Context) {
@@ -36,34 +50,4 @@ func (i *kinesisInput) Stop(ctx context.Context) {
 
 func (i *kinesisInput) IsHealthy() bool {
 	return i.client.IsHealthy()
-}
-
-func (i *kinesisInput) Data() <-chan *Message {
-	return i.channel
-}
-
-type kinesisMessageHandler struct {
-	channel chan *Message
-}
-
-func NewKinesisMessageHandler(channel chan *Message) kinesis.MessageHandler {
-	return kinesisMessageHandler{
-		channel: channel,
-	}
-}
-
-func (s kinesisMessageHandler) Handle(rawMessage []byte) error {
-	msg := Message{}
-	err := msg.UnmarshalFromBytes(rawMessage)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal message: %w", err)
-	}
-
-	s.channel <- &msg
-
-	return nil
-}
-
-func (s kinesisMessageHandler) Done() {
-	close(s.channel)
 }
