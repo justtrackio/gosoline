@@ -5,6 +5,7 @@ package mocks
 import (
 	context "context"
 
+	kinesis "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -22,7 +23,7 @@ func (_m *ShardReader) EXPECT() *ShardReader_Expecter {
 }
 
 // Run provides a mock function with given fields: ctx, handler
-func (_m *ShardReader) Run(ctx context.Context, handler func([]byte) error) error {
+func (_m *ShardReader) Run(ctx context.Context, handler kinesis.RecordHandler) error {
 	ret := _m.Called(ctx, handler)
 
 	if len(ret) == 0 {
@@ -30,7 +31,7 @@ func (_m *ShardReader) Run(ctx context.Context, handler func([]byte) error) erro
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, func([]byte) error) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, kinesis.RecordHandler) error); ok {
 		r0 = rf(ctx, handler)
 	} else {
 		r0 = ret.Error(0)
@@ -46,14 +47,14 @@ type ShardReader_Run_Call struct {
 
 // Run is a helper method to define mock.On call
 //   - ctx context.Context
-//   - handler func([]byte) error
+//   - handler kinesis.RecordHandler
 func (_e *ShardReader_Expecter) Run(ctx interface{}, handler interface{}) *ShardReader_Run_Call {
 	return &ShardReader_Run_Call{Call: _e.mock.On("Run", ctx, handler)}
 }
 
-func (_c *ShardReader_Run_Call) Run(run func(ctx context.Context, handler func([]byte) error)) *ShardReader_Run_Call {
+func (_c *ShardReader_Run_Call) Run(run func(ctx context.Context, handler kinesis.RecordHandler)) *ShardReader_Run_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(func([]byte) error))
+		run(args[0].(context.Context), args[1].(kinesis.RecordHandler))
 	})
 	return _c
 }
@@ -63,7 +64,7 @@ func (_c *ShardReader_Run_Call) Return(_a0 error) *ShardReader_Run_Call {
 	return _c
 }
 
-func (_c *ShardReader_Run_Call) RunAndReturn(run func(context.Context, func([]byte) error) error) *ShardReader_Run_Call {
+func (_c *ShardReader_Run_Call) RunAndReturn(run func(context.Context, kinesis.RecordHandler) error) *ShardReader_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -17,13 +17,19 @@ import (
 type Reader interface {
 	AllowRebalance()
 	CloseAllowingRebalance()
+	CommitRecords(ctx context.Context, rs ...*kgo.Record) error
 	PollRecords(ctx context.Context, maxPollRecords int) kgo.Fetches
 }
 
-func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settings Settings, partitionManager *PartitionManager, isReadOnly bool, name string) (Reader, error) {
+func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, partitionManager *PartitionManager, name string) (Reader, error) {
 	topicName, err := kafka.BuildFullTopicName(config, settings.ToIdentity(), settings.TopicId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build full kafka topic name: %w", err)
+	}
+
+	consumerGroupId, err := kafka.BuildFullConsumerGroupId(config, settings.GroupId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build full kafka consumer group id: %w", err)
 	}
 
 	metricsHook := kafka.NewMetricsHook(metric.NewWriter(), kafka.DimensionConsumer, name)
@@ -40,26 +46,16 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 		kgo.HeartbeatInterval(settings.HeartbeatInterval),
 		kgo.RebalanceTimeout(settings.RebalanceTimeout),
 		kgo.SessionTimeout(settings.SessionTimeout),
+		kgo.Balancers(settings.GetBalancers()...),
+		kgo.BlockRebalanceOnPoll(),
+		kgo.ConsumerGroup(consumerGroupId),
+		kgo.DisableAutoCommit(),
+		kgo.OnPartitionsAssigned(partitionManager.OnPartitionsAssigned),
+		kgo.OnPartitionsRevoked(partitionManager.OnPartitionsLostOrRevoked),
+		kgo.OnPartitionsLost(partitionManager.OnPartitionsLostOrRevoked),
 		kgo.WithContext(ctx),
 		kgo.WithHooks(metricsHook),
 		kgo.WithLogger(logging.NewKafkaLogger(ctx, logger)),
-	}
-
-	if !isReadOnly {
-		consumerGroupId, err := kafka.BuildFullConsumerGroupId(config, settings.GroupId)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build full kafka consumer group id: %w", err)
-		}
-
-		opts = append(opts, []kgo.Opt{
-			kgo.Balancers(settings.GetBalancers()...),
-			kgo.BlockRebalanceOnPoll(),
-			kgo.ConsumerGroup(consumerGroupId),
-			kgo.DisableAutoCommit(),
-			kgo.OnPartitionsAssigned(partitionManager.OnPartitionsAssigned),
-			kgo.OnPartitionsRevoked(partitionManager.OnPartitionsLostOrRevoked),
-			kgo.OnPartitionsLost(partitionManager.OnPartitionsLostOrRevoked),
-		}...)
 	}
 
 	connOpts, err := connection.BuildConnectionOptions(config, settings.Connection)

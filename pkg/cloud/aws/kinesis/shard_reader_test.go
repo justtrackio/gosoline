@@ -749,7 +749,7 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWaitNoRecords() {
 	s.Nil(s.consumedRecords)
 }
 
-func (s *shardReaderTestSuite) consumeRecord(record []byte) error {
+func (s *shardReaderTestSuite) consumeRecord(_ context.Context, record []byte) error {
 	s.consumedRecords = append(s.consumedRecords, record)
 
 	return s.consumeRecordError

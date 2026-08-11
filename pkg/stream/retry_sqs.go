@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
@@ -23,7 +24,9 @@ type RetryHandlerSqsSettings struct {
 	ClientName          string                     `cfg:"client_name" default:"default"`
 	MaxNumberOfMessages int32                      `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
 	WaitTime            int32                      `cfg:"wait_time" default:"10"`
+	AckGraceTime        time.Duration              `cfg:"ack_grace_time" default:"10s"`
 	RunnerCount         int                        `cfg:"runner_count" default:"1"`
+	AcknowledgementMode SqsAcknowledgementMode     `cfg:"acknowledgement_mode" default:"individual" validate:"oneof=individual batch"`
 	QueueId             string                     `cfg:"queue_id"`
 	Healthcheck         health.HealthCheckSettings `cfg:"healthcheck"`
 }
@@ -35,7 +38,7 @@ type RetryHandlerSqs struct {
 
 func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, RetryHandler, error) {
 	var err error
-	var input AcknowledgeableInput
+	var input Input
 	var output Output
 
 	key := ConfigurableConsumerRetryKey(name)
@@ -60,7 +63,9 @@ func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logge
 		MaxNumberOfMessages: settings.MaxNumberOfMessages,
 		WaitTime:            settings.WaitTime,
 		VisibilityTimeout:   int(settings.After.Seconds()),
+		GraceTime:           settings.AckGraceTime,
 		RunnerCount:         settings.RunnerCount,
+		AcknowledgementMode: settings.AcknowledgementMode,
 		RedrivePolicy: sqs.RedrivePolicy{
 			Enabled:         true,
 			MaxReceiveCount: settings.MaxAttempts,

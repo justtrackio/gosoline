@@ -16,7 +16,6 @@ const (
 type Message struct {
 	Attributes map[string]string `json:"attributes"`
 	Body       string            `json:"body"`
-	metaData   map[string]any    `json:"-"`
 }
 
 func (m *Message) GetAttributes() map[string]string {

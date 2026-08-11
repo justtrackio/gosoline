@@ -35,8 +35,7 @@ func TestProvideConfigurableInput_ConcurrentCallsReturnSameInstance(t *testing.T
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
-	for i := 0; i < goroutines; i++ {
-		i := i
+	for i := range goroutines {
 		go func() {
 			defer wg.Done()
 			inp, err := stream.ProvideConfigurableInput(ctx, config, logger, "concurrent-test")

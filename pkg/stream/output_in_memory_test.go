@@ -13,6 +13,10 @@ type InMemoryOutputTestSuite struct {
 }
 
 func (s *InMemoryOutputTestSuite) SetupTest() {
+	// ProvideInMemoryOutput returns a process-wide singleton per name, so an output provided here still carries the
+	// messages written by a previous run of this test. Reset the registry to keep the suite idempotent, e.g. when it
+	// is executed with -count > 1.
+	stream.ResetInMemoryOutputs()
 	s.output = stream.ProvideInMemoryOutput("test")
 }
 

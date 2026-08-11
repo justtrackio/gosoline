@@ -11,7 +11,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream/health"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 func newTestConfig() cfg.GosoConf {
@@ -45,7 +44,8 @@ func TestNewConsumer_RegistersLifecycleManager(t *testing.T) {
 	ctx := appctx.WithContainer(t.Context())
 	config := newTestConfig()
 
-	_, err := consumer.NewConsumer(ctx, config, log.NewLogger(), &noopHandler{}, newTestSettings(), "test-consumer")
+	settings := newTestSettings()
+	_, err := consumer.NewConsumer(ctx, config, log.NewLogger(), &settings, "test-consumer")
 	require.NoError(t, err, "NewConsumer should succeed with an application context")
 }
 
@@ -53,12 +53,8 @@ func TestNewConsumer_FailsWithoutAppContext(t *testing.T) {
 	ctx := t.Context()
 	config := newTestConfig()
 
-	_, err := consumer.NewConsumer(ctx, config, log.NewLogger(), &noopHandler{}, newTestSettings(), "test-consumer")
+	settings := newTestSettings()
+	_, err := consumer.NewConsumer(ctx, config, log.NewLogger(), &settings, "test-consumer")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to add kafka consumer lifecycle manager")
 }
-
-type noopHandler struct{}
-
-func (h *noopHandler) Handle(_ []*kgo.Record) {}
-func (h *noopHandler) Stop()                  {}

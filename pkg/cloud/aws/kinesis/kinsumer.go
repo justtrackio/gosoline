@@ -22,6 +22,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/reslife"
 	"github.com/justtrackio/gosoline/pkg/stream/health"
 	"github.com/justtrackio/gosoline/pkg/uuid"
+	"golang.org/x/sync/semaphore"
 )
 
 type (
@@ -30,7 +31,17 @@ type (
 	ShardId        string
 	SequenceNumber string
 	ShardIterator  string
+	ProcessingMode string
+	// RecordHandler processes one record. Its context is canceled when the shutdown grace period expires.
+	RecordHandler func(ctx context.Context, record []byte) error
 )
+
+const (
+	ProcessingModeUnordered ProcessingMode = "unordered"
+	ProcessingModeOrdered   ProcessingMode = "ordered"
+)
+
+var errMessageProcessorStopped = errors.New("message processor stopped before handling record")
 
 type (
 	shardIdSlice []ShardId
@@ -45,6 +56,11 @@ type SettingsInitialPosition struct {
 	Timestamp time.Time               `cfg:"timestamp"`
 }
 
+// Settings configures a kinsumer.
+//
+// Note that none of these settings bounds how long an in flight record handler may still run once a shutdown started.
+// That deadline belongs to whoever owns the handler and is passed in via exec.WithDrainContext; under a stream consumer
+// it is stream.consumer.<name>.grace_time. ReleaseDelay then bounds what the kinsumer itself still has to do afterwards.
 type Settings struct {
 	cfg.ResourceIdentifier
 	// Name of the kinesis client to use
@@ -69,10 +85,16 @@ type Settings struct {
 	DiscoverFrequency time.Duration `cfg:"discover_frequency" default:"15s" validate:"min=1000000000"`
 	// How many DiscoverFrequency cycles do we wait until a client is considered to be gone and expired?
 	ClientExpirationPeriods int `cfg:"client_expiration_periods" default:"3" validate:"min=2"`
-	// How long we extend the deadline of a context when releasing a shard or when deregistering a client. Min = 1s
+	// How long we extend the deadline of a context when releasing a shard or when deregistering a client. Min = 1s.
+	// The window starts once processing has ended, so it is the time the kinsumer gets to persist its final
+	// checkpoints and give up its shards and its client registration.
 	ReleaseDelay time.Duration `cfg:"release_delay" default:"5s" validate:"min=1000000000"`
 	// Should we ensure messages from child shards are only consumed after their parent shards have been fully consumed?
 	KeepShardOrder bool `cfg:"keep_shard_order" default:"true"`
+	// RunnerCount limits concurrent record handlers globally across all shards owned by this kinsumer.
+	RunnerCount int `cfg:"runner_count" default:"1" validate:"min=1"`
+	// ProcessingMode controls whether records within one shard may be processed concurrently.
+	ProcessingMode ProcessingMode `cfg:"processing_mode" default:"unordered" validate:"oneof=unordered ordered"`
 	// Healthcheck configures when we turn unhealthy and are killed
 	Healthcheck health.HealthCheckSettings `cfg:"healthcheck"`
 }
@@ -91,7 +113,7 @@ func (s Settings) GetStreamName() string {
 
 //go:generate go run github.com/vektra/mockery/v2 --name Kinsumer
 type Kinsumer interface {
-	Run(ctx context.Context, handler MessageHandler) error
+	Run(ctx context.Context, process RecordHandler) error
 	Stop(ctx context.Context)
 	IsHealthy() bool
 }
@@ -106,6 +128,7 @@ type kinsumer struct {
 	clock              clock.Clock
 	healthCheckTimer   clock.HealthCheckTimer
 	shardReaderFactory func(logger log.Logger, shardId ShardId) ShardReader
+	runners            *semaphore.Weighted
 	stopLck            sync.Mutex
 	stop               func()
 	stopped            bool
@@ -119,24 +142,20 @@ type runtimeContext struct {
 
 func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (Kinsumer, error) {
 	var err error
-	clientId := ClientId(uuid.New().NewV4())
-
 	var fullStreamName Stream
+	var kinesisClient *kinesis.Client
+	var metadataRepository MetadataRepository
+	var healthCheckTimer clock.HealthCheckTimer
 
 	if fullStreamName, err = GetStreamName(config, settings); err != nil {
 		return nil, fmt.Errorf("can not get full stream name: %w", err)
 	}
 
+	clientId := ClientId(uuid.New().NewV4())
 	logger = logger.WithChannel("kinsumer-main").WithFields(log.Fields{
 		"stream_name":        fullStreamName,
 		"kinsumer_client_id": clientId,
 	})
-
-	shardReaderDefaults := getShardReaderDefaultMetrics(fullStreamName)
-	metricWriter := metric.NewWriter(shardReaderDefaults...)
-
-	var kinesisClient *kinesis.Client
-	var metadataRepository MetadataRepository
 
 	if kinesisClient, err = NewClient(ctx, config, logger, settings.ClientName); err != nil {
 		return nil, fmt.Errorf("failed to create kinesis client: %w", err)
@@ -150,10 +169,12 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		return nil, fmt.Errorf("failed to create metadata manager: %w", err)
 	}
 
-	healthCheckTimer, err := clock.NewHealthCheckTimer(settings.Healthcheck.Timeout)
-	if err != nil {
+	if healthCheckTimer, err = clock.NewHealthCheckTimer(settings.Healthcheck.Timeout); err != nil {
 		return nil, fmt.Errorf("failed to create healthcheck timer: %w", err)
 	}
+
+	shardReaderDefaults := getShardReaderDefaultMetrics(fullStreamName)
+	metricWriter := metric.NewWriter(shardReaderDefaults...)
 
 	shardReaderFactory := func(logger log.Logger, shardId ShardId) ShardReader {
 		return NewShardReaderWithInterfaces(
@@ -206,11 +227,26 @@ func NewKinsumerWithInterfaces(
 	}
 }
 
-func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr error) {
-	defer handler.Done()
+func (k *kinsumer) Run(ctx context.Context, process RecordHandler) (finalErr error) {
+	k.runners = semaphore.NewWeighted(int64(k.runnerCount()))
 
-	deregisterCtx, stop := exec.WithDelayedCancelContext(ctx, k.settings.ReleaseDelay)
-	defer stop()
+	// Deregistering the client is the last thing we do, so its window has to start once processing has ended rather
+	// than when ctx was canceled: the caller owns the processing deadline (see shardReader.drainContext) and may keep
+	// handlers alive far longer than ReleaseDelay. Preserve ctx's values while using only the drain context's completion
+	// signal, so deregistration retains logger fields, tracing, and application context.
+	processingEndCtx := ctx
+	if drainCtx, ok := exec.DrainContextFrom(ctx); ok {
+		var cancelProcessingEnd context.CancelFunc
+		processingEndCtx, cancelProcessingEnd = context.WithCancel(context.WithoutCancel(ctx))
+		stopDrainPropagation := context.AfterFunc(drainCtx, cancelProcessingEnd)
+		defer func() {
+			stopDrainPropagation()
+			cancelProcessingEnd()
+		}()
+	}
+
+	deregisterCtx, stopDeregister := exec.WithDelayedCancelContext(processingEndCtx, k.settings.ReleaseDelay)
+	defer stopDeregister()
 
 	// always remove the client again in the end to leave a clean client table if possible
 	defer func() {
@@ -241,7 +277,7 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 		defer discoverTicker.Stop()
 		defer k.logger.Info(ctx, "leaving kinsumer")
 
-		consumersWaitGroup, stopConsumers := k.startConsumers(ctx, cfn, runtimeCtx, handler)
+		consumersWaitGroup, stopConsumers := k.startConsumers(ctx, cfn, runtimeCtx, process)
 
 		//nolint:gocritic // see comments below
 		defer func() {
@@ -271,7 +307,7 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 				stopConsumers()
 				consumersWaitGroup.Wait()
 				// Overwrite the value of stopConsumers with a new one so the above defer statement will call the correct one
-				consumersWaitGroup, stopConsumers = k.startConsumers(ctx, cfn, runtimeCtx, handler)
+				consumersWaitGroup, stopConsumers = k.startConsumers(ctx, cfn, runtimeCtx, process)
 
 				// reset the ticker, so we don't include the time needed to reset the consumers in the next tick
 				discoverTicker.Reset(k.settings.DiscoverFrequency)
@@ -395,12 +431,7 @@ func (k *kinsumer) getSortedShardIds(shardMap map[ShardId]shardInfo) []ShardId {
 	return shardIds
 }
 
-func (k *kinsumer) startConsumers(
-	ctx context.Context,
-	cfn coffin.Coffin,
-	runtimeCtx *runtimeContext,
-	handler MessageHandler,
-) (*sync.WaitGroup, context.CancelFunc) {
+func (k *kinsumer) startConsumers(ctx context.Context, cfn coffin.Coffin, runtimeCtx *runtimeContext, process RecordHandler) (*sync.WaitGroup, context.CancelFunc) {
 	consumerCtx, stopConsumers := context.WithCancel(ctx)
 
 	wg := &sync.WaitGroup{}
@@ -423,7 +454,10 @@ func (k *kinsumer) startConsumers(
 			logger.Info(ctx, "started consuming shard")
 			defer logger.Info(ctx, "done consuming shard")
 
-			if err := k.shardReaderFactory(logger, shardId).Run(ctx, handler.Handle); err != nil {
+			err := k.shardReaderFactory(logger, shardId).Run(ctx, func(processingCtx context.Context, record []byte) error {
+				return k.process(ctx, processingCtx, process, record)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to consume from shard: %w", err)
 			}
 
@@ -478,6 +512,39 @@ func (k *kinsumer) startConsumers(
 	})
 
 	return wg, stopConsumers
+}
+
+func (k *kinsumer) process(ctx context.Context, processingCtx context.Context, process RecordHandler, rawMessage []byte) error {
+	select {
+	case <-ctx.Done():
+		return errMessageProcessorStopped
+	default:
+	}
+
+	if err := k.runners.Acquire(ctx, 1); err != nil {
+		if exec.IsRequestCanceled(err) {
+			return errMessageProcessorStopped
+		}
+
+		return fmt.Errorf("failed to acquire message processor slot: %w", err)
+	}
+	defer k.runners.Release(1)
+
+	select {
+	case <-ctx.Done():
+		return errMessageProcessorStopped
+	default:
+	}
+
+	return process(processingCtx, rawMessage)
+}
+
+func (k *kinsumer) runnerCount() int {
+	if k.settings.RunnerCount <= 0 {
+		return 1
+	}
+
+	return k.settings.RunnerCount
 }
 
 func (k *kinsumer) writeShardTaskRatioMetric(ctx context.Context, shardTaskRatio float64) {
