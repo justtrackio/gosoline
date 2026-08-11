@@ -16,6 +16,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 	gosoKinesis "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis/mocks"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -31,6 +32,8 @@ type mockedMessage struct {
 	data  []byte
 	delay time.Duration
 }
+
+type contextKey struct{}
 
 type mockedShardReader struct {
 	messages      []mockedMessage
@@ -49,7 +52,7 @@ type kinsumerTestSuite struct {
 	metricWriter       *metricMocks.Writer
 	clock              clock.FakeClock
 	healthCheckTimer   clock.HealthCheckTimer
-	handler            *mocks.MessageHandler
+	process            gosoKinesis.RecordHandler
 	kinsumer           gosoKinesis.Kinsumer
 
 	shardReadersLck      *sync.Mutex
@@ -71,7 +74,7 @@ func (s *kinsumerTestSuite) SetupTest() {
 	s.metricWriter = metricMocks.NewWriter(s.T())
 	s.clock = clock.NewFakeClock()
 	s.healthCheckTimer = clock.NewHealthCheckTimerWithInterfaces(s.clock, time.Minute)
-	s.handler = mocks.NewMessageHandler(s.T())
+	s.process = func(context.Context, []byte) error { return nil }
 	s.shardReadersLck = &sync.Mutex{}
 	s.shardReaders = map[gosoKinesis.ShardId][]*mocks.ShardReader{}
 	s.expectedShardReaders = map[gosoKinesis.ShardId][]mockedShardReader{}
@@ -90,6 +93,7 @@ func (s *kinsumerTestSuite) SetupTest() {
 		DiscoverFrequency: time.Second * 15,
 		ReleaseDelay:      time.Second * 5,
 		KeepShardOrder:    true,
+		RunnerCount:       1,
 		Healthcheck: health.HealthCheckSettings{
 			Timeout: time.Minute,
 		},
@@ -114,13 +118,13 @@ func (s *kinsumerTestSuite) SetupTest() {
 			s.shardReaders[shardId] = append(s.shardReaders[shardId], shardReader)
 			mockedReader := s.expectedShardReaders[shardId][len(s.shardReaders[shardId])-1]
 			shardReader.EXPECT().Run(matcher.Context, mock.MatchedBy(func(h any) bool {
-				_, ok := h.(func([]byte) error)
+				_, ok := h.(gosoKinesis.RecordHandler)
 
 				return ok
-			})).Run(func(ctx context.Context, handler func([]byte) error) {
+			})).Run(func(ctx context.Context, handler gosoKinesis.RecordHandler) {
 				for _, msg := range mockedReader.messages {
 					<-s.clock.NewTimer(msg.delay).Chan()
-					err := handler(msg.data)
+					err := handler(ctx, msg.data)
 					s.NoError(err)
 				}
 
@@ -155,22 +159,30 @@ func (s *kinsumerTestSuite) TearDownTest() {
 }
 
 func (s *kinsumerTestSuite) TestRegisterClientFail() {
-	s.handler.EXPECT().Done().Once()
-
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 0, fmt.Errorf("fail")).Once()
 	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
-	err := s.kinsumer.Run(s.ctx, s.handler)
+	err := s.kinsumer.Run(s.ctx, s.process)
+	s.EqualError(err, "failed to load first list of shard ids and register as client: failed to register as client: fail")
+}
+
+func (s *kinsumerTestSuite) TestDeregisterClientPreservesContextValuesWithDrainContext() {
+	s.ctx = context.WithValue(s.ctx, contextKey{}, "context value")
+	s.ctx = exec.WithDrainContext(s.ctx, context.Background())
+	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 0, fmt.Errorf("fail")).Once()
+	s.metadataRepository.EXPECT().DeregisterClient(mock.MatchedBy(func(ctx context.Context) bool {
+		return ctx.Value(contextKey{}) == "context value"
+	})).Return(nil).Once()
+
+	err := s.kinsumer.Run(s.ctx, s.process)
 	s.EqualError(err, "failed to load first list of shard ids and register as client: failed to register as client: fail")
 }
 
 func (s *kinsumerTestSuite) TestRegisterClientDeregisterFailToo() {
-	s.handler.EXPECT().Done().Once()
-
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 0, fmt.Errorf("fail")).Once()
 	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(fmt.Errorf("also fail")).Once()
 
-	err := s.kinsumer.Run(s.ctx, s.handler)
+	err := s.kinsumer.Run(s.ctx, s.process)
 	s.EqualError(err, multierror.Append(
 		fmt.Errorf("failed to load first list of shard ids and register as client: failed to register as client: fail"),
 		fmt.Errorf("failed to deregister client: also fail"),
@@ -178,8 +190,6 @@ func (s *kinsumerTestSuite) TestRegisterClientDeregisterFailToo() {
 }
 
 func (s *kinsumerTestSuite) TestInitialListShardsFail() {
-	s.handler.EXPECT().Done().Once()
-
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 1, nil).Once()
 	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
@@ -189,13 +199,11 @@ func (s *kinsumerTestSuite) TestInitialListShardsFail() {
 		StreamName: aws.String(string(s.stream)),
 	}).Return(nil, fmt.Errorf("fail")).Once()
 
-	err := s.kinsumer.Run(s.ctx, s.handler)
+	err := s.kinsumer.Run(s.ctx, s.process)
 	s.EqualError(err, "failed to load first list of shard ids and register as client: failed to load shards from kinesis: failed to list shards of stream: fail")
 }
 
 func (s *kinsumerTestSuite) TestInitialListShardsNoSuchStream() {
-	s.handler.EXPECT().Done().Once()
-
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 1, nil).Once()
 	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
@@ -207,15 +215,13 @@ func (s *kinsumerTestSuite) TestInitialListShardsNoSuchStream() {
 		Message: aws.String("no such stream"),
 	}).Once()
 
-	err := s.kinsumer.Run(s.ctx, s.handler)
+	err := s.kinsumer.Run(s.ctx, s.process)
 	s.EqualError(err, "failed to load first list of shard ids and register as client: failed to load shards from kinesis: No such stream: gosoline-test-unitTest-kinesisTest-testData")
 	expectedErr := &gosoKinesis.NoSuchStreamError{}
 	s.True(errors.As(err, &expectedErr))
 }
 
 func (s *kinsumerTestSuite) TestInitialListShardsResourceInUse() {
-	s.handler.EXPECT().Done().Once()
-
 	s.metadataRepository.EXPECT().RegisterClient(s.ctx).Return(0, 1, nil).Once()
 	s.metadataRepository.EXPECT().DeregisterClient(matcher.Context).Return(nil).Once()
 
@@ -227,7 +233,7 @@ func (s *kinsumerTestSuite) TestInitialListShardsResourceInUse() {
 		Message: aws.String("resource not ready"),
 	}).Once()
 
-	err := s.kinsumer.Run(s.ctx, s.handler)
+	err := s.kinsumer.Run(s.ctx, s.process)
 	s.EqualError(err, "failed to load first list of shard ids and register as client: failed to load shards from kinesis: Stream is busy: gosoline-test-unitTest-kinesisTest-testData")
 	expectedErr := &gosoKinesis.StreamBusyError{}
 	s.True(errors.As(err, &expectedErr))
@@ -271,11 +277,9 @@ func (s *kinsumerTestSuite) TestInitialListShardsIterate() {
 
 	s.logger.EXPECT().Info(matcher.Context, "leaving kinsumer").Once()
 	s.logger.EXPECT().Info(matcher.Context, "stopping kinsumer").Once()
-	s.handler.EXPECT().Done().Once()
-
 	s.mockShardTaskRatio(200)
 
-	err := s.kinsumer.Run(s.ctx, s.handler)
+	err := s.kinsumer.Run(s.ctx, s.process)
 	s.NoError(err)
 }
 
@@ -318,7 +322,7 @@ func (s *kinsumerTestSuite) TestListShardsChangedShardIds() {
 		s.clock.Advance(time.Second * 15)
 	}()
 
-	err := s.kinsumer.Run(s.ctx, s.handler)
+	err := s.kinsumer.Run(s.ctx, s.process)
 	s.NoError(err)
 }
 
@@ -373,14 +377,12 @@ func (s *kinsumerTestSuite) TestShardListFinishedShardHandling() {
 
 	s.logger.EXPECT().Info(matcher.Context, "leaving kinsumer").Once()
 	s.logger.EXPECT().Info(matcher.Context, "stopping kinsumer").Once()
-	s.handler.EXPECT().Done().Once()
-
 	s.mockShardTaskRatio(300)
 	s.mockShard("unfinished shard with no parent", false, context.Canceled)
 	s.mockShard("unfinished shard with non-existing parent", false, context.Canceled)
 	s.mockShard("unfinished shard with finished parent", false, context.Canceled)
 
-	err := s.kinsumer.Run(s.ctx, s.handler)
+	err := s.kinsumer.Run(s.ctx, s.process)
 	s.EqualError(err, "failed to consume from shard: context canceled")
 }
 
@@ -420,7 +422,7 @@ func (s *kinsumerTestSuite) TestListShardsNoChangeThenCancel() {
 		s.clock.Advance(time.Second * 15)
 	}()
 
-	err := s.kinsumer.Run(s.ctx, s.handler)
+	err := s.kinsumer.Run(s.ctx, s.process)
 	s.NoError(err)
 }
 
@@ -442,7 +444,7 @@ func (s *kinsumerTestSuite) TestListShardsFailOnRefresh() {
 		s.clock.Advance(time.Second * 15)
 	}()
 
-	err := s.kinsumer.Run(s.ctx, s.handler)
+	err := s.kinsumer.Run(s.ctx, s.process)
 	s.EqualError(err, "failed to refresh shards: failed to load shards from kinesis: failed to list shards of stream: fail")
 }
 
@@ -454,9 +456,12 @@ func (s *kinsumerTestSuite) TestConsumeMessagesThenCancel() {
 	s.mockShardMessage("shard1", []byte("message 2"), time.Millisecond*5)
 	s.mockShardMessage("shard1", []byte("message 3"), time.Millisecond*10)
 
-	s.handler.EXPECT().Handle([]byte("message 1")).Return(nil).Once()
-	s.handler.EXPECT().Handle([]byte("message 2")).Return(nil).Once()
-	s.handler.EXPECT().Handle([]byte("message 3")).Return(nil).Once()
+	processed := make([][]byte, 0, 3)
+	s.process = func(_ context.Context, message []byte) error {
+		processed = append(processed, message)
+
+		return nil
+	}
 
 	go func() {
 		s.clock.BlockUntilTimers(1)
@@ -469,8 +474,9 @@ func (s *kinsumerTestSuite) TestConsumeMessagesThenCancel() {
 		s.clock.Advance(time.Millisecond * 10)
 	}()
 
-	err := s.kinsumer.Run(s.ctx, s.handler)
+	err := s.kinsumer.Run(s.ctx, s.process)
 	s.EqualError(err, "failed to consume from shard: context canceled")
+	s.Equal([][]byte{[]byte("message 1"), []byte("message 2"), []byte("message 3")}, processed)
 }
 
 func (s *kinsumerTestSuite) TestConsumeMessagesFails() {
@@ -478,7 +484,7 @@ func (s *kinsumerTestSuite) TestConsumeMessagesFails() {
 	s.mockShardTaskRatio(100)
 	s.mockShard("shard1", false, fmt.Errorf("fail"))
 
-	err := s.kinsumer.Run(s.ctx, s.handler)
+	err := s.kinsumer.Run(s.ctx, s.process)
 	s.EqualError(err, "failed to consume from shard: fail")
 }
 
@@ -510,7 +516,6 @@ func (s *kinsumerTestSuite) mockBaseSuccess(shards ...string) {
 
 	s.logger.EXPECT().Info(matcher.Context, "leaving kinsumer").Once()
 	s.logger.EXPECT().Info(matcher.Context, "stopping kinsumer").Once()
-	s.handler.EXPECT().Done().Once()
 }
 
 func (s *kinsumerTestSuite) mockShardTaskRatio(taskShardRatio float64) {

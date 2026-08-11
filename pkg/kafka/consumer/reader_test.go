@@ -21,6 +21,7 @@ func TestNewReader_KeepsRetryableFetchErrors(t *testing.T) {
 		"kafka": map[string]any{
 			"naming": map[string]any{
 				"topic_pattern": "{app.name}-{topicId}",
+				"group_pattern": "{app.name}-{groupId}",
 			},
 			"connection": map[string]any{
 				"default": map[string]any{
@@ -33,12 +34,13 @@ func TestNewReader_KeepsRetryableFetchErrors(t *testing.T) {
 	settings := consumer.Settings{
 		Connection:       "default",
 		TopicId:          "test-topic",
+		GroupId:          "test-consumer",
+		Balancers:        []consumer.Balancer{consumer.CooperativeSticky},
 		SessionTimeout:   45 * time.Second,
 		RebalanceTimeout: 60 * time.Second,
 	}
 
-	// isReadOnly is true so the reader does not require a consumer group / partition manager.
-	reader, err := consumer.NewReader(t.Context(), config, log.NewLogger(), settings, nil, true, "test-consumer")
+	reader, err := consumer.NewReader(t.Context(), config, log.NewLogger(), &settings, nil, "test-consumer")
 	require.NoError(t, err)
 
 	client, ok := reader.(*kgo.Client)

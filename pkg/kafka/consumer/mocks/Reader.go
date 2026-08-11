@@ -86,6 +86,67 @@ func (_c *Reader_CloseAllowingRebalance_Call) RunAndReturn(run func()) *Reader_C
 	return _c
 }
 
+// CommitRecords provides a mock function with given fields: ctx, rs
+func (_m *Reader) CommitRecords(ctx context.Context, rs ...*kgo.Record) error {
+	_va := make([]interface{}, len(rs))
+	for _i := range rs {
+		_va[_i] = rs[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CommitRecords")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, ...*kgo.Record) error); ok {
+		r0 = rf(ctx, rs...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Reader_CommitRecords_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CommitRecords'
+type Reader_CommitRecords_Call struct {
+	*mock.Call
+}
+
+// CommitRecords is a helper method to define mock.On call
+//   - ctx context.Context
+//   - rs ...*kgo.Record
+func (_e *Reader_Expecter) CommitRecords(ctx interface{}, rs ...interface{}) *Reader_CommitRecords_Call {
+	return &Reader_CommitRecords_Call{Call: _e.mock.On("CommitRecords",
+		append([]interface{}{ctx}, rs...)...)}
+}
+
+func (_c *Reader_CommitRecords_Call) Run(run func(ctx context.Context, rs ...*kgo.Record)) *Reader_CommitRecords_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]*kgo.Record, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(*kgo.Record)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Reader_CommitRecords_Call) Return(_a0 error) *Reader_CommitRecords_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Reader_CommitRecords_Call) RunAndReturn(run func(context.Context, ...*kgo.Record) error) *Reader_CommitRecords_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PollRecords provides a mock function with given fields: ctx, maxPollRecords
 func (_m *Reader) PollRecords(ctx context.Context, maxPollRecords int) kgo.Fetches {
 	ret := _m.Called(ctx, maxPollRecords)

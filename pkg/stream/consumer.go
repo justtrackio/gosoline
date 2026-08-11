@@ -4,24 +4,29 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"sync"
 	"sync/atomic"
+	"time"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
-	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/reqctx"
 	"github.com/justtrackio/gosoline/pkg/smpl"
 	"github.com/justtrackio/gosoline/pkg/tracing"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 type UntypedConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (UntypedConsumerCallback, error)
 
 //go:generate go run github.com/vektra/mockery/v2 --name UntypedConsumerCallback
 type UntypedConsumerCallback interface {
-	BaseConsumerCallback
+	GetModel(attributes map[string]string) (any, error)
 	Consume(ctx context.Context, model any, attributes map[string]string) (bool, error)
 }
 
@@ -32,10 +37,34 @@ type RunnableUntypedConsumerCallback interface {
 }
 
 type Consumer struct {
-	*baseConsumer
-	callback         UntypedConsumerCallback
-	healthCheckTimer clock.HealthCheckTimer
-	samplingDecider  smpl.Decider
+	kernel.EssentialModule
+	kernel.ApplicationStage
+
+	clock        clock.Clock
+	uuidGen      uuid.Uuid
+	logger       log.Logger
+	metricWriter metric.Writer
+	tracer       tracing.Tracer
+	encoder      MessageEncoder
+	input        Input
+	retryInput   Input
+	retryHandler RetryHandler
+
+	wg                  sync.WaitGroup
+	stopped             sync.Once
+	cancel              context.CancelFunc
+	processingStartedAt funk.Maper[uint64, time.Time]
+	processingSequence  atomic.Uint64
+
+	drainCtx    context.Context
+	drainCancel context.CancelFunc
+
+	id              string
+	name            string
+	settings        ConsumerSettings
+	processed       int32
+	callback        UntypedConsumerCallback
+	samplingDecider smpl.Decider
 }
 
 var _ kernel.FullModule = &Consumer{}
@@ -44,132 +73,274 @@ func NewUntypedConsumer(name string, callbackFactory UntypedConsumerCallbackFact
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		loggerCallback := logger.WithChannel("consumerCallback")
 
-		var err error
-		var callback UntypedConsumerCallback
-		var baseConsumer *baseConsumer
-		var healthCheckTimer clock.HealthCheckTimer
-		var samplingDecider smpl.Decider
-
-		if callback, err = callbackFactory(ctx, config, loggerCallback); err != nil {
+		callback, err := callbackFactory(ctx, config, loggerCallback)
+		if err != nil {
 			return nil, fmt.Errorf("can not initiate callback for consumer %s: %w", name, err)
 		}
 
-		if baseConsumer, err = NewBaseConsumer(ctx, config, logger, name, callback); err != nil {
-			return nil, fmt.Errorf("can not initiate base consumer: %w", err)
+		consumer, err := newConsumer(ctx, config, logger, name, callback)
+		if err != nil {
+			return nil, fmt.Errorf("can not initiate consumer: %w", err)
 		}
 
-		if healthCheckTimer, err = clock.NewHealthCheckTimer(baseConsumer.settings.Healthcheck.Timeout); err != nil {
-			return nil, fmt.Errorf("failed to create healthcheck timer: %w", err)
-		}
-
-		if samplingDecider, err = smpl.ProvideDecider(ctx, config); err != nil {
-			return nil, fmt.Errorf("could not initialize sampling decider: %w", err)
-		}
-
-		return NewUntypedConsumerWithInterfaces(baseConsumer, callback, healthCheckTimer, samplingDecider), nil
+		return consumer, nil
 	}
 }
 
-func NewUntypedConsumerWithInterfaces(base *baseConsumer, callback UntypedConsumerCallback, healthCheckTimer clock.HealthCheckTimer, samplingDecider smpl.Decider) *Consumer {
-	consumer := &Consumer{
-		baseConsumer:     base,
-		callback:         callback,
-		healthCheckTimer: healthCheckTimer,
-		samplingDecider:  samplingDecider,
+func newConsumer(ctx context.Context, config cfg.Config, logger log.Logger, name string, callback UntypedConsumerCallback) (*Consumer, error) {
+	var err error
+	var settings ConsumerSettings
+	var tracer tracing.Tracer
+	var input, retryInput Input
+	var encoder MessageEncoder
+	var retryHandler RetryHandler
+
+	consumerLogger := logger.WithChannel(fmt.Sprintf("consumer-%s", name))
+	metricWriter := metric.NewWriter(getConsumerDefaultMetrics(name)...)
+
+	if _, err = cfg.GetAppIdentity(config); err != nil {
+		return nil, fmt.Errorf("can not get app identity from config: %w", err)
 	}
 
-	return consumer
+	if settings, err = ReadConsumerSettings(config, name); err != nil {
+		return nil, fmt.Errorf("can not read consumer settings for %s: %w", name, err)
+	}
+
+	if tracer, err = tracing.ProvideTracer(ctx, config, consumerLogger); err != nil {
+		return nil, fmt.Errorf("can not create tracer: %w", err)
+	}
+
+	if input, err = NewConfigurableInput(ctx, config, consumerLogger, settings.Input); err != nil {
+		return nil, err
+	}
+
+	if encoder, err = newConsumerEncoder(ctx, input, callback, settings.Encoding); err != nil {
+		return nil, err
+	}
+
+	if retryInput, retryHandler, err = newConsumerRetryHandler(ctx, config, consumerLogger, input, &settings.Retry, name); err != nil {
+		return nil, err
+	}
+
+	samplingDecider, err := smpl.ProvideDecider(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("could not initialize sampling decider: %w", err)
+	}
+
+	consumerMetadata := ConsumerMetadata{
+		Name:         name,
+		RetryEnabled: settings.Retry.Enabled,
+		RetryType:    settings.Retry.Type,
+	}
+	if err = appctx.MetadataAppend(ctx, metadataKeyConsumers, consumerMetadata); err != nil {
+		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
+	}
+
+	return NewUntypedConsumerWithInterfaces(
+		uuid.New(),
+		consumerLogger,
+		metricWriter,
+		tracer,
+		input,
+		encoder,
+		retryInput,
+		retryHandler,
+		callback,
+		settings,
+		name,
+		samplingDecider,
+		clock.Provider,
+	), nil
+}
+
+func newConsumerEncoder(ctx context.Context, input Input, callback UntypedConsumerCallback, encoding EncodingType) (MessageEncoder, error) {
+	encoderSettings := &MessageEncoderSettings{Encoding: encoding}
+	schemaRegistryAwareInput, isSchemaRegistryAwareInput := input.(SchemaRegistryAwareInput)
+	schemaSettingsAware, isSchemaSettingsAwareCallback := callback.(SchemaSettingsAwareCallback)
+	if !isSchemaRegistryAwareInput || !isSchemaSettingsAwareCallback {
+		return NewMessageEncoder(encoderSettings), nil
+	}
+
+	schemaSettings, err := schemaSettingsAware.GetSchemaSettings()
+	if err != nil {
+		return nil, err
+	}
+	if schemaSettings == nil {
+		return NewMessageEncoder(encoderSettings), nil
+	}
+
+	externalEncoder, err := schemaRegistryAwareInput.InitSchemaRegistry(ctx, schemaSettings.WithEncoding(encoding))
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize schema registry: %w", err)
+	}
+
+	encoderSettings.ExternalEncoder = externalEncoder
+
+	return NewMessageEncoder(encoderSettings), nil
+}
+
+func newConsumerRetryHandler(ctx context.Context, config cfg.Config, logger log.Logger, input Input, settings *ConsumerRetrySettings, name string) (Input, RetryHandler, error) {
+	if retryingInput, ok := input.(RetryingInput); ok {
+		settings.Enabled = true
+
+		retryInput, retryHandler := retryingInput.GetRetryHandler()
+
+		return retryInput, retryHandler, nil
+	}
+
+	retryInput, retryHandler, err := NewRetryHandler(ctx, config, logger, settings, name)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can not create retry handler: %w", err)
+	}
+
+	return retryInput, retryHandler, nil
+}
+
+func NewUntypedConsumerWithInterfaces(
+	uuidGen uuid.Uuid,
+	logger log.Logger,
+	metricWriter metric.Writer,
+	tracer tracing.Tracer,
+	input Input,
+	encoder MessageEncoder,
+	retryInput Input,
+	retryHandler RetryHandler,
+	callback UntypedConsumerCallback,
+	settings ConsumerSettings,
+	name string,
+	samplingDecider smpl.Decider,
+	clock clock.Clock,
+) *Consumer {
+	drainCtx, drainCancel := context.WithCancel(context.Background())
+
+	return &Consumer{
+		id:                  fmt.Sprintf("consumer-%s", name),
+		name:                name,
+		clock:               clock,
+		uuidGen:             uuidGen,
+		logger:              logger,
+		metricWriter:        metricWriter,
+		tracer:              tracer,
+		encoder:             encoder,
+		input:               input,
+		retryInput:          retryInput,
+		retryHandler:        retryHandler,
+		settings:            settings,
+		callback:            callback,
+		samplingDecider:     samplingDecider,
+		drainCtx:            drainCtx,
+		drainCancel:         drainCancel,
+		processingStartedAt: funk.NewMapSynced[uint64, time.Time](),
+	}
 }
 
 func (c *Consumer) Run(kernelCtx context.Context) error {
-	return c.run(kernelCtx, c.readData)
+	return c.run(kernelCtx)
 }
 
+// IsHealthy reports whether the consumer inputs remain healthy and no message processing has exceeded the configured healthcheck timeout.
+//
+// While idle, health depends solely on the inputs. Each active callback is evaluated independently against the timeout,
+// so continuous processing remains healthy while every callback completes in time. When any active callback exceeds the
+// timeout, the consumer is unhealthy even if other callbacks complete. Health recovers once all processing has completed,
+// provided the inputs are healthy.
 func (c *Consumer) IsHealthy(_ context.Context) (bool, error) {
-	return c.isHealthy() && c.healthCheckTimer.IsHealthy(), nil
+	timedOut := c.processingStartedAt.Any(func(_ uint64, startedAt time.Time) bool {
+		return c.clock.Since(startedAt) > c.settings.Healthcheck.Timeout
+	})
+
+	return c.isHealthy() && !timedOut, nil
 }
 
-func (c *Consumer) readData(ctx context.Context) error {
-	defer c.logger.Debug(ctx, "read from input is ending")
-	defer c.wg.Done()
+func (c *Consumer) processData(ctx context.Context, msg *Message) (ack bool) {
+	processingID := c.processingSequence.Add(1)
+	c.processingStartedAt.Put(processingID, c.clock.Now())
 
-	// ticker to mark us as healthy should we not get any messages to process
-	// (thus, the only way to get unhealthy would be if the consumer callback
-	// takes too long to process a single message)
-	ticker := c.clock.NewTicker(c.settings.Healthcheck.Timeout / 2)
-	defer ticker.Stop()
+	defer c.processingStartedAt.Remove(processingID)
 
-	for {
-		select {
-		case cdata, ok := <-c.data:
-			if !ok {
-				return nil
-			}
+	// Keep the input context's values, but let in-flight processing outlive the input's cancellation
+	// until the shared shutdown drain deadline expires.
+	gracedCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	defer cancel()
 
-			// we got a message and are thus healthy
-			c.healthCheckTimer.MarkHealthy()
+	// Cancel this message when the shared drain window ends instead of starting a separate grace timer per message.
+	stopDrainPropagation := context.AfterFunc(c.drainCtx, cancel)
+	defer stopDrainPropagation()
 
-			if _, ok := cdata.msg.Attributes[AttributeAggregate]; ok {
-				c.processAggregateMessage(ctx, cdata)
-			} else {
-				c.processSingleMessage(ctx, cdata)
-			}
-
-		case <-ticker.Chan():
-			// we didn't get a message for quite some time, but we stay healthy
-			c.healthCheckTimer.MarkHealthy()
+	if retryId, ok := msg.Attributes[AttributeRetryId]; ok {
+		// get the trace id from the message so our message can be found a lot easier in the logs
+		decoder := tracing.NewMessageWithTraceEncoder(tracing.TraceIdErrorReturnStrategy{})
+		newCtx, _, err := decoder.Decode(gracedCtx, nil, maps.Clone(msg.Attributes)) // copy the attributes as Decode modifies the map...
+		if err != nil {
+			newCtx = gracedCtx
 		}
+
+		c.logger.Warn(newCtx, "retrying message with id %s", retryId)
+		c.writeMetricRetryCount(newCtx, metricNameConsumerRetryGetCount)
 	}
+
+	if _, ok := msg.Attributes[AttributeAggregate]; ok {
+		return c.processAggregateMessage(gracedCtx, msg, processingID)
+	}
+
+	return c.processSingleMessage(gracedCtx, msg)
 }
 
-func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerData) {
+func (c *Consumer) processAggregateMessage(ctx context.Context, msg *Message, processingID uint64) (ack bool) {
 	ctx, span := c.startTracingContext(ctx)
 	defer span.Finish()
 
 	var err error
 	batch := make([]*Message, 0)
 
-	if ctx, _, err = c.encoder.Decode(ctx, cdata.msg, &batch); err != nil {
+	if ctx, _, err = c.encoder.Decode(ctx, msg, &batch); err != nil {
 		c.handleError(ctx, err, "an error occurred during disaggregation of the message")
 
 		return
 	}
 
-	if c.settings.AggregateMessageMode == AggregateMessageModeAtMostOnce {
-		c.Acknowledge(ctx, cdata, true)
-	}
+	anySucceeded := false
+	allSucceeded := true
+
 	for _, m := range batch {
+		c.processingStartedAt.Put(processingID, c.clock.Now())
 		start := c.clock.Now()
 
-		_ = c.process(
+		succeeded := c.process(
 			ctx,
 			m,
 			// we can only retry aggregate messages if we haven't acknowledged them yet and support native retry
 			c.settings.AggregateMessageMode == AggregateMessageModeAtLeastOnce && c.hasNativeRetry(),
 		)
+		anySucceeded = anySucceeded || succeeded
+		allSucceeded = allSucceeded && succeeded
 
-		duration := c.clock.Now().Sub(start)
+		duration := c.clock.Since(start)
 		atomic.AddInt32(&c.processed, 1)
 
 		c.writeMetricDurationAndProcessedCount(ctx, duration, 1)
 	}
-	if c.settings.AggregateMessageMode == AggregateMessageModeAtLeastOnce {
-		c.Acknowledge(ctx, cdata, true)
+
+	if c.settings.AggregateMessageMode == AggregateMessageModeAtMostOnce {
+		return anySucceeded
 	}
+
+	return allSucceeded
 }
 
-func (c *Consumer) processSingleMessage(ctx context.Context, cdata *consumerData) {
-	ctx, span := c.startTracingContext(ctx)
+func (c *Consumer) processSingleMessage(gracedCtx context.Context, msg *Message) (ack bool) {
+	gracedCtx, span := c.startTracingContext(gracedCtx)
 	defer span.Finish()
 
 	start := c.clock.Now()
 
-	ack := c.process(ctx, cdata.msg, c.hasNativeRetry())
-	c.Acknowledge(ctx, cdata, ack)
+	ack = c.process(gracedCtx, msg, c.hasNativeRetry())
 
-	duration := c.clock.Now().Sub(start)
+	duration := c.clock.Since(start)
 	atomic.AddInt32(&c.processed, 1)
-	c.writeMetricDurationAndProcessedCount(ctx, duration, 1)
+	c.writeMetricDurationAndProcessedCount(gracedCtx, duration, 1)
+
+	return
 }
 
 func (c *Consumer) startTracingContext(ctx context.Context) (context.Context, tracing.Span) {
@@ -182,16 +353,14 @@ func (c *Consumer) startTracingContext(ctx context.Context) (context.Context, tr
 	return ctx, span
 }
 
-func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry bool) bool {
-	// once we processed a message, we made progress and are thus healthy
-	defer c.healthCheckTimer.MarkHealthy()
-	defer c.recover(ctx, msg)
+func (c *Consumer) process(gracedCtx context.Context, msg *Message, hasNativeRetry bool) bool {
+	defer c.recover(gracedCtx, msg)
 
 	// if we are shutting down, don't acknowledge any messages and try to retry them if needed
 	select {
-	case <-ctx.Done():
+	case <-gracedCtx.Done():
 		if !hasNativeRetry {
-			c.retry(ctx, msg)
+			c.retry(gracedCtx, msg)
 		}
 
 		return false
@@ -204,7 +373,7 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 	var attributes map[string]string
 
 	if model, err = c.callback.GetModel(msg.Attributes); err != nil {
-		c.metricWriter.Write(ctx, metric.Data{
+		c.metricWriter.Write(gracedCtx, metric.Data{
 			&metric.Datum{
 				MetricName: metricNameConsumerUnknownModelError,
 				Dimensions: map[string]string{
@@ -217,33 +386,33 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 		// Check if this error is ignorable based on consumer settings
 		var ignorableErr IgnorableGetModelError
 		if errors.As(err, &ignorableErr) && ignorableErr.IsIgnorableWithSettings(c.settings.IgnoreOnGetModelError) {
-			c.logger.Info(ctx, "ignoring message due to ignorable GetModel error: %s", err.Error())
+			c.logger.Info(gracedCtx, "ignoring message due to ignorable GetModel error: %s", err.Error())
 
 			return true
 		}
 
-		c.handleError(ctx, err, "an error occurred during the consume operation")
+		c.handleError(gracedCtx, err, "an error occurred during the consume operation")
 
 		return false
 	}
 
 	if model == nil {
 		err := fmt.Errorf("can not get model for message attributes %v", msg.Attributes)
-		c.handleError(ctx, err, "an error occurred during the consume operation")
+		c.handleError(gracedCtx, err, "an error occurred during the consume operation")
 
 		return false
 	}
 
-	if ctx, attributes, err = c.encoder.Decode(ctx, msg, model); err != nil {
-		c.handleError(ctx, err, "an error occurred during the consume operation")
+	if gracedCtx, attributes, err = c.encoder.Decode(gracedCtx, msg, model); err != nil {
+		c.handleError(gracedCtx, err, "an error occurred during the consume operation")
 
 		return false
 	}
 
-	if smplCtx, _, err := c.samplingDecider.Decide(ctx); err != nil {
-		c.logger.Warn(ctx, "could not decide on sampling: %s", err)
+	if smplCtx, _, err := c.samplingDecider.Decide(gracedCtx); err != nil {
+		c.logger.Warn(gracedCtx, "could not decide on sampling: %s", err)
 	} else {
-		ctx = smplCtx
+		gracedCtx = smplCtx
 	}
 
 	var messageId string
@@ -252,18 +421,15 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 	if ok {
 		c.logger.WithFields(log.Fields{
 			"sqs_message_id": messageId,
-		}).Debug(ctx, "processing sqs message")
+		}).Debug(gracedCtx, "processing sqs message")
 	}
 
-	delayedCtx, stop := exec.WithDelayedCancelContext(ctx, c.settings.ConsumeGraceTime)
-	defer stop()
-
-	if ack, err = c.callback.Consume(delayedCtx, model, attributes); err != nil {
-		c.handleError(ctx, err, "an error occurred during the consume operation")
+	if ack, err = c.callback.Consume(gracedCtx, model, attributes); err != nil {
+		c.handleError(gracedCtx, err, "an error occurred during the consume operation")
 	}
 
 	if !ack && !hasNativeRetry {
-		c.retry(ctx, msg)
+		c.retry(gracedCtx, msg)
 	}
 
 	return ack

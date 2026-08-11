@@ -156,6 +156,18 @@ func (s *MapperTestSuite) TestFilter() {
 	s.True(filtered.ContainsKey("third"))
 }
 
+func (s *MapperTestSuite) TestAny() {
+	s.mapper.Put("first", 1)
+	s.mapper.Put("second", 2)
+
+	s.True(s.mapper.Any(func(_ string, value int) bool {
+		return value == 2
+	}))
+	s.False(s.mapper.Any(func(_ string, value int) bool {
+		return value == 3
+	}))
+}
+
 func (s *MapperTestSuite) TestRange() {
 	s.mapper.Put("first", 1)
 	s.mapper.Put("second", 2)

@@ -9,10 +9,6 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-func Test_NewKafkaMessageAttrs(t *testing.T) {
-	assert.Equal(t, stream.NewKafkaMessageAttrs("MyKey"), map[string]any{"KafkaKey": "MyKey"})
-}
-
 func Test_GosoMessageSerialization(t *testing.T) {
 	kMessage := kgo.Record{
 		Key:   []byte("MessageKey"),
@@ -30,9 +26,28 @@ func Test_GosoMessageSerialization(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.JSONEq(t, string(serialized), `{
-		"attributes": {"HeaderKey":"HeaderValue"},
+		"attributes": {"HeaderKey":"HeaderValue", "KafkaKey":"MessageKey"},
 		"body": "MessageValue"
 	}`)
+}
+
+func Test_KafkaMessageKeyRoundTrip(t *testing.T) {
+	record := kgo.Record{
+		Key:   []byte("MessageKey"),
+		Value: []byte("MessageValue"),
+	}
+
+	message := stream.KafkaToGosoMessage(record)
+	actual, err := stream.NewKafkaMessage(message)
+
+	assert.NoError(t, err)
+	assert.Equal(t, record.Key, actual.Key)
+}
+
+func Test_KafkaToGosoMessageDoesNotAddEmptyKey(t *testing.T) {
+	message := stream.KafkaToGosoMessage(kgo.Record{})
+
+	assert.NotContains(t, message.Attributes, stream.AttributeKafkaKey)
 }
 
 func Test_NewKafkaMessage(t *testing.T) {

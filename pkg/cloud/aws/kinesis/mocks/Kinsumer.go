@@ -67,17 +67,17 @@ func (_c *Kinsumer_IsHealthy_Call) RunAndReturn(run func() bool) *Kinsumer_IsHea
 	return _c
 }
 
-// Run provides a mock function with given fields: ctx, handler
-func (_m *Kinsumer) Run(ctx context.Context, handler kinesis.MessageHandler) error {
-	ret := _m.Called(ctx, handler)
+// Run provides a mock function with given fields: ctx, process
+func (_m *Kinsumer) Run(ctx context.Context, process kinesis.RecordHandler) error {
+	ret := _m.Called(ctx, process)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Run")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, kinesis.MessageHandler) error); ok {
-		r0 = rf(ctx, handler)
+	if rf, ok := ret.Get(0).(func(context.Context, kinesis.RecordHandler) error); ok {
+		r0 = rf(ctx, process)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -92,14 +92,14 @@ type Kinsumer_Run_Call struct {
 
 // Run is a helper method to define mock.On call
 //   - ctx context.Context
-//   - handler kinesis.MessageHandler
-func (_e *Kinsumer_Expecter) Run(ctx interface{}, handler interface{}) *Kinsumer_Run_Call {
-	return &Kinsumer_Run_Call{Call: _e.mock.On("Run", ctx, handler)}
+//   - process kinesis.RecordHandler
+func (_e *Kinsumer_Expecter) Run(ctx interface{}, process interface{}) *Kinsumer_Run_Call {
+	return &Kinsumer_Run_Call{Call: _e.mock.On("Run", ctx, process)}
 }
 
-func (_c *Kinsumer_Run_Call) Run(run func(ctx context.Context, handler kinesis.MessageHandler)) *Kinsumer_Run_Call {
+func (_c *Kinsumer_Run_Call) Run(run func(ctx context.Context, process kinesis.RecordHandler)) *Kinsumer_Run_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(kinesis.MessageHandler))
+		run(args[0].(context.Context), args[1].(kinesis.RecordHandler))
 	})
 	return _c
 }
@@ -109,7 +109,7 @@ func (_c *Kinsumer_Run_Call) Return(_a0 error) *Kinsumer_Run_Call {
 	return _c
 }
 
-func (_c *Kinsumer_Run_Call) RunAndReturn(run func(context.Context, kinesis.MessageHandler) error) *Kinsumer_Run_Call {
+func (_c *Kinsumer_Run_Call) RunAndReturn(run func(context.Context, kinesis.RecordHandler) error) *Kinsumer_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -22,53 +22,6 @@ func (_m *SchemaRegistryAwareInput) EXPECT() *SchemaRegistryAwareInput_Expecter 
 	return &SchemaRegistryAwareInput_Expecter{mock: &_m.Mock}
 }
 
-// Data provides a mock function with no fields
-func (_m *SchemaRegistryAwareInput) Data() <-chan *stream.Message {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for Data")
-	}
-
-	var r0 <-chan *stream.Message
-	if rf, ok := ret.Get(0).(func() <-chan *stream.Message); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(<-chan *stream.Message)
-		}
-	}
-
-	return r0
-}
-
-// SchemaRegistryAwareInput_Data_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Data'
-type SchemaRegistryAwareInput_Data_Call struct {
-	*mock.Call
-}
-
-// Data is a helper method to define mock.On call
-func (_e *SchemaRegistryAwareInput_Expecter) Data() *SchemaRegistryAwareInput_Data_Call {
-	return &SchemaRegistryAwareInput_Data_Call{Call: _e.mock.On("Data")}
-}
-
-func (_c *SchemaRegistryAwareInput_Data_Call) Run(run func()) *SchemaRegistryAwareInput_Data_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *SchemaRegistryAwareInput_Data_Call) Return(_a0 <-chan *stream.Message) *SchemaRegistryAwareInput_Data_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *SchemaRegistryAwareInput_Data_Call) RunAndReturn(run func() <-chan *stream.Message) *SchemaRegistryAwareInput_Data_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // InitSchemaRegistry provides a mock function with given fields: ctx, settings
 func (_m *SchemaRegistryAwareInput) InitSchemaRegistry(ctx context.Context, settings stream.SchemaSettingsWithEncoding) (stream.MessageBodyEncoder, error) {
 	ret := _m.Called(ctx, settings)
@@ -173,17 +126,17 @@ func (_c *SchemaRegistryAwareInput_IsHealthy_Call) RunAndReturn(run func() bool)
 	return _c
 }
 
-// Run provides a mock function with given fields: ctx
-func (_m *SchemaRegistryAwareInput) Run(ctx context.Context) error {
-	ret := _m.Called(ctx)
+// Run provides a mock function with given fields: ctx, process
+func (_m *SchemaRegistryAwareInput) Run(ctx context.Context, process stream.InputProcess) error {
+	ret := _m.Called(ctx, process)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Run")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, stream.InputProcess) error); ok {
+		r0 = rf(ctx, process)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -198,13 +151,14 @@ type SchemaRegistryAwareInput_Run_Call struct {
 
 // Run is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *SchemaRegistryAwareInput_Expecter) Run(ctx interface{}) *SchemaRegistryAwareInput_Run_Call {
-	return &SchemaRegistryAwareInput_Run_Call{Call: _e.mock.On("Run", ctx)}
+//   - process stream.InputProcess
+func (_e *SchemaRegistryAwareInput_Expecter) Run(ctx interface{}, process interface{}) *SchemaRegistryAwareInput_Run_Call {
+	return &SchemaRegistryAwareInput_Run_Call{Call: _e.mock.On("Run", ctx, process)}
 }
 
-func (_c *SchemaRegistryAwareInput_Run_Call) Run(run func(ctx context.Context)) *SchemaRegistryAwareInput_Run_Call {
+func (_c *SchemaRegistryAwareInput_Run_Call) Run(run func(ctx context.Context, process stream.InputProcess)) *SchemaRegistryAwareInput_Run_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].(stream.InputProcess))
 	})
 	return _c
 }
@@ -214,7 +168,7 @@ func (_c *SchemaRegistryAwareInput_Run_Call) Return(_a0 error) *SchemaRegistryAw
 	return _c
 }
 
-func (_c *SchemaRegistryAwareInput_Run_Call) RunAndReturn(run func(context.Context) error) *SchemaRegistryAwareInput_Run_Call {
+func (_c *SchemaRegistryAwareInput_Run_Call) RunAndReturn(run func(context.Context, stream.InputProcess) error) *SchemaRegistryAwareInput_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }

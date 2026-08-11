@@ -49,19 +49,21 @@ func ProvideConfigurableInput(ctx context.Context, config cfg.Config, logger log
 }
 
 func NewConfigurableInput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
-	t, err := readInputType(config, name)
-	if err != nil {
+	var ok bool
+	var err error
+	var inputType string
+	var factory InputFactory
+	var input Input
+
+	if inputType, err = readInputType(config, name); err != nil {
 		return nil, fmt.Errorf("could not read input type: %w", err)
 	}
 
-	factory, ok := inputFactories[t]
-
-	if !ok {
-		return nil, fmt.Errorf("invalid input %s of type %s", name, t)
+	if factory, ok = inputFactories[inputType]; !ok {
+		return nil, fmt.Errorf("invalid input %s of type %s", name, inputType)
 	}
 
-	input, err := factory(ctx, config, logger, name)
-	if err != nil {
+	if input, err = factory(ctx, config, logger, name); err != nil {
 		return nil, fmt.Errorf("failed to create input: %w", err)
 	}
 
@@ -96,12 +98,12 @@ type KafkaInputConfiguration struct {
 func newKafkaInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 
-	settings := KafkaInputConfiguration{}
-	if err := config.UnmarshalKey(key, &settings); err != nil {
+	settings := &KafkaInputConfiguration{}
+	if err := config.UnmarshalKey(key, settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal kafka input settings: %w", err)
 	}
 
-	return NewKafkaInput(ctx, config, logger, settings.Settings, name)
+	return NewKafkaInput(ctx, config, logger, &settings.Settings, name)
 }
 
 type KinesisInputConfiguration struct {
@@ -125,6 +127,7 @@ type redisInputConfiguration struct {
 	ServerName  string                     `cfg:"server_name" default:"default" validate:"min=1"`
 	Key         string                     `cfg:"key" validate:"required,min=1"`
 	WaitTime    time.Duration              `cfg:"wait_time" default:"3s"`
+	RunnerCount int                        `cfg:"runner_count" default:"1" validate:"min=1"`
 	Healthcheck health.HealthCheckSettings `cfg:"healthcheck"`
 }
 
@@ -140,6 +143,7 @@ func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.
 		ServerName:         configuration.ServerName,
 		Key:                configuration.Key,
 		WaitTime:           configuration.WaitTime,
+		RunnerCount:        configuration.RunnerCount,
 		HealthcheckTimeout: configuration.Healthcheck.Timeout,
 	}
 
@@ -161,7 +165,9 @@ type SnsInputConfiguration struct {
 	MaxNumberOfMessages int32                         `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
 	WaitTime            int32                         `cfg:"wait_time" default:"3" validate:"min=1"`
 	VisibilityTimeout   int                           `cfg:"visibility_timeout" default:"30" validate:"min=1"`
+	GraceTime           time.Duration                 `cfg:"grace_time" default:"10s"`
 	RunnerCount         int                           `cfg:"runner_count" default:"1" validate:"min=1"`
+	AcknowledgementMode SqsAcknowledgementMode        `cfg:"acknowledgement_mode" default:"individual" validate:"oneof=individual batch"`
 	RedrivePolicy       sqs.RedrivePolicy             `cfg:"redrive_policy"`
 	ClientName          string                        `cfg:"client_name" default:"default"`
 	Healthcheck         health.HealthCheckSettings    `cfg:"healthcheck"`
@@ -185,7 +191,9 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 		MaxNumberOfMessages: configuration.MaxNumberOfMessages,
 		WaitTime:            configuration.WaitTime,
 		VisibilityTimeout:   configuration.VisibilityTimeout,
+		GraceTime:           configuration.GraceTime,
 		RunnerCount:         configuration.RunnerCount,
+		AcknowledgementMode: configuration.AcknowledgementMode,
 		RedrivePolicy:       configuration.RedrivePolicy,
 		ClientName:          configuration.ClientName,
 		Healthcheck:         configuration.Healthcheck,
@@ -228,7 +236,9 @@ type sqsInputConfiguration struct {
 	MaxNumberOfMessages int32                      `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
 	WaitTime            int32                      `cfg:"wait_time" default:"3" validate:"min=1"`
 	VisibilityTimeout   int                        `cfg:"visibility_timeout" default:"30" validate:"min=1"`
+	GraceTime           time.Duration              `cfg:"grace_time" default:"10s"`
 	RunnerCount         int                        `cfg:"runner_count" default:"1" validate:"min=1"`
+	AcknowledgementMode SqsAcknowledgementMode     `cfg:"acknowledgement_mode" default:"individual" validate:"oneof=individual batch"`
 	Fifo                sqs.FifoSettings           `cfg:"fifo"`
 	RedrivePolicy       sqs.RedrivePolicy          `cfg:"redrive_policy"`
 	ClientName          string                     `cfg:"client_name" default:"default"`
@@ -254,7 +264,9 @@ func readSqsInputSettings(config cfg.Config, name string) (*SqsInputSettings, er
 		MaxNumberOfMessages: configuration.MaxNumberOfMessages,
 		WaitTime:            configuration.WaitTime,
 		VisibilityTimeout:   configuration.VisibilityTimeout,
+		GraceTime:           configuration.GraceTime,
 		RunnerCount:         configuration.RunnerCount,
+		AcknowledgementMode: configuration.AcknowledgementMode,
 		Fifo:                configuration.Fifo,
 		RedrivePolicy:       configuration.RedrivePolicy,
 		ClientName:          configuration.ClientName,

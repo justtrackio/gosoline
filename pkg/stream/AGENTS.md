@@ -86,6 +86,8 @@ stream:
     my-sns-input:
       type: sns
       id: my-consumer
+      grace_time: 10s          # acknowledgement window after processing drains
+      acknowledgement_mode: individual # use batch only when delayed deletion is acceptable
       tags:                     # optional — identity of the SQS queue used for fan-out
         project: my-project
         family: my-family
@@ -109,6 +111,73 @@ stream:
       retry:
         enabled: true
 ```
+
+Consumer callback concurrency is defined by the input transport. SQS uses
+`stream.input.<name>.runner_count` to control the number of receive loops. Kafka uses the same input setting to bound
+concurrent processing across assigned partitions. Its default `processing_mode` is `unordered`, so records from the same
+topic-partition may be processed concurrently. Set `processing_mode: ordered` to process records sequentially within each
+topic-partition while retaining concurrency across partitions. Kinesis uses the same settings to globally bound record
+processing across all shards owned by one kinsumer. In `ordered` mode it processes each shard sequentially while retaining
+concurrency across shards; in `unordered` mode records from the same shard may be processed concurrently, but checkpoints
+still advance in shard order. In-memory inputs use `runner_count` to control the number of concurrent message-processing
+callbacks.
+
+### Delayed consumption
+
+Kafka and Kinesis inputs can hold records back until they reached a minimum age via
+`stream.input.<name>.consume_delay` (disabled by default). Each record is delayed individually, so a record already
+older than the delay is passed on immediately and a backlog is consumed at full speed. The wait is reported as the
+`SleepDuration` metric and is included in `ProcessDuration`. Consumer lag sits at roughly `consume_delay` by design, so
+lag alerting has to account for it.
+
+The two transports differ in what the age is measured against:
+
+- Kinesis uses the record's approximate arrival timestamp, which is always assigned by the stream.
+- Kafka uses the record's timestamp, which the broker only assigns for topics configured with
+  `message.timestamp.type=LogAppendTime`. With the default `CreateTime` it comes from the producer, so it is not
+  trustworthy: a record dated into the future is delayed by at most `consume_delay`, and a record without a timestamp is
+  not delayed at all.
+
+For Kafka the delay also blocks rebalances, because the reader runs with `kgo.BlockRebalanceOnPoll`. Exceeding
+`rebalance_timeout` while a rebalance is pending gets the consumer kicked out of its group and causes duplicate
+processing, so `consume_delay` is validated to be strictly below `rebalance_timeout` and the config is rejected
+otherwise. Raise `rebalance_timeout` if you need a longer delay. Note that a batch costs roughly
+`consume_delay + the timestamp spread within the batch` rather than `max_poll_records × consume_delay`, since records age
+while their predecessors are waiting.
+
+A shutdown ends an ongoing wait early. Kafka then still processes the record if it is the first of its work unit,
+because that record is committed either way (see the offset gap invariant in `processRecordWorkUnits`); Kinesis leaves
+the record for redelivery.
+
+### Shutdown draining
+
+There are two kinds of grace time and they belong to different layers:
+
+| Setting | Bounds |
+|---------|--------|
+| `stream.consumer.<name>.grace_time` | How long a **record** has to be processed. Single authoritative processing deadline for every input, primary and retry alike. |
+| `stream.input.<name>.grace_time` | How long the **input** has to commit what was processed: SQS message acknowledgement, Kafka offset commit. Kinesis uses `release_delay` for its equivalent (final checkpoint persist, shard release, client deregistration). |
+
+Once shutdown starts, inputs must stop fetching new messages. SQS and in-memory inputs may still process messages from an
+already fetched receive batch or buffer until the consumer's grace deadline expires. Kafka and Kinesis stop admitting
+fetched-but-not-yet-callback records immediately; only records already handed to a callback may continue until that
+deadline. At that point, in-flight callback contexts are canceled and remaining messages are left for retry, and only
+then does the input's own commit window start.
+
+Inputs never run a processing timer of their own. The consumer publishes its drain deadline on the context it passes to
+`Input.Run` via `exec.WithDrainContext`, and Kafka and Kinesis keep in-flight handlers alive until it fires. An input
+driven by something other than a `stream.Consumer` receives no drain context and propagates cancellation immediately, so
+that caller keeps full control over its own shutdown.
+
+Kafka and Kinesis both commit every record that was handed to the callback, even when the callback returned `ack=false`.
+Redelivery is owned by the consumer retry queue, so running these inputs with `retry.enabled: false` drops failed
+records. Kinesis stops admitting records from an already fetched batch as soon as shutdown starts and advances the shard
+checkpoint only through the contiguous handled prefix.
+
+SQS inputs acknowledge each successfully processed message individually by default. Set
+`stream.input.<name>.acknowledgement_mode: batch` to issue one SQS batch delete for all successfully processed messages
+from a receive result. Batch acknowledgement reduces delete requests, but waits for the complete receive batch to finish
+processing before deleting any of its messages.
 
 ## Related packages
 - `pkg/cloud/aws/sqs`, `sns`, `kinesis` - AWS transport clients

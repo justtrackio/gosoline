@@ -3,29 +3,24 @@ package stream
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	kafkaConsumer "github.com/justtrackio/gosoline/pkg/kafka/consumer"
 	schemaRegistry "github.com/justtrackio/gosoline/pkg/kafka/schema-registry"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 type kafkaInput struct {
 	consumer              kafkaConsumer.Consumer
 	schemaRegistryService schemaRegistry.Service
-	schemaRegistryReady   atomic.Bool
-	channel               chan *Message
 }
 
 var _ SchemaRegistryAwareInput = &kafkaInput{}
 
-func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, settings kafkaConsumer.Settings, name string) (Input, error) {
-	channel := make(chan *Message)
-	handler := NewKafkaMessageHandler(channel)
-
-	consumer, err := kafkaConsumer.NewConsumer(ctx, config, logger, handler, settings, name)
+func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *kafkaConsumer.Settings, name string) (Input, error) {
+	consumer, err := kafkaConsumer.NewConsumer(ctx, config, logger, settings, name)
 	if err != nil {
 		return nil, fmt.Errorf("can not create kafka consumer: %w", err)
 	}
@@ -40,48 +35,32 @@ func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, se
 		return nil, fmt.Errorf("can not create schema registry service: %w", err)
 	}
 
-	return NewKafkaInputWithInterfaces(consumer, schemaRegistryService, channel), nil
+	return NewKafkaInputWithInterfaces(consumer, schemaRegistryService), nil
 }
 
-func NewKafkaInputWithInterfaces(consumer kafkaConsumer.Consumer, schemaRegistryService schemaRegistry.Service, channel chan *Message) Input {
-	inp := &kafkaInput{
+func NewKafkaInputWithInterfaces(consumer kafkaConsumer.Consumer, schemaRegistryService schemaRegistry.Service) Input {
+	return &kafkaInput{
 		consumer:              consumer,
 		schemaRegistryService: schemaRegistryService,
-		channel:               channel,
 	}
-
-	// initialize ready as we don't know yet if we will use the schema registry
-	// the schema is only parsed later from the implementing consumer
-	inp.schemaRegistryReady.Store(true)
-
-	return inp
 }
 
-func (i *kafkaInput) Run(ctx context.Context) error {
-	return i.consumer.Run(ctx)
+func (i *kafkaInput) Run(ctx context.Context, process InputProcess) error {
+	return i.consumer.Run(ctx, func(ctx context.Context, record *kgo.Record) bool {
+		msg := KafkaToGosoMessage(*record)
+
+		return process(ctx, msg)
+	})
 }
 
 func (i *kafkaInput) Stop(ctx context.Context) {
 	i.consumer.Stop(ctx)
 }
 
-func (i *kafkaInput) Data() <-chan *Message {
-	return i.channel
-}
-
 func (i *kafkaInput) IsHealthy() bool {
-	return i.consumer.IsHealthy() && i.schemaRegistryReady.Load()
+	return i.consumer.IsHealthy()
 }
 
 func (i *kafkaInput) InitSchemaRegistry(ctx context.Context, settings SchemaSettingsWithEncoding) (MessageBodyEncoder, error) {
-	i.schemaRegistryReady.Store(false)
-
-	encoder, err := InitKafkaSchemaRegistry(ctx, settings, i.schemaRegistryService)
-	if err != nil {
-		return nil, err
-	}
-
-	i.schemaRegistryReady.Store(true)
-
-	return encoder, nil
+	return InitKafkaSchemaRegistry(ctx, settings, i.schemaRegistryService)
 }

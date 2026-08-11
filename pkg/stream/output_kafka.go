@@ -12,8 +12,6 @@ import (
 )
 
 type kafkaOutput struct {
-	logger                log.Logger
-	connection            connection.Settings
 	schemaRegistryService schemaRegistry.Service
 	producer              kafkaProducer.Producer
 }
@@ -36,18 +34,14 @@ func NewKafkaOutput(ctx context.Context, config cfg.Config, logger log.Logger, s
 		return nil, fmt.Errorf("can not create schema registry service: %w", err)
 	}
 
-	return NewKafkaOutputWithInterfaces(logger, *conn, schemaRegistryService, producer), nil
+	return NewKafkaOutputWithInterfaces(schemaRegistryService, producer), nil
 }
 
 func NewKafkaOutputWithInterfaces(
-	logger log.Logger,
-	connection connection.Settings,
 	schemaRegistryService schemaRegistry.Service,
 	producer kafkaProducer.Producer,
 ) Output {
 	return &kafkaOutput{
-		logger:                logger,
-		connection:            connection,
 		schemaRegistryService: schemaRegistryService,
 		producer:              producer,
 	}
@@ -59,12 +53,6 @@ func (o *kafkaOutput) WriteOne(ctx context.Context, msg WritableMessage) error {
 		return fmt.Errorf("failed to build kafka message: %w", err)
 	}
 
-	if o.connection.IsReadOnly {
-		o.logger.Warn(ctx, "dropping message that was written to a read-only output")
-
-		return nil
-	}
-
 	return o.producer.ProduceSync(ctx, message)
 }
 
@@ -72,12 +60,6 @@ func (o *kafkaOutput) Write(ctx context.Context, batch []WritableMessage) error 
 	messages, err := NewKafkaMessages(batch)
 	if err != nil {
 		return fmt.Errorf("failed to build kafka messages: %w", err)
-	}
-
-	if o.connection.IsReadOnly {
-		o.logger.Warn(ctx, "dropping messages that were written to a read-only output")
-
-		return nil
 	}
 
 	return o.producer.ProduceSync(ctx, messages...)
