@@ -1,219 +1,248 @@
 package funk
 
 import (
-	"cmp"
 	"iter"
-	"maps"
-	"slices"
+	"reflect"
 )
 
-// MergeMaps merges zero or more maps into one combined map. Elements from later arguments overwrite elements
-// from earlier arguments in the case of collisions. If given a single argument, MergeMaps produces a swallow
-// copy of the input.
-func MergeMaps[K comparable, V any, M ~map[K]V](m ...M) M {
-	var length int
-	for _, item := range m {
-		length += len(item)
-	}
+// Maper describes a mutable collection of key-value mappings.
+//
+// Methods that return a stored value also return whether a mapping was present,
+// so a stored zero value is distinguishable from an absent key. KeySet and
+// Values return snapshots; modifying them does not modify the Maper.
+type Maper[K comparable, V any] interface {
+	// Size returns the number of key-value mappings.
+	Size() int
+	// IsEmpty reports whether the Maper contains no mappings.
+	IsEmpty() bool
+	// ContainsKey reports whether key has a mapping.
+	ContainsKey(key K) bool
+	// ContainsValue reports whether value is mapped by at least one key.
+	ContainsValue(value V) bool
+	// Get returns the value mapped by key and whether the mapping exists.
+	Get(key K) (value V, ok bool)
+	// Put associates value with key and returns the previous value and whether it was replaced.
+	Put(key K, value V) (previous V, replaced bool)
+	// PutAll copies all mappings from other into the Maper.
+	PutAll(other Maper[K, V])
+	// Merge returns a new Maper containing the mappings from this Maper followed by other.
+	Merge(other ...Maper[K, V]) Maper[K, V]
+	// MergeWith returns a new Maper, combining values for duplicate keys.
+	MergeWith(combine func(V, V) V, other ...Maper[K, V]) Maper[K, V]
+	// Intersect returns a new Maper containing this Maper's mappings whose keys are present in every other Maper.
+	Intersect(other ...Maper[K, V]) Maper[K, V]
+	// IntersectWith returns a new Maper containing values combined for keys present in every Maper.
+	IntersectWith(combine func(V, V) V, other ...Maper[K, V]) Maper[K, V]
+	// Difference returns mappings unique to this Maper and mappings unique to other.
+	Difference(other Maper[K, V]) (inThis Maper[K, V], inOther Maper[K, V])
+	// Remove removes key's mapping and returns its previous value and whether it existed.
+	Remove(key K) (previous V, removed bool)
+	// Clear removes all mappings.
+	Clear()
+	// KeySet returns a snapshot of the mapped keys.
+	KeySet() Set[K]
+	// Keys returns a snapshot of the mapped keys in undefined order.
+	Keys() []K
+	// Values returns a snapshot of the mapped values.
+	Values() []V
+	// Range returns an iterator over a snapshot of the mappings in undefined order.
+	Range() iter.Seq2[K, V]
+	// Filter creates and returns a new map with entries removed which don't satisfy a predicate. The order of the calls to the predicate is undefined.
+	Filter(filter func(key K, value V) bool) Maper[K, V]
+}
 
-	out := make(M, length)
-	for _, item := range m {
-		for k, v := range item {
-			out[k] = v
+// NewMaper creates an empty Maper.
+func NewMaper[K comparable, V any]() Maper[K, V] {
+	return &maper[K, V]{
+		values: make(map[K]V),
+	}
+}
+
+var _ Maper[string, int] = &maper[string, int]{}
+
+type maper[K comparable, V any] struct {
+	values map[K]V
+}
+
+type mapEntry[K comparable, V any] struct {
+	key   K
+	value V
+}
+
+func (m *maper[K, V]) Size() int {
+	return len(m.values)
+}
+
+func (m *maper[K, V]) IsEmpty() bool {
+	return len(m.values) == 0
+}
+
+func (m *maper[K, V]) ContainsKey(key K) bool {
+	_, ok := m.values[key]
+
+	return ok
+}
+
+func (m *maper[K, V]) ContainsValue(value V) bool {
+	for _, candidate := range m.values {
+		if reflect.DeepEqual(candidate, value) {
+			return true
 		}
 	}
 
-	return out
+	return false
 }
 
-// MergeMapsWith is similar to MergeMaps, but uses a function to combine elements from keys present in multiple
-// input maps.
-func MergeMapsWith[K comparable, V any, M ~map[K]V](combine func(V, V) V, m ...M) M {
-	var length int
-	for _, item := range m {
-		length += len(item)
+func (m *maper[K, V]) Get(key K) (value V, ok bool) {
+	value, ok = m.values[key]
+
+	return value, ok
+}
+
+func (m *maper[K, V]) Put(key K, value V) (previous V, replaced bool) {
+	previous, replaced = m.values[key]
+	m.values[key] = value
+
+	return previous, replaced
+}
+
+func (m *maper[K, V]) PutAll(other Maper[K, V]) {
+	for key := range other.KeySet() {
+		value, _ := other.Get(key)
+		m.values[key] = value
+	}
+}
+
+func (m *maper[K, V]) Merge(other ...Maper[K, V]) Maper[K, V] {
+	merged := NewMaper[K, V]()
+	merged.PutAll(m)
+	for _, item := range other {
+		merged.PutAll(item)
 	}
 
-	out := make(M, length)
-	for _, item := range m {
-		for k, v := range item {
-			if existing, ok := out[k]; ok {
-				out[k] = combine(existing, v)
-			} else {
-				out[k] = v
+	return merged
+}
+
+func (m *maper[K, V]) MergeWith(combine func(V, V) V, other ...Maper[K, V]) Maper[K, V] {
+	merged := NewMaper[K, V]()
+	merged.PutAll(m)
+	for _, item := range other {
+		for key := range item.KeySet() {
+			value, _ := item.Get(key)
+			if existing, ok := merged.Get(key); ok {
+				merged.Put(key, combine(existing, value))
+
+				continue
 			}
+
+			merged.Put(key, value)
 		}
 	}
 
-	return out
+	return merged
 }
 
-// IntersectMaps produces the intersection of at least two maps. The resulting map contains all elements from
-// the first map with keys present in all input maps.
-func IntersectMaps[K comparable, V any, M ~map[K]V](m1, m2 M, ms ...M) M {
-	result := make(M)
-
-	for k, v := range m1 {
-		if _, ok := m2[k]; ok && All(ms, func(m3 M) bool {
-			_, ok := m3[k]
-
-			return ok
+func (m *maper[K, V]) Intersect(other ...Maper[K, V]) Maper[K, V] {
+	intersection := NewMaper[K, V]()
+	for key := range m.KeySet() {
+		if All(other, func(item Maper[K, V]) bool {
+			return item.ContainsKey(key)
 		}) {
-			result[k] = v
+			value, _ := m.Get(key)
+			intersection.Put(key, value)
 		}
 	}
 
-	return result
+	return intersection
 }
 
-// IntersectMapsWith is similar to IntersectMaps, but selects the values based on a combination function.
-func IntersectMapsWith[K comparable, V any, M ~map[K]V](combine func(V, V) V, m1, m2 M, ms ...M) M {
-	result := make(M)
-
-	for k, v1 := range m1 {
-		if v2, ok := m2[k]; ok && All(ms, func(m3 M) bool {
-			_, ok := m3[k]
-
-			return ok
-		}) {
-			result[k] = combine(v1, v2)
-			for _, m3 := range ms {
-				result[k] = combine(result[k], m3[k])
-			}
+func (m *maper[K, V]) IntersectWith(combine func(V, V) V, other ...Maper[K, V]) Maper[K, V] {
+	intersection := m.Intersect(other...)
+	for key := range intersection.KeySet() {
+		value, _ := intersection.Get(key)
+		for _, item := range other {
+			otherValue, _ := item.Get(key)
+			value = combine(value, otherValue)
 		}
+		intersection.Put(key, value)
 	}
 
-	return result
+	return intersection
 }
 
-// DifferenceMaps splits two maps into two new maps. The first result contains only the part of the left input
-// map not present in the right input map while the second result contains the part from the right input map
-// without keys in the left input map.
-func DifferenceMaps[K comparable, V1, V2 any, M1 ~map[K]V1, M2 ~map[K]V2](left M1, right M2) (inLeft M1, inRight M2) {
-	inLeft, inRight = make(M1, len(left)), make(M2, len(right))
-
-	for k, v := range left {
-		if _, ok := right[k]; !ok {
-			inLeft[k] = v
+func (m *maper[K, V]) Difference(other Maper[K, V]) (inThis Maper[K, V], inOther Maper[K, V]) {
+	inThis, inOther = NewMaper[K, V](), NewMaper[K, V]()
+	for key := range m.KeySet() {
+		if !other.ContainsKey(key) {
+			value, _ := m.Get(key)
+			inThis.Put(key, value)
+		}
+	}
+	for key := range other.KeySet() {
+		if !m.ContainsKey(key) {
+			value, _ := other.Get(key)
+			inOther.Put(key, value)
 		}
 	}
 
-	for k, v := range right {
-		if _, ok := left[k]; !ok {
-			inRight[k] = v
-		}
-	}
-
-	return inLeft, inRight
+	return inThis, inOther
 }
 
-// Keys returns the keys from a map as a slice. The order of the result will be undefined.
-func Keys[K comparable, V any, M ~map[K]V](m M) []K {
-	keys := make([]K, 0, len(m))
+func (m *maper[K, V]) Remove(key K) (previous V, removed bool) {
+	previous, removed = m.values[key]
+	delete(m.values, key)
 
-	for k := range m {
-		keys = append(keys, k)
+	return previous, removed
+}
+
+func (m *maper[K, V]) Clear() {
+	clear(m.values)
+}
+
+func (m *maper[K, V]) KeySet() Set[K] {
+	keys := make(Set[K], len(m.values))
+	for key := range m.values {
+		keys[key] = struct{}{}
 	}
 
 	return keys
 }
 
-// Values returns the values from a map as a slice. The order of the result will be undefined.
-func Values[K comparable, V any, M ~map[K]V](m M) []V {
-	values := make([]V, 0, len(m))
+func (m *maper[K, V]) Keys() []K {
+	return m.KeySet().ToSlice()
+}
 
-	for _, v := range m {
-		values = append(values, v)
+func (m *maper[K, V]) Values() []V {
+	values := make([]V, 0, len(m.values))
+	for _, value := range m.values {
+		values = append(values, value)
 	}
 
 	return values
 }
 
-// MapFilter removes entries from a map which don't satisfy a predicate. The order of the calls to the predicate is undefined.
-func MapFilter[K comparable, V any, M ~map[K]V](m M, f func(key K, value V) bool) map[K]V {
-	filteredMap := map[K]V{}
-
-	for k, v := range m {
-		if f(k, v) {
-			filteredMap[k] = v
-		}
+func (m *maper[K, V]) Range() iter.Seq2[K, V] {
+	entries := make([]mapEntry[K, V], 0, len(m.values))
+	for key, value := range m.values {
+		entries = append(entries, mapEntry[K, V]{key: key, value: value})
 	}
-
-	return filteredMap
-}
-
-// MapKeys applies a function to every key from a map. If the function maps two keys to the same new value,
-// the result is undefined (one of the values will be randomly chosen).
-func MapKeys[K1 comparable, K2 comparable, V any, M1 ~map[K1]V](m M1, f func(key K1) K2) map[K2]V {
-	r := make(map[K2]V, len(m))
-
-	for k, v := range m {
-		r[f(k)] = v
-	}
-
-	return r
-}
-
-// MapKeysWith is similar to MapKeys, but uses a combination function to resolve conflicts when mapping two keys
-// to the same new key value. The order of the arguments of the combination function is randomly chosen and not
-// defined.
-func MapKeysWith[K1 comparable, K2 comparable, V any, M1 ~map[K1]V](m M1, f func(key K1) K2, combine func(V, V) V) map[K2]V {
-	r := make(map[K2]V, len(m))
-
-	for k, v := range m {
-		newKey := f(k)
-		if existing, ok := r[newKey]; ok {
-			r[newKey] = combine(existing, v)
-		} else {
-			r[newKey] = v
-		}
-	}
-
-	return r
-}
-
-// MapValues applies a function to all values of a map. The order in which the function will be called for each value is undefined.
-func MapValues[K comparable, V1, V2 any, M1 ~map[K]V1](m M1, f func(value V1) V2) map[K]V2 {
-	r := make(map[K]V2, len(m))
-
-	for k, v := range m {
-		r[k] = f(v)
-	}
-
-	return r
-}
-
-// PopulateMap creates a new map from a value and a list of keys. All keys will be mapped to the given value.
-func PopulateMap[V any, K comparable](value V, keys ...K) map[K]V {
-	result := make(map[K]V, len(keys))
-
-	for _, key := range keys {
-		result[key] = value
-	}
-
-	return result
-}
-
-// PopulateMapWith creates a new map from a function and a list of keys by applying the function to each key.
-func PopulateMapWith[T any, K comparable](generator func(K) T, keys ...K) map[K]T {
-	result := make(map[K]T, len(keys))
-
-	for _, key := range keys {
-		result[key] = generator(key)
-	}
-
-	return result
-}
-
-// RangeSorted returns an iterator that yields all key/value pairs from the given map in order sorted by key.
-func RangeSorted[K cmp.Ordered, V any](m map[K]V) iter.Seq2[K, V] {
-	keys := slices.Sorted[K](maps.Keys(m))
 
 	return func(yield func(K, V) bool) {
-		for _, k := range keys {
-			if !yield(k, m[k]) {
+		for _, entry := range entries {
+			if !yield(entry.key, entry.value) {
 				return
 			}
 		}
 	}
+}
+
+func (m *maper[K, V]) Filter(filter func(key K, value V) bool) Maper[K, V] {
+	filtered := NewMaper[K, V]()
+	for key, value := range m.values {
+		if filter(key, value) {
+			filtered.Put(key, value)
+		}
+	}
+
+	return filtered
 }
