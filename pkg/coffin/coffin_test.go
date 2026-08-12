@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -132,4 +133,64 @@ func TestCoffin_Wait_Empty(t *testing.T) {
 	// check waiting on an empty coffin does not block forever
 	err := cfn.Wait()
 	assert.NoError(t, err)
+}
+
+func TestCoffin_Wait_Goexit(t *testing.T) {
+	// runtime.Goexit is what testify's t.FailNow (and therefore require.* and a failing mock expectation) triggers.
+	// It skips tomb's alive bookkeeping, which used to make Wait block forever and turned any assertion failure
+	// inside a tracked go routine into a hanging test instead of a failing one.
+	cfn := coffin.New()
+	cfn.Gof(func() error {
+		runtime.Goexit()
+
+		return nil
+	}, "go routine calling Goexit")
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cfn.Wait()
+	}()
+
+	select {
+	case err := <-done:
+		assert.ErrorIs(t, err, coffin.ErrGoexit)
+	case <-time.After(5 * time.Second):
+		assert.FailNow(t, "Wait did not return after a tracked go routine called runtime.Goexit")
+	}
+}
+
+func TestCoffin_Wait_GoexitWithSiblings(t *testing.T) {
+	// a go routine lost to Goexit must still kill the coffin so its siblings get a chance to shut down
+	cfn := coffin.New()
+	sibling := make(chan struct{})
+
+	cfn.Go(func() error {
+		cfn.Gof(func() error {
+			runtime.Goexit()
+
+			return nil
+		}, "go routine calling Goexit")
+
+		cfn.Gof(func() error {
+			<-cfn.Dying()
+			close(sibling)
+
+			return nil
+		}, "sibling waiting for the coffin to die")
+
+		return nil
+	})
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cfn.Wait()
+	}()
+
+	select {
+	case err := <-done:
+		assert.ErrorIs(t, err, coffin.ErrGoexit)
+		<-sibling
+	case <-time.After(5 * time.Second):
+		assert.FailNow(t, "Wait did not return after a tracked go routine called runtime.Goexit")
+	}
 }

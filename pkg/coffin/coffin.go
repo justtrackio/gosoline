@@ -4,9 +4,18 @@ import (
 	"context"
 	"sync/atomic"
 
+	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/pkg/errors"
 	"gopkg.in/tomb.v2"
 )
+
+// ErrGoexit is the death reason reported by Wait when a tracked goroutine terminated via runtime.Goexit instead of
+// returning normally. The most common source is a testing assertion helper (testify's require.*, mock expectation
+// failures or t.FailNow) being called inside a tracked goroutine.
+//
+// Such a goroutine leaks tomb's internal alive counter, which would otherwise make Wait block forever. The coffin
+// detects this and reports it instead of deadlocking, so the underlying test failure becomes visible.
+var ErrGoexit = errors.New("a tracked goroutine terminated via runtime.Goexit instead of returning")
 
 type Coffin interface {
 	// Alive returns true if the coffin is not in a dying or dead state.
@@ -83,6 +92,10 @@ type coffin struct {
 	started int32
 	// number of terminated go routines
 	terminated int32
+	// closed once every started go routine has terminated, regardless of how it terminated
+	drained conc.SignalOnce
+	// set if at least one go routine terminated via runtime.Goexit
+	goexit atomic.Bool
 }
 
 func New() Coffin {
@@ -90,6 +103,7 @@ func New() Coffin {
 		tomb:       new(tomb.Tomb),
 		started:    0,
 		terminated: 0,
+		drained:    conc.NewSignalOnce(),
 	}
 }
 
@@ -106,6 +120,7 @@ func WithContext(parent context.Context) (Coffin, context.Context) {
 		tomb:       tmb,
 		started:    0,
 		terminated: 0,
+		drained:    conc.NewSignalOnce(),
 	}
 
 	return cfn, ctx
@@ -134,28 +149,37 @@ func (c *coffin) Err() (reason error) {
 func (c *coffin) Go(f func() error) {
 	atomic.AddInt32(&c.started, 1)
 	c.tomb.Go(func() (err error) {
-		defer atomic.AddInt32(&c.terminated, 1)
+		completed := false
+		defer c.trackTermination(&completed)
 		defer func() {
 			panicErr := ResolveRecovery(recover())
 
 			if panicErr != nil {
+				// the panic is handled here, so the go routine still returns normally to tomb
 				err = panicErr
+				completed = true
 			}
 		}()
 
-		return f()
+		err = f()
+		completed = true
+
+		return err
 	})
 }
 
 func (c *coffin) Gof(f func() error, msg string, args ...any) {
 	atomic.AddInt32(&c.started, 1)
 	c.tomb.Go(func() (err error) {
-		defer atomic.AddInt32(&c.terminated, 1)
+		completed := false
+		defer c.trackTermination(&completed)
 		defer func() {
 			panicErr := ResolveRecovery(recover())
 
 			if panicErr != nil {
+				// the panic is handled here, so the go routine still returns normally to tomb
 				err = errors.Wrapf(panicErr, msg, args...)
+				completed = true
 			}
 		}()
 
@@ -163,9 +187,30 @@ func (c *coffin) Gof(f func() error, msg string, args ...any) {
 		if err != nil {
 			err = errors.Wrapf(err, msg, args...)
 		}
+		completed = true
 
 		return
 	})
+}
+
+// trackTermination has to be the first deferred call of a tracked go routine so it runs last while the go routine
+// unwinds. It records the termination and, if the go routine did not return normally, flags the resulting leak of
+// tomb's alive counter so Wait can report it instead of blocking forever.
+func (c *coffin) trackTermination(completed *bool) {
+	atomic.AddInt32(&c.terminated, 1)
+
+	if !*completed {
+		// runtime.Goexit skips tomb's bookkeeping, so tomb can never reach its dead state. Kill the tomb to release
+		// any sibling go routine waiting on Dying and remember why Wait has to bail out early.
+		c.goexit.Store(true)
+		c.tomb.Kill(ErrGoexit)
+	}
+
+	// A tracked go routine may only be started from within another tracked one, so once none of them is running
+	// anymore no further go routine can be added and the coffin is drained for good.
+	if c.Running() == 0 {
+		c.drained.Signal()
+	}
 }
 
 func (c *coffin) GoWithContext(ctx context.Context, f func(ctx context.Context) error) {
@@ -202,7 +247,19 @@ func (c *coffin) Wait() error {
 		return nil
 	}
 
-	return c.tomb.Wait()
+	select {
+	case <-c.tomb.Dead():
+	case <-c.drained.Channel():
+		// The coffin drains slightly before tomb settles, as termination is tracked while a go routine unwinds.
+		// Only a go routine lost to runtime.Goexit keeps tomb from ever reaching its dead state.
+		if c.goexit.Load() {
+			return ErrGoexit
+		}
+
+		<-c.tomb.Dead()
+	}
+
+	return c.tomb.Err()
 }
 
 func (c *coffin) Started() int {
