@@ -115,8 +115,34 @@ func TestRealTicker_ConcurrentResetAndStop(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// tickWaitTimeout is a deliberately generous upper bound for waiting on something which has to happen. Assertions on
+// real time are only stable in one direction: a loaded machine can delay a tick arbitrarily, but it can never make one
+// arrive early. Tests therefore wait generously for expected events and never assert an upper bound on how long an
+// event took to occur.
+const tickWaitTimeout = 5 * time.Second
+
+// waitForBufferedTick waits until the ticker holds a tick in its output buffer and returns the point in time at which
+// that tick was observed. The buffered tick was necessarily generated before the returned timestamp, which allows
+// tests to tell it apart from any tick generated afterwards without relying on absolute durations.
+func waitForBufferedTick(t *testing.T, ticker clock.Ticker) time.Time {
+	t.Helper()
+
+	deadline := time.Now().Add(tickWaitTimeout)
+	for time.Now().Before(deadline) {
+		if len(ticker.Chan()) > 0 {
+			return time.Now()
+		}
+
+		time.Sleep(time.Millisecond)
+	}
+
+	t.Fatal("timed out waiting for a tick to be buffered")
+
+	return time.Time{}
+}
+
 func TestRealTicker_Buffering(t *testing.T) {
-	// This test confirms that a tick is buffered for a short period
+	// This test confirms that a tick is buffered
 	// instead of being dropped immediately.
 	t.Run("should buffer one tick for a briefly slow consumer", func(t *testing.T) {
 		// ARRANGE: Create a ticker with a 100ms interval.
@@ -124,14 +150,15 @@ func TestRealTicker_Buffering(t *testing.T) {
 		ticker := clock.NewRealTicker(tickDuration)
 		defer ticker.Stop()
 
-		// Allow the first tick to be generated and sent to the buffer.
-		time.Sleep(tickDuration + (tickDuration / 2))
+		// Allow the first tick to be generated and sent to the buffer while we are not reading the channel at all,
+		// which is what a briefly slow consumer looks like to the ticker.
+		waitForBufferedTick(t, ticker)
 
-		// ACT & ASSERT: We expect to read the buffered tick immediately.
+		// ACT & ASSERT: The tick generated while we were busy has to still be readable without blocking.
 		select {
 		case <-ticker.Chan():
 			// Test passed: we successfully read the buffered tick.
-		case <-time.After(50 * time.Millisecond):
+		default:
 			t.Fatal("Test failed: Did not receive the buffered tick. It was likely dropped.")
 		}
 	})
@@ -143,29 +170,27 @@ func TestRealTicker_Buffering(t *testing.T) {
 		const tickDuration = 100 * time.Millisecond
 		ticker := clock.NewRealTicker(tickDuration)
 		defer ticker.Stop()
-		startTime := time.Now()
 
-		// Allow the first tick (Tick 1) to be generated and fill the buffer.
-		time.Sleep(tickDuration + (tickDuration / 2))
+		// Allow the first tick (Tick 1) to be generated and fill the buffer. Every tick generated from now on
+		// carries a timestamp after bufferedAt.
+		bufferedAt := waitForBufferedTick(t, ticker)
 
-		// ACT: Wait long enough for a second tick (Tick 2) to be generated.
-		// Since the buffer is full with Tick 1, Tick 2 should be dropped.
-		time.Sleep(tickDuration)
+		// ACT: Wait long enough for further ticks to be generated. Since the buffer is full with Tick 1, they
+		// should all be dropped.
+		time.Sleep(3 * tickDuration)
 
 		// ASSERT:
 		// 1. The channel should still only contain one item.
-		if len(ticker.Chan()) != 1 {
-			t.Fatalf("Expected buffer to contain 1 tick, but found %d", len(ticker.Chan()))
+		if l := len(ticker.Chan()); l != 1 {
+			t.Fatalf("Expected buffer to contain 1 tick, but found %d", l)
 		}
 
-		// 2. The tick we read should be Tick 1, not Tick 2.
-		// We verify this by checking its timestamp.
+		// 2. The tick we read should be Tick 1, not one of the later ticks. Comparing against bufferedAt rather
+		// than an absolute duration keeps this stable under load: if the machine is busy and delays Tick 1, then
+		// bufferedAt is delayed by exactly the same amount.
 		receivedTick := <-ticker.Chan()
-		timeSinceStart := receivedTick.Sub(startTime)
-
-		// The timestamp should be from the first tick interval (~100ms), not the second (~200ms).
-		if timeSinceStart > tickDuration*3/2 {
-			t.Errorf("Wrong tick was kept in buffer. Expected timestamp ~%v, got %v", tickDuration, timeSinceStart)
+		if receivedTick.After(bufferedAt) {
+			t.Errorf("Wrong tick was kept in buffer. Expected the tick buffered before %v, got one from %v", bufferedAt, receivedTick)
 		}
 	})
 }
@@ -201,17 +226,22 @@ func TestRealTicker_Reset_DoesNotSendStaleTick(t *testing.T) {
 	}
 }
 
-// TestRealTicker_Stop ensures that after Stop() is called and returns, no more ticks are sent.
+// TestRealTicker_Stop ensures that after Stop() is called and returns, no more ticks are sent. This includes a tick
+// which was already generated before Stop was called, but not consumed yet.
 func TestRealTicker_Stop(t *testing.T) {
 	// GIVEN a fast ticker
 	ticker := clock.NewRealTicker(1 * time.Millisecond)
 	// Consume one tick to ensure it's running
 	<-ticker.Chan()
 
+	// AND a tick which has been generated but not consumed. Waiting for it explicitly makes this deterministic:
+	// otherwise whether a tick is pending at the time of the Stop below is decided by the scheduler.
+	waitForBufferedTick(t, ticker)
+
 	// WHEN we stop the ticker
 	ticker.Stop()
 
-	// THEN no more ticks should be received.
+	// THEN no more ticks should be received, the pending tick has to be discarded as well.
 	select {
 	case tick, ok := <-ticker.Chan():
 		if ok {
@@ -226,22 +256,25 @@ func TestRealTicker_Stop(t *testing.T) {
 
 // TestRealTicker_Reset_Timing ensures the first tick after a Reset arrives after the new duration.
 func TestRealTicker_Reset_Timing(t *testing.T) {
-	// GIVEN a ticker
+	// GIVEN a ticker which would not produce a tick during this test
 	ticker := clock.NewRealTicker(1 * time.Hour)
+	defer ticker.Stop()
 
 	// WHEN we reset it to a shorter, testable duration
+	const resetDuration = 100 * time.Millisecond
 	resetTime := time.Now()
-	ticker.Reset(100 * time.Millisecond)
+	ticker.Reset(resetDuration)
 
-	// THEN the next tick should arrive approximately after the new duration has passed.
+	// THEN the next tick should arrive after the new duration has passed. Receiving a tick at all already proves the
+	// reset took effect, as the original duration would not have produced one.
 	select {
 	case tickTime := <-ticker.Chan():
 		elapsed := tickTime.Sub(resetTime)
-		// We expect the tick to arrive *after* the reset duration.
-		// We allow for a generous upper bound to account for test scheduler latency.
-		assert.True(t, elapsed >= 100*time.Millisecond, "tick arrived too early. elapsed: %v", elapsed)
-		assert.True(t, elapsed < 400*time.Millisecond, "tick arrived too late. elapsed: %v", elapsed)
-	case <-time.After(500 * time.Millisecond):
+		// Only the lower bound is asserted. It describes an actual property of the ticker, namely that no stale
+		// tick of the previous period is delivered. An upper bound on the other hand only describes how busy the
+		// machine running the test is.
+		assert.GreaterOrEqual(t, elapsed, resetDuration, "tick arrived too early. elapsed: %v", elapsed)
+	case <-time.After(tickWaitTimeout):
 		t.Fatal("timed out waiting for tick after reset")
 	}
 }
@@ -261,7 +294,7 @@ func TestRealTicker_ResetAfterStop(t *testing.T) {
 	select {
 	case <-ticker.Chan():
 		// Success: a tick was received, so the ticker was restarted.
-	case <-time.After(150 * time.Millisecond):
+	case <-time.After(tickWaitTimeout):
 		t.Fatal("timed out waiting for a tick; Reset() did not restart the stopped ticker")
 	}
 }

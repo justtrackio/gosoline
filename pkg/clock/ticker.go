@@ -17,8 +17,9 @@ type Ticker interface {
 	// Reset stops a ticker and resets its period to the specified duration. The next tick will arrive after the new period
 	// elapses. If you did Stop the Ticker before, it will be restarted.
 	Reset(d time.Duration)
-	// Stop turns off a ticker. After Stop, no more ticks will be sent. Stop does not close the channel, to prevent a
-	// concurrent goroutine reading from the channel from seeing an erroneous "tick".
+	// Stop turns off a ticker. After Stop, no more ticks will be sent, including a tick which was already generated
+	// but not consumed yet. Stop does not close the channel, to prevent a concurrent goroutine reading from the
+	// channel from seeing an erroneous "tick".
 	Stop()
 }
 
@@ -81,6 +82,13 @@ func (t *realTicker) Stop() {
 
 	t.stopTransformerAndWait()
 	t.ticker.Stop()
+
+	// The transformer may have forwarded a tick just before it was stopped. Drain it, as it would otherwise still be
+	// readable after Stop returned. This mirrors what Reset does before restarting the ticker.
+	select {
+	case <-t.output:
+	default:
+	}
 }
 
 func (t *realTicker) stopTransformerAndWait() {
