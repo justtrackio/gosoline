@@ -48,7 +48,7 @@ func (c *consumerAcknowledge) Acknowledge(ctx context.Context, cdata *consumerDa
 			// we only got an error on the context, assign it so we don't log a nil error
 			err = ctx.Err()
 		}
-		c.logger.Warn(ctx, "could not acknowledge the message during shutdown: %w", err)
+		c.logger.Warn(ctx, "could not acknowledge the message during shutdown: %s", err)
 
 		return
 	}

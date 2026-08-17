@@ -18,10 +18,17 @@ const (
 )
 
 func init() {
-	outputFactories[OutputTypeDb] = outputDbFactory
+	AddOutput(OutputTypeDb, outputDbFactory)
 }
 
-func outputDbFactory(ctx context.Context, config cfg.Config, logger log.Logger, _ *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
+func outputDbFactory(
+	ctx context.Context,
+	config cfg.Config,
+	logger log.Logger,
+	_ *SubscriberSettings,
+	transformers VersionedModelTransformers,
+	_ string,
+) (map[int]Output, error) {
 	var err error
 	outputs := make(map[int]Output)
 

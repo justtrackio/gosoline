@@ -15,7 +15,14 @@ type Output interface {
 
 type (
 	Outputs       map[string]map[int]Output
-	OutputFactory func(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error)
+	OutputFactory func(
+		ctx context.Context,
+		config cfg.Config,
+		logger log.Logger,
+		settings *SubscriberSettings,
+		transformers VersionedModelTransformers,
+		subscriberName string,
+	) (map[int]Output, error)
 )
 
 var outputFactories = map[string]OutputFactory{}
@@ -24,7 +31,13 @@ func AddOutput(name string, factory OutputFactory) {
 	outputFactories[name] = factory
 }
 
-func initOutputs(ctx context.Context, config cfg.Config, logger log.Logger, subscriberSettings map[string]*SubscriberSettings, transformers ModelTransformers) (Outputs, error) {
+func initOutputs(
+	ctx context.Context,
+	config cfg.Config,
+	logger log.Logger,
+	subscriberSettings map[string]*SubscriberSettings,
+	transformers ModelTransformers,
+) (Outputs, error) {
 	var ok bool
 	var err error
 	var modelId string
@@ -45,7 +58,7 @@ func initOutputs(ctx context.Context, config cfg.Config, logger log.Logger, subs
 
 		modelId := settings.SourceModel.String()
 
-		if outputs[modelId], err = outputFactory(ctx, config, logger, settings, versionedModelTransformers); err != nil {
+		if outputs[modelId], err = outputFactory(ctx, config, logger, settings, versionedModelTransformers, name); err != nil {
 			return nil, fmt.Errorf("can not create output for subscriber %s with modelId %s: %w", name, modelId, err)
 		}
 	}
