@@ -14,10 +14,17 @@ const (
 )
 
 func init() {
-	outputFactories[OutputTypeKvstore] = outputKvstoreFactory
+	AddOutput(OutputTypeKvstore, outputKvstoreFactory)
 }
 
-func outputKvstoreFactory(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
+func outputKvstoreFactory(
+	ctx context.Context,
+	config cfg.Config,
+	logger log.Logger,
+	settings *SubscriberSettings,
+	transformers VersionedModelTransformers,
+	_ string,
+) (map[int]Output, error) {
 	var err error
 	outputs := make(map[int]Output)
 

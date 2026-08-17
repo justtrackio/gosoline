@@ -14,10 +14,17 @@ const (
 )
 
 func init() {
-	outputFactories[OutputTypeDdb] = outputDdbFactory
+	AddOutput(OutputTypeDdb, outputDdbFactory)
 }
 
-func outputDdbFactory(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
+func outputDdbFactory(
+	ctx context.Context,
+	config cfg.Config,
+	logger log.Logger,
+	settings *SubscriberSettings,
+	transformers VersionedModelTransformers,
+	_ string,
+) (map[int]Output, error) {
 	outputs := make(map[int]Output)
 
 	for version, transformer := range transformers {

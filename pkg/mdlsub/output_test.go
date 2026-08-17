@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	mdlsub.AddOutput("mock", func(ctx context.Context, config cfg.Config, logger log.Logger, settings *mdlsub.SubscriberSettings, transformers mdlsub.VersionedModelTransformers) (map[int]mdlsub.Output, error) {
+	mdlsub.AddOutput("mock", func(ctx context.Context, config cfg.Config, logger log.Logger, settings *mdlsub.SubscriberSettings, transformers mdlsub.VersionedModelTransformers, _ string) (map[int]mdlsub.Output, error) {
 		outputs := make(map[int]mdlsub.Output)
 
 		for version := range transformers {

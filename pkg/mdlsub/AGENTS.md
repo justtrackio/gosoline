@@ -23,7 +23,7 @@
 [DB/DDB change] → [Publisher] → [Stream output] → [Subscriber] → [Output target]
 ```
 
-Output targets: `db`, `ddb`, `kvstore`
+Output targets: `db`, `ddb`, `kvstore`, `fanout` (composes registered outputs)
 
 ## PublisherSettings
 
