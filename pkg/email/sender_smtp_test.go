@@ -49,6 +49,7 @@ func (s *senderSmtpTestSuite) TestSendEmail_Html() {
 	s.uuid.EXPECT().NewV4().Return("gosoMail")
 
 	expectedBody := `Subject: Test Email
+MIME-Version: 1.0
 Content-Type: multipart/alternative; boundary="gosoMail"
 
 --gosoMail
@@ -89,6 +90,7 @@ func (s *senderSmtpTestSuite) TestSendEmail_Text() {
 	s.uuid.EXPECT().NewV4().Return("gosoMail")
 
 	expectedBody := `Subject: Test Email
+MIME-Version: 1.0
 Content-Type: multipart/alternative; boundary="gosoMail"
 
 --gosoMail
@@ -130,14 +132,8 @@ func (s *senderSmtpTestSuite) TestSendEmail_MultiFormat() {
 	s.uuid.EXPECT().NewV4().Return("gosoMail")
 
 	expectedBody := `Subject: Test Email
+MIME-Version: 1.0
 Content-Type: multipart/alternative; boundary="gosoMail"
-
---gosoMail
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/html; charset="utf-8"
-
-<html><p><b>Hello!</b> We're sending you a test email.<p></html>
 
 --gosoMail
 Content-Disposition: inline
@@ -145,6 +141,13 @@ Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain; charset="utf-8"
 
 Hello! We're sending you a test email.
+
+--gosoMail
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/html; charset="utf-8"
+
+<html><p><b>Hello!</b> We're sending you a test email.<p></html>
 
 --gosoMail--
 `
@@ -167,9 +170,91 @@ Hello! We're sending you a test email.
 	s.NoError(err)
 }
 
+func (s *senderSmtpTestSuite) TestSendEmail_WithAttachment() {
+	recipients := []string{"foo@bar.com"}
+	subject := "Your résumé"
+	textBody := "Your invoice is attached."
+	htmlBody := "<p>Your invoice is attached.</p>"
+	attachment := &email.Attachment{
+		Filename:    "invoice.pdf",
+		ContentType: "application/pdf",
+		Content:     []byte("%PDF-1.7\ninvoice"),
+	}
+
+	s.uuid.EXPECT().NewV4().Return("mixedBoundary").Once()
+	s.uuid.EXPECT().NewV4().Return("alternativeBoundary").Once()
+	s.client.EXPECT().SendMail(s.from, recipients, mock.MatchedBy(func(val any) bool {
+		_, ok := val.(io.Reader)
+
+		return ok
+	})).Run(func(_ string, _ []string, reader io.Reader) {
+		assertAttachmentMessage(s.T(), reader, s.from, recipients, subject, textBody, htmlBody, attachment)
+	}).Return(nil)
+
+	err := s.sender.SendEmail(s.T().Context(), email.Email{
+		Recipients: recipients,
+		Subject:    subject,
+		TextBody:   &textBody,
+		HtmlBody:   &htmlBody,
+		Attachment: attachment,
+	})
+	s.NoError(err)
+}
+
 func (s *senderSmtpTestSuite) TestSendEmail_NoBodyProvided() {
 	err := s.sender.SendEmail(s.T().Context(), email.Email{})
 
 	s.Error(err)
 	s.EqualError(err, "email body cannot be empty")
+}
+
+func (s *senderSmtpTestSuite) TestSendEmail_InvalidEmailDoesNotDialSMTP() {
+	body := "This is a plain text email."
+	attachment := &email.Attachment{
+		Filename:    "invoice.pdf",
+		ContentType: "application/pdf",
+		Content:     []byte("content"),
+	}
+
+	testCases := []struct {
+		name     string
+		from     string
+		email    email.Email
+		expected string
+	}{
+		{
+			name: "invalid subject",
+			from: s.from,
+			email: email.Email{
+				Subject:  "Invoice\r\nBcc: attacker@example.com",
+				TextBody: &body,
+			},
+			expected: "email subject cannot contain line breaks",
+		},
+		{
+			name: "invalid sender for attachment",
+			from: "invalid sender",
+			email: email.Email{
+				Recipients: []string{"recipient@example.com"},
+				TextBody:   &body,
+				Attachment: attachment,
+			},
+			expected: "could not compile email body: format email sender:",
+		},
+	}
+
+	for _, testCase := range testCases {
+		s.Run(testCase.name, func() {
+			called := false
+			sender := email.NewSmtpSenderWithInterfaces(func() (email.SmtpClient, error) {
+				called = true
+
+				return s.client, nil
+			}, s.uuid, testCase.from)
+
+			err := sender.SendEmail(s.T().Context(), testCase.email)
+			s.ErrorContains(err, testCase.expected)
+			s.False(called)
+		})
+	}
 }

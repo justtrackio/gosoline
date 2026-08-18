@@ -1,6 +1,7 @@
 package email_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/email"
 	loggerMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -141,11 +143,92 @@ func (s *sesSenderTestSuite) TestSendEmail_MultiFormatEmail() {
 	s.NoError(err)
 }
 
+func (s *sesSenderTestSuite) TestSendEmail_WithAttachment() {
+	recipients := []string{"recipient@example.com"}
+	subject := "Your résumé"
+	textBody := "Your invoice is attached."
+	htmlBody := "<p>Your invoice is attached.</p>"
+	attachment := &email.Attachment{
+		Filename:    "invoice.pdf",
+		ContentType: "application/pdf",
+		Content:     []byte("%PDF-1.7\ninvoice"),
+	}
+
+	s.client.EXPECT().SendEmail(matcher.Context, mock.MatchedBy(func(input *sesv2.SendEmailInput) bool {
+		s.Equal("sender@example.com", aws.ToString(input.FromEmailAddress))
+		s.Equal(recipients, input.Destination.ToAddresses)
+		s.Nil(input.Content.Simple)
+		s.NotNil(input.Content.Raw)
+		assertAttachmentMessage(s.T(), bytes.NewReader(input.Content.Raw.Data), "sender@example.com", recipients, subject, textBody, htmlBody, attachment)
+
+		return true
+	})).Return(&sesv2.SendEmailOutput{}, nil)
+
+	err := s.sender.SendEmail(s.ctx, email.Email{
+		Recipients: recipients,
+		Subject:    subject,
+		TextBody:   &textBody,
+		HtmlBody:   &htmlBody,
+		Attachment: attachment,
+	})
+	s.NoError(err)
+}
+
 func (s *sesSenderTestSuite) TestSendEmail_NoBodyProvided() {
 	err := s.sender.SendEmail(s.ctx, email.Email{})
 
 	s.Error(err)
 	s.EqualError(err, "email body cannot be empty")
+}
+
+func (s *sesSenderTestSuite) TestSendEmail_InvalidAttachment() {
+	body := "This is a plain text email."
+
+	testCases := []struct {
+		name       string
+		attachment *email.Attachment
+		expected   string
+	}{
+		{
+			name:       "missing filename",
+			attachment: &email.Attachment{ContentType: "application/pdf", Content: []byte("content")},
+			expected:   "email attachment filename cannot be empty",
+		},
+		{
+			name:       "missing content type",
+			attachment: &email.Attachment{Filename: "invoice.pdf", Content: []byte("content")},
+			expected:   "email attachment content type cannot be empty",
+		},
+		{
+			name:       "invalid content type",
+			attachment: &email.Attachment{Filename: "invoice.pdf", ContentType: "application", Content: []byte("content")},
+			expected:   "email attachment content type is invalid",
+		},
+		{
+			name:       "missing content",
+			attachment: &email.Attachment{Filename: "invoice.pdf", ContentType: "application/pdf"},
+			expected:   "email attachment content cannot be empty",
+		},
+	}
+
+	for _, testCase := range testCases {
+		s.Run(testCase.name, func() {
+			err := s.sender.SendEmail(s.ctx, email.Email{TextBody: &body, Attachment: testCase.attachment})
+
+			s.EqualError(err, testCase.expected)
+		})
+	}
+}
+
+func (s *sesSenderTestSuite) TestSendEmail_InvalidSubject() {
+	body := "This is a plain text email."
+
+	err := s.sender.SendEmail(s.ctx, email.Email{
+		Subject:  "Invoice\r\nBcc: attacker@example.com",
+		TextBody: &body,
+	})
+
+	s.EqualError(err, "email subject cannot contain line breaks")
 }
 
 func (s *sesSenderTestSuite) TestSendEmail_ErrorFromSES() {

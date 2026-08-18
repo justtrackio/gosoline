@@ -55,34 +55,56 @@ func NewSesSenderWithInterfaces(logger log.Logger, client gosoSES.Client, fromAd
 }
 
 func (s *sesSender) SendEmail(ctx context.Context, email Email) error {
-	body := &types.Body{}
-
-	if email.HtmlBody != nil {
-		body.Html = &types.Content{Data: email.HtmlBody, Charset: aws.String("UTF-8")}
+	if err := email.validate(); err != nil {
+		return err
 	}
 
-	if email.TextBody != nil {
-		body.Text = &types.Content{Data: email.TextBody, Charset: aws.String("UTF-8")}
+	input, err := s.emailInput(email)
+	if err != nil {
+		return err
 	}
 
-	if body.Html == nil && body.Text == nil {
-		return fmt.Errorf("email body cannot be empty")
-	}
+	_, err = s.client.SendEmail(ctx, input)
 
+	return err
+}
+
+func (s *sesSender) emailInput(email Email) (*sesv2.SendEmailInput, error) {
 	input := &sesv2.SendEmailInput{
 		FromEmailAddress: aws.String(s.fromAddress),
 		Destination: &types.Destination{
 			ToAddresses: email.Recipients,
 		},
-		Content: &types.EmailContent{
-			Simple: &types.Message{
-				Subject: &types.Content{Data: aws.String(email.Subject), Charset: aws.String("UTF-8")},
-				Body:    body,
-			},
-		},
 	}
 
-	_, err := s.client.SendEmail(ctx, input)
+	if email.Attachment == nil {
+		input.Content = simpleEmailContent(email)
 
-	return err
+		return input, nil
+	}
+
+	raw, err := compileAttachmentMIME(email, s.fromAddress, generatedMIMEBoundary)
+	if err != nil {
+		return nil, fmt.Errorf("could not compile email body: %w", err)
+	}
+	input.Content = &types.EmailContent{Raw: &types.RawMessage{Data: raw}}
+
+	return input, nil
+}
+
+func simpleEmailContent(email Email) *types.EmailContent {
+	body := &types.Body{}
+	if email.HtmlBody != nil {
+		body.Html = &types.Content{Data: email.HtmlBody, Charset: aws.String("UTF-8")}
+	}
+	if email.TextBody != nil {
+		body.Text = &types.Content{Data: email.TextBody, Charset: aws.String("UTF-8")}
+	}
+
+	return &types.EmailContent{
+		Simple: &types.Message{
+			Subject: &types.Content{Data: aws.String(email.Subject), Charset: aws.String("UTF-8")},
+			Body:    body,
+		},
+	}
 }
