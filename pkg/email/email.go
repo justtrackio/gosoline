@@ -13,12 +13,18 @@ type Attachment struct {
 	Content     []byte
 }
 
+// Email is an email message without attachments.
 type Email struct {
 	Recipients []string
 	Subject    string
 	TextBody   *string
 	HtmlBody   *string
-	Attachment *Attachment
+}
+
+// EmailWithAttachments is an email message with one or more attachments.
+type EmailWithAttachments struct {
+	Email
+	Attachments []Attachment
 }
 
 func (e Email) validate() error {
@@ -28,20 +34,35 @@ func (e Email) validate() error {
 	if strings.ContainsAny(e.Subject, "\r\n") {
 		return errors.New("email subject cannot contain line breaks")
 	}
-	if e.Attachment == nil {
-		return nil
-	}
-	if strings.TrimSpace(e.Attachment.Filename) == "" {
-		return errors.New("email attachment filename cannot be empty")
-	}
-	if strings.ContainsAny(e.Attachment.Filename, "\r\n") {
-		return errors.New("email attachment filename cannot contain line breaks")
-	}
-	if err := validateMediaType(e.Attachment.ContentType); err != nil {
+
+	return nil
+}
+
+func (e EmailWithAttachments) validate() error {
+	if err := e.Email.validate(); err != nil {
 		return err
 	}
-	if len(e.Attachment.Content) == 0 {
-		return errors.New("email attachment content cannot be empty")
+	if len(e.Attachments) == 0 {
+		return errors.New("email attachments cannot be empty")
+	}
+	for _, attachment := range e.Attachments {
+		if err := attachment.validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (a Attachment) validate() error {
+	if strings.TrimSpace(a.Filename) == "" {
+		return errors.New("email attachment filename cannot be empty")
+	}
+	if strings.ContainsAny(a.Filename, "\r\n") {
+		return errors.New("email attachment filename cannot contain line breaks")
+	}
+	if err := validateMediaType(a.ContentType); err != nil {
+		return err
 	}
 
 	return nil

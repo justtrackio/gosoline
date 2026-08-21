@@ -7,72 +7,64 @@ import (
 	"mime"
 	"mime/multipart"
 	"mime/quotedprintable"
-	"net/mail"
 	"net/textproto"
-	"strings"
 	"time"
 )
 
-const mimeLineBreak = "\r\n"
-
-func compileAttachmentMIME(email Email, fromAddress string, nextBoundary func() string) ([]byte, error) {
-	from, err := formatMailbox(fromAddress)
-	if err != nil {
-		return nil, fmt.Errorf("format email sender: %w", err)
-	}
-	to, err := formatMailboxList(email.Recipients)
-	if err != nil {
-		return nil, fmt.Errorf("format email recipients: %w", err)
+// compileMIME renders email as a MIME message. A message without attachments becomes a multipart/alternative message, a
+// message with attachments a multipart/mixed message whose first part carries the multipart/alternative bodies. Both shapes
+// get the same header block, so the presence of an attachment does not change how the message is addressed.
+func compileMIME(email EmailWithAttachments, envelope emailEnvelope, nextBoundary func() string, now time.Time, body io.Writer) error {
+	if len(email.Attachments) == 0 {
+		return compileAlternativeMIME(email.Email, envelope, nextBoundary(), now, body)
 	}
 
+	return compileAttachmentsMIME(email, envelope, nextBoundary, now, body)
+}
+
+func compileAlternativeMIME(email Email, envelope emailEnvelope, boundary string, now time.Time, body io.Writer) error {
+	if err := writeMessageHeaders(body, envelope, email.Subject, "multipart/alternative", boundary, now); err != nil {
+		return err
+	}
+
+	writer := multipart.NewWriter(body)
+	if err := writer.SetBoundary(boundary); err != nil {
+		return fmt.Errorf("could not write email boundary: %w", err)
+	}
+	if err := writeBodyParts(writer, email.TextBody, email.HtmlBody); err != nil {
+		return err
+	}
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("could not close multipart writer: %w", err)
+	}
+
+	return nil
+}
+
+func compileAttachmentsMIME(email EmailWithAttachments, envelope emailEnvelope, nextBoundary func() string, now time.Time, body io.Writer) error {
 	mixedBoundary := nextBoundary()
 	alternativeBoundary := nextBoundary()
-	body := &bytes.Buffer{}
-	if err := writeRawMessageHeaders(body, from, to, email.Subject, "multipart/mixed", mixedBoundary, time.Now().UTC()); err != nil {
-		return nil, err
+	if err := writeMessageHeaders(body, envelope, email.Subject, "multipart/mixed", mixedBoundary, now); err != nil {
+		return err
 	}
 
 	mixedWriter := multipart.NewWriter(body)
 	if err := mixedWriter.SetBoundary(mixedBoundary); err != nil {
-		return nil, fmt.Errorf("could not write email boundary: %w", err)
+		return fmt.Errorf("could not write email boundary: %w", err)
 	}
 	if err := writeAlternativePart(mixedWriter, alternativeBoundary, email.TextBody, email.HtmlBody); err != nil {
-		return nil, err
+		return err
 	}
-	if err := writeAttachmentPart(mixedWriter, email.Attachment); err != nil {
-		return nil, err
+	for index := range email.Attachments {
+		if err := writeAttachmentPart(mixedWriter, &email.Attachments[index]); err != nil {
+			return err
+		}
 	}
 	if err := mixedWriter.Close(); err != nil {
-		return nil, fmt.Errorf("could not close multipart writer: %w", err)
+		return fmt.Errorf("could not close multipart writer: %w", err)
 	}
 
-	return body.Bytes(), nil
-}
-
-func formatMailbox(value string) (string, error) {
-	mailbox, err := mail.ParseAddress(value)
-	if err != nil {
-		return "", err
-	}
-
-	return mailbox.String(), nil
-}
-
-func formatMailboxList(recipients []string) (string, error) {
-	if len(recipients) == 0 {
-		return "", fmt.Errorf("recipient list is empty")
-	}
-
-	mailboxes := make([]string, 0, len(recipients))
-	for _, recipient := range recipients {
-		mailbox, err := formatMailbox(recipient)
-		if err != nil {
-			return "", err
-		}
-		mailboxes = append(mailboxes, mailbox)
-	}
-
-	return strings.Join(mailboxes, ", "), nil
+	return nil
 }
 
 func writeAlternativePart(mixedWriter *multipart.Writer, alternativeBoundary string, text *string, html *string) error {
@@ -91,7 +83,7 @@ func writeAlternativePart(mixedWriter *multipart.Writer, alternativeBoundary str
 		return err
 	}
 	if err := alternativeWriter.Close(); err != nil {
-		return fmt.Errorf("could not close alternative multipart writer: %w", err)
+		return fmt.Errorf("could not close alternative email boundary: %w", err)
 	}
 
 	return nil
@@ -104,9 +96,22 @@ func writeAttachmentPart(mixedWriter *multipart.Writer, attachment *Attachment) 
 	}
 	params["name"] = attachment.Filename
 
+	contentType, err := formatAttachmentHeaderValue("Content-Type", mediaType, params)
+	if err != nil {
+		return err
+	}
+	contentDisposition, err := formatAttachmentHeaderValue(
+		"Content-Disposition",
+		"attachment",
+		map[string]string{"filename": attachment.Filename},
+	)
+	if err != nil {
+		return err
+	}
+
 	attachmentHeader := textproto.MIMEHeader{}
-	attachmentHeader.Set("Content-Type", mime.FormatMediaType(mediaType, params))
-	attachmentHeader.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": attachment.Filename}))
+	attachmentHeader.Set("Content-Type", contentType)
+	attachmentHeader.Set("Content-Disposition", contentDisposition)
 	attachmentHeader.Set("Content-Transfer-Encoding", "base64")
 	attachmentPart, err := mixedWriter.CreatePart(attachmentHeader)
 	if err != nil {
@@ -121,41 +126,6 @@ func writeAttachmentPart(mixedWriter *multipart.Writer, attachment *Attachment) 
 
 func generatedMIMEBoundary() string {
 	return multipart.NewWriter(io.Discard).Boundary()
-}
-
-func writeRawMessageHeaders(body *bytes.Buffer, from string, to string, subject string, contentType string, boundary string, now time.Time) error {
-	headers := []string{
-		"Date: " + now.Format(time.RFC1123Z) + mimeLineBreak,
-		"From: " + from + mimeLineBreak,
-		"To: " + to + mimeLineBreak,
-		"Subject: " + encodeHeader(subject) + mimeLineBreak,
-		"MIME-Version: 1.0" + mimeLineBreak,
-		fmt.Sprintf("Content-Type: %s; boundary=%q", contentType, boundary) + mimeLineBreak,
-		mimeLineBreak,
-	}
-
-	return writeHeaders(body, headers)
-}
-
-func writeMessageHeaders(body *bytes.Buffer, subject string, contentType string, boundary string) error {
-	headers := []string{
-		"Subject: " + subject + mimeLineBreak,
-		"MIME-Version: 1.0" + mimeLineBreak,
-		fmt.Sprintf("Content-Type: %s; boundary=%q", contentType, boundary) + mimeLineBreak,
-		mimeLineBreak,
-	}
-
-	return writeHeaders(body, headers)
-}
-
-func writeHeaders(body *bytes.Buffer, headers []string) error {
-	for _, header := range headers {
-		if _, err := body.WriteString(header); err != nil {
-			return fmt.Errorf("could not write email header: %w", err)
-		}
-	}
-
-	return nil
 }
 
 func writeBodyParts(writer *multipart.Writer, text *string, html *string) error {
@@ -190,10 +160,6 @@ func writeBodyParts(writer *multipart.Writer, text *string, html *string) error 
 	}
 
 	return nil
-}
-
-func encodeHeader(data string) string {
-	return mime.QEncoding.Encode("UTF-8", data)
 }
 
 func encodeQuotedPrintable(data string) ([]byte, error) {

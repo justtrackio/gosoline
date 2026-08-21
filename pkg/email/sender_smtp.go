@@ -5,16 +5,16 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"mime/multipart"
 
 	"github.com/emersion/go-smtp"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 var (
-	_ Sender     = &smtpSender{}
-	_ SmtpClient = &smtp.Client{}
+	_ SenderWithAttachments = &smtpSender{}
+	_ SmtpClient            = &smtp.Client{}
 )
 
 //go:generate go run github.com/vektra/mockery/v2 --name SmtpClient
@@ -28,13 +28,23 @@ type SenderSmtpSettings struct {
 
 type clientFactory func() (SmtpClient, error)
 
+type smtpClientFactory func(server string) (SmtpClient, error)
+
 type smtpSender struct {
-	uuid          uuid.Uuid
-	fromAddress   string
-	clientFactory clientFactory
+	uuid                  uuid.Uuid
+	clock                 clock.Clock
+	fromAddress           string
+	maxEncodedMessageSize int
+	clientFactory         clientFactory
 }
 
-func NewSmtpSender(config cfg.Config, name string) (Sender, error) {
+func NewSmtpSender(config cfg.Config, name string) (SenderWithAttachments, error) {
+	return newSmtpSenderFromConfig(config, name, func(server string) (SmtpClient, error) {
+		return smtp.Dial(server)
+	}, uuid.New(), clock.Provider)
+}
+
+func newSmtpSenderFromConfig(config cfg.Config, name string, dial smtpClientFactory, uuid uuid.Uuid, clock clock.Clock) (SenderWithAttachments, error) {
 	key := fmt.Sprintf("email.%s", name)
 
 	smtpSettings := &SenderSmtpSettings{}
@@ -42,13 +52,16 @@ func NewSmtpSender(config cfg.Config, name string) (Sender, error) {
 		return nil, fmt.Errorf("failed to unmarshal smtp settings for key %q in NewSmtpSender: %w", key, err)
 	}
 
-	emailSettings := &emailSettings{}
-	if err := config.UnmarshalKey(key, emailSettings); err != nil {
+	emailConfig := &emailSettings{}
+	if err := config.UnmarshalKey(key, emailConfig); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal email settings for key %q in NewSmtpSender: %w", key, err)
+	}
+	if err := emailConfig.validate(); err != nil {
+		return nil, fmt.Errorf("invalid email settings for key %q in NewSmtpSender: %w", key, err)
 	}
 
 	clientFactory := func() (SmtpClient, error) {
-		return smtp.Dial(smtpSettings.Server)
+		return dial(smtpSettings.Server)
 	}
 
 	// dial in the boot once to make sure the server exists and has an open port
@@ -56,37 +69,48 @@ func NewSmtpSender(config cfg.Config, name string) (Sender, error) {
 		return nil, fmt.Errorf("failed to connect to SMTP server: %v", err)
 	}
 
-	return NewSmtpSenderWithInterfaces(clientFactory, uuid.New(), emailSettings.FromAddress), nil
+	return newSmtpSender(clientFactory, uuid, clock, emailConfig.FromAddress, emailConfig.MaxEncodedMessageSize), nil
 }
 
-func NewSmtpSenderWithInterfaces(clientFactory clientFactory, uuid uuid.Uuid, fromAddress string) Sender {
+func NewSmtpSenderWithInterfaces(clientFactory clientFactory, uuid uuid.Uuid, clock clock.Clock, fromAddress string) SenderWithAttachments {
+	return newSmtpSender(clientFactory, uuid, clock, fromAddress, defaultMaxEncodedMessageSize)
+}
+
+func newSmtpSender(clientFactory clientFactory, uuid uuid.Uuid, clock clock.Clock, fromAddress string, maxEncodedMessageSize int) SenderWithAttachments {
 	return &smtpSender{
-		clientFactory: clientFactory,
-		uuid:          uuid,
-		fromAddress:   fromAddress,
+		clientFactory:         clientFactory,
+		uuid:                  uuid,
+		clock:                 clock,
+		fromAddress:           fromAddress,
+		maxEncodedMessageSize: maxEncodedMessageSize,
 	}
 }
 
-func (s *smtpSender) SendEmail(_ context.Context, email Email) error {
+func (s *smtpSender) SendEmail(ctx context.Context, email Email) error {
 	if err := email.validate(); err != nil {
 		return err
 	}
 
-	var body io.Reader
-	if email.Attachment != nil {
-		compiled, err := compileAttachmentMIME(email, s.fromAddress, s.uuid.NewV4)
-		if err != nil {
-			return fmt.Errorf("could not compile email body: %w", err)
-		}
+	return s.sendEmail(ctx, EmailWithAttachments{Email: email})
+}
 
-		body = bytes.NewReader(compiled)
-	} else {
-		compiled, err := s.compileBody(email.Subject, email.TextBody, email.HtmlBody)
-		if err != nil {
-			return fmt.Errorf("could not compile email body: %w", err)
-		}
+func (s *smtpSender) SendEmailWithAttachments(ctx context.Context, email EmailWithAttachments) error {
+	if err := email.validate(); err != nil {
+		return err
+	}
 
-		body = compiled
+	return s.sendEmail(ctx, email)
+}
+
+func (s *smtpSender) sendEmail(_ context.Context, email EmailWithAttachments) error {
+	envelope, err := parseEmailEnvelope(s.fromAddress, email.Recipients)
+	if err != nil {
+		return fmt.Errorf("could not parse email envelope: %w", err)
+	}
+
+	body, err := s.compileBody(email, envelope)
+	if err != nil {
+		return err
 	}
 
 	// We create a client every time since the connection times out after a few minutes.
@@ -95,27 +119,15 @@ func (s *smtpSender) SendEmail(_ context.Context, email Email) error {
 		return fmt.Errorf("cannot dial smtp server: %w", err)
 	}
 
-	return client.SendMail(s.fromAddress, email.Recipients, body)
+	return client.SendMail(envelope.sender.Address, envelope.recipientAddresses(), body)
 }
 
-func (s *smtpSender) compileBody(subject string, text *string, html *string) (io.Reader, error) {
+func (s *smtpSender) compileBody(email EmailWithAttachments, envelope emailEnvelope) (io.Reader, error) {
 	body := &bytes.Buffer{}
-	boundary := s.uuid.NewV4()
-
-	if err := writeMessageHeaders(body, encodeHeader(subject), "multipart/alternative", boundary); err != nil {
-		return nil, err
+	writer := &encodedMessageSizeWriter{writer: body, limit: s.maxEncodedMessageSize}
+	if err := compileMIME(email, envelope, s.uuid.NewV4, s.clock.Now().UTC(), writer); err != nil {
+		return nil, fmt.Errorf("could not compile email body: %w", err)
 	}
 
-	writer := multipart.NewWriter(body)
-	if err := writer.SetBoundary(boundary); err != nil {
-		return nil, fmt.Errorf("could not write email boundary: %w", err)
-	}
-	if err := writeBodyParts(writer, text, html); err != nil {
-		return nil, err
-	}
-	if err := writer.Close(); err != nil {
-		return nil, fmt.Errorf("could not close multipart writer: %w", err)
-	}
-
-	return body, nil
+	return bytes.NewReader(body.Bytes()), nil
 }
