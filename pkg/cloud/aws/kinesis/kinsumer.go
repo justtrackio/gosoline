@@ -58,9 +58,8 @@ type SettingsInitialPosition struct {
 
 // Settings configures a kinsumer.
 //
-// Note that none of these settings bounds how long an in flight record handler may still run once a shutdown started.
-// That deadline belongs to whoever owns the handler and is passed in via exec.WithDrainContext; under a stream consumer
-// it is stream.consumer.<name>.grace_time. ReleaseDelay then bounds what the kinsumer itself still has to do afterwards.
+// Record handler shutdown is controlled by the caller via exec.WithDrainContext. ReleaseDelay bounds the time available
+// for final checkpoint persistence, shard release, and client deregistration after record processing ends.
 type Settings struct {
 	cfg.ResourceIdentifier
 	// Name of the kinesis client to use
@@ -228,7 +227,7 @@ func NewKinsumerWithInterfaces(
 }
 
 func (k *kinsumer) Run(ctx context.Context, process RecordHandler) (finalErr error) {
-	k.runners = semaphore.NewWeighted(int64(k.runnerCount()))
+	k.runners = semaphore.NewWeighted(int64(k.settings.RunnerCount))
 
 	// Deregistering the client is the last thing we do, so its window has to start once processing has ended rather
 	// than when ctx was canceled: the caller owns the processing deadline (see shardReader.drainContext) and may keep
@@ -537,14 +536,6 @@ func (k *kinsumer) process(ctx context.Context, processingCtx context.Context, p
 	}
 
 	return process(processingCtx, rawMessage)
-}
-
-func (k *kinsumer) runnerCount() int {
-	if k.settings.RunnerCount <= 0 {
-		return 1
-	}
-
-	return k.settings.RunnerCount
 }
 
 func (k *kinsumer) writeShardTaskRatioMetric(ctx context.Context, shardTaskRatio float64) {

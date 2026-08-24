@@ -523,7 +523,7 @@ func (s *shardReader) processRecordsUnordered(ctx context.Context, processingCtx
 	close(jobs)
 
 	cfn := coffin.New()
-	workerCount := min(len(records), s.runnerCount())
+	workerCount := min(len(records), s.settings.RunnerCount)
 	for range workerCount {
 		cfn.Go(func() error {
 			for i := range jobs {
@@ -595,14 +595,6 @@ func (s *shardReader) checkpointProcessedRecords(ctx context.Context, records []
 	}
 
 	return processedSize, nil
-}
-
-func (s *shardReader) runnerCount() int {
-	if s.settings.RunnerCount <= 0 {
-		return 1
-	}
-
-	return s.settings.RunnerCount
 }
 
 func (s *shardReader) logHandlerError(ctx context.Context, record types.Record, err error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -148,18 +149,23 @@ func newConsumer(ctx context.Context, config cfg.Config, logger log.Logger, name
 		settings,
 		name,
 		samplingDecider,
+		clock.Provider,
 	), nil
 }
 
 func newConsumerEncoder(ctx context.Context, input Input, callback UntypedConsumerCallback, encoding EncodingType) (MessageEncoder, error) {
 	encoderSettings := &MessageEncoderSettings{Encoding: encoding}
 	schemaRegistryAwareInput, isSchemaRegistryAwareInput := input.(SchemaRegistryAwareInput)
-	schemaSettings, err := getConsumerSchemaSettings(callback)
+	schemaSettingsAware, isSchemaSettingsAwareCallback := callback.(SchemaSettingsAwareCallback)
+	if !isSchemaRegistryAwareInput || !isSchemaSettingsAwareCallback {
+		return NewMessageEncoder(encoderSettings), nil
+	}
+
+	schemaSettings, err := schemaSettingsAware.GetSchemaSettings()
 	if err != nil {
 		return nil, err
 	}
-
-	if !isSchemaRegistryAwareInput || schemaSettings == nil {
+	if schemaSettings == nil {
 		return NewMessageEncoder(encoderSettings), nil
 	}
 
@@ -171,15 +177,6 @@ func newConsumerEncoder(ctx context.Context, input Input, callback UntypedConsum
 	encoderSettings.ExternalEncoder = externalEncoder
 
 	return NewMessageEncoder(encoderSettings), nil
-}
-
-func getConsumerSchemaSettings(callback UntypedConsumerCallback) (*SchemaSettings, error) {
-	schemaSettingsAware, ok := callback.(SchemaSettingsAwareCallback)
-	if !ok {
-		return nil, nil
-	}
-
-	return schemaSettingsAware.GetSchemaSettings()
 }
 
 func newConsumerRetryHandler(ctx context.Context, config cfg.Config, logger log.Logger, input Input, settings *ConsumerRetrySettings, name string) (Input, RetryHandler, error) {
@@ -212,18 +209,14 @@ func NewUntypedConsumerWithInterfaces(
 	settings ConsumerSettings,
 	name string,
 	samplingDecider smpl.Decider,
-	clocks ...clock.Clock,
+	clock clock.Clock,
 ) *Consumer {
-	clk := clock.Provider
-	if len(clocks) > 0 {
-		clk = clocks[0]
-	}
 	drainCtx, drainCancel := context.WithCancel(context.Background())
 
 	return &Consumer{
 		id:                  fmt.Sprintf("consumer-%s", name),
 		name:                name,
-		clock:               clk,
+		clock:               clock,
 		uuidGen:             uuidGen,
 		logger:              logger,
 		metricWriter:        metricWriter,
@@ -263,9 +256,7 @@ func (c *Consumer) processData(ctx context.Context, msg *Message) (ack bool) {
 	processingID := c.processingSequence.Add(1)
 	c.processingStartedAt.Put(processingID, c.clock.Now())
 
-	defer func() {
-		c.processingStartedAt.Remove(processingID)
-	}()
+	defer c.processingStartedAt.Remove(processingID)
 
 	// Keep the input context's values, but let in-flight processing outlive the input's cancellation
 	// until the shared shutdown drain deadline expires.
@@ -279,7 +270,7 @@ func (c *Consumer) processData(ctx context.Context, msg *Message) (ack bool) {
 	if retryId, ok := msg.Attributes[AttributeRetryId]; ok {
 		// get the trace id from the message so our message can be found a lot easier in the logs
 		decoder := tracing.NewMessageWithTraceEncoder(tracing.TraceIdErrorReturnStrategy{})
-		newCtx, _, err := decoder.Decode(gracedCtx, nil, funk.MergeMaps(msg.Attributes)) // copy the attributes as Decode modifies the map...
+		newCtx, _, err := decoder.Decode(gracedCtx, nil, maps.Clone(msg.Attributes)) // copy the attributes as Decode modifies the map...
 		if err != nil {
 			newCtx = gracedCtx
 		}
@@ -324,7 +315,7 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, msg *Message, pr
 		anySucceeded = anySucceeded || succeeded
 		allSucceeded = allSucceeded && succeeded
 
-		duration := c.clock.Now().Sub(start)
+		duration := c.clock.Since(start)
 		atomic.AddInt32(&c.processed, 1)
 
 		c.writeMetricDurationAndProcessedCount(ctx, duration, 1)
@@ -345,7 +336,7 @@ func (c *Consumer) processSingleMessage(gracedCtx context.Context, msg *Message)
 
 	ack = c.process(gracedCtx, msg, c.hasNativeRetry())
 
-	duration := c.clock.Now().Sub(start)
+	duration := c.clock.Since(start)
 	atomic.AddInt32(&c.processed, 1)
 	c.writeMetricDurationAndProcessedCount(gracedCtx, duration, 1)
 

@@ -93,6 +93,7 @@ func (s *kinsumerTestSuite) SetupTest() {
 		DiscoverFrequency: time.Second * 15,
 		ReleaseDelay:      time.Second * 5,
 		KeepShardOrder:    true,
+		RunnerCount:       1,
 		Healthcheck: health.HealthCheckSettings{
 			Timeout: time.Minute,
 		},

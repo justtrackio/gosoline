@@ -61,6 +61,7 @@ func (s *shardReaderTestSuite) SetupTest() {
 		WaitTime:         time.Second,
 		PersistFrequency: time.Second * 10,
 		ReleaseDelay:     time.Second * 30,
+		RunnerCount:      1,
 		Healthcheck: health.HealthCheckSettings{
 			Timeout: time.Minute,
 		},
