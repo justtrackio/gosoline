@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -96,6 +97,16 @@ type TransportSettings struct {
 	// TLSHandshakeTimeout specifies the maximum amount of time to
 	// wait for a TLS handshake. Zero means no timeout.
 	TLSHandshakeTimeout time.Duration `cfg:"tls_handshake_timeout" default:"10s"`
+
+	// InsecureSkipVerify controls whether the http client verifies
+	// the server's TLS certificates. If true, certificate expiry,
+	// hostname matching and unknown certificate authorities are all
+	// ignored, which exposes the connection to man-in-the-middle
+	// attacks.
+	//
+	// WARNING: Only enable this in development or test environments,
+	// or against trusted networks with self-signed certificates.
+	InsecureSkipVerify bool `cfg:"insecure_skip_verify" default:"false"`
 
 	// DisableKeepAlives, if true, disables HTTP keep-alives and
 	// will only use the connection to the server for a single
@@ -255,15 +266,15 @@ type InstrumentationSettings struct {
 	Enabled bool `cfg:"enabled" default:"false"`
 }
 
-func ProvideHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
+func ProvideHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, options ...Option) (Client, error) {
 	type httpClientName string
 
 	return appctx.Provide(ctx, httpClientName(name), func() (Client, error) {
-		return newHttpClient(ctx, config, logger, name)
+		return newHttpClient(ctx, config, logger, name, options)
 	})
 }
 
-func newHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
+func newHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, options []Option) (Client, error) {
 	metricWriter := metric.NewWriter()
 	tracer, err := tracing.ProvideInstrumentor(ctx, config, logger)
 	if err != nil {
@@ -273,7 +284,21 @@ func newHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, na
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal client settings: %w", err)
 	}
-	restyClient := newRestyClient(tracer, settings)
+
+	if settings.TransportSettings.InsecureSkipVerify {
+		logger.Warn(
+			ctx,
+			"http client %s is configured with transport.insecure_skip_verify=true: TLS certificate verification is disabled, use with care",
+			name,
+		)
+	}
+
+	dialerOptions, transportOptions := partitionOptions(options)
+	restyClient, err := newRestyClient(tracer, settings, dialerOptions, transportOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create resty client: %w", err)
+	}
+
 	client := NewHttpClientWithInterfaces(
 		logger,
 		clock.Provider,
@@ -290,7 +315,12 @@ func newHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, na
 	return client, nil
 }
 
-func newRestyClient(tracer tracing.Instrumentor, settings Settings) *resty.Client {
+func newRestyClient(
+	tracer tracing.Instrumentor,
+	settings Settings,
+	dialerOptions []DialerOption,
+	transportOptions []TransportOption,
+) (*resty.Client, error) {
 	var httpClient *resty.Client
 	if settings.DisableCookies {
 		httpClient = resty.NewWithClient(&http.Client{})
@@ -303,6 +333,12 @@ func newRestyClient(tracer tracing.Instrumentor, settings Settings) *resty.Clien
 		KeepAlive:     settings.TransportSettings.DialerSettings.KeepAlive,
 		FallbackDelay: settings.TransportSettings.DialerSettings.FallbackDelay,
 		Resolver:      settings.TransportSettings.ResolverSettings.GetResolver(),
+	}
+
+	for _, dialerOption := range dialerOptions {
+		if err := dialerOption(dialer); err != nil {
+			return nil, err
+		}
 	}
 
 	if settings.TransportSettings.MaxIdleConnsPerHost == 0 {
@@ -327,6 +363,18 @@ func newRestyClient(tracer tracing.Instrumentor, settings Settings) *resty.Clien
 		ReadBufferSize:         settings.TransportSettings.ReadBufferSize,
 	}
 
+	if settings.TransportSettings.InsecureSkipVerify {
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true,
+		}
+	}
+
+	for _, transportOption := range transportOptions {
+		if err := transportOption(transport); err != nil {
+			return nil, err
+		}
+	}
+
 	if settings.FollowRedirects {
 		httpClient.SetRedirectPolicy(resty.FlexibleRedirectPolicy(10))
 	} else {
@@ -346,7 +394,7 @@ func newRestyClient(tracer tracing.Instrumentor, settings Settings) *resty.Clien
 		httpClient.SetTransport(tracer.HttpClient(httpClient.GetClient()).Transport)
 	}
 
-	return httpClient
+	return httpClient, nil
 }
 
 func (s ResolverSettings) GetResolver() *net.Resolver {
@@ -355,7 +403,7 @@ func (s ResolverSettings) GetResolver() *net.Resolver {
 		KeepAlive: s.KeepAlive,
 	}
 
-	var nextDnsServer int64
+	var nextDnsServer atomic.Int64
 
 	return &net.Resolver{
 		PreferGo: true,
@@ -364,7 +412,7 @@ func (s ResolverSettings) GetResolver() *net.Resolver {
 				return resolverDialer.DialContext(ctx, "udp", address)
 			}
 
-			i := atomic.AddInt64(&nextDnsServer, 1)
+			i := nextDnsServer.Add(1)
 			dnsServer := s.DnsServers[int(i)%len(s.DnsServers)]
 			// add the port number if needed
 			if !strings.ContainsRune(dnsServer, ':') {
