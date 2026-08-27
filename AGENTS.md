@@ -115,6 +115,8 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 | `metric/` | Metrics collection and export |
 | `tracing/` | Distributed tracing (X-Ray, OpenTelemetry) |
 
+The metric emission contract is versioned by `metric.SchemaVersion` and published to the metadata endpoint under `metric.schema_version` when the metric daemon is enabled — see `pkg/metric/AGENTS.md`.
+
 ### Security & access control
 | Package | Purpose |
 |---------|---------|
