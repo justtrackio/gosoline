@@ -71,6 +71,12 @@ func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) 
 		return nil, nil
 	}
 
+	// the schema version describes emitted metrics, so it is published only for an enabled daemon,
+	// and before any writer configuration is evaluated
+	if err := RegisterSchemaVersion(ctx); err != nil {
+		return nil, err
+	}
+
 	aggWriters := make([]Writer, 0)
 	rawWriters := make([]Writer, 0)
 

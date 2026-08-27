@@ -119,6 +119,74 @@ func TestWriteLotsOfBadMetrics(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestNewDaemonModuleDisabledRegistersNoSchemaVersion(t *testing.T) {
+	ctx := appctx.WithContainer(t.Context())
+
+	config := cfg.New(map[string]any{
+		"metric": map[string]any{
+			"enabled": false,
+		},
+	})
+
+	daemon, err := metric.NewDaemonModule(ctx, config, log.NewCliLogger())
+
+	assert.NoError(t, err)
+	assert.Nil(t, daemon)
+
+	metadata, err := appctx.ProvideMetadata(ctx)
+	assert.NoError(t, err)
+	assert.Nil(t, metadata.Get(metric.MetadataKeySchemaVersion).Data())
+	assert.NotContains(t, metadata.Msi(), "metric")
+}
+
+func TestNewDaemonModuleRegistersSchemaVersion(t *testing.T) {
+	tests := map[string][]string{
+		"single writer":    {metric.WriterTypeCloudwatch},
+		"multiple writers": {metric.WriterTypeCloudwatch, metric.WriterTypePrometheus, metric.WriterTypeOtel},
+		"writers absent":   nil,
+		"writers empty":    {},
+	}
+
+	for name, writers := range tests {
+		t.Run(name, func(t *testing.T) {
+			ctx := appctx.WithContainer(t.Context())
+
+			metricSettings := map[string]any{
+				"enabled": true,
+			}
+			if writers != nil {
+				metricSettings["writers"] = writers
+			}
+
+			config := cfg.New(map[string]any{
+				"app": map[string]any{
+					"env":       "test",
+					"name":      "metric_daemon_test",
+					"namespace": "justtrack-test-gosoline",
+					"tags": map[string]any{
+						"project": "justtrack",
+						"family":  "gosoline",
+						"group":   "gosoline",
+					},
+				},
+				"metric": metricSettings,
+			})
+
+			daemon, err := metric.NewDaemonModule(ctx, config, log.NewCliLogger())
+
+			assert.NoError(t, err)
+			assert.NotNil(t, daemon)
+
+			metadata, err := appctx.ProvideMetadata(ctx)
+			assert.NoError(t, err)
+			assert.Equal(t, metric.SchemaVersion, metadata.Get(metric.MetadataKeySchemaVersion).Data())
+			assert.Equal(t, map[string]any{
+				"schema_version": metric.SchemaVersion,
+			}, metadata.Msi()["metric"])
+		})
+	}
+}
+
 func TestNewDaemonModuleRejectsAggregationForRawWriters(t *testing.T) {
 	tests := []string{
 		metric.WriterTypePrometheus,
@@ -139,7 +207,9 @@ func TestNewDaemonModuleRejectsAggregationForRawWriters(t *testing.T) {
 				},
 			})
 
-			daemon, err := metric.NewDaemonModule(t.Context(), config, log.NewCliLogger())
+			ctx := appctx.WithContainer(t.Context())
+
+			daemon, err := metric.NewDaemonModule(ctx, config, log.NewCliLogger())
 
 			assert.Nil(t, daemon)
 			assert.EqualError(t, err, fmt.Sprintf(
