@@ -48,6 +48,38 @@ func TestGetResult(t *testing.T) {
 	}
 }
 
+func TestGetResultNilVal(t *testing.T) {
+	ctx := t.Context()
+	client, sqlMock := getMocks(t)
+
+	expectedResult := db.Result{
+		{
+			"id":   "3",
+			"name": "",
+		},
+	}
+
+	rows := goSqlMock.NewRows([]string{"id", "name"})
+	rows.AddRow("3", nil)
+
+	sqlMock.ExpectQuery("^SELECT (.+) FROM TestTable").WillReturnRows(rows)
+
+	result, err := client.GetResult(ctx, "SELECT * FROM TestTable;")
+
+	if !assert.Nil(t, err) {
+		return
+	}
+
+	if !assert.Len(t, *result, len(expectedResult)) {
+		return
+	}
+
+	for i, row := range *result {
+		assert.Equal(t, expectedResult[i]["id"], row["id"])
+		assert.Equal(t, expectedResult[i]["name"], row["name"])
+	}
+}
+
 func TestGetSingleScalarValue(t *testing.T) {
 	ctx := t.Context()
 	client, sqlMock := getMocks(t)

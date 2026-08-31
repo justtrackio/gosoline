@@ -204,6 +204,13 @@ func (c *ClientSqlx) GetResult(ctx context.Context, query string, args ...any) (
 		for i, colName := range cols {
 			val := columnPointers[i].(*any)
 
+			// rows.Scan stores a nil into the destination, the pointer itself is never nil
+			if *val == nil {
+				m[colName] = ""
+
+				continue
+			}
+
 			if _, ok := types[colName]; !ok {
 				types[colName] = reflect.TypeOf(*val).String()
 			}
