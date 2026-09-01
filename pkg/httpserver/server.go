@@ -183,14 +183,18 @@ func (s *HttpServer) IsHealthy(_ context.Context) (bool, error) {
 
 func (s *HttpServer) Run(ctx context.Context) error {
 	cfn := coffin.New()
-	cfn.GoWithContext(ctx, s.waitForStop)
-	cfn.GoWithContext(ctx, s.metricRecorder.Run)
 	cfn.Go(func() error {
-		err := s.server.Serve(s.listener)
+		cfn.GoWithContext(ctx, s.waitForStop)
+		cfn.GoWithContext(ctx, s.metricRecorder.Run)
+		cfn.Go(func() error {
+			err := s.server.Serve(s.listener)
 
-		if !errors.Is(err, http.ErrServerClosed) {
-			return fmt.Errorf("server closed unexpectedly: %w", err)
-		}
+			if !errors.Is(err, http.ErrServerClosed) {
+				return fmt.Errorf("server closed unexpectedly: %w", err)
+			}
+
+			return nil
+		})
 
 		return nil
 	})
