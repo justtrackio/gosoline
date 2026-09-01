@@ -210,9 +210,9 @@ func (s *DeciderTestSuite) expectSamplingMetric(writer *metricMocks.Writer, samp
 
 	writer.EXPECT().WriteOne(mock.Anything, mock.MatchedBy(func(d *metric.Datum) bool {
 		return d.Priority == metric.PriorityHigh &&
-			d.MetricName == "sampling_decision" &&
+			d.MetricName == "decisions" &&
 			d.Unit == metric.UnitCount &&
 			d.Value == 1.0 &&
-			d.Dimensions["sampled"] == sampledStr
+			d.Dimensions["sampling.sampled"] == sampledStr
 	})).Return()
 }

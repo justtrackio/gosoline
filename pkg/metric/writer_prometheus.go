@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -168,36 +167,26 @@ func (w *prometheusWriter) writeMetricFromDatum(ctx context.Context, datum *Datu
 		}
 	}()
 
-	if strings.Contains(datum.MetricName, "-") {
-		w.logger.Error(ctx, "metric name %s is invalid, as it contains a - characters, gracefully replacing with an _ character", datum.MetricName)
-		datum.MetricName = promReplacer.Replace(datum.MetricName)
+	metricKind := effectiveKind(datum)
+
+	subsystem, name := renderPrometheusName(datum.Namespace, datum.MetricName, datum.Unit, metricKind)
+	if strings.Contains(name, "-") {
+		w.logger.Error(ctx, "metric name %s is invalid, as it contains a - characters, gracefully replacing with an _ character", name)
+		name = promReplacer.Replace(name)
 	}
 
-	switch w.getEffectiveKind(datum) {
+	datum.MetricName = name
+	datum.Value *= unitScale(datum.Unit)
+
+	switch metricKind {
 	case kindCounter:
-		w.counter(ctx, datum)
+		w.counter(ctx, subsystem, datum)
 	case kindGauge:
-		w.gauge(ctx, datum)
+		w.gauge(ctx, subsystem, datum)
 	case kindHistogram:
-		w.histogram(ctx, datum)
+		w.histogram(ctx, subsystem, datum)
 	case kindSummary:
-		w.summary(ctx, datum)
-	}
-}
-
-func (w *prometheusWriter) getEffectiveKind(datum *Datum) kind {
-	switch datum.Kind.kind {
-	case kindCounter, kindGauge, kindHistogram, kindSummary:
-		return datum.Kind.kind
-	}
-
-	switch datum.Unit {
-	case UnitCount:
-		return kindCounter
-	case UnitMilliseconds, UnitSeconds:
-		return kindSummary
-	default:
-		return kindGauge
+		w.summary(ctx, subsystem, datum)
 	}
 }
 
@@ -209,25 +198,28 @@ func (w *prometheusWriter) buildHelp(datum *Datum) string {
 	return fmt.Sprintf("unit: %s", datum.Unit)
 }
 
-func (w *prometheusWriter) createCounter(datum *Datum) *prometheus.CounterVec {
+func (w *prometheusWriter) createCounter(subsystem string, datum *Datum) *prometheus.CounterVec {
 	return prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: w.namespace,
+		Subsystem: subsystem,
 		Name:      datum.MetricName,
 		Help:      w.buildHelp(datum),
 	}, w.DatumDimensionKeys(datum))
 }
 
-func (w *prometheusWriter) createGauge(datum *Datum) *prometheus.GaugeVec {
+func (w *prometheusWriter) createGauge(subsystem string, datum *Datum) *prometheus.GaugeVec {
 	return prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: w.namespace,
+		Subsystem: subsystem,
 		Name:      datum.MetricName,
 		Help:      w.buildHelp(datum),
 	}, w.DatumDimensionKeys(datum))
 }
 
-func (w *prometheusWriter) createSummary(datum *Datum) *prometheus.SummaryVec {
+func (w *prometheusWriter) createSummary(subsystem string, datum *Datum) *prometheus.SummaryVec {
 	return prometheus.NewSummaryVec(prometheus.SummaryOpts{
 		Namespace:  w.namespace,
+		Subsystem:  subsystem,
 		Name:       datum.MetricName,
 		Help:       w.buildHelp(datum),
 		Objectives: datum.Kind.objectives,
@@ -237,9 +229,10 @@ func (w *prometheusWriter) createSummary(datum *Datum) *prometheus.SummaryVec {
 	}, w.DatumDimensionKeys(datum))
 }
 
-func (w *prometheusWriter) createHistogram(datum *Datum) *prometheus.HistogramVec {
+func (w *prometheusWriter) createHistogram(subsystem string, datum *Datum) *prometheus.HistogramVec {
 	return prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: w.namespace,
+		Subsystem: subsystem,
 		Name:      datum.MetricName,
 		Help:      w.buildHelp(datum),
 		Buckets:   datum.Kind.buckets,
@@ -285,8 +278,8 @@ func (w *prometheusWriter) registerAndProcessMetric(metric prometheus.Collector,
 	return nil
 }
 
-func (w *prometheusWriter) counter(ctx context.Context, datum *Datum) {
-	metric := w.createCounter(datum)
+func (w *prometheusWriter) counter(ctx context.Context, subsystem string, datum *Datum) {
+	metric := w.createCounter(subsystem, datum)
 
 	err := w.registerAndProcessMetric(metric, datum.MetricName, func(metric prometheus.Collector) {
 		metric.(*prometheus.CounterVec).
@@ -298,8 +291,8 @@ func (w *prometheusWriter) counter(ctx context.Context, datum *Datum) {
 	}
 }
 
-func (w *prometheusWriter) gauge(ctx context.Context, datum *Datum) {
-	metric := w.createGauge(datum)
+func (w *prometheusWriter) gauge(ctx context.Context, subsystem string, datum *Datum) {
+	metric := w.createGauge(subsystem, datum)
 
 	err := w.registerAndProcessMetric(metric, datum.MetricName, func(metric prometheus.Collector) {
 		metric.(*prometheus.GaugeVec).
@@ -311,8 +304,8 @@ func (w *prometheusWriter) gauge(ctx context.Context, datum *Datum) {
 	}
 }
 
-func (w *prometheusWriter) summary(ctx context.Context, datum *Datum) {
-	metric := w.createSummary(datum)
+func (w *prometheusWriter) summary(ctx context.Context, subsystem string, datum *Datum) {
+	metric := w.createSummary(subsystem, datum)
 
 	err := w.registerAndProcessMetric(metric, datum.MetricName, func(metric prometheus.Collector) {
 		metric.(*prometheus.SummaryVec).
@@ -324,8 +317,8 @@ func (w *prometheusWriter) summary(ctx context.Context, datum *Datum) {
 	}
 }
 
-func (w *prometheusWriter) histogram(ctx context.Context, datum *Datum) {
-	metric := w.createHistogram(datum)
+func (w *prometheusWriter) histogram(ctx context.Context, subsystem string, datum *Datum) {
+	metric := w.createHistogram(subsystem, datum)
 
 	err := w.registerAndProcessMetric(metric, datum.MetricName, func(metric prometheus.Collector) {
 		metric.(*prometheus.HistogramVec).
@@ -355,14 +348,20 @@ func (w *prometheusWriter) DatumDimensionKeys(datum *Datum) []string {
 	return dims
 }
 
+// preprocessPrometheusMetric prepares a copy of the datum for prometheus: the default dimension marker
+// becomes the empty label value, and every dimension key is rendered the way the metric name is,
+// because a dot is not a valid character in a prometheus label name and a datum carrying one is
+// rejected at registration.
 func preprocessPrometheusMetric(datum *Datum) Datum {
 	d := *datum
-	d.Dimensions = maps.Clone(datum.Dimensions)
+	d.Dimensions = make(Dimensions, len(datum.Dimensions))
 
-	for dimension, value := range d.Dimensions {
+	for dimension, value := range datum.Dimensions {
 		if value == DimensionDefault {
-			d.Dimensions[dimension] = ""
+			value = ""
 		}
+
+		d.Dimensions[renderPrometheusLabelName(dimension)] = value
 	}
 
 	return d

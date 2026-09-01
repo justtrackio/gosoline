@@ -84,3 +84,83 @@ func buildMocksAndWrite(t *testing.T, ctx context.Context, now time.Time, metric
 
 	mo.Write(ctx, data)
 }
+
+// TestOutput_WriteRendersCanonicalNames pins down the CloudWatch rendering of a canonical namespace
+// and leaf: one PascalCase name without a Gosoline prefix, the resolved base unit, and an unscaled
+// value, so CloudWatch keeps reporting durations in milliseconds.
+func TestOutput_WriteRendersCanonicalNames(t *testing.T) {
+	tests := map[string]struct {
+		datum        *metric.Datum
+		expectedName string
+		expectedUnit types.StandardUnit
+		expectedVal  float64
+	}{
+		"semantic convention name": {
+			datum: &metric.Datum{
+				Priority:   metric.PriorityHigh,
+				Namespace:  "http.server",
+				MetricName: "request.duration",
+				Unit:       metric.UnitMilliseconds,
+				Value:      250,
+			},
+			expectedName: "HttpServerRequestDuration",
+			expectedUnit: metric.UnitMilliseconds,
+			expectedVal:  250,
+		},
+		"multi word component": {
+			datum: &metric.Datum{
+				Priority:   metric.PriorityHigh,
+				Namespace:  "aws.kinesis.shard",
+				MetricName: "acquire.delay",
+				Unit:       metric.UnitSeconds,
+				Value:      3,
+			},
+			expectedName: "AwsKinesisShardAcquireDelay",
+			expectedUnit: metric.UnitSeconds,
+			expectedVal:  3,
+		},
+		"custom aggregation unit resolves to its base unit": {
+			datum: &metric.Datum{
+				Priority:   metric.PriorityHigh,
+				Namespace:  "conc.scheduler",
+				MetricName: "task.delay",
+				Unit:       metric.UnitMillisecondsAverage,
+				Value:      250,
+			},
+			expectedName: "ConcSchedulerTaskDelay",
+			expectedUnit: metric.UnitMilliseconds,
+			expectedVal:  250,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			now := time.Unix(1549283566, 0)
+			tt.datum.Timestamp = now
+
+			logger := logMocks.NewLoggerMock(logMocks.WithMockAll)
+			cwClient := cloudwatchMocks.NewClient(t)
+
+			cwClient.EXPECT().PutMetricData(matcher.Context, &cloudwatch.PutMetricDataInput{
+				Namespace: aws.String("my/test/namespace"),
+				MetricData: []types.MetricDatum{{
+					MetricName: aws.String(tt.expectedName),
+					Dimensions: []types.Dimension{},
+					Timestamp:  aws.Time(now),
+					Value:      aws.Float64(tt.expectedVal),
+					Unit:       tt.expectedUnit,
+				}},
+			}).Return(nil, nil)
+
+			writer := metric.NewCloudwatchWriterWithInterfaces(
+				logger,
+				clock.NewFakeClockAt(now),
+				cwClient,
+				"my/test/namespace",
+				10*time.Second,
+			)
+
+			writer.Write(t.Context(), metric.Data{tt.datum})
+		})
+	}
+}

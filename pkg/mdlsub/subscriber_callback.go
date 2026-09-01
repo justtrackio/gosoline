@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	MetricNameSuccess = "ModelEventConsumeSuccess"
-	MetricNameSkipped = "ModelEventConsumeSkipped"
-	MetricNameFailure = "ModelEventConsumeFailure"
+	MetricNameSuccess = "consumed.events"
+	MetricNameSkipped = "skipped.events"
+	MetricNameFailure = "consume.errors"
 )
 
 type SubscriberModel struct {
@@ -39,7 +39,7 @@ func NewSubscriberCallbackFactory(
 ) stream.UntypedConsumerCallbackFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.UntypedConsumerCallback, error) {
 		defaultMetrics := getSubscriberCallbackDefaultMetrics(core.GetModelIds())
-		metricWriter := metric.NewWriter(defaultMetrics...)
+		metricWriter := metric.NewWriter(metric.NamespaceMdlSub, defaultMetrics...)
 
 		callback := &SubscriberCallback{
 			logger:           logger,
@@ -60,7 +60,7 @@ func NewSubscriberCallbackWithInterfaces(
 	sourceModel SubscriberModel,
 ) *SubscriberCallback {
 	defaultMetrics := getSubscriberCallbackDefaultMetrics(core.GetModelIds())
-	metricWriter := metric.NewWriter(defaultMetrics...)
+	metricWriter := metric.NewWriter(metric.NamespaceMdlSub, defaultMetrics...)
 
 	return &SubscriberCallback{
 		logger:           logger,
@@ -120,7 +120,7 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 
 	defer func() {
 		if err != nil {
-			s.writeMetric(ctx, MetricNameFailure, spec)
+			s.writeErrorMetric(ctx, spec, err)
 		}
 	}()
 
@@ -197,10 +197,27 @@ func (s *SubscriberCallback) writeMetric(ctx context.Context, metricName string,
 		Timestamp:  time.Now(),
 		MetricName: metricName,
 		Dimensions: map[string]string{
-			"ModelId": spec.ModelId,
+			metric.DimensionModelId: spec.ModelId,
 		},
 		Unit:  metric.UnitCount,
 		Value: 1.0,
+		Kind:  metric.KindCounter.Build(),
+	})
+}
+
+// writeErrorMetric counts a failed consumption, identified by the type of error that failed it.
+func (s *SubscriberCallback) writeErrorMetric(ctx context.Context, spec *ModelSpecification, err error) {
+	s.metric.WriteOne(ctx, &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		Timestamp:  time.Now(),
+		MetricName: MetricNameFailure,
+		Dimensions: map[string]string{
+			metric.DimensionModelId:   spec.ModelId,
+			metric.DimensionErrorType: metric.ErrorType(err),
+		},
+		Unit:  metric.UnitCount,
+		Value: 1.0,
+		Kind:  metric.KindCounter.Build(),
 	})
 }
 
@@ -212,30 +229,34 @@ func getSubscriberCallbackDefaultMetrics(modelIds []string) []*metric.Datum {
 			Priority:   metric.PriorityHigh,
 			MetricName: MetricNameSuccess,
 			Dimensions: map[string]string{
-				"ModelId": modelId,
+				metric.DimensionModelId: modelId,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		}
 
 		skipped := &metric.Datum{
 			Priority:   metric.PriorityHigh,
 			MetricName: MetricNameSkipped,
 			Dimensions: map[string]string{
-				"ModelId": modelId,
+				metric.DimensionModelId: modelId,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		}
 
 		failure := &metric.Datum{
 			Priority:   metric.PriorityHigh,
 			MetricName: MetricNameFailure,
 			Dimensions: map[string]string{
-				"ModelId": modelId,
+				metric.DimensionModelId:   modelId,
+				metric.DimensionErrorType: metric.DimensionDefault,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		}
 
 		defaults = append(defaults, success, skipped, failure)

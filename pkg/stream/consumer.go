@@ -11,7 +11,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/reqctx"
 	"github.com/justtrackio/gosoline/pkg/smpl"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -204,15 +203,7 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 	var attributes map[string]string
 
 	if model, err = c.callback.GetModel(msg.Attributes); err != nil {
-		c.metricWriter.Write(ctx, metric.Data{
-			&metric.Datum{
-				MetricName: metricNameConsumerUnknownModelError,
-				Dimensions: map[string]string{
-					"Consumer": c.name,
-				},
-				Value: 1.0,
-			},
-		})
+		c.writeMetricUnknownModelError(ctx)
 
 		// Check if this error is ignorable based on consumer settings
 		var ignorableErr IgnorableGetModelError

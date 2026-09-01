@@ -14,8 +14,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
-func getPerRunnerMetricName(name string) string {
-	return fmt.Sprintf("PerRunner%s", name)
+// exportedPerRunnerMetricName returns the name CloudWatch exports a per-runner metric under, which is
+// what reading the previous value back has to query for.
+func exportedPerRunnerMetricName(leaf string) string {
+	return metric.CloudWatchMetricName(metric.NamespaceAutoscalingPerRunner, leaf)
 }
 
 type PerRunnerMetricSettings struct {
@@ -50,7 +52,7 @@ func NewPerRunnerMetricHandlerWithInterfaces(logger log.Logger, clock clock.Cloc
 func (h *perRunnerMetricHandler) CalculatePerRunnerMetrics(ctx context.Context, name string, currentValue float64, settings *PerRunnerMetricSettings) (*metric.Datum, error) {
 	var err error
 	var runnerCount, currentPrm, newPrm, maxPrm float64
-	metricName := getPerRunnerMetricName(name)
+	metricName := exportedPerRunnerMetricName(name)
 
 	if runnerCount, err = h.getEcsMetric(ctx, "DesiredTaskCount", types.StatisticMaximum, settings.Period); err != nil {
 		return nil, fmt.Errorf("can not get runner count: %w", err)
@@ -91,9 +93,11 @@ func (h *perRunnerMetricHandler) CalculatePerRunnerMetrics(ctx context.Context, 
 
 	datum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		MetricName: metricName,
+		Namespace:  metric.NamespaceAutoscalingPerRunner,
+		MetricName: name,
 		Unit:       metric.UnitCountAverage,
 		Value:      newPrm,
+		Kind:       metric.KindGauge.Build(),
 	}
 
 	return datum, nil

@@ -13,8 +13,10 @@ import (
 )
 
 const (
-	metricNameBatchSize = "schedulerBatchSize"
-	metricNameTaskDelay = "schedulerTaskDelay"
+	metricNameBatchSize = "batch.size"
+	metricNameTaskDelay = "task.delay"
+
+	dimensionScheduler = "scheduler.name"
 )
 
 //go:generate go run github.com/vektra/mockery/v2 --name Scheduler
@@ -65,7 +67,7 @@ func NewScheduler[T any](config cfg.Config, batchRunner BatchRunner[T], name str
 		return nil, fmt.Errorf("failed to unmarshal scheduler settings for %s: %w", name, err)
 	}
 
-	metricWriter := metric.NewWriter(getDefaultMetrics(name)...)
+	metricWriter := metric.NewWriter(metric.NamespaceConcScheduler, getDefaultMetrics(name)...)
 
 	return NewSchedulerWithSettings[T](batchRunner, metricWriter, name, settings), nil
 }
@@ -200,10 +202,11 @@ func (s scheduler[T]) writeTaskDelayMetric(ctx context.Context, took time.Durati
 		Priority:   metric.PriorityHigh,
 		MetricName: metricNameTaskDelay,
 		Dimensions: map[string]string{
-			"Scheduler": s.name,
+			dimensionScheduler: s.name,
 		},
 		Value: float64(took.Milliseconds()),
 		Unit:  metric.UnitMillisecondsAverage,
+		Kind:  metric.KindHistogram.Build(),
 	})
 }
 
@@ -212,10 +215,11 @@ func (s scheduler[T]) writeBatchSizeMetric(ctx context.Context, batchSize int) {
 		Priority:   metric.PriorityHigh,
 		MetricName: metricNameBatchSize,
 		Dimensions: map[string]string{
-			"Scheduler": s.name,
+			dimensionScheduler: s.name,
 		},
 		Value: float64(batchSize),
 		Unit:  metric.UnitCountAverage,
+		Kind:  metric.KindHistogram.Build(),
 	})
 }
 
@@ -225,19 +229,21 @@ func getDefaultMetrics(name string) metric.Data {
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameTaskDelay,
 			Dimensions: map[string]string{
-				"Scheduler": name,
+				dimensionScheduler: name,
 			},
 			Value: 0,
 			Unit:  metric.UnitMillisecondsAverage,
+			Kind:  metric.KindHistogram.Build(),
 		},
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameBatchSize,
 			Dimensions: map[string]string{
-				"Scheduler": name,
+				dimensionScheduler: name,
 			},
 			Value: 0,
 			Unit:  metric.UnitCountAverage,
+			Kind:  metric.KindHistogram.Build(),
 		},
 	}
 }

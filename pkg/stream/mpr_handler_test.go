@@ -87,17 +87,21 @@ func (s *MessagesPerRunnerTestSuite) TestCalculatePerRunnerMetricsError() {
 	expectedSmaDatum := &metric.Datum{
 		Priority:   metric.PriorityLow,
 		Timestamp:  time.Time{},
-		MetricName: "StreamMessagesAvailable",
+		Namespace:  metric.NamespaceStreamInput,
+		MetricName: "available.messages",
 		Value:      50,
 		Unit:       metric.UnitCount,
+		Kind:       metric.KindGauge.Build(),
 	}
 
 	expectedSmsDatum := &metric.Datum{
 		Priority:   metric.PriorityLow,
 		Timestamp:  time.Time{},
-		MetricName: "StreamMessagesSent",
+		Namespace:  metric.NamespaceStreamOutput,
+		MetricName: "sent.messages",
 		Value:      100,
 		Unit:       metric.UnitCount,
+		Kind:       metric.KindCounter.Build(),
 	}
 
 	data, err := s.handler.GetMetrics(s.ctx)
@@ -112,25 +116,31 @@ func (s *MessagesPerRunnerTestSuite) TestSuccess() {
 	expectedPrsmDatum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Time{},
-		MetricName: "PerRunnerStreamMessages",
+		Namespace:  metric.NamespaceAutoscalingPerRunner,
+		MetricName: "stream.messages",
 		Value:      50,
 		Unit:       metric.UnitCountAverage,
+		Kind:       metric.KindGauge.Build(),
 	}
 
 	expectedSmaDatum := &metric.Datum{
 		Priority:   metric.PriorityLow,
 		Timestamp:  time.Time{},
-		MetricName: "StreamMessagesAvailable",
+		Namespace:  metric.NamespaceStreamInput,
+		MetricName: "available.messages",
 		Value:      50,
 		Unit:       metric.UnitCount,
+		Kind:       metric.KindGauge.Build(),
 	}
 
 	expectedSmsDatum := &metric.Datum{
 		Priority:   metric.PriorityLow,
 		Timestamp:  time.Time{},
-		MetricName: "StreamMessagesSent",
+		Namespace:  metric.NamespaceStreamOutput,
+		MetricName: "sent.messages",
 		Value:      100,
 		Unit:       metric.UnitCount,
+		Kind:       metric.KindCounter.Build(),
 	}
 
 	s.mockGetSqsMetrics("NumberOfMessagesSent", types.StatisticSum, 100, nil)

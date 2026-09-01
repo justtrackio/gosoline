@@ -273,7 +273,7 @@ func (s *kinsumerTestSuite) TestInitialListShardsIterate() {
 	s.logger.EXPECT().Info(matcher.Context, "stopping kinsumer").Once()
 	s.handler.EXPECT().Done().Once()
 
-	s.mockShardTaskRatio(200)
+	s.mockShardDistribution(2, 1)
 
 	err := s.kinsumer.Run(s.ctx, s.handler)
 	s.NoError(err)
@@ -281,7 +281,7 @@ func (s *kinsumerTestSuite) TestInitialListShardsIterate() {
 
 func (s *kinsumerTestSuite) TestListShardsChangedShardIds() {
 	s.mockBaseSuccess("shard1", "shard2")
-	s.mockShardTaskRatio(200)
+	s.mockShardDistribution(2, 1)
 	s.mockShard("shard1", true, nil)
 	s.mockShard("shard2", true, nil)
 
@@ -297,7 +297,7 @@ func (s *kinsumerTestSuite) TestListShardsChangedShardIds() {
 		s.mockShard("shard3", false, nil)
 		s.mockShard("shard4", false, nil)
 
-		s.mockShardTaskRatio(200)
+		s.mockShardDistribution(2, 1)
 
 		s.kinesisClient.EXPECT().ListShards(matcher.Context, &kinesis.ListShardsInput{
 			StreamName: aws.String(string(s.stream)),
@@ -375,7 +375,7 @@ func (s *kinsumerTestSuite) TestShardListFinishedShardHandling() {
 	s.logger.EXPECT().Info(matcher.Context, "stopping kinsumer").Once()
 	s.handler.EXPECT().Done().Once()
 
-	s.mockShardTaskRatio(300)
+	s.mockShardDistribution(3, 1)
 	s.mockShard("unfinished shard with no parent", false, context.Canceled)
 	s.mockShard("unfinished shard with non-existing parent", false, context.Canceled)
 	s.mockShard("unfinished shard with finished parent", false, context.Canceled)
@@ -386,7 +386,7 @@ func (s *kinsumerTestSuite) TestShardListFinishedShardHandling() {
 
 func (s *kinsumerTestSuite) TestListShardsNoChangeThenCancel() {
 	s.mockBaseSuccess("shard1")
-	s.mockShardTaskRatio(100)
+	s.mockShardDistribution(1, 1)
 	s.mockShard("shard1", true, nil)
 
 	go func() {
@@ -426,7 +426,7 @@ func (s *kinsumerTestSuite) TestListShardsNoChangeThenCancel() {
 
 func (s *kinsumerTestSuite) TestListShardsFailOnRefresh() {
 	s.mockBaseSuccess("shard1")
-	s.mockShardTaskRatio(100)
+	s.mockShardDistribution(1, 1)
 	s.mockShard("shard1", true, nil)
 
 	go func() {
@@ -448,7 +448,7 @@ func (s *kinsumerTestSuite) TestListShardsFailOnRefresh() {
 
 func (s *kinsumerTestSuite) TestConsumeMessagesThenCancel() {
 	s.mockBaseSuccess("shard1")
-	s.mockShardTaskRatio(100)
+	s.mockShardDistribution(1, 1)
 	s.mockShard("shard1", false, context.Canceled)
 	s.mockShardMessage("shard1", []byte("message 1"), time.Millisecond)
 	s.mockShardMessage("shard1", []byte("message 2"), time.Millisecond*5)
@@ -475,7 +475,7 @@ func (s *kinsumerTestSuite) TestConsumeMessagesThenCancel() {
 
 func (s *kinsumerTestSuite) TestConsumeMessagesFails() {
 	s.mockBaseSuccess("shard1")
-	s.mockShardTaskRatio(100)
+	s.mockShardDistribution(1, 1)
 	s.mockShard("shard1", false, fmt.Errorf("fail"))
 
 	err := s.kinsumer.Run(s.ctx, s.handler)
@@ -513,22 +513,29 @@ func (s *kinsumerTestSuite) mockBaseSuccess(shards ...string) {
 	s.handler.EXPECT().Done().Once()
 }
 
-func (s *kinsumerTestSuite) mockShardTaskRatio(taskShardRatio float64) {
+func (s *kinsumerTestSuite) mockShardDistribution(shardCount float64, clientCount float64) {
 	s.metricWriter.EXPECT().Write(matcher.Context, metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: "ShardTaskRatioMax",
-			Value:      taskShardRatio,
-			Unit:       metric.UnitCountMaximum,
+			Namespace:  metric.NamespaceAwsKinesisConsumer,
+			MetricName: "shard.count",
+			Dimensions: metric.Dimensions{
+				metric.DimensionMessagingDestination: string(s.stream),
+			},
+			Value: shardCount,
+			Unit:  metric.UnitCountMaximum,
+			Kind:  metric.KindGauge.Build(),
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: "ShardTaskRatio",
+			Namespace:  metric.NamespaceAwsKinesisConsumer,
+			MetricName: "client.count",
 			Dimensions: metric.Dimensions{
-				"StreamName": string(s.stream),
+				metric.DimensionMessagingDestination: string(s.stream),
 			},
-			Value: taskShardRatio,
-			Unit:  metric.UnitCountAverage,
+			Value: clientCount,
+			Unit:  metric.UnitCountMaximum,
+			Kind:  metric.KindGauge.Build(),
 		},
 	}).Once()
 }

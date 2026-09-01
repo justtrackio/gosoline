@@ -11,6 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -148,7 +149,7 @@ func Test_promWriter_Write(t *testing.T) {
 		{
 			name: "multiple with default",
 			initFunc: func() {
-				metric.NewWriter(&metric.Datum{
+				metric.NewWriter("", &metric.Datum{
 					Priority:   metric.PriorityHigh,
 					MetricName: "counter",
 					Value:      0,
@@ -250,4 +251,154 @@ func Test_promWriter_Write_WithCanceledContextStillWrites(t *testing.T) {
 	count, err := testutil.GatherAndCount(registry, "ns:test:grace_counter")
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count)
+}
+
+// Test_promWriter_RendersCanonicalNames pins down the prometheus rendering of a canonical namespace
+// and leaf: the namespace becomes the subsystem, the leaf the name, and both carry the base unit and
+// counter suffixes the prometheus convention requires.
+func Test_promWriter_RendersCanonicalNames(t *testing.T) {
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+
+	tests := map[string]struct {
+		datum        *metric.Datum
+		expectedName string
+	}{
+		"duration": {
+			datum: &metric.Datum{
+				Priority:   metric.PriorityHigh,
+				Namespace:  "http.server",
+				MetricName: "request.duration",
+				Unit:       metric.UnitMilliseconds,
+				Value:      250,
+				Kind:       metric.KindHistogram.Build(),
+			},
+			expectedName: "myapp_http_server_request_duration_seconds",
+		},
+		"counter": {
+			datum: &metric.Datum{
+				Priority:   metric.PriorityHigh,
+				Namespace:  "stream.consumer",
+				MetricName: "errors",
+				Unit:       metric.UnitCount,
+				Value:      1,
+				Kind:       metric.KindCounter.Build(),
+			},
+			expectedName: "myapp_stream_consumer_errors_total",
+		},
+		"byte count": {
+			datum: &metric.Datum{
+				Priority:   metric.PriorityHigh,
+				Namespace:  "kafka.broker",
+				MetricName: "produce.batch.size",
+				Unit:       metric.UnitBytes,
+				Value:      2048,
+				Kind:       metric.KindHistogram.Build(),
+			},
+			expectedName: "myapp_kafka_broker_produce_batch_size_bytes",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			registry := prometheus.NewRegistry()
+			w := metric.NewPrometheusWriterWithInterfaces(logger, registry, "myapp", 1000, writeGraceTime)
+			w.WriteOne(t.Context(), tt.datum)
+
+			count, err := testutil.GatherAndCount(registry, tt.expectedName)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, count, "expected %s to be exported", tt.expectedName)
+		})
+	}
+}
+
+// Test_promWriter_ScalesToBaseUnits pins down that a duration recorded in milliseconds is exported in
+// seconds, the base unit prometheus requires.
+func Test_promWriter_ScalesToBaseUnits(t *testing.T) {
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+
+	registry := prometheus.NewRegistry()
+	w := metric.NewPrometheusWriterWithInterfaces(logger, registry, "myapp", 1000, writeGraceTime)
+
+	w.WriteOne(t.Context(), &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		Namespace:  "conc.scheduler",
+		MetricName: "task.delay",
+		Unit:       metric.UnitMillisecondsAverage,
+		Value:      250,
+		Kind:       metric.KindGauge.Build(),
+	})
+
+	expected := `
+		# HELP myapp_conc_scheduler_task_delay_seconds unit: UnitMillisecondsAverage
+		# TYPE myapp_conc_scheduler_task_delay_seconds gauge
+		myapp_conc_scheduler_task_delay_seconds 0.25
+	`
+
+	assert.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expected), "myapp_conc_scheduler_task_delay_seconds"))
+}
+
+// Test_promWriter_ClassifiesTimeBasedUnitsAsHistograms pins down that a time based unit without a
+// declared instrument type is registered as a histogram rather than a summary or a gauge.
+func Test_promWriter_ClassifiesTimeBasedUnitsAsHistograms(t *testing.T) {
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+
+	units := map[string]metric.StandardUnit{
+		"milliseconds":         metric.UnitMilliseconds,
+		"seconds":              metric.UnitSeconds,
+		"milliseconds average": metric.UnitMillisecondsAverage,
+		"seconds maximum":      metric.UnitSecondsMaximum,
+	}
+
+	for name, unit := range units {
+		t.Run(name, func(t *testing.T) {
+			registry := prometheus.NewRegistry()
+			w := metric.NewPrometheusWriterWithInterfaces(logger, registry, "myapp", 1000, writeGraceTime)
+
+			w.WriteOne(t.Context(), &metric.Datum{
+				Priority:   metric.PriorityHigh,
+				Namespace:  "http.client",
+				MetricName: "request.duration",
+				Unit:       unit,
+				Value:      1,
+			})
+
+			families, err := registry.Gather()
+			assert.NoError(t, err)
+			assert.Len(t, families, 1)
+			assert.Equal(t, dto.MetricType_HISTOGRAM, families[0].GetType())
+		})
+	}
+}
+
+// Test_promWriter_RendersDottedDimensionKeys pins down that a canonical dimension key survives into
+// prometheus: a dot is not a valid character in a prometheus label name, so the key is rendered the
+// same way the metric name is. Without this the whole datum is rejected at registration and the metric
+// never appears.
+func Test_promWriter_RendersDottedDimensionKeys(t *testing.T) {
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+
+	registry := prometheus.NewRegistry()
+	w := metric.NewPrometheusWriterWithInterfaces(logger, registry, "myapp", 1000, writeGraceTime)
+
+	w.WriteOne(t.Context(), &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		Namespace:  "http.server",
+		MetricName: "rejected.requests",
+		Dimensions: metric.Dimensions{
+			"http.server.name":    "api",
+			"http.route":          "/users",
+			"http.request.method": "GET",
+		},
+		Unit:  metric.UnitCount,
+		Value: 1,
+		Kind:  metric.KindCounter.Build(),
+	})
+
+	expected := `
+		# HELP myapp_http_server_rejected_requests_total unit: Count
+		# TYPE myapp_http_server_rejected_requests_total counter
+		myapp_http_server_rejected_requests_total{http_request_method="GET",http_route="/users",http_server_name="api"} 1
+	`
+
+	assert.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expected), "myapp_http_server_rejected_requests_total"))
 }

@@ -133,7 +133,7 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	})
 
 	shardReaderDefaults := getShardReaderDefaultMetrics(fullStreamName)
-	metricWriter := metric.NewWriter(shardReaderDefaults...)
+	metricWriter := metric.NewWriter(metric.NamespaceAwsKinesisShard, shardReaderDefaults...)
 
 	var kinesisClient *kinesis.Client
 	var metadataRepository MetadataRepository
@@ -453,11 +453,11 @@ func (k *kinsumer) startConsumers(
 		})
 	}
 
-	// we want to have one consumer / shard (ideally), so we write a metric which is above 100 if there are not enough
-	// tasks running (thus, we should scale), 100, if we have exactly the correct amount, and below 100, if there
-	// are too many tasks at the moment.
-	// division by 0 can't happen because we are one client running, so there is at least us
-	shardTaskRatio := float64(len(runtimeCtx.shardIds)) / float64(runtimeCtx.totalClients) * 100
+	// we want to have one consumer / shard (ideally), so we report the shard count and the client count
+	// and let a consumer divide them: a ratio above 1 means there are not enough tasks running, exactly 1
+	// means the count is right, and below 1 means there are too many tasks at the moment
+	shardCount := float64(len(runtimeCtx.shardIds))
+	clientCount := float64(runtimeCtx.totalClients)
 	cfn.GoWithContext(consumerCtx, func(ctx context.Context) error {
 		defer wg.Done()
 
@@ -465,14 +465,14 @@ func (k *kinsumer) startConsumers(
 		ticker := k.clock.NewTicker(time.Minute)
 		defer ticker.Stop()
 
-		k.writeShardTaskRatioMetric(consumerCtx, shardTaskRatio)
+		k.writeShardDistributionMetrics(consumerCtx, shardCount, clientCount)
 
 		for {
 			select {
 			case <-ctx.Done():
 				return nil
 			case <-ticker.Chan():
-				k.writeShardTaskRatioMetric(consumerCtx, shardTaskRatio)
+				k.writeShardDistributionMetrics(consumerCtx, shardCount, clientCount)
 			}
 		}
 	})
@@ -480,27 +480,28 @@ func (k *kinsumer) startConsumers(
 	return wg, stopConsumers
 }
 
-func (k *kinsumer) writeShardTaskRatioMetric(ctx context.Context, shardTaskRatio float64) {
-	// we write the shard / task ratio once for our stream (so you can track this on a per-stream basis to investigate
-	// problems) and once for the whole application (taking the minimum), so if you consume two streams in one app (e.g.,
-	// a subscriber), you scale to the higher number of shards of the two streams
+// writeShardDistributionMetrics reports how the stream's shards are distributed across the clients
+// consuming it. Both metrics carry the stream, so a consumer can divide them per stream and take the
+// maximum across streams.
+func (k *kinsumer) writeShardDistributionMetrics(ctx context.Context, shardCount float64, clientCount float64) {
 	k.metricWriter.Write(ctx, metric.Data{
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameShardTaskRatioMax,
-			Value:      shardTaskRatio,
-			Unit:       metric.UnitCountMaximum,
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameShardTaskRatio,
-			Dimensions: metric.Dimensions{
-				"StreamName": string(k.fullStreamName),
-			},
-			Value: shardTaskRatio,
-			Unit:  metric.UnitCountAverage,
-		},
+		k.shardDistributionDatum(metricNameShardCount, shardCount),
+		k.shardDistributionDatum(metricNameClientCount, clientCount),
 	})
+}
+
+func (k *kinsumer) shardDistributionDatum(name string, value float64) *metric.Datum {
+	return &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		Namespace:  metric.NamespaceAwsKinesisConsumer,
+		MetricName: name,
+		Dimensions: metric.Dimensions{
+			dimensionStream: string(k.fullStreamName),
+		},
+		Value: value,
+		Unit:  metric.UnitCountMaximum,
+		Kind:  metric.KindGauge.Build(),
+	}
 }
 
 func (k *kinsumer) Stop(ctx context.Context) {

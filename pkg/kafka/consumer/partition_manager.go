@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	metricNameRebalanceCount = "RebalanceCount"
+	metricNameRebalanceCount = "rebalances"
 )
 
 type PartitionManager struct {
@@ -99,8 +99,15 @@ func (p *PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo
 	defer wg.Wait()
 
 	for topic, partitions := range lost {
-		dims := metric.Dimensions{kafka.DimensionClientType: kafka.DimensionConsumer, kafka.DimensionClient: p.name, kafka.DimensionTopic: topic}
-		p.metricWriter.WriteOne(ctx, metric.NewMetricDatum(metricNameRebalanceCount, dims, 1.0, metric.UnitCount, metric.PriorityHigh))
+		dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClient: p.name, kafka.DimensionTopic: topic}
+		p.metricWriter.WriteOne(ctx, &metric.Datum{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameRebalanceCount,
+			Dimensions: dims,
+			Value:      1.0,
+			Unit:       metric.UnitCount,
+			Kind:       metric.KindCounter.Build(),
+		})
 
 		for _, partition := range partitions {
 			assignment := assignment{topic, partition}

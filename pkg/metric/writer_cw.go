@@ -28,6 +28,7 @@ const (
 	UnitCount        = types.StandardUnitCount
 	UnitSeconds      = types.StandardUnitSeconds
 	UnitMilliseconds = types.StandardUnitMilliseconds
+	UnitBytes        = types.StandardUnitBytes
 
 	chunkSizeCloudWatch = 20
 	minusOneWeek        = -1 * 7 * 24 * time.Hour
@@ -203,11 +204,11 @@ func (w *cloudwatchWriter) buildMetricData(ctx context.Context, batch Data) ([]t
 		}
 
 		datum := types.MetricDatum{
-			MetricName: aws.String(data.MetricName),
+			MetricName: aws.String(renderCloudWatchName(data.Namespace, data.MetricName)),
 			Dimensions: dimensions,
 			Timestamp:  timestamp,
 			Value:      aws.Float64(data.Value),
-			Unit:       data.Unit,
+			Unit:       resolveBaseUnit(data.Unit),
 		}
 
 		metricData = append(metricData, datum)
