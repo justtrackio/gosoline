@@ -32,6 +32,7 @@ func RegisterWriterFactory(name string, factory WriterFactory) {
 type BatchedMetricDatum struct {
 	Priority   int
 	Timestamp  time.Time
+	Namespace  string
 	MetricName string
 	Dimensions Dimensions
 	Values     []float64
@@ -185,7 +186,7 @@ func (d *Daemon) append(ctx context.Context, datum *Datum) {
 	dimKV := datum.DimensionKV()
 	timeKey := datum.Timestamp.Format(defaultTimeFormat)
 
-	key := fmt.Sprintf("%s-%s-%s", datum.MetricName, dimKV, timeKey)
+	key := fmt.Sprintf("%s-%s-%s-%s", datum.Namespace, datum.MetricName, dimKV, timeKey)
 
 	if _, ok := d.batch[key]; !ok {
 		amendFromDefault(datum)
@@ -201,6 +202,7 @@ func (d *Daemon) append(ctx context.Context, datum *Datum) {
 		d.batch[key] = &BatchedMetricDatum{
 			Priority:   datum.Priority,
 			Timestamp:  datum.Timestamp,
+			Namespace:  datum.Namespace,
 			MetricName: datum.MetricName,
 			Dimensions: datum.Dimensions,
 			Unit:       datum.Unit,
@@ -259,6 +261,7 @@ func (d *Daemon) buildMetricData() Data {
 		datum := &Datum{
 			Priority:   v.Priority,
 			Timestamp:  v.Timestamp,
+			Namespace:  v.Namespace,
 			MetricName: v.MetricName,
 			Dimensions: v.Dimensions,
 			Unit:       unit,

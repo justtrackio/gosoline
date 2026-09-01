@@ -63,14 +63,14 @@ func (s *PerRunnerMetricHandlerTestSuite) TestEcsMetricError() {
 	expectedErr := fmt.Errorf("this is a cloudwatch error")
 	s.mockGetRunnerCountMetricEcs(2, expectedErr)
 
-	_, actualErr := s.handler.CalculatePerRunnerMetrics(s.ctx, "Requests", 100, s.handlerSettings)
+	_, actualErr := s.handler.CalculatePerRunnerMetrics(s.ctx, "requests", 100, s.handlerSettings)
 	s.EqualError(actualErr, "can not get runner count: can not get metric: this is a cloudwatch error")
 }
 
 func (s *PerRunnerMetricHandlerTestSuite) TestZeroRunnerCount() {
 	s.mockGetRunnerCountMetricEcs(0, nil)
 
-	_, actualErr := s.handler.CalculatePerRunnerMetrics(s.ctx, "Requests", 100, s.handlerSettings)
+	_, actualErr := s.handler.CalculatePerRunnerMetrics(s.ctx, "requests", 100, s.handlerSettings)
 	s.EqualError(actualErr, "runner count is zero")
 }
 
@@ -78,12 +78,12 @@ func (s *PerRunnerMetricHandlerTestSuite) TestGetPreviousMetricError() {
 	s.mockGetRunnerCountMetricEcs(2, nil)
 	s.mockGetPreviousMetric(0, fmt.Errorf("previous metric error"))
 
-	s.logger.EXPECT().Warn(matcher.Context, "can not get current %s metric per runner metric: %s, defaulting to 0", "PerRunnerRequests", "can not get metric: previous metric error")
+	s.logger.EXPECT().Warn(matcher.Context, "can not get current %s metric per runner metric: %s, defaulting to 0", "AutoscalingPerRunnerRequests", "can not get metric: previous metric error")
 	s.mockSuccessLogger(100, 50, 50, 2)
 
 	expectedDatum := s.getExpectedDatum(50)
 
-	actualDatum, actualErr := s.handler.CalculatePerRunnerMetrics(s.ctx, "Requests", 100, s.handlerSettings)
+	actualDatum, actualErr := s.handler.CalculatePerRunnerMetrics(s.ctx, "requests", 100, s.handlerSettings)
 	s.NoError(actualErr)
 	s.Equal(expectedDatum, actualDatum)
 }
@@ -97,7 +97,7 @@ func (s *PerRunnerMetricHandlerTestSuite) TestMaxIncreaseExeeded() {
 
 	expectedDatum := s.getExpectedDatum(8)
 
-	actualDatum, actualErr := s.handler.CalculatePerRunnerMetrics(s.ctx, "Requests", 100, s.handlerSettings)
+	actualDatum, actualErr := s.handler.CalculatePerRunnerMetrics(s.ctx, "requests", 100, s.handlerSettings)
 	s.NoError(actualErr)
 	s.Equal(expectedDatum, actualDatum)
 }
@@ -109,7 +109,7 @@ func (s *PerRunnerMetricHandlerTestSuite) TestHappyPathNoChange() {
 
 	expectedDatum := s.getExpectedDatum(4)
 
-	actualDatum, actualErr := s.handler.CalculatePerRunnerMetrics(s.ctx, "Requests", 8, s.handlerSettings)
+	actualDatum, actualErr := s.handler.CalculatePerRunnerMetrics(s.ctx, "requests", 8, s.handlerSettings)
 	s.NoError(actualErr)
 	s.Equal(expectedDatum, actualDatum)
 }
@@ -121,7 +121,7 @@ func (s *PerRunnerMetricHandlerTestSuite) TestHappyPathWithChange() {
 
 	expectedDatum := s.getExpectedDatum(8)
 
-	actualDatum, actualErr := s.handler.CalculatePerRunnerMetrics(s.ctx, "Requests", 16, s.handlerSettings)
+	actualDatum, actualErr := s.handler.CalculatePerRunnerMetrics(s.ctx, "requests", 16, s.handlerSettings)
 	s.NoError(actualErr)
 	s.Equal(expectedDatum, actualDatum)
 }
@@ -137,7 +137,7 @@ func (s *PerRunnerMetricHandlerTestSuite) mockGetPreviousMetric(value float64, e
 				MetricStat: &types.MetricStat{
 					Metric: &types.Metric{
 						Namespace:  aws.String("gosoline/test/metric/calculator"),
-						MetricName: aws.String("PerRunnerRequests"),
+						MetricName: aws.String("AutoscalingPerRunnerRequests"),
 					},
 					Period: aws.Int32(60),
 					Stat:   aws.String(string(types.StatisticAverage)),
@@ -210,14 +210,16 @@ func (s *PerRunnerMetricHandlerTestSuite) mockSuccessLogger(currentValue, curren
 		"runnerCount":  runnerCount,
 	}).Return(s.logger)
 
-	s.logger.EXPECT().Info(matcher.Context, "%s evaluated to %f", "PerRunnerRequests", newPrm)
+	s.logger.EXPECT().Info(matcher.Context, "%s evaluated to %f", "AutoscalingPerRunnerRequests", newPrm)
 }
 
 func (s *PerRunnerMetricHandlerTestSuite) getExpectedDatum(value float64) *metric.Datum {
 	return &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		MetricName: "PerRunnerRequests",
+		Namespace:  metric.NamespaceAutoscalingPerRunner,
+		MetricName: "requests",
 		Value:      value,
 		Unit:       metric.UnitCountAverage,
+		Kind:       metric.KindGauge.Build(),
 	}
 }

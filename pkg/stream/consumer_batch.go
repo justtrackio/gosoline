@@ -11,7 +11,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
@@ -234,15 +233,7 @@ func (c *BatchConsumer) decodeMessages(
 	for _, cdata := range batch {
 		model, err := c.callback.GetModel(cdata.msg.Attributes)
 		if err != nil {
-			c.metricWriter.Write(batchCtx, metric.Data{
-				&metric.Datum{
-					MetricName: metricNameConsumerUnknownModelError,
-					Dimensions: map[string]string{
-						"Consumer": c.name,
-					},
-					Value: 1.0,
-				},
-			})
+			c.writeMetricUnknownModelError(batchCtx)
 
 			// Check if this error is ignorable based on consumer settings
 			var ignorableErr IgnorableGetModelError

@@ -1,8 +1,8 @@
 package httpserver
 
 import (
-	"fmt"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,17 +11,21 @@ import (
 )
 
 const (
-	perRoute                       = "PerRoute"
-	MetricHttpRequestCount         = "HttpRequestCount"
-	MetricHttpRequestCountPerRoute = "HttpRequestCountPerRoute"
-	MetricHttpRequestResponseTime  = "HttpRequestResponseTime"
-	MetricHttpRequestsRejected     = "HttpRequestsRejected"
-	MetricHttpStatus               = "HttpStatus"
+	// MetricHttpRequestDuration records how long a request took. Its observation count is the request
+	// count, and its dimensions tell routes, methods and status codes apart, so none of those needs a
+	// metric of its own.
+	MetricHttpRequestDuration  = "request.duration"
+	MetricHttpRequestsRejected = "rejected.requests"
+
+	dimensionServerName = "http.server.name"
+	dimensionRoute      = "http.route"
+	dimensionMethod     = "http.request.method"
+	dimensionStatusCode = "http.response.status_code"
 )
 
 func NewMetricMiddleware(name string, metricRecorder ServerMetricRecorder) (middleware gin.HandlerFunc, setupHandler func(definitions []Definition)) {
 	// writer without any defaults until we initialize some defaults and overwrite it
-	writer := metric.NewWriter()
+	writer := metric.NewWriter(metric.NamespaceHttpServer)
 
 	middleware = func(ginCtx *gin.Context) {
 		metricMiddleware(name, ginCtx, writer, metricRecorder)
@@ -29,7 +33,7 @@ func NewMetricMiddleware(name string, metricRecorder ServerMetricRecorder) (midd
 
 	setupHandler = func(definitions []Definition) {
 		defaults := getMetricMiddlewareDefaults(name, definitions...)
-		writer = metric.NewWriter(defaults...)
+		writer = metric.NewWriter(metric.NamespaceHttpServer, defaults...)
 	}
 
 	return middleware, setupHandler
@@ -56,59 +60,55 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 	requestTimeNano := time.Since(start)
 	requestTimeMillisecond := float64(requestTimeNano) / float64(time.Millisecond)
 
-	status := ginCtx.Writer.Status() / 100
-	statusMetric := fmt.Sprintf("%s%dXX", MetricHttpStatus, status)
+	routeDimensions := metric.Dimensions{
+		dimensionServerName: name,
+		dimensionRoute:      path,
+		dimensionMethod:     method,
+		dimensionStatusCode: strconv.Itoa(ginCtx.Writer.Status()),
+	}
 
-	writer.Write(ginCtx.Request.Context(), createMetricsWithDimensions(metric.Data{
+	writer.Write(ginCtx.Request.Context(), metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: MetricHttpRequestResponseTime,
+			MetricName: MetricHttpRequestDuration,
+			Dimensions: routeDimensions,
 			Unit:       metric.UnitMillisecondsAverage,
 			Value:      requestTimeMillisecond,
+			Kind:       metric.KindHistogram.Build(),
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: MetricHttpRequestCount,
-			Unit:       metric.UnitCount,
-			Value:      1.0,
+			MetricName: MetricHttpRequestDuration,
+			Dimensions: metric.Dimensions{
+				dimensionServerName: name,
+			},
+			Unit:  metric.UnitMillisecondsAverage,
+			Value: requestTimeMillisecond,
+			Kind:  metric.KindTotal,
 		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: statusMetric,
-			Unit:       metric.UnitCount,
-			Value:      1.0,
-		},
-	}, map[string]metric.Dimensions{
-		perRoute: {
-			"Method":     method,
-			"Path":       path,
-			"ServerName": name,
-		},
-		"": {
-			"ServerName": name,
-		},
-	}))
+	})
 
 	if wasRequestRejected(ginCtx.Request) {
 		writer.Write(ginCtx.Request.Context(), metric.Data{
 			{
 				Priority:   metric.PriorityHigh,
 				MetricName: MetricHttpRequestsRejected,
-				Unit:       metric.UnitCount,
-				Dimensions: map[string]string{
-					"Method":     method,
-					"Path":       path,
-					"ServerName": name,
+				Dimensions: metric.Dimensions{
+					dimensionServerName: name,
+					dimensionRoute:      path,
+					dimensionMethod:     method,
 				},
+				Unit:  metric.UnitCount,
 				Value: 1.0,
+				Kind:  metric.KindCounter.Build(),
 			},
 			{
 				Priority:   metric.PriorityHigh,
 				MetricName: MetricHttpRequestsRejected,
-				Unit:       metric.UnitCount,
-				Dimensions: map[string]string{
-					"ServerName": name,
+				Dimensions: metric.Dimensions{
+					dimensionServerName: name,
 				},
+				Unit:  metric.UnitCount,
 				Value: 1.0,
 				Kind:  metric.KindTotal,
 			},
@@ -116,50 +116,23 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 	}
 }
 
-// createMetricsWithDimensions is creating a metric.Data set
-// which included each provided metric with each provided set of dimensions.
-// The key of the dimensions map is appended to the metric name, so the name is unique across set of dimensions
-func createMetricsWithDimensions(metrics metric.Data, dimensionsByMetricSuffix map[string]metric.Dimensions) metric.Data {
-	return funk.Flatten(funk.Map(metrics, func(metricDatum *metric.Datum) metric.Data {
-		data := make(metric.Data, 0)
-		for metricNameExtension, dimensions := range dimensionsByMetricSuffix {
-			datum := *metricDatum
-			datum.MetricName += metricNameExtension
-			datum.Dimensions = dimensions
-
-			data = append(data, &datum)
-		}
-
-		return data
-	}))
-}
-
+// getMetricMiddlewareDefaults reports zero for every route's rejected requests, so a route that never
+// rejects a request reads as zero rather than as a gap. The request duration has no default: a
+// histogram can not be seeded with an observation that did not happen.
 func getMetricMiddlewareDefaults(name string, definitions ...Definition) metric.Data {
 	return slices.Concat(
 		funk.Map(definitions, func(definition Definition) *metric.Datum {
 			return &metric.Datum{
 				Priority:   metric.PriorityHigh,
-				MetricName: MetricHttpRequestCountPerRoute,
-				Dimensions: metric.Dimensions{
-					"Method":     definition.httpMethod,
-					"Path":       definition.getAbsolutePath(),
-					"ServerName": name,
-				},
-				Unit:  metric.UnitCount,
-				Value: 0.0,
-			}
-		}),
-		funk.Map(definitions, func(definition Definition) *metric.Datum {
-			return &metric.Datum{
-				Priority:   metric.PriorityHigh,
 				MetricName: MetricHttpRequestsRejected,
 				Dimensions: metric.Dimensions{
-					"Method":     definition.httpMethod,
-					"Path":       definition.getAbsolutePath(),
-					"ServerName": name,
+					dimensionServerName: name,
+					dimensionRoute:      definition.getAbsolutePath(),
+					dimensionMethod:     definition.httpMethod,
 				},
 				Unit:  metric.UnitCount,
 				Value: 0.0,
+				Kind:  metric.KindCounter.Build(),
 			}
 		}),
 		metric.Data{
@@ -167,20 +140,11 @@ func getMetricMiddlewareDefaults(name string, definitions ...Definition) metric.
 				Priority:   metric.PriorityHigh,
 				MetricName: MetricHttpRequestsRejected,
 				Dimensions: metric.Dimensions{
-					"ServerName": name,
+					dimensionServerName: name,
 				},
 				Unit:  metric.UnitCount,
 				Value: 0.0,
 				Kind:  metric.KindTotal,
-			},
-			{
-				Priority:   metric.PriorityHigh,
-				MetricName: MetricHttpRequestCount,
-				Dimensions: metric.Dimensions{
-					"ServerName": name,
-				},
-				Unit:  metric.UnitCount,
-				Value: 0.0,
 			},
 		},
 	)

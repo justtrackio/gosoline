@@ -11,15 +11,18 @@ import (
 
 const (
 	// number of items stored in the store (if available)
-	metricNameKvStoreSize = "kvStoreSize"
+	metricNameKvStoreSize = "item.count"
 	// number of items we try to read from the store
-	metricNameKvStoreRead = "kvStoreRead"
+	metricNameKvStoreRead = "reads"
 	// number of items found and read from the store
-	metricNameKvStoreHit = "kvStoreHit"
+	metricNameKvStoreHit = "hits"
 	// number of items written to the store
-	metricNameKvStoreWrite = "kvStoreWrite"
+	metricNameKvStoreWrite = "writes"
 	// number of items deleted from the store
-	metricNameKvStoreDelete = "kvStoreDelete"
+	metricNameKvStoreDelete = "deletes"
+
+	dimensionModel = "model.id"
+	dimensionStore = "store.type"
 )
 
 type MetricStore[T any] struct {
@@ -40,7 +43,7 @@ func NewMetricStoreWithInterfaces[T any](store KvStore[T], settings *Settings) K
 
 	s := &MetricStore[T]{
 		KvStore:      store,
-		metricWriter: metric.NewWriter(defaults...),
+		metricWriter: metric.NewWriter(metric.NamespaceKvStore, defaults...),
 		model:        modelIdString,
 		store:        storeName,
 	}
@@ -150,9 +153,20 @@ func (s *MetricStore[T]) recordSize(sizedStore SizedStore[T]) {
 		size := sizedStore.EstimateSize()
 
 		if size != nil {
-			s.record(context.Background(), metricNameKvStoreSize, *size)
+			s.recordSizeValue(context.Background(), *size)
 		}
 	}
+}
+
+func (s *MetricStore[T]) recordSizeValue(ctx context.Context, size int64) {
+	s.metricWriter.WriteOne(ctx, &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: metricNameKvStoreSize,
+		Dimensions: s.dimensions(),
+		Value:      float64(size),
+		Unit:       metric.UnitCount,
+		Kind:       metric.KindGauge.Build(),
+	})
 }
 
 func (s *MetricStore[T]) recordReads(ctx context.Context, count int) {
@@ -175,58 +189,44 @@ func (s *MetricStore[T]) record(ctx context.Context, name string, value int64) {
 	s.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: name,
-		Dimensions: map[string]string{
-			"model": s.model,
-			"store": s.store,
-		},
-		Value: float64(value),
-		Unit:  metric.UnitCount,
+		Dimensions: s.dimensions(),
+		Value:      float64(value),
+		Unit:       metric.UnitCount,
+		Kind:       metric.KindCounter.Build(),
 	})
 }
 
-func getDefaultMetrics(model string, store string) metric.Data {
-	// no default for the size, if we don't know the size, it is not 0
-
-	return metric.Data{
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameKvStoreRead,
-			Dimensions: map[string]string{
-				"model": model,
-				"store": store,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameKvStoreHit,
-			Dimensions: map[string]string{
-				"model": model,
-				"store": store,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameKvStoreWrite,
-			Dimensions: map[string]string{
-				"model": model,
-				"store": store,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameKvStoreDelete,
-			Dimensions: map[string]string{
-				"model": model,
-				"store": store,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-		},
+func (s *MetricStore[T]) dimensions() metric.Dimensions {
+	return metric.Dimensions{
+		dimensionModel: s.model,
+		dimensionStore: s.store,
 	}
+}
+
+func getDefaultMetrics(model string, store string) metric.Data {
+	// no default for the item count, if we don't know the size, it is not 0
+	names := []string{
+		metricNameKvStoreRead,
+		metricNameKvStoreHit,
+		metricNameKvStoreWrite,
+		metricNameKvStoreDelete,
+	}
+
+	defaults := make(metric.Data, 0, len(names))
+
+	for _, name := range names {
+		defaults = append(defaults, &metric.Datum{
+			Priority:   metric.PriorityHigh,
+			MetricName: name,
+			Dimensions: map[string]string{
+				dimensionModel: model,
+				dimensionStore: store,
+			},
+			Unit:  metric.UnitCount,
+			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
+		})
+	}
+
+	return defaults
 }

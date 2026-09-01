@@ -10,15 +10,51 @@
 - `daemon.go` - `NewDaemonModule` factory, `RegisterWriterFactory`, aggregation and flush loop.
 - `channel.go` - buffered channel every `Write`/`WriteOne` call feeds into.
 - `writer_*.go` - backend writers selected through `metric.writers`.
+- `naming.go` - the three per-writer renderers plus the semantic-convention registry.
+- `contract.go` - the canonical namespaces and the shared dimension keys every package authors from.
+- `conformance_test.go` - the authored name and dimension-key set, asserted against the contract.
+- `otel_naming.go` - UCUM unit and scale factor, and the OTEL non-unit derived from a plural leaf.
+- `custom_units.go` - the custom aggregation units and their resolution to a base unit.
 - `settings.go` - `Settings` struct read from the `metric` config key.
 - `schema_version.go` - metric schema version constant, format validation, metadata registration.
+
+## The emission contract
+A metric is authored as a **canonical namespace plus a leaf**: lowercase, components delimited by a
+dot, multiple words inside a component joined by an underscore. The canonical form carries no unit
+suffix, no `_total`, no part of the application's identity, and no value that is carried as a
+dimension. Namespaces live in `contract.go`; each package declares its own leaves.
+
+The namespace is passed once to `metric.NewWriter(namespace, defaults...)` and stamped onto every
+datum that does not already carry one, so a package emitting into two namespaces - a Kafka consumer
+reporting both `messaging.*` and `kafka.consumer.*` - overrides it per datum.
+
+Each writer renders that one authored name into its own convention:
+
+| Writer | Rendering of `http.server` + `request.duration` |
+|--------|--------------------------------------------------|
+| CloudWatch | `HttpServerRequestDuration`, unscaled, milliseconds |
+| Prometheus | `<app>_http_server_request_duration_seconds`, scaled to seconds |
+| OTEL | `http.server.request.duration`, unit `s` on the instrument |
+
+The OTEL renderer prefixes `gosoline.` unless an OpenTelemetry semantic convention owns the metric.
+Prometheus adds the base-unit suffix and `_total` on counters. Neither suffix nor prefix exists in the
+authored name. Prometheus also renders dimension keys, replacing dots with underscores, because a dot
+is not a valid label name character there and a datum carrying one is rejected at registration.
+
+Every gosoline metric declares its `Kind` explicitly. Unit-based inference (`inferKind`) remains only
+as the fallback for metrics authored outside gosoline, and is shared by both writers so they can never
+classify one datum differently.
+
+Adding or changing a metric means updating `authoredNames` in `conformance_test.go`; the conformance
+test fails the build on a name that violates the contract, on a duplicate, and on a rendering
+regression.
 
 ## Metric schema version
 The metric schema version identifies the metric emission contract a gosoline build implements, so
 tooling (dashboard generators, alert provisioning, metric pipelines) can branch on it without
 inspecting the gosoline version.
 
-- Current value: `v1.0`, defined by the exported constant `metric.SchemaVersion` in
+- Current value: `v2.0`, defined by the exported constant `metric.SchemaVersion` in
   `schema_version.go`. That constant is the single source of truth - no other package may define
   the literal value.
 - Metadata key: `metric.schema_version` (`metric.MetadataKeySchemaVersion`). The value is written

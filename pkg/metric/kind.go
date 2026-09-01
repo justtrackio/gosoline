@@ -2,6 +2,8 @@ package metric
 
 import (
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 )
 
 const (
@@ -216,4 +218,29 @@ func (k SummaryKindBuilder) WithBufCap(bufCap uint32) SummaryKindBuilder {
 	k.bufCap = bufCap
 
 	return k
+}
+
+// effectiveKind returns the instrument type a datum declares, or the type inferred from its unit if
+// it declares none. Every gosoline metric declares its type; inference is the fallback for metrics
+// authored outside gosoline.
+func effectiveKind(datum *Datum) kind {
+	switch datum.Kind.kind {
+	case kindCounter, kindGauge, kindHistogram, kindSummary:
+		return datum.Kind.kind
+	}
+
+	return inferKind(datum.Unit)
+}
+
+// inferKind classifies a unit into an instrument type. Every writer that distinguishes instrument
+// types infers through this function, so no two writers classify the same datum differently.
+func inferKind(unit types.StandardUnit) kind {
+	switch resolveBaseUnit(unit) {
+	case types.StandardUnitCount:
+		return kindCounter
+	case types.StandardUnitSeconds, types.StandardUnitMilliseconds, types.StandardUnitMicroseconds:
+		return kindHistogram
+	default:
+		return kindGauge
+	}
 }

@@ -22,9 +22,9 @@ import (
 const (
 	kinesisBatchSizeMax = 500
 
-	metricNamePutRecords          = "PutRecords"
-	metricNamePutRecordsFailure   = "PutRecordsFailure"
-	metricNamePutRecordsBatchSize = "PutRecordsBatchSize"
+	metricNamePutRecords          = "client.sent.messages"
+	metricNamePutRecordsFailure   = "send.errors"
+	metricNamePutRecordsBatchSize = "batch.size"
 )
 
 type Record struct {
@@ -78,7 +78,7 @@ func NewRecordWriter(ctx context.Context, config cfg.Config, logger log.Logger, 
 	}
 
 	defaultMetrics := getRecordWriterDefaultMetrics(string(fullStreamName))
-	metricWriter := metric.NewWriter(defaultMetrics...)
+	metricWriter := metric.NewWriter(metric.NamespaceAwsKinesisProducer, defaultMetrics...)
 
 	if client, err = ProvideClient(ctx, config, logger, settings.ClientName); err != nil {
 		return nil, fmt.Errorf("failed to provide kinesis client: %w", err)
@@ -253,27 +253,35 @@ func (w *recordWriter) putRecordsAndCollectFailed(
 }
 
 func (w *recordWriter) writeMetrics(ctx context.Context, records int, failed int) {
+	dimensions := map[string]string{
+		dimensionStream: w.fullStreamName,
+	}
+
 	w.metricWriter.Write(ctx, metric.Data{
 		&metric.Datum{
+			Priority:   metric.PriorityHigh,
+			Namespace:  metric.NamespaceMessaging,
 			MetricName: metricNamePutRecords,
-			Dimensions: map[string]string{
-				"StreamName": w.fullStreamName,
-			},
-			Value: float64(records - failed),
+			Dimensions: dimensions,
+			Value:      float64(records - failed),
+			Unit:       metric.UnitCount,
+			Kind:       metric.KindCounter.Build(),
 		},
 		&metric.Datum{
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNamePutRecordsFailure,
-			Dimensions: map[string]string{
-				"StreamName": w.fullStreamName,
-			},
-			Value: float64(failed),
+			Dimensions: dimensions,
+			Value:      float64(failed),
+			Unit:       metric.UnitCount,
+			Kind:       metric.KindCounter.Build(),
 		},
 		&metric.Datum{
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNamePutRecordsBatchSize,
-			Dimensions: map[string]string{
-				"StreamName": w.fullStreamName,
-			},
-			Value: float64(records),
+			Dimensions: dimensions,
+			Value:      float64(records),
+			Unit:       metric.UnitCountAverage,
+			Kind:       metric.KindHistogram.Build(),
 		},
 	})
 }
@@ -282,30 +290,34 @@ func getRecordWriterDefaultMetrics(streamName string) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
+			Namespace:  metric.NamespaceMessaging,
 			MetricName: metricNamePutRecords,
 			Dimensions: map[string]string{
-				"StreamName": streamName,
+				dimensionStream: streamName,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		},
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNamePutRecordsFailure,
 			Dimensions: map[string]string{
-				"StreamName": streamName,
+				dimensionStream: streamName,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		},
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNamePutRecordsBatchSize,
 			Dimensions: map[string]string{
-				"StreamName": streamName,
+				dimensionStream: streamName,
 			},
 			Unit:  metric.UnitCountAverage,
 			Value: 0.0,
+			Kind:  metric.KindHistogram.Build(),
 		},
 	}
 }

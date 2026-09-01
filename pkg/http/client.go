@@ -8,6 +8,7 @@ import (
 	"net/http"
 	netUrl "net/url"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -24,16 +25,19 @@ import (
 )
 
 const (
-	DeleteRequest         = "DELETE"
-	GetRequest            = "GET"
-	PostRequest           = "POST"
-	PutRequest            = "PUT"
-	PatchRequest          = "PATCH"
-	OptionsRequest        = "OPTIONS"
-	metricRequest         = "HttpClientRequest"
-	metricError           = "HttpClientError"
-	metricResponseCode    = "HttpClientResponseCode"
-	metricRequestDuration = "HttpRequestDuration"
+	DeleteRequest  = "DELETE"
+	GetRequest     = "GET"
+	PostRequest    = "POST"
+	PutRequest     = "PUT"
+	PatchRequest   = "PATCH"
+	OptionsRequest = "OPTIONS"
+	// metricRequestDuration records how long a request took. Its observation count is the request
+	// count, and its dimensions tell status codes and failures apart, so none of those needs a metric
+	// of its own.
+	metricRequestDuration = "request.duration"
+
+	dimensionMethod     = "http.request.method"
+	dimensionStatusCode = "http.response.status_code"
 )
 
 //go:generate go run github.com/vektra/mockery/v2 --name Client
@@ -264,7 +268,7 @@ func ProvideHttpClient(ctx context.Context, config cfg.Config, logger log.Logger
 }
 
 func newHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
-	metricWriter := metric.NewWriter()
+	metricWriter := metric.NewWriter(metric.NamespaceHttpClient)
 	tracer, err := tracing.ProvideInstrumentor(ctx, config, logger)
 	if err != nil {
 		return nil, err
@@ -493,7 +497,6 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	}
 
 	c.prepareRequest(ctx, req, request)
-	c.writeMetric(ctx, metricRequest, method, metric.UnitCount, 1.0)
 	start := c.clock.Now()
 	resp, err := req.Execute(method, url)
 
@@ -507,13 +510,12 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	// Otherwise a user might spam our error logs by just canceling a lot of requests
 	// (or many users spam us because sometimes they cancel requests)
 	if err != nil {
-		c.writeMetric(ctx, metricError, method, metric.UnitCount, 1.0)
+		c.writeRequestDuration(ctx, method, metric.Dimensions{
+			metric.DimensionErrorType: metric.ErrorType(err),
+		}, float64(totalDuration/time.Millisecond))
 
 		return nil, fmt.Errorf("failed to perform %s request to %s: %w", request.restyRequest.Method, request.url.String(), err)
 	}
-
-	metricName := fmt.Sprintf("%s%dXX", metricResponseCode, resp.StatusCode()/100)
-	c.writeMetric(ctx, metricName, method, metric.UnitCount, 1.0)
 
 	response := buildResponse(resp, &totalDuration)
 
@@ -522,7 +524,9 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	// so the duration will be very low. If we get back an error (e.g., status 500),
 	// we log the duration as this is just a valid http response.
 	requestDurationMs := float64(resp.Time() / time.Millisecond)
-	c.writeMetric(ctx, metricRequestDuration, method, metric.UnitMillisecondsAverage, requestDurationMs)
+	c.writeRequestDuration(ctx, method, metric.Dimensions{
+		dimensionStatusCode: strconv.Itoa(resp.StatusCode()),
+	}, requestDurationMs)
 
 	return response, nil
 }
@@ -569,16 +573,27 @@ func (c *client) setDefaultHeaders(req *resty.Request) {
 	}
 }
 
-func (c *client) writeMetric(ctx context.Context, metricName string, method string, unit metric.StandardUnit, value float64) {
+// writeRequestDuration records one request, identified by its method and by either the status code it
+// answered with or the type of error it failed with.
+func (c *client) writeRequestDuration(ctx context.Context, method string, dimensions metric.Dimensions, durationMs float64) {
+	dimensions[dimensionMethod] = method
+
+	if _, ok := dimensions[dimensionStatusCode]; !ok {
+		dimensions[dimensionStatusCode] = metric.DimensionDefault
+	}
+
+	if _, ok := dimensions[metric.DimensionErrorType]; !ok {
+		dimensions[metric.DimensionErrorType] = metric.DimensionDefault
+	}
+
 	c.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
-		MetricName: metricName,
-		Dimensions: metric.Dimensions{
-			"Method": method,
-		},
-		Unit:  unit,
-		Value: value,
+		MetricName: metricRequestDuration,
+		Dimensions: dimensions,
+		Unit:       metric.UnitMillisecondsAverage,
+		Value:      durationMs,
+		Kind:       metric.KindHistogram.Build(),
 	})
 }
 
