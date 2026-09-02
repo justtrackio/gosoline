@@ -78,8 +78,8 @@ func (p *producer) ProduceSync(ctx context.Context, records ...*kgo.Record) erro
 	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeProducer, kafka.DimensionClient: p.name, kafka.DimensionTopic: p.topicName}
 
 	data := metric.Data{
-		{Priority: metric.PriorityHigh, MetricName: metricNameProduceBatchSize, Dimensions: dims, Value: float64(len(records)), Unit: metric.UnitCountAverage, Kind: metric.KindHistogram.Build()},
-		{Priority: metric.PriorityHigh, Namespace: metric.NamespaceMessaging, MetricName: metricNameProduceDuration, Dimensions: dims, Value: durationMs, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
+		{Priority: metric.PriorityHigh, MetricName: metricNameProduceBatchSize, Dimensions: dims, Value: float64(len(records))},
+		{Priority: metric.PriorityHigh, Namespace: metric.NamespaceMessaging, MetricName: metricNameProduceDuration, Dimensions: dims, Value: durationMs},
 	}
 
 	if err := results.FirstErr(); err != nil {
@@ -94,7 +94,7 @@ func (p *producer) ProduceSync(ctx context.Context, records ...*kgo.Record) erro
 
 		data = append(data,
 			recordsSentDatum(dims, float64(sent)),
-			&metric.Datum{Priority: metric.PriorityHigh, MetricName: metricNameRecordsSentFailed, Dimensions: dims, Value: float64(failed), Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
+			&metric.Datum{Priority: metric.PriorityHigh, MetricName: metricNameRecordsSentFailed, Dimensions: dims, Value: float64(failed)},
 		)
 
 		p.metricWriter.Write(ctx, data)
@@ -117,8 +117,6 @@ func recordsSentDatum(dims metric.Dimensions, value float64) *metric.Datum {
 		MetricName: metricNameRecordsSent,
 		Dimensions: dims,
 		Value:      value,
-		Unit:       metric.UnitCount,
-		Kind:       metric.KindCounter.Build(),
 	}
 }
 

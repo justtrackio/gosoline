@@ -23,7 +23,7 @@ func apiDefiner(ctx context.Context, config cfg.Config, logger log.Logger) (*htt
 	definitions.GET("/hello", httpserver.CreateHandler(&HelloHandler{
 		logger: logger,
 		tracer: tracer,
-		mw:     metric.NewWriter(""),
+		mw:     metric.NewWriter("example"),
 	}))
 
 	return definitions, nil

@@ -25,7 +25,7 @@ func LoggerHandlerFactory(_ cfg.Config, _ string) (log.Handler, error) {
 
 func NewLoggerHandler() *LoggerHandler {
 	defaults := getDefaultMetrics()
-	metricWriter := NewWriter(NamespaceLog, defaults...)
+	metricWriter := NewWriter(NamespaceMetric, defaults...)
 
 	return &LoggerHandler{
 		writer: metricWriter,
@@ -56,9 +56,17 @@ func (h LoggerHandler) Log(ctx context.Context, _ time.Time, level int, _ string
 
 func getDefaultMetrics() Data {
 	return Data{
-		logRecordDatum(log.LevelError, 0.0),
-		logRecordDatum(log.LevelWarn, 0.0),
+		defaultLogRecordDatum(log.LevelError, 0.0),
+		defaultLogRecordDatum(log.LevelWarn, 0.0),
 	}
+}
+
+func defaultLogRecordDatum(level string, value float64) *Datum {
+	datum := logRecordDatum(level, value)
+	datum.Unit = UnitCount
+	datum.Kind = KindCounter.Build()
+
+	return datum
 }
 
 // logRecordDatum counts a log record. The level is a dimension rather than part of the name, so one
@@ -70,8 +78,6 @@ func logRecordDatum(level string, value float64) *Datum {
 		Dimensions: Dimensions{
 			DimensionLogLevel: level,
 		},
-		Unit:  UnitCount,
 		Value: value,
-		Kind:  KindCounter.Build(),
 	}
 }

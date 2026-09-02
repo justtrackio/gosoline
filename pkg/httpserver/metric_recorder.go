@@ -104,8 +104,6 @@ func (r *serverMetricRecorder) buildGaugeDatum(metricName string, value int64) *
 		Dimensions: metric.Dimensions{
 			dimensionServerName: r.name,
 		},
-		Unit:  metric.UnitCountMaximum,
-		Kind:  metric.KindGauge.Build(),
 		Value: float64(value),
 	}
 }

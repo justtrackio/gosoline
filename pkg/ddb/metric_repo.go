@@ -36,15 +36,19 @@ func (r metricRepository) PutItem(ctx context.Context, _ PutItemBuilder, item an
 func (r metricRepository) writeMetric(ctx context.Context, op string, err error, start time.Time) {
 	latencyMillisecond := float64(time.Since(start)) / float64(time.Millisecond)
 
-	r.metric.WriteOne(ctx, &metric.Datum{
+	datum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: MetricNameOperationDuration,
 		Dimensions: operationDimensions(op, r.GetModelId().String(), metric.ErrorType(err)),
-		Unit:       metric.UnitMillisecondsAverage,
 		Value:      latencyMillisecond,
-		Kind:       metric.KindHistogram.Build(),
-	})
+	}
+	if err != nil {
+		datum.Unit = metric.UnitMillisecondsAverage
+		datum.Kind = metric.KindHistogram.Build()
+	}
+
+	r.metric.WriteOne(ctx, datum)
 }
 
 func operationDimensions(op string, modelId string, errorType string) map[string]string {

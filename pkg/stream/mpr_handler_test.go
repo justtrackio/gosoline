@@ -87,7 +87,7 @@ func (s *MessagesPerRunnerTestSuite) TestCalculatePerRunnerMetricsError() {
 	expectedSmaDatum := &metric.Datum{
 		Priority:   metric.PriorityLow,
 		Timestamp:  time.Time{},
-		Namespace:  metric.NamespaceStreamInput,
+		Namespace:  metric.NamespaceStream,
 		MetricName: "available.messages",
 		Value:      50,
 		Unit:       metric.UnitCount,
@@ -97,7 +97,7 @@ func (s *MessagesPerRunnerTestSuite) TestCalculatePerRunnerMetricsError() {
 	expectedSmsDatum := &metric.Datum{
 		Priority:   metric.PriorityLow,
 		Timestamp:  time.Time{},
-		Namespace:  metric.NamespaceStreamOutput,
+		Namespace:  metric.NamespaceStream,
 		MetricName: "sent.messages",
 		Value:      100,
 		Unit:       metric.UnitCount,
@@ -126,7 +126,7 @@ func (s *MessagesPerRunnerTestSuite) TestSuccess() {
 	expectedSmaDatum := &metric.Datum{
 		Priority:   metric.PriorityLow,
 		Timestamp:  time.Time{},
-		Namespace:  metric.NamespaceStreamInput,
+		Namespace:  metric.NamespaceStream,
 		MetricName: "available.messages",
 		Value:      50,
 		Unit:       metric.UnitCount,
@@ -136,7 +136,7 @@ func (s *MessagesPerRunnerTestSuite) TestSuccess() {
 	expectedSmsDatum := &metric.Datum{
 		Priority:   metric.PriorityLow,
 		Timestamp:  time.Time{},
-		Namespace:  metric.NamespaceStreamOutput,
+		Namespace:  metric.NamespaceStream,
 		MetricName: "sent.messages",
 		Value:      100,
 		Unit:       metric.UnitCount,

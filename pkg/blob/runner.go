@@ -19,7 +19,7 @@ import (
 
 const (
 	metricName      = "batch.operations"
-	dimensionOp     = "blob.operation"
+	dimensionOp     = "operation"
 	operationCopy   = "Copy"
 	operationDelete = "Delete"
 	operationRead   = "Read"
@@ -256,9 +256,7 @@ func (r *batchRunner) writeMetric(ctx context.Context, operation string) {
 		Dimensions: map[string]string{
 			dimensionOp: operation,
 		},
-		Unit:  metric.UnitCount,
 		Value: 1.0,
-		Kind:  metric.KindCounter.Build(),
 	})
 }
 

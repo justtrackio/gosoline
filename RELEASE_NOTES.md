@@ -292,5 +292,25 @@ it; every other key is canonical.
 4. Remove `aggregate: true` from Prometheus or OTEL writer settings.
 5. Add `application.WithOtelShutdown` when OTEL trace and/or metric providers must be flushed during application shutdown.
 6. Pass a namespace to `metric.NewWriter`; use `metric.NewWriter("")` to keep application-authored metric names unchanged.
-7. Re-key every alarm, dashboard and query off the metric name mapping above, selecting by the `metric.schema_version` of `v2.0`.
+7. Re-key every alarm, dashboard and query using the schema-specific mapping in this document; select by `metric.schema_version` (`v3.0` for this release).
 8. Update ECS scaling policies that reference `PerRunner*`, `StreamMessages`, `HttpServerRequests` or `ShardTaskRatio`.
+
+## Metric namespace migration (schema `v3.0`)
+
+`metric.SchemaVersion` is now `v3.0`. This is a breaking rename of framework-owned metric namespaces;
+there is no dual emission. The namespace values in the v2 mapping above are superseded as follows:
+
+| v2 namespace | v3 package namespace |
+|---|---|
+| `aws.kinesis.consumer`, `aws.kinesis.producer`, `aws.kinesis.shard` | `cloud.aws.kinesis` |
+| `kafka.broker` | `kafka` |
+| `stream.consumer`, `stream.producer`, `stream.input`, `stream.output`, `stream.input.redis_list`, `stream.output.redis_list` | `stream` |
+| `log` | `metric` |
+
+OpenTelemetry semantic-convention namespaces remain unchanged: `messaging`, `db.client`, `http.client`,
+`http.server`, and `rpc.server`. Explicit metrics authored in those namespaces continue to render without
+the `gosoline.` OTEL prefix. The shared `autoscaling.per_runner` namespace and application-authored
+metrics created with `metric.NewWriter("")` are also unchanged.
+
+Update alarms, dashboards, queries, and metric-calculator configuration to use the v3 namespace mapping
+when `metric.schema_version` reports `v3.0`.

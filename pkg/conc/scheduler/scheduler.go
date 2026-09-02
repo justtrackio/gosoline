@@ -205,8 +205,6 @@ func (s scheduler[T]) writeTaskDelayMetric(ctx context.Context, took time.Durati
 			dimensionScheduler: s.name,
 		},
 		Value: float64(took.Milliseconds()),
-		Unit:  metric.UnitMillisecondsAverage,
-		Kind:  metric.KindHistogram.Build(),
 	})
 }
 
@@ -218,8 +216,6 @@ func (s scheduler[T]) writeBatchSizeMetric(ctx context.Context, batchSize int) {
 			dimensionScheduler: s.name,
 		},
 		Value: float64(batchSize),
-		Unit:  metric.UnitCountAverage,
-		Kind:  metric.KindHistogram.Build(),
 	})
 }
 

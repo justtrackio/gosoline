@@ -131,7 +131,7 @@ func NewBaseConsumer(
 	}
 
 	defaultMetrics := getConsumerDefaultMetrics(name)
-	metricWriter := metric.NewWriter(metric.NamespaceStreamConsumer, defaultMetrics...)
+	metricWriter := metric.NewWriter(metric.NamespaceStream, defaultMetrics...)
 
 	var input, retryInput Input
 	var retryHandler RetryHandler
@@ -521,9 +521,7 @@ func (c *baseConsumer) writeMetricDurationAndProcessedCount(ctx context.Context,
 			Dimensions: map[string]string{
 				dimensionConsumer: c.name,
 			},
-			Unit:  metric.UnitCount,
 			Value: float64(processedCount),
-			Kind:  metric.KindCounter.Build(),
 		},
 	})
 }
@@ -556,9 +554,7 @@ func (c *baseConsumer) writeMetricRetryCount(ctx context.Context, operation stri
 				dimensionConsumer:       c.name,
 				dimensionRetryOperation: operation,
 			},
-			Unit:  metric.UnitCount,
 			Value: 1.0,
-			Kind:  metric.KindCounter.Build(),
 		},
 	})
 }

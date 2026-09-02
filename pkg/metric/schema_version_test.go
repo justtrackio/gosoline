@@ -12,7 +12,7 @@ import (
 )
 
 func TestSchemaVersionConstant(t *testing.T) {
-	assert.Equal(t, "v2.0", metric.SchemaVersion)
+	assert.Equal(t, "v3.0", metric.SchemaVersion)
 	assert.Equal(t, metric.SchemaVersion, strings.TrimSpace(metric.SchemaVersion))
 	assert.True(t, metric.IsValidSchemaVersion(metric.SchemaVersion))
 }

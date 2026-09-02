@@ -53,14 +53,14 @@ func (n *notifier) writeMetric(ctx context.Context, err error) {
 		Dimensions: map[string]string{
 			metric.DimensionModelId: n.modelId.String(),
 		},
-		Unit:  metric.UnitCount,
 		Value: 1.0,
-		Kind:  metric.KindCounter.Build(),
 	}
 
 	if err != nil {
 		datum.MetricName = metricNameNotifyErrors
 		datum.Dimensions[metric.DimensionErrorType] = metric.ErrorType(err)
+		datum.Unit = metric.UnitCount
+		datum.Kind = metric.KindCounter.Build()
 	}
 
 	n.metric.WriteOne(ctx, datum)

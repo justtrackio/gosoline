@@ -201,7 +201,7 @@ func (s *shardReader) acquireShard(ctx context.Context) (bool, error) {
 		}
 
 		tookSoFar := s.clock.Since(start)
-		s.writeMetric(ctx, metric.NamespaceAwsKinesisShard, metricNameAcquireShardDelaySeconds, tookSoFar.Seconds(), metric.UnitSecondsMaximum, metric.KindHistogram.Build())
+		s.writeMetric(ctx, metric.NamespaceCloudAwsKinesis, metricNameAcquireShardDelaySeconds, tookSoFar.Seconds(), metric.UnitSecondsMaximum, metric.KindHistogram.Build())
 
 		timer := s.clock.NewTimer(s.settings.WaitTime)
 
@@ -414,7 +414,7 @@ func (s *shardReader) getAndProcessRecords(
 
 	// if the results are older than our wait time, continue immediately
 	if time.Duration(millisecondsBehind) > (s.settings.WaitTime + s.settings.ConsumeDelay) {
-		s.writeMetric(ctx, metric.NamespaceAwsKinesisShard, metricNameWaitDuration, 0.0, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
+		s.writeMetric(ctx, metric.NamespaceCloudAwsKinesis, metricNameWaitDuration, 0.0, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
 
 		return 0, nil
 	}
@@ -422,7 +422,7 @@ func (s *shardReader) getAndProcessRecords(
 	durationSinceLastGetRecordsCall := s.clock.Since(getRecordsStart)
 	waitTime := max(0, s.settings.WaitTime-durationSinceLastGetRecordsCall)
 
-	s.writeMetric(ctx, metric.NamespaceAwsKinesisShard, metricNameWaitDuration, float64(waitTime.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
+	s.writeMetric(ctx, metric.NamespaceCloudAwsKinesis, metricNameWaitDuration, float64(waitTime.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
 
 	return waitTime, nil
 }
@@ -443,7 +443,7 @@ func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (
 		return nil, "", 0, fmt.Errorf("failed to get records from shard: %w", err)
 	}
 
-	s.writeMetric(ctx, metric.NamespaceAwsKinesisShard, metricNameReadCount, 1.0, metric.UnitCount, metric.KindCounter.Build())
+	s.writeMetric(ctx, metric.NamespaceCloudAwsKinesis, metricNameReadCount, 1.0, metric.UnitCount, metric.KindCounter.Build())
 
 	records = output.Records
 	nextIterator = ShardIterator(mdl.EmptyIfNil(output.NextShardIterator))
@@ -485,7 +485,7 @@ func (s *shardReader) processRecords(
 			// not make sense at this point. Instead, the handler needs to implement a retry logic if needed
 			s.logger.Error(ctx, "failed to handle record %s: %w", mdl.EmptyIfNil(record.SequenceNumber), err)
 
-			s.writeMetric(ctx, metric.NamespaceAwsKinesisShard, metricNameFailedRecords, 1, metric.UnitCount, metric.KindCounter.Build())
+			s.writeMetric(ctx, metric.NamespaceCloudAwsKinesis, metricNameFailedRecords, 1, metric.UnitCount, metric.KindCounter.Build())
 		}
 
 		// mark us as healthy as we managed to pass a record to downstream and are still making progress
@@ -541,7 +541,7 @@ func (s *shardReader) delayConsume(ctx context.Context, record types.Record) {
 		case <-ctx.Done():
 			return
 		case <-timer.Chan():
-			s.writeMetric(ctx, metric.NamespaceAwsKinesisShard, metricNameSleepDuration, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
+			s.writeMetric(ctx, metric.NamespaceCloudAwsKinesis, metricNameSleepDuration, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
 
 			return
 		case <-ticker.Chan():
@@ -558,12 +558,12 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 	defer ticker.Stop()
 
 	currentMillisecondsBehind := 0.0
-	s.writeMetric(context.Background(), metric.NamespaceAwsKinesisShard, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindGauge.Build())
+	s.writeMetric(context.Background(), metric.NamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindGauge.Build())
 
 	for {
 		select {
 		case <-ticker.Chan():
-			s.writeMetric(context.Background(), metric.NamespaceAwsKinesisShard, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindGauge.Build())
+			s.writeMetric(context.Background(), metric.NamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindGauge.Build())
 		case newMillisecondsBehind, ok := <-millisecondsBehindChan:
 			if !ok {
 				// the producer stopped, so we also need to stop
@@ -571,7 +571,7 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 			}
 
 			currentMillisecondsBehind = newMillisecondsBehind
-			s.writeMetric(context.Background(), metric.NamespaceAwsKinesisShard, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindGauge.Build())
+			s.writeMetric(context.Background(), metric.NamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindGauge.Build())
 		}
 	}
 }

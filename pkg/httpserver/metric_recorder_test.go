@@ -103,8 +103,8 @@ func isMetricDatum(datum *metric.Datum, metricName string, value float64) bool {
 		datum.MetricName == metricName &&
 		datum.Dimensions[dimensionServerName] == "api" &&
 		len(datum.Dimensions) == 1 &&
-		datum.Unit == metric.UnitCountMaximum &&
-		reflect.DeepEqual(datum.Kind, metric.KindGauge.Build()) &&
+		datum.Unit == "" &&
+		reflect.DeepEqual(datum.Kind, metric.Kind{}) &&
 		datum.Value == value
 }
 

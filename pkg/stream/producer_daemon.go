@@ -136,7 +136,7 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 	}
 
 	defaultMetrics := getProducerDaemonDefaultMetrics(name)
-	metricWriter := metric.NewWriter(metric.NamespaceStreamProducer, defaultMetrics...)
+	metricWriter := metric.NewWriter(metric.NamespaceStream, defaultMetrics...)
 
 	output, outputCapabilities, err := NewConfigurableOutput(ctx, config, logger, settings.Output)
 	if err != nil {
@@ -478,9 +478,7 @@ func (d *producerDaemon) writeMetricMessageCount(ctx context.Context, count int)
 		Dimensions: map[string]string{
 			dimensionProducerDaemon: d.name,
 		},
-		Unit:  metric.UnitCount,
 		Value: float64(count),
-		Kind:  metric.KindCounter.Build(),
 	})
 }
 
@@ -491,9 +489,7 @@ func (d *producerDaemon) writeMetricBatchSize(ctx context.Context, size int) {
 		Dimensions: map[string]string{
 			dimensionProducerDaemon: d.name,
 		},
-		Unit:  metric.UnitCountAverage,
 		Value: float64(size),
-		Kind:  metric.KindHistogram.Build(),
 	})
 }
 
@@ -504,9 +500,7 @@ func (d *producerDaemon) writeMetricAggregateSize(ctx context.Context, size int)
 		Dimensions: map[string]string{
 			dimensionProducerDaemon: d.name,
 		},
-		Unit:  metric.UnitCountAverage,
 		Value: float64(size),
-		Kind:  metric.KindHistogram.Build(),
 	})
 }
 

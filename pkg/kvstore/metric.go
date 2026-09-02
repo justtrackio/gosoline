@@ -191,8 +191,6 @@ func (s *MetricStore[T]) record(ctx context.Context, name string, value int64) {
 		MetricName: name,
 		Dimensions: s.dimensions(),
 		Value:      float64(value),
-		Unit:       metric.UnitCount,
-		Kind:       metric.KindCounter.Build(),
 	})
 }
 

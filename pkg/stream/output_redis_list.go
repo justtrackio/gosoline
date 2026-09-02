@@ -37,7 +37,7 @@ func NewRedisListOutput(ctx context.Context, config cfg.Config, logger log.Logge
 	}
 
 	defaultMetrics := getRedisListOutputDefaultMetrics(settings)
-	mw := metric.NewWriter(metric.NamespaceStreamOutputRedisList, defaultMetrics...)
+	mw := metric.NewWriter(metric.NamespaceStream, defaultMetrics...)
 
 	return NewRedisListOutputWithInterfaces(config, logger, mw, client, settings), nil
 }
@@ -82,9 +82,7 @@ func (o *redisListOutput) writeListWriteMetric(ctx context.Context, length int) 
 		Dimensions: map[string]string{
 			metric.DimensionMessagingDestination: redisListDestination(o.settings.ServerName, o.settings.Key),
 		},
-		Unit:  metric.UnitCount,
 		Value: float64(length),
-		Kind:  metric.KindCounter.Build(),
 	}}
 
 	o.metricWriter.Write(ctx, data)

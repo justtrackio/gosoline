@@ -98,9 +98,7 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 					dimensionRoute:      path,
 					dimensionMethod:     method,
 				},
-				Unit:  metric.UnitCount,
 				Value: 1.0,
-				Kind:  metric.KindCounter.Build(),
 			},
 			{
 				Priority:   metric.PriorityHigh,
@@ -108,9 +106,7 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 				Dimensions: metric.Dimensions{
 					dimensionServerName: name,
 				},
-				Unit:  metric.UnitCount,
 				Value: 1.0,
-				Kind:  metric.KindTotal,
 			},
 		})
 	}

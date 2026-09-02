@@ -46,7 +46,7 @@ func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger
 	}
 
 	defaultMetrics := getRedisListInputDefaultMetrics(settings)
-	mw := metric.NewWriter(metric.NamespaceStreamInputRedisList, defaultMetrics...)
+	mw := metric.NewWriter(metric.NamespaceStream, defaultMetrics...)
 
 	healthCheckTimer, err := clock.NewHealthCheckTimer(settings.HealthcheckTimeout)
 	if err != nil {
@@ -166,9 +166,7 @@ func (i *redisListInput) writeListReadMetric(ctx context.Context) {
 		Dimensions: map[string]string{
 			metric.DimensionMessagingDestination: redisListDestination(i.settings.ServerName, i.settings.Key),
 		},
-		Unit:  metric.UnitCount,
 		Value: 1.0,
-		Kind:  metric.KindCounter.Build(),
 	}}
 
 	i.mw.Write(ctx, data)

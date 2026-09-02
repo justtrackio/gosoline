@@ -199,9 +199,7 @@ func (s *SubscriberCallback) writeMetric(ctx context.Context, metricName string,
 		Dimensions: map[string]string{
 			metric.DimensionModelId: spec.ModelId,
 		},
-		Unit:  metric.UnitCount,
 		Value: 1.0,
-		Kind:  metric.KindCounter.Build(),
 	})
 }
 

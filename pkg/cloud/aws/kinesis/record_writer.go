@@ -78,7 +78,7 @@ func NewRecordWriter(ctx context.Context, config cfg.Config, logger log.Logger, 
 	}
 
 	defaultMetrics := getRecordWriterDefaultMetrics(string(fullStreamName))
-	metricWriter := metric.NewWriter(metric.NamespaceAwsKinesisProducer, defaultMetrics...)
+	metricWriter := metric.NewWriter(metric.NamespaceCloudAwsKinesis, defaultMetrics...)
 
 	if client, err = ProvideClient(ctx, config, logger, settings.ClientName); err != nil {
 		return nil, fmt.Errorf("failed to provide kinesis client: %w", err)
@@ -264,24 +264,18 @@ func (w *recordWriter) writeMetrics(ctx context.Context, records int, failed int
 			MetricName: metricNamePutRecords,
 			Dimensions: dimensions,
 			Value:      float64(records - failed),
-			Unit:       metric.UnitCount,
-			Kind:       metric.KindCounter.Build(),
 		},
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNamePutRecordsFailure,
 			Dimensions: dimensions,
 			Value:      float64(failed),
-			Unit:       metric.UnitCount,
-			Kind:       metric.KindCounter.Build(),
 		},
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNamePutRecordsBatchSize,
 			Dimensions: dimensions,
 			Value:      float64(records),
-			Unit:       metric.UnitCountAverage,
-			Kind:       metric.KindHistogram.Build(),
 		},
 	})
 }

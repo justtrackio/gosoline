@@ -105,8 +105,6 @@ func (p *PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo
 			MetricName: metricNameRebalanceCount,
 			Dimensions: dims,
 			Value:      1.0,
-			Unit:       metric.UnitCount,
-			Kind:       metric.KindCounter.Build(),
 		})
 
 		for _, partition := range partitions {

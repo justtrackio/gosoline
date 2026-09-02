@@ -54,7 +54,7 @@ The metric schema version identifies the metric emission contract a gosoline bui
 tooling (dashboard generators, alert provisioning, metric pipelines) can branch on it without
 inspecting the gosoline version.
 
-- Current value: `v2.0`, defined by the exported constant `metric.SchemaVersion` in
+- Current value: `v3.0`, defined by the exported constant `metric.SchemaVersion` in
   `schema_version.go`. That constant is the single source of truth - no other package may define
   the literal value.
 - Metadata key: `metric.schema_version` (`metric.MetadataKeySchemaVersion`). The value is written

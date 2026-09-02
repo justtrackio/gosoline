@@ -312,9 +312,9 @@ func (c *consumer) writeMetrics(ctx context.Context, pollDurationMs float64, rec
 	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClient: c.name, kafka.DimensionTopic: c.fullTopicName}
 
 	c.metricWriter.Write(ctx, metric.Data{
-		{Priority: metric.PriorityHigh, MetricName: metricNamePollCount, Dimensions: dims, Value: 1.0, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
-		{Priority: metric.PriorityHigh, MetricName: metricNamePollDuration, Dimensions: dims, Value: pollDurationMs, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
-		{Priority: metric.PriorityHigh, Namespace: metric.NamespaceMessaging, MetricName: metricNameRecordsConsumed, Dimensions: dims, Value: float64(recordCount), Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
+		{Priority: metric.PriorityHigh, MetricName: metricNamePollCount, Dimensions: dims, Value: 1.0},
+		{Priority: metric.PriorityHigh, MetricName: metricNamePollDuration, Dimensions: dims, Value: pollDurationMs},
+		{Priority: metric.PriorityHigh, Namespace: metric.NamespaceMessaging, MetricName: metricNameRecordsConsumed, Dimensions: dims, Value: float64(recordCount)},
 	})
 }
 

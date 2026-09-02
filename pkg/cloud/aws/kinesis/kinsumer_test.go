@@ -517,7 +517,7 @@ func (s *kinsumerTestSuite) mockShardDistribution(shardCount float64, clientCoun
 	s.metricWriter.EXPECT().Write(matcher.Context, metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			Namespace:  metric.NamespaceAwsKinesisConsumer,
+			Namespace:  metric.NamespaceCloudAwsKinesis,
 			MetricName: "shard.count",
 			Dimensions: metric.Dimensions{
 				metric.DimensionMessagingDestination: string(s.stream),
@@ -528,7 +528,7 @@ func (s *kinsumerTestSuite) mockShardDistribution(shardCount float64, clientCoun
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			Namespace:  metric.NamespaceAwsKinesisConsumer,
+			Namespace:  metric.NamespaceCloudAwsKinesis,
 			MetricName: "client.count",
 			Dimensions: metric.Dimensions{
 				metric.DimensionMessagingDestination: string(s.stream),

@@ -12,12 +12,14 @@ import "fmt"
 const (
 	// NamespaceAutoscalingPerRunner carries the per-runner values an autoscaler consumes.
 	NamespaceAutoscalingPerRunner = "autoscaling.per_runner"
-	// NamespaceAwsKinesisConsumer carries how a Kinesis stream's shards are distributed across clients.
-	NamespaceAwsKinesisConsumer = "aws.kinesis.consumer"
-	// NamespaceAwsKinesisProducer carries what a Kinesis record writer reports.
-	NamespaceAwsKinesisProducer = "aws.kinesis.producer"
-	// NamespaceAwsKinesisShard carries what a single Kinesis shard reader reports.
-	NamespaceAwsKinesisShard = "aws.kinesis.shard"
+	// NamespaceCloudAwsKinesis carries framework-owned Kinesis metrics from pkg/cloud/aws/kinesis.
+	NamespaceCloudAwsKinesis = "cloud.aws.kinesis"
+	// Deprecated: use NamespaceCloudAwsKinesis. Kinesis metric namespaces no longer encode a role.
+	NamespaceAwsKinesisConsumer = NamespaceCloudAwsKinesis
+	// Deprecated: use NamespaceCloudAwsKinesis. Kinesis metric namespaces no longer encode a role.
+	NamespaceAwsKinesisProducer = NamespaceCloudAwsKinesis
+	// Deprecated: use NamespaceCloudAwsKinesis. Kinesis metric namespaces no longer encode a role.
+	NamespaceAwsKinesisShard = NamespaceCloudAwsKinesis
 	// NamespaceBlob carries what the blob batch runner reports.
 	NamespaceBlob = "blob"
 	// NamespaceConcScheduler carries what the task scheduler reports.
@@ -33,8 +35,10 @@ const (
 	// NamespaceHttpServer is owned by an OpenTelemetry semantic convention and carries incoming HTTP
 	// requests.
 	NamespaceHttpServer = "http.server"
-	// NamespaceKafkaBroker carries what the Kafka client reports per broker.
-	NamespaceKafkaBroker = "kafka.broker"
+	// NamespaceKafka carries framework-owned Kafka metrics from pkg/kafka.
+	NamespaceKafka = "kafka"
+	// Deprecated: use NamespaceKafka. Kafka metric namespaces no longer encode a role.
+	NamespaceKafkaBroker = NamespaceKafka
 	// NamespaceKafkaConsumer carries what a Kafka consumer reports beyond message processing itself.
 	NamespaceKafkaConsumer = "kafka.consumer"
 	// NamespaceKafkaProducer carries what a Kafka producer reports beyond message sending itself.
@@ -43,8 +47,10 @@ const (
 	NamespaceKvStore = "kvstore"
 	// NamespaceLimit carries what the rate limiter reports.
 	NamespaceLimit = "limit"
-	// NamespaceLog carries what the logger reports.
-	NamespaceLog = "log"
+	// NamespaceMetric carries framework-owned metrics from pkg/metric.
+	NamespaceMetric = "metric"
+	// Deprecated: use NamespaceMetric. Logger metrics are emitted by pkg/metric.
+	NamespaceLog = NamespaceMetric
 	// NamespaceMdlSub carries what a model subscriber reports.
 	NamespaceMdlSub = "mdlsub"
 	// NamespaceMessaging is owned by an OpenTelemetry semantic convention and carries message
@@ -55,18 +61,20 @@ const (
 	NamespaceRpcServer = "rpc.server"
 	// NamespaceSmpl carries what the sampler reports.
 	NamespaceSmpl = "smpl"
-	// NamespaceStreamConsumer carries what a stream consumer reports beyond message processing itself.
-	NamespaceStreamConsumer = "stream.consumer"
-	// NamespaceStreamInput carries what a stream input reports.
-	NamespaceStreamInput = "stream.input"
-	// NamespaceStreamInputRedisList carries what a redis list input reports.
-	NamespaceStreamInputRedisList = "stream.input.redis_list"
-	// NamespaceStreamOutput carries what a stream output reports.
-	NamespaceStreamOutput = "stream.output"
-	// NamespaceStreamOutputRedisList carries what a redis list output reports.
-	NamespaceStreamOutputRedisList = "stream.output.redis_list"
-	// NamespaceStreamProducer carries what the producer daemon reports.
-	NamespaceStreamProducer = "stream.producer"
+	// NamespaceStream carries framework-owned metrics from pkg/stream.
+	NamespaceStream = "stream"
+	// Deprecated: use NamespaceStream. Stream metric namespaces no longer encode a role.
+	NamespaceStreamConsumer = NamespaceStream
+	// Deprecated: use NamespaceStream. Stream metric namespaces no longer encode a role.
+	NamespaceStreamInput = NamespaceStream
+	// Deprecated: use NamespaceStream. Stream metric namespaces no longer encode a transport.
+	NamespaceStreamInputRedisList = NamespaceStream
+	// Deprecated: use NamespaceStream. Stream metric namespaces no longer encode a role.
+	NamespaceStreamOutput = NamespaceStream
+	// Deprecated: use NamespaceStream. Stream metric namespaces no longer encode a transport.
+	NamespaceStreamOutputRedisList = NamespaceStream
+	// Deprecated: use NamespaceStream. Stream metric namespaces no longer encode a role.
+	NamespaceStreamProducer = NamespaceStream
 )
 
 // The dimension keys shared across packages. A key an OpenTelemetry semantic convention defines is

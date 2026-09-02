@@ -112,8 +112,8 @@ func (h *mprHandler) GetMetrics(ctx context.Context) (metric.Data, error) {
 
 	messagesTotal = messagesSent + messagesAvailable
 
-	ma := h.createDatum(metric.NamespaceStreamInput, MessagesAvailableMetricName, metric.KindGauge.Build(), messagesAvailable)
-	ms := h.createDatum(metric.NamespaceStreamOutput, MessagesSentMetricName, metric.KindCounter.Build(), messagesSent)
+	ma := h.createDatum(metric.NamespaceStream, MessagesAvailableMetricName, metric.KindGauge.Build(), messagesAvailable)
+	ms := h.createDatum(metric.NamespaceStream, MessagesSentMetricName, metric.KindCounter.Build(), messagesSent)
 
 	if rpr, err = h.CalculatePerRunnerMetrics(ctx, PerRunnerMetricName, messagesTotal, h.handlerSettings); err != nil {
 		h.logger.Warn(ctx, "can not calculate metrics per runner for handler: can not calculate httpserver per runner metrics: %s: %T", err.Error(), *h)

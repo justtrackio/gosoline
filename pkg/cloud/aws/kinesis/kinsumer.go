@@ -133,7 +133,7 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	})
 
 	shardReaderDefaults := getShardReaderDefaultMetrics(fullStreamName)
-	metricWriter := metric.NewWriter(metric.NamespaceAwsKinesisShard, shardReaderDefaults...)
+	metricWriter := metric.NewWriter(metric.NamespaceCloudAwsKinesis, shardReaderDefaults...)
 
 	var kinesisClient *kinesis.Client
 	var metadataRepository MetadataRepository
@@ -493,7 +493,7 @@ func (k *kinsumer) writeShardDistributionMetrics(ctx context.Context, shardCount
 func (k *kinsumer) shardDistributionDatum(name string, value float64) *metric.Datum {
 	return &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		Namespace:  metric.NamespaceAwsKinesisConsumer,
+		Namespace:  metric.NamespaceCloudAwsKinesis,
 		MetricName: name,
 		Dimensions: metric.Dimensions{
 			dimensionStream: string(k.fullStreamName),

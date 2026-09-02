@@ -78,15 +78,19 @@ func (r metricRepository) Query(ctx context.Context, qb *QueryBuilder, result an
 func (r metricRepository) writeMetric(ctx context.Context, op string, err error, start time.Time) {
 	latencyMillisecond := float64(time.Since(start)) / float64(time.Millisecond)
 
-	r.output.WriteOne(ctx, &metric.Datum{
+	datum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: MetricNameDbOperationDuration,
 		Dimensions: dbOperationDimensions(op, r.GetModelId(), metric.ErrorType(err)),
-		Unit:       metric.UnitMillisecondsAverage,
 		Value:      latencyMillisecond,
-		Kind:       metric.KindHistogram.Build(),
-	})
+	}
+	if err != nil {
+		datum.Unit = metric.UnitMillisecondsAverage
+		datum.Kind = metric.KindHistogram.Build()
+	}
+
+	r.output.WriteOne(ctx, datum)
 }
 
 func dbOperationDimensions(op string, modelId string, errorType string) map[string]string {
