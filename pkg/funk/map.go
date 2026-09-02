@@ -47,6 +47,8 @@ type Maper[K comparable, V any] interface {
 	Values() []V
 	// Range returns an iterator over a snapshot of the mappings in undefined order.
 	Range() iter.Seq2[K, V]
+	// Any reports whether at least one mapping satisfies the predicate. The order of predicate calls is undefined.
+	Any(predicate func(key K, value V) bool) bool
 	// Filter creates and returns a new map with entries removed which don't satisfy a predicate. The order of the calls to the predicate is undefined.
 	Filter(filter func(key K, value V) bool) Maper[K, V]
 }
@@ -245,4 +247,14 @@ func (m *maper[K, V]) Filter(filter func(key K, value V) bool) Maper[K, V] {
 	}
 
 	return filtered
+}
+
+func (m *maper[K, V]) Any(predicate func(key K, value V) bool) bool {
+	for key, value := range m.values {
+		if predicate(key, value) {
+			return true
+		}
+	}
+
+	return false
 }

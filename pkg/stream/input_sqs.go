@@ -4,28 +4,44 @@ import (
 	"context"
 	"fmt"
 	"sync/atomic"
+	"time"
 
-	"github.com/hashicorp/go-multierror"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
 	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/stream/health"
 )
 
 var (
-	_ AcknowledgeableInput = &sqsInput{}
-	_ RetryingInput        = &sqsInput{}
+	_ Input         = &sqsInput{}
+	_ RetryingInput = &sqsInput{}
 )
 
+type SqsAcknowledgementMode string
+
+const (
+	SqsAcknowledgementModeIndividual SqsAcknowledgementMode = "individual"
+	SqsAcknowledgementModeBatch      SqsAcknowledgementMode = "batch"
+)
+
+// SqsInputSettings configures an SQS input. Messages are delivered at least once: acknowledgements use the
+// configured AWS client retries, and a message can be delivered again if deletion still fails. The input continues
+// consuming after such a failure because stopping it cannot repair the acknowledgement or prevent redelivery.
 type SqsInputSettings struct {
-	Identity            cfg.Identity               `cfg:"identity"`
-	QueueId             string                     `cfg:"queue_id"`
-	MaxNumberOfMessages int32                      `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
-	WaitTime            int32                      `cfg:"wait_time"`
-	VisibilityTimeout   int                        `cfg:"visibility_timeout"`
+	Identity            cfg.Identity `cfg:"identity"`
+	QueueId             string       `cfg:"queue_id"`
+	MaxNumberOfMessages int32        `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
+	WaitTime            int32        `cfg:"wait_time"`
+	VisibilityTimeout   int          `cfg:"visibility_timeout"`
+	// GraceTime bounds acknowledging already processed messages after the input context was canceled. It does not
+	// bound processing itself, which is owned by stream.consumer.<name>.grace_time.
+	GraceTime           time.Duration              `cfg:"grace_time" default:"10s"`
 	RunnerCount         int                        `cfg:"runner_count"`
+	AcknowledgementMode SqsAcknowledgementMode     `cfg:"acknowledgement_mode" default:"individual" validate:"oneof=individual batch"`
 	Fifo                sqs.FifoSettings           `cfg:"fifo"`
 	RedrivePolicy       sqs.RedrivePolicy          `cfg:"redrive_policy"`
 	ClientName          string                     `cfg:"client_name"`
@@ -57,7 +73,6 @@ type sqsInput struct {
 	healthCheckTimer clock.HealthCheckTimer
 
 	cfn     coffin.Coffin
-	channel chan *Message
 	stopped int32
 	started int32
 }
@@ -104,10 +119,6 @@ func NewSqsInputWithInterfaces(
 	healthCheckTimer clock.HealthCheckTimer,
 	settings *SqsInputSettings,
 ) *sqsInput {
-	if settings.RunnerCount <= 0 {
-		settings.RunnerCount = 1
-	}
-
 	return &sqsInput{
 		logger:           logger,
 		queue:            queue,
@@ -115,21 +126,15 @@ func NewSqsInputWithInterfaces(
 		unmarshaler:      unmarshaller,
 		healthCheckTimer: healthCheckTimer,
 		cfn:              coffin.New(),
-		channel:          make(chan *Message),
 	}
 }
 
-func (i *sqsInput) Data() <-chan *Message {
-	return i.channel
-}
-
-func (i *sqsInput) Run(ctx context.Context) error {
+func (i *sqsInput) Run(ctx context.Context, process InputProcess) error {
 	alreadyStarted := atomic.SwapInt32(&i.started, 1)
 	if alreadyStarted == 1 {
 		return fmt.Errorf("can not run an sqs input a second time")
 	}
 
-	defer close(i.channel)
 	defer i.logger.Info(ctx, "leaving sqs input")
 
 	i.logger.Info(ctx, "starting sqs input with %d runners", i.settings.RunnerCount)
@@ -137,7 +142,7 @@ func (i *sqsInput) Run(ctx context.Context) error {
 	i.cfn.Go(func() error {
 		for j := 0; j < i.settings.RunnerCount; j++ {
 			i.cfn.Gof(func() error {
-				return i.runLoop(ctx)
+				return i.runLoop(ctx, process)
 			}, "panic in sqs input runner")
 		}
 
@@ -150,7 +155,7 @@ func (i *sqsInput) Run(ctx context.Context) error {
 	return i.cfn.Wait()
 }
 
-func (i *sqsInput) runLoop(ctx context.Context) error {
+func (i *sqsInput) runLoop(ctx context.Context, process InputProcess) error {
 	defer i.logger.Info(ctx, "leaving sqs input runner")
 
 	for {
@@ -162,38 +167,98 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 		i.healthCheckTimer.MarkHealthy()
 
 		sqsMessages, err := i.queue.Receive(ctx, i.settings.MaxNumberOfMessages, i.settings.WaitTime)
+		if exec.IsRequestCanceled(err) || ctx.Err() != nil {
+			return nil
+		}
+
 		if err != nil {
 			i.logger.Error(ctx, "could not get messages from sqs: %w", err)
 
 			continue
 		}
 
-		for _, sqsMessage := range sqsMessages {
-			msg, err := i.unmarshaler(sqsMessage.Body)
-			if err != nil {
-				i.logger.Error(ctx, "could not unmarshal message: %w", err)
+		i.processReceivedMessages(ctx, sqsMessages, process)
+	}
+}
 
-				continue
+func (i *sqsInput) processReceivedMessages(ctx context.Context, sqsMessages []types.Message, process InputProcess) {
+	if i.settings.AcknowledgementMode == SqsAcknowledgementModeBatch {
+		i.processMessageBatch(ctx, sqsMessages, process)
+
+		return
+	}
+
+	for _, sqsMessage := range sqsMessages {
+		if receiptHandle, ok := i.processMessage(ctx, sqsMessage, process); ok {
+			if err := i.ack(ctx, receiptHandle); err != nil {
+				// The AWS client has already exhausted its configured retries. Stopping the input would not repair the
+				// acknowledgement or prevent redelivery, so preserve throughput and rely on at-least-once semantics.
+				i.logger.Error(ctx, "could not acknowledge sqs message, message may be delivered again: %w", err)
 			}
-
-			if msg.Attributes == nil {
-				msg.Attributes = make(map[string]string)
-			}
-
-			msg.Attributes[AttributeSqsMessageId] = *sqsMessage.MessageId
-			msg.Attributes[AttributeSqsReceiptHandle] = *sqsMessage.ReceiptHandle
-
-			if approximateReceiveCount, ok := sqsMessage.Attributes["ApproximateReceiveCount"]; ok {
-				msg.Attributes[AttributeSqsApproximateReceiveCount] = approximateReceiveCount
-			}
-
-			i.channel <- msg
-
-			// after every message we pushed to the channel, mark us as healthy as we made some progress
-			// (even though the other side might be slow)
-			i.healthCheckTimer.MarkHealthy()
 		}
 	}
+}
+
+func (i *sqsInput) processMessageBatch(ctx context.Context, sqsMessages []types.Message, process InputProcess) {
+	receiptHandles := make([]string, 0, len(sqsMessages))
+
+	for _, sqsMessage := range sqsMessages {
+		if receiptHandle, ok := i.processMessage(ctx, sqsMessage, process); ok {
+			receiptHandles = append(receiptHandles, receiptHandle)
+		}
+	}
+
+	if len(receiptHandles) == 0 {
+		return
+	}
+
+	if err := i.ackBatch(ctx, receiptHandles); err != nil {
+		i.logger.Error(ctx, "could not acknowledge sqs message batch, messages may be delivered again: %w", err)
+	}
+}
+
+func (i *sqsInput) processMessage(ctx context.Context, sqsMessage types.Message, process InputProcess) (string, bool) {
+	if sqsMessage.MessageId == nil || *sqsMessage.MessageId == "" {
+		i.logger.Error(ctx, "could not process sqs message: message id is missing")
+
+		return "", false
+	}
+
+	if sqsMessage.ReceiptHandle == nil || *sqsMessage.ReceiptHandle == "" {
+		i.logger.Error(ctx, "could not process sqs message: receipt handle is missing")
+
+		return "", false
+	}
+
+	msg, err := i.unmarshaler(sqsMessage.Body)
+	if err != nil {
+		i.logger.Error(ctx, "could not unmarshal message: %w", err)
+
+		return "", false
+	}
+
+	if msg.Attributes == nil {
+		msg.Attributes = make(map[string]string)
+	}
+
+	msg.Attributes[AttributeSqsMessageId] = *sqsMessage.MessageId
+	msg.Attributes[AttributeSqsReceiptHandle] = *sqsMessage.ReceiptHandle
+
+	if approximateReceiveCount, ok := sqsMessage.Attributes["ApproximateReceiveCount"]; ok {
+		msg.Attributes[AttributeSqsApproximateReceiveCount] = approximateReceiveCount
+	}
+
+	ack := process(ctx, msg)
+
+	// after every message we pushed to the channel, mark us as healthy as we made some progress
+	// (even though the other side might be slow)
+	i.healthCheckTimer.MarkHealthy()
+
+	if !ack {
+		return "", false
+	}
+
+	return *sqsMessage.ReceiptHandle, true
 }
 
 func (i *sqsInput) Stop(ctx context.Context) {
@@ -204,63 +269,34 @@ func (i *sqsInput) IsHealthy() bool {
 	return i.healthCheckTimer.IsHealthy()
 }
 
-func (i *sqsInput) Ack(ctx context.Context, msg *Message, ack bool) error {
-	if !ack {
+func (i *sqsInput) ack(ctx context.Context, receiptHandle string) error {
+	return i.acknowledge(ctx, func(ctx context.Context) error {
+		return i.queue.DeleteMessage(ctx, receiptHandle)
+	})
+}
+
+func (i *sqsInput) ackBatch(ctx context.Context, receiptHandles []string) error {
+	return i.acknowledge(ctx, func(ctx context.Context) error {
+		return i.queue.DeleteMessageBatch(ctx, receiptHandles)
+	})
+}
+
+func (i *sqsInput) acknowledge(ctx context.Context, acknowledge func(context.Context) error) error {
+	delayedCtx, stop := exec.WithDelayedCancelContext(ctx, i.settings.GraceTime)
+	defer stop()
+
+	err := acknowledge(delayedCtx)
+	if err == nil {
 		return nil
 	}
 
-	var ok bool
-	var receiptHandleString string
+	if exec.IsRequestCanceled(err) || ctx.Err() != nil {
+		i.logger.Warn(ctx, "could not acknowledge the message during shutdown: %w", err)
 
-	if receiptHandleString, ok = msg.Attributes[AttributeSqsReceiptHandle]; !ok {
-		return fmt.Errorf("the message has no attribute %s", AttributeSqsReceiptHandle)
+		return nil
 	}
 
-	if receiptHandleString == "" {
-		return fmt.Errorf("the attribute %s of the message should not be empty", AttributeSqsReceiptHandle)
-	}
-
-	return i.queue.DeleteMessage(ctx, receiptHandleString)
-}
-
-func (i *sqsInput) AckBatch(ctx context.Context, msgs []*Message, acks []bool) error {
-	receiptHandles := make([]string, 0, len(msgs))
-	multiError := new(multierror.Error)
-
-	for i := range msgs {
-		var (
-			msg = msgs[i]
-			ack = acks[i]
-		)
-		if !ack {
-			continue
-		}
-
-		receiptHandleString, ok := msg.Attributes[AttributeSqsReceiptHandle]
-		if !ok {
-			multiError = multierror.Append(multiError, fmt.Errorf("the message has no attribute %s", AttributeSqsReceiptHandle))
-
-			continue
-		}
-
-		if receiptHandleString == "" {
-			multiError = multierror.Append(multiError, fmt.Errorf("the attribute %s of the message must not be empty", AttributeSqsReceiptHandle))
-
-			continue
-		}
-
-		receiptHandles = append(receiptHandles, receiptHandleString)
-	}
-
-	if len(receiptHandles) == 0 {
-		return multiError.ErrorOrNil()
-	}
-
-	if err := i.queue.DeleteMessageBatch(ctx, receiptHandles); err != nil {
-		multiError = multierror.Append(multiError, err)
-	}
-
-	return multiError.ErrorOrNil()
+	return err
 }
 
 func (i *sqsInput) GetRetryHandler() (Input, RetryHandler) {

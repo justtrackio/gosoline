@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awsSqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	gosoSqs "github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
 	sqsMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/sqs/mocks"
@@ -87,4 +88,17 @@ func (s *queueTestSuite) TestSendBatch_ThreeMsgRequestTooLongError() {
 
 	err := s.queue.SendBatch(s.ctx, msgs)
 	s.Nil(err)
+}
+
+func (s *queueTestSuite) TestDeleteMessageBatch_ReturnsEntryFailures() {
+	s.client.EXPECT().DeleteMessageBatch(matcher.Context, mock.AnythingOfType("*sqs.DeleteMessageBatchInput")).Return(&awsSqs.DeleteMessageBatchOutput{
+		Failed: []types.BatchResultErrorEntry{{
+			Id:      aws.String("entry-id"),
+			Message: aws.String("receipt handle is invalid"),
+		}},
+	}, nil).Once()
+
+	err := s.queue.DeleteMessageBatch(s.ctx, []string{"receipt-handle"})
+
+	s.EqualError(err, "1 error occurred:\n\t* failed to delete message batch entry entry-id: receipt handle is invalid\n\n")
 }

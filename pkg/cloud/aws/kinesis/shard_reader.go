@@ -36,7 +36,7 @@ const (
 type ShardReader interface {
 	// Run reads records from this shard until we either run out of records to read (i.e., are done with the shard) or our context
 	// is canceled (i.e., we should terminate, maybe, because shards got reassigned, so we need to restart all consumers)
-	Run(ctx context.Context, handler func(record []byte) error) error
+	Run(ctx context.Context, handler RecordHandler) error
 }
 
 type shardReader struct {
@@ -85,7 +85,7 @@ func NewShardReaderWithInterfaces(
 	return r
 }
 
-func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error) (finalErr error) {
+func (s *shardReader) Run(ctx context.Context, handler RecordHandler) (finalErr error) {
 	if ok, err := s.acquireShard(ctx); errors.Is(err, ErrShardAlreadyFinished) || exec.IsRequestCanceled(err) {
 		return nil
 	} else if err != nil {
@@ -99,8 +99,12 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 	s.logger.Info(ctx, "acquired shard")
 	defer s.logger.Info(ctx, "releasing shard")
 
-	releaseCtx, stop := exec.WithDelayedCancelContext(ctx, s.settings.ReleaseDelay)
-	defer stop()
+	processingCtx, stopDraining := s.drainContext(ctx)
+	defer stopDraining()
+
+	// Give final checkpoint persistence and release their own window after processing grace expires.
+	releaseCtx, stopRelease := exec.WithDelayedCancelContext(processingCtx, s.settings.ReleaseDelay)
+	defer stopRelease()
 
 	defer func() {
 		if err := s.releaseCheckpoint(releaseCtx); err != nil {
@@ -143,7 +147,7 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 			}
 		}()
 
-		return s.iterateRecords(ctx, millisecondsBehindChan, iterator, sequenceNumber, handler)
+		return s.iterateRecords(ctx, processingCtx, millisecondsBehindChan, iterator, sequenceNumber, handler)
 	})
 
 	// if we get a canceled error, drop it here. We used to do this at our caller, but this makes a test harder:
@@ -312,10 +316,11 @@ func (s *shardReader) runPersister(ctx context.Context, releaseCtx context.Conte
 
 func (s *shardReader) iterateRecords(
 	ctx context.Context,
+	processingCtx context.Context,
 	millisecondsBehindChan chan float64,
 	iterator ShardIterator,
 	startingSequenceNumber SequenceNumber,
-	handler func(record []byte) error,
+	handler RecordHandler,
 ) error {
 	timer := s.clock.NewTimer(0)
 	// we have to carry the old sequence number forward - otherwise we could have the following scenario:
@@ -340,7 +345,7 @@ func (s *shardReader) iterateRecords(
 		case <-ctx.Done():
 			return nil
 		case <-timer.Chan():
-			resetValue, err := s.getAndProcessRecords(ctx, millisecondsBehindChan, &iterator, &lastSequenceNumber, handler)
+			resetValue, err := s.getAndProcessRecords(ctx, processingCtx, millisecondsBehindChan, &iterator, &lastSequenceNumber, handler)
 			if exec.IsRequestCanceled(err) {
 				// we were told to terminate while fetching new records - lets just do that. the deferred functions
 				// will release the shard and shut down the persister, too.
@@ -356,10 +361,11 @@ func (s *shardReader) iterateRecords(
 
 func (s *shardReader) getAndProcessRecords(
 	ctx context.Context,
+	processingCtx context.Context,
 	millisecondsBehindChan chan float64,
 	iterator *ShardIterator,
 	lastSequenceNumber *SequenceNumber,
-	handler func(record []byte) error,
+	handler RecordHandler,
 ) (time.Duration, error) {
 	// we are starting some work, so mark us as healthy (for now)
 	s.healthCheckTimer.MarkHealthy()
@@ -391,7 +397,7 @@ func (s *shardReader) getAndProcessRecords(
 	processStart := s.clock.Now()
 	var processedSize int
 
-	if processedSize, err = s.processRecords(ctx, records, lastSequenceNumber, *iterator, handler); err != nil {
+	if processedSize, err = s.processRecords(ctx, processingCtx, records, lastSequenceNumber, *iterator, handler); err != nil {
 		return 0, err
 	} else if processedSize == len(records) {
 		// only advance the iterator if we processed the whole batch - if we don't do it like this, we could get
@@ -424,12 +430,7 @@ func (s *shardReader) getAndProcessRecords(
 	return waitTime, nil
 }
 
-func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (
-	records []types.Record,
-	nextIterator ShardIterator,
-	millisecondsBehind int64,
-	err error,
-) {
+func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (records []types.Record, nextIterator ShardIterator, millisecondsBehind int64, err error) {
 	params := &kinesis.GetRecordsInput{
 		Limit:         aws.Int32(int32(s.settings.MaxBatchSize)),
 		ShardIterator: aws.String(string(iterator)),
@@ -448,22 +449,29 @@ func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (
 	return records, nextIterator, mdl.EmptyIfNil(output.MillisBehindLatest), nil
 }
 
-func (s *shardReader) processRecords(
-	ctx context.Context,
-	records []types.Record,
-	lastSequenceNumber *SequenceNumber,
-	nextIterator ShardIterator,
-	handler func(record []byte) error,
-) (int, error) {
-	processedSize := 0
-
+func (s *shardReader) processRecords(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, nextIterator ShardIterator, handler RecordHandler) (int, error) {
 	// if our batch is empty, just write the next iterator to the checkpoint
 	if len(records) == 0 {
 		err := s.getCheckpoint().Advance(*lastSequenceNumber, nextIterator)
 		if err != nil {
-			return processedSize, fmt.Errorf("failed to advance checkpoint: %w", err)
+			return 0, fmt.Errorf("failed to advance checkpoint: %w", err)
 		}
+
+		return 0, nil
 	}
+
+	switch s.settings.ProcessingMode {
+	case "", ProcessingModeUnordered:
+		return s.processRecordsUnordered(ctx, processingCtx, records, lastSequenceNumber, handler)
+	case ProcessingModeOrdered:
+		return s.processRecordsOrdered(ctx, processingCtx, records, lastSequenceNumber, handler)
+	default:
+		return 0, fmt.Errorf("unknown processing mode %s", s.settings.ProcessingMode)
+	}
+}
+
+func (s *shardReader) processRecordsOrdered(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, handler RecordHandler) (int, error) {
+	processedSize := 0
 
 	for _, record := range records {
 		s.delayConsume(ctx, record)
@@ -475,14 +483,10 @@ func (s *shardReader) processRecords(
 		default:
 		}
 
-		if err := handler(record.Data); err != nil {
-			// if we can't handle the record, we can really not do much at this point.
-			// log the error and mark the record as done, returning an error would tear down the whole
-			// kinsumer and retrying the record (what tearing everything down would also cause) does
-			// not make sense at this point. Instead, the handler needs to implement a retry logic if needed
-			s.logger.Error(ctx, "failed to handle record %s: %w", mdl.EmptyIfNil(record.SequenceNumber), err)
-
-			s.writeMetric(ctx, metricNameFailedRecords, 1, metric.UnitCount)
+		if err := s.handleWithRecovery(processingCtx, record, handler); errors.Is(err, errMessageProcessorStopped) {
+			return processedSize, nil
+		} else if err != nil {
+			s.logHandlerError(ctx, record, err)
 		}
 
 		// mark us as healthy as we managed to pass a record to downstream and are still making progress
@@ -508,6 +512,124 @@ func (s *shardReader) processRecords(
 	}
 
 	return processedSize, nil
+}
+
+func (s *shardReader) processRecordsUnordered(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, handler RecordHandler) (int, error) {
+	results := make([]error, len(records))
+	jobs := make(chan int, len(records))
+	for i := range records {
+		jobs <- i
+	}
+	close(jobs)
+
+	cfn := coffin.New()
+	workerCount := min(len(records), s.settings.RunnerCount)
+	for range workerCount {
+		cfn.Go(func() error {
+			for i := range jobs {
+				record := records[i]
+				s.delayConsume(ctx, record)
+
+				select {
+				case <-ctx.Done():
+					// Use the same sentinel as a stopped handler so checkpointing stops before this record.
+					results[i] = errMessageProcessorStopped
+				default:
+					results[i] = s.handleWithRecovery(processingCtx, record, handler)
+				}
+				if !errors.Is(results[i], errMessageProcessorStopped) {
+					s.healthCheckTimer.MarkHealthy()
+				}
+			}
+
+			return nil
+		})
+	}
+
+	// Workers only return nil, so an error here is a panic recovered by the coffin.
+	if err := cfn.Wait(); err != nil {
+		return 0, fmt.Errorf("unexpected error during record processing: %w", err)
+	}
+
+	return s.checkpointProcessedRecords(ctx, records, results, lastSequenceNumber)
+}
+
+// handleWithRecovery treats a panicking handler like any other failed record so processing can continue.
+//
+// It reports errMessageProcessorStopped only when the handler declined to do the work and propagated the cancellation
+// instead. That is the same meaning the sentinel has at admission, and checkpointProcessedRecords relies on it: a record
+// which was handled must be checkpointed no matter how the handler judged it, otherwise it is consumed again although
+// the handler already dealt with it (and, in a stream consumer, already handed it to the retry queue).
+func (s *shardReader) handleWithRecovery(ctx context.Context, record types.Record, handler RecordHandler) (err error) {
+	defer func() {
+		if panicErr := coffin.ResolveRecovery(recover()); panicErr != nil {
+			err = fmt.Errorf("panic while handling record: %w", panicErr)
+		}
+	}()
+
+	err = handler(ctx, record.Data)
+	if ctx.Err() != nil && exec.IsRequestCanceled(err) {
+		return errMessageProcessorStopped
+	}
+
+	return err
+}
+
+func (s *shardReader) checkpointProcessedRecords(ctx context.Context, records []types.Record, results []error, lastSequenceNumber *SequenceNumber) (int, error) {
+	processedSize := 0
+	for i, err := range results {
+		if errors.Is(err, errMessageProcessorStopped) {
+			break
+		}
+
+		if err != nil {
+			s.logHandlerError(ctx, records[i], err)
+		}
+
+		*lastSequenceNumber = SequenceNumber(mdl.EmptyIfNil(records[i].SequenceNumber))
+		if err := s.getCheckpoint().Advance(*lastSequenceNumber, ""); err != nil {
+			return processedSize, fmt.Errorf("failed to advance checkpoint: %w", err)
+		}
+
+		processedSize++
+	}
+
+	return processedSize, nil
+}
+
+func (s *shardReader) logHandlerError(ctx context.Context, record types.Record, err error) {
+	// Kinesis can not selectively retry a record without replaying its successors, so stream retry owns retries.
+	s.logger.Error(ctx, "failed to handle record %s: %w", mdl.EmptyIfNil(record.SequenceNumber), err)
+	s.writeMetric(ctx, metricNameFailedRecords, 1, metric.UnitCount)
+}
+
+// drainContext returns the context admitted handlers run with.
+//
+// The deadline for processing is owned by the caller and communicated via exec.WithDrainContext: the shard reader hands
+// records to a handler it knows nothing about, so it must not decide on its own for how long that handler may still run
+// during a shutdown. As long as the caller's drain context is alive, the returned context keeps the values of ctx but
+// survives its cancellation, so an admitted record is never checkpointed without having been handled. Once the drain
+// context is done, in flight handlers are cancelled and the release window (see releaseCtx in Run) begins.
+//
+// Without a drain context the caller owns cancellation directly and ctx is returned unchanged: inventing a grace period
+// here would silently extend a shutdown the caller expected to be immediate.
+func (s *shardReader) drainContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	drainCtx, ok := exec.DrainContextFrom(ctx)
+	if !ok {
+		return ctx, func() {}
+	}
+
+	processingCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+
+	stopDrainPropagation := context.AfterFunc(drainCtx, func() {
+		s.logger.Warn(processingCtx, "processing deadline expired, cancelling in-flight record processing")
+		cancel()
+	})
+
+	return processingCtx, func() {
+		stopDrainPropagation()
+		cancel()
+	}
 }
 
 func (s *shardReader) delayConsume(ctx context.Context, record types.Record) {

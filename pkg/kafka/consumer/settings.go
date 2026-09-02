@@ -12,6 +12,7 @@ import (
 type (
 	Balancer            string
 	FetchIsolationLevel string
+	ProcessingMode      string
 	StartOffset         string
 )
 
@@ -26,6 +27,9 @@ const (
 	Sticky             Balancer = "sticky"
 	RoundRobinBalancer Balancer = "round-robin"
 	Range              Balancer = "range"
+
+	ProcessingModeUnordered ProcessingMode = "unordered"
+	ProcessingModeOrdered   ProcessingMode = "ordered"
 )
 
 type Settings struct {
@@ -47,6 +51,27 @@ type Settings struct {
 	SessionTimeout    time.Duration `cfg:"session_timeout"    default:"45s"`
 	HeartbeatInterval time.Duration `cfg:"heartbeat_interval" default:"3s"`
 	IdleWaitTime      time.Duration `cfg:"idle_wait_time"     default:"500ms"`
+	// ConsumeDelay holds every record back until it is at least this old, measured against the record's kafka
+	// timestamp. Disabled by default.
+	//
+	// The wait happens between polling and processing a record, which also blocks rebalances because the reader
+	// runs with kgo.BlockRebalanceOnPoll. Exceeding RebalanceTimeout while a rebalance is pending gets the
+	// consumer kicked out of the group and leads to duplicate message processing, so the delay has to stay below
+	// it. Raise rebalance_timeout if you need a longer delay.
+	//
+	// The record timestamp is not necessarily assigned by the broker: with the default topic setting
+	// message.timestamp.type=CreateTime it comes from the producer's clock. A record whose timestamp lies in the
+	// future is therefore delayed by at most ConsumeDelay, and a record without a timestamp is not delayed at all.
+	ConsumeDelay time.Duration `cfg:"consume_delay" default:"0" validate:"min=0,ltfield=RebalanceTimeout"`
+	// GraceTime bounds committing the offsets of an already processed batch. The commit gets this much time after
+	// processing finished, so offsets still reach the broker when the consumer is shutting down.
+	//
+	// It does not bound processing itself: the deadline for in flight callbacks belongs to whoever owns them and is
+	// passed in via exec.WithDrainContext. Under a stream consumer that is stream.consumer.<name>.grace_time; a
+	// caller passing no drain context keeps full control and has its cancellation propagated immediately.
+	GraceTime      time.Duration  `cfg:"grace_time"     default:"10s"`
+	RunnerCount    int            `cfg:"runner_count"   default:"1" validate:"min=1"`
+	ProcessingMode ProcessingMode `cfg:"processing_mode" default:"unordered" validate:"oneof=unordered ordered"`
 
 	Healthcheck health.HealthCheckSettings `cfg:"healthcheck"`
 	Backoff     exec.BackoffSettings       `cfg:"backoff"`

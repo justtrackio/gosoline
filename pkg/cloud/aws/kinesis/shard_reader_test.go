@@ -61,6 +61,7 @@ func (s *shardReaderTestSuite) SetupTest() {
 		WaitTime:         time.Second,
 		PersistFrequency: time.Second * 10,
 		ReleaseDelay:     time.Second * 30,
+		RunnerCount:      1,
 		Healthcheck: health.HealthCheckSettings{
 			Timeout: time.Minute,
 		},
@@ -749,7 +750,7 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWaitNoRecords() {
 	s.Nil(s.consumedRecords)
 }
 
-func (s *shardReaderTestSuite) consumeRecord(record []byte) error {
+func (s *shardReaderTestSuite) consumeRecord(_ context.Context, record []byte) error {
 	s.consumedRecords = append(s.consumedRecords, record)
 
 	return s.consumeRecordError

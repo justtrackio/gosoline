@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
@@ -11,8 +12,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream/health"
 )
 
-var _ AcknowledgeableInput = &snsInput{}
-
 type SnsInputSettings struct {
 	Identity            cfg.Identity               `cfg:"identity"`
 	QueueId             string                     `cfg:"queue_id"`
@@ -20,7 +19,9 @@ type SnsInputSettings struct {
 	WaitTime            int32                      `cfg:"wait_time"`
 	RedrivePolicy       sqs.RedrivePolicy          `cfg:"redrive_policy"`
 	VisibilityTimeout   int                        `cfg:"visibility_timeout"`
+	GraceTime           time.Duration              `cfg:"grace_time" default:"10s"`
 	RunnerCount         int                        `cfg:"runner_count"`
+	AcknowledgementMode SqsAcknowledgementMode     `cfg:"acknowledgement_mode" default:"individual" validate:"oneof=individual batch"`
 	ClientName          string                     `cfg:"client_name"`
 	Healthcheck         health.HealthCheckSettings `cfg:"healthcheck"`
 }
@@ -68,18 +69,7 @@ func NewSnsInput(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	var err error
 	var input *sqsInput
 
-	sqsInputSettings := &SqsInputSettings{
-		Identity:            settings.Identity,
-		QueueId:             settings.QueueId,
-		MaxNumberOfMessages: settings.MaxNumberOfMessages,
-		WaitTime:            settings.WaitTime,
-		VisibilityTimeout:   settings.VisibilityTimeout,
-		RunnerCount:         settings.RunnerCount,
-		RedrivePolicy:       settings.RedrivePolicy,
-		ClientName:          settings.ClientName,
-		Healthcheck:         settings.Healthcheck,
-		Unmarshaller:        UnmarshallerSns,
-	}
+	sqsInputSettings := newSqsInputSettingsFromSns(settings)
 
 	if input, err = NewSqsInput(ctx, config, logger, sqsInputSettings); err != nil {
 		return nil, fmt.Errorf("can not create sqsInput: %w", err)
@@ -90,6 +80,23 @@ func NewSnsInput(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	}
 
 	return NewSnsInputWithInterfaces(input), nil
+}
+
+func newSqsInputSettingsFromSns(settings *SnsInputSettings) *SqsInputSettings {
+	return &SqsInputSettings{
+		Identity:            settings.Identity,
+		QueueId:             settings.QueueId,
+		MaxNumberOfMessages: settings.MaxNumberOfMessages,
+		WaitTime:            settings.WaitTime,
+		VisibilityTimeout:   settings.VisibilityTimeout,
+		GraceTime:           settings.GraceTime,
+		RunnerCount:         settings.RunnerCount,
+		AcknowledgementMode: settings.AcknowledgementMode,
+		RedrivePolicy:       settings.RedrivePolicy,
+		ClientName:          settings.ClientName,
+		Healthcheck:         settings.Healthcheck,
+		Unmarshaller:        UnmarshallerSns,
+	}
 }
 
 func NewSnsInputWithInterfaces(sqsInput *sqsInput) *snsInput {
