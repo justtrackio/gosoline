@@ -19,7 +19,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mapx"
 	"github.com/justtrackio/gosoline/pkg/metric"
-	"github.com/justtrackio/gosoline/pkg/metric/calculator"
 	"github.com/justtrackio/gosoline/pkg/share"
 	"github.com/justtrackio/gosoline/pkg/smpl"
 	"github.com/justtrackio/gosoline/pkg/stream"
@@ -190,12 +189,6 @@ func WithConfigSetting(key string, settings any) Option {
 
 func WithHttpHealthCheck(app *App) {
 	WithModuleFactory("http-health-check", httpserver.NewHealthCheck())(app)
-}
-
-func WithMetricsCalculatorModule(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
-		return kernelPkg.WithModuleMultiFactory(calculator.CalculatorModuleFactory)
-	})
 }
 
 func WithExecBackoffInfinite(app *App) {

@@ -179,7 +179,6 @@ backend writers apply their rendering rules after these names are authored.
 
 | Namespace | Canonical leaves |
 |---|---|
-| `autoscaling.per_runner` | `stream.messages`; `http.server.requests` |
 | `blob` | `batch.operations` |
 | `cloud.aws.kinesis` | `reads`; `consume.errors`; `lag`; `acquire.delay`; `sleep.duration`; `wait.duration`; `shard.count`; `client.count`; `batch.size`; `send.errors` |
 | `conc.scheduler` | `batch.size`; `task.delay` |
@@ -209,6 +208,7 @@ There is still no dual emission.
 | Status | Metric or behavior | Consumer action |
 |---|---|---|
 | Unchanged | Every final inventory entry not called out below | Keep using its canonical namespace and leaf. Moving namespace constants into emitting packages changes source ownership, not those emitted names. |
+| Deleted | `autoscaling.per_runner.stream.messages`; `autoscaling.per_runner.http.server.requests` | Remove the per-runner calculator configuration and replace scaling policies with application-specific signals; the calculator and both handlers are no longer present. |
 | Renamed | SQL repository operations: `db.client.operation.duration` → `db.repo.operation.duration` | Re-key SQL repository dashboards, alerts, and queries to `db.repo`. |
 | Renamed | DynamoDB repository operations: `db.client.operation.duration` → `ddb.operation.duration` | Re-key DynamoDB repository dashboards, alerts, and queries to `ddb`. |
 | Deleted and consolidated | `db.repo.model_event.notify.errors` | Use `db.repo.model_event.notifications` for both outcomes; the former error-only metric is not emitted. |
@@ -283,4 +283,4 @@ that future convention.
 7. Re-key every alarm, dashboard, query, and metric-calculator configuration using the final inventory above; select by `metric.schema_version` (`v2.0` for this release).
 8. Re-key SQL repository operation telemetry to `db.repo.operation.duration` and DynamoDB repository operation telemetry to `ddb.operation.duration`.
 9. Replace notification-failure queries with `db.repo.model_event.notifications` filtered by `error.type`, and aggregate detailed HTTP, Kafka, and Kinesis series in the backend.
-10. Update ECS scaling policies that reference `PerRunner*`, `StreamMessages`, `HttpServerRequests` or `ShardTaskRatio`.
+10. Remove `metric.calculator` and `stream.metrics.messages_per_runner` configuration, and replace ECS scaling policies that reference `PerRunner*`, `StreamMessages`, `HttpServerRequests` or `ShardTaskRatio`; none of those per-runner metrics are emitted.

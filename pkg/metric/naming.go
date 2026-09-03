@@ -38,13 +38,6 @@ func canonicalName(namespace, leaf string) string {
 	return namespace + "." + leaf
 }
 
-// CloudWatchMetricName renders a canonical namespace and leaf into the name the CloudWatch writer
-// exports the metric under. Reading a gosoline metric back out of CloudWatch, as the per-runner
-// metric calculator does, needs the exported name rather than the authored one.
-func CloudWatchMetricName(namespace, leaf string) string {
-	return renderCloudWatchName(namespace, leaf)
-}
-
 // renderCloudWatchName renders a canonical namespace and leaf into a single PascalCase name by
 // splitting on both canonical separators, capitalising every word and concatenating them without a
 // separator. It adds no gosoline prefix, because the CloudWatch namespace already identifies the

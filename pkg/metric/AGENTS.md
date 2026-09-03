@@ -37,7 +37,6 @@ carry one. A package emitting into two namespaces, such as a Kafka consumer repo
 
 | Namespace | Emitting package owner(s) |
 |---|---|
-| `autoscaling.per_runner` | `pkg/metric/calculator` |
 | `blob` | `pkg/blob` |
 | `cloud.aws.kinesis` | `pkg/cloud/aws/kinesis` |
 | `conc.scheduler` | `pkg/conc/scheduler` |
