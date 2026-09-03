@@ -23,9 +23,13 @@ import (
 )
 
 const (
-	MetricNameAccessSuccess = "DdbAccessSuccess"
-	MetricNameAccessFailure = "DdbAccessFailure"
-	MetricNameAccessLatency = "DdbAccessLatency"
+	// MetricNameOperationDuration records how long a DynamoDB operation took. Its observation count is
+	// the operation count and its error type tells a failure from a success, so neither needs a metric
+	// of its own.
+	MetricNameOperationDuration = "operation.duration"
+
+	// dimensionOperation is the semantic-convention attribute naming the database operation.
+	dimensionOperation = "db.operation.name"
 
 	OpSave = "save"
 

@@ -12,6 +12,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/smpl/smplctx"
 )
 
+const metricNameDecisions = "decisions"
+
 type (
 	ctxKeyDecider struct{}
 
@@ -64,7 +66,7 @@ func NewDecider(ctx context.Context, config cfg.Config) (Decider, error) {
 		strategies = append(strategies, strategy)
 	}
 
-	return NewDeciderWithInterfaces(strategies, settings, metric.NewWriter()), nil
+	return NewDeciderWithInterfaces(strategies, settings, metric.NewWriter(metricNamespace)), nil
 }
 
 // NewDeciderWithInterfaces creates a new Decider with the given strategies, settings and metric writer.
@@ -114,11 +116,12 @@ func (d *defaultDecider) Decide(ctx context.Context, overwriteStrategies ...Stra
 
 	d.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		MetricName: "sampling_decision",
+		MetricName: metricNameDecisions,
 		Unit:       metric.UnitCount,
 		Value:      1.0,
+		Kind:       metric.KindCounter.Build(),
 		Dimensions: map[string]string{
-			"sampled": strconv.FormatBool(finalIsSampled),
+			"sampling.sampled": strconv.FormatBool(finalIsSampled),
 		},
 	})
 

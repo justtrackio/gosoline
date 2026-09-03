@@ -11,8 +11,8 @@ import (
 
 const (
 	concurrencyMetricSampleInterval = 10 * time.Second
-	MetricHttpConcurrentRequests    = "HttpConcurrentRequests"
-	MetricHttpOpenConnections       = "HttpOpenConnections"
+	MetricHttpConcurrentRequests    = "active_requests"
+	MetricHttpOpenConnections       = "connection.count"
 )
 
 //go:generate go run github.com/vektra/mockery/v2 --name ServerMetricRecorder
@@ -36,7 +36,7 @@ type serverMetricRecorder struct {
 func newServerMetricRecorder(name string) ServerMetricRecorder {
 	defaults := getMetricRecorderDefaults(name)
 
-	return newServerMetricRecorderWithInterfaces(name, clock.Provider, metric.NewWriter(defaults...), concurrencyMetricSampleInterval)
+	return newServerMetricRecorderWithInterfaces(name, clock.Provider, metric.NewWriter(metricNamespace, defaults...), concurrencyMetricSampleInterval)
 }
 
 func newServerMetricRecorderWithInterfaces(name string, clock clock.Clock, writer metric.Writer, sampleInterval time.Duration) ServerMetricRecorder {
@@ -102,10 +102,8 @@ func (r *serverMetricRecorder) buildGaugeDatum(metricName string, value int64) *
 		Priority:   metric.PriorityHigh,
 		MetricName: metricName,
 		Dimensions: metric.Dimensions{
-			"ServerName": r.name,
+			dimensionServerName: r.name,
 		},
-		Unit:  metric.UnitCountMaximum,
-		Kind:  metric.KindGauge.Build(),
 		Value: float64(value),
 	}
 }
@@ -116,7 +114,7 @@ func getMetricRecorderDefaults(name string) metric.Data {
 			Priority:   metric.PriorityHigh,
 			MetricName: MetricHttpConcurrentRequests,
 			Dimensions: metric.Dimensions{
-				"ServerName": name,
+				dimensionServerName: name,
 			},
 			Unit:  metric.UnitCountMaximum,
 			Kind:  metric.KindGauge.Build(),
@@ -126,7 +124,7 @@ func getMetricRecorderDefaults(name string) metric.Data {
 			Priority:   metric.PriorityHigh,
 			MetricName: MetricHttpOpenConnections,
 			Dimensions: metric.Dimensions{
-				"ServerName": name,
+				dimensionServerName: name,
 			},
 			Unit:  metric.UnitCountMaximum,
 			Kind:  metric.KindGauge.Build(),

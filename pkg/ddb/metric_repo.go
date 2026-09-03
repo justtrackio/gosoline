@@ -10,6 +10,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
+const metricNamespace = "ddb"
+
 type metricRepository struct {
 	Repository
 	metric metric.Writer
@@ -17,7 +19,7 @@ type metricRepository struct {
 
 func NewMetricRepository(config cfg.Config, logger log.Logger, repo Repository) (*metricRepository, error) {
 	defaults := getDefaultMetrics(repo.GetModelId())
-	output := metric.NewWriter(defaults...)
+	output := metric.NewWriter(metricNamespace, defaults...)
 
 	return &metricRepository{
 		Repository: repo,
@@ -34,38 +36,33 @@ func (r metricRepository) PutItem(ctx context.Context, _ PutItemBuilder, item an
 }
 
 func (r metricRepository) writeMetric(ctx context.Context, op string, err error, start time.Time) {
-	latencyNano := time.Since(start)
-	modelId := r.GetModelId()
-	metricName := MetricNameAccessSuccess
+	latencyMillisecond := float64(time.Since(start)) / float64(time.Millisecond)
 
-	if err != nil {
-		metricName = MetricNameAccessFailure
-	}
-
-	r.metric.WriteOne(ctx, &metric.Datum{
+	datum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
-		MetricName: metricName,
-		Dimensions: map[string]string{
-			"Operation": op,
-			"ModelId":   modelId.String(),
-		},
-		Unit:  metric.UnitCount,
-		Value: 1.0,
-	})
+		MetricName: MetricNameOperationDuration,
+		Dimensions: operationDimensions(op, r.GetModelId().String(), metric.ErrorType(err)),
+		Value:      latencyMillisecond,
+	}
+	if err != nil {
+		datum.Unit = metric.UnitMillisecondsAverage
+		datum.Kind = metric.KindHistogram.Build()
+	}
 
-	latencyMillisecond := float64(latencyNano) / float64(time.Millisecond)
+	r.metric.WriteOne(ctx, datum)
+}
 
-	r.metric.WriteOne(ctx, &metric.Datum{
-		Timestamp:  time.Now(),
-		MetricName: MetricNameAccessLatency,
-		Dimensions: map[string]string{
-			"Operation": op,
-			"ModelId":   modelId.String(),
-		},
-		Unit:  metric.UnitMillisecondsAverage,
-		Value: latencyMillisecond,
-	})
+func operationDimensions(op string, modelId string, errorType string) map[string]string {
+	if errorType == "" {
+		errorType = metric.DimensionDefault
+	}
+
+	return map[string]string{
+		dimensionOperation:        op,
+		metric.DimensionModelId:   modelId,
+		metric.DimensionErrorType: errorType,
+	}
 }
 
 func getDefaultMetrics(mId mdl.ModelId) metric.Data {
@@ -73,28 +70,13 @@ func getDefaultMetrics(mId mdl.ModelId) metric.Data {
 	defaults := make([]*metric.Datum, 0)
 
 	for _, op := range []string{OpSave} {
-		for _, name := range []string{MetricNameAccessSuccess, MetricNameAccessFailure} {
-			defaults = append(defaults, &metric.Datum{
-				Priority:   metric.PriorityHigh,
-				MetricName: name,
-				Dimensions: map[string]string{
-					"Operation": op,
-					"ModelId":   model,
-				},
-				Unit:  metric.UnitCount,
-				Value: 0.0,
-			})
-		}
-
 		defaults = append(defaults, &metric.Datum{
 			Priority:   metric.PriorityLow,
-			MetricName: MetricNameAccessLatency,
-			Dimensions: map[string]string{
-				"Operation": op,
-				"ModelId":   model,
-			},
-			Unit:  metric.UnitMillisecondsAverage,
-			Value: 0.0,
+			MetricName: MetricNameOperationDuration,
+			Dimensions: operationDimensions(op, model, ""),
+			Unit:       metric.UnitMillisecondsAverage,
+			Value:      0.0,
+			Kind:       metric.KindHistogram.Build(),
 		})
 	}
 

@@ -24,7 +24,7 @@ func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settin
 		return nil, fmt.Errorf("failed to build full topic name for topic id %q: %w", settings.TopicId, err)
 	}
 
-	metricsHook := kafka.NewMetricsHook(metric.NewWriter(), kafka.DimensionProducer, name)
+	metricsHook := kafka.NewMetricsHook(metric.NewWriter(metricNamespaceKafka), kafka.ClientTypeProducer, name)
 
 	opts := []kgo.Opt{
 		kgo.DefaultProduceTopic(topic),

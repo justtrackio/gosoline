@@ -88,9 +88,11 @@ func (s *RequestsPerRunnerTestSuite) TestSuccess() {
 	expectedDatum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Time{},
-		MetricName: "PerRunnerHttpServerRequests",
+		Namespace:  "autoscaling.per_runner",
+		MetricName: "http.server.requests",
 		Value:      50,
 		Unit:       metric.UnitCountAverage,
+		Kind:       metric.KindGauge.Build(),
 	}
 
 	s.mockGetRequestsMetrics(100, nil)
@@ -111,17 +113,17 @@ func (s *RequestsPerRunnerTestSuite) mockGetRequestsMetrics(value float64, err e
 				MetricStat: &types.MetricStat{
 					Metric: &types.Metric{
 						Namespace:  aws.String("gosoline/test/httpserver/demo"),
-						MetricName: aws.String("HttpRequestCount"),
+						MetricName: aws.String("HttpServerRequestDuration"),
 						Dimensions: []types.Dimension{
 							{
-								Name:  aws.String("ServerName"),
+								Name:  aws.String("http.server.name"),
 								Value: aws.String("default"),
 							},
 						},
 					},
 					Period: aws.Int32(60),
-					Stat:   aws.String(string(types.StatisticSum)),
-					Unit:   types.StandardUnitCount,
+					Stat:   aws.String(string(types.StatisticSampleCount)),
+					Unit:   types.StandardUnitMilliseconds,
 				},
 			},
 		},

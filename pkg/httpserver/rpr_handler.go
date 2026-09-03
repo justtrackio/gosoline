@@ -17,7 +17,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric/calculator"
 )
 
-const PerRunnerMetricName = "HttpServerRequests"
+const PerRunnerMetricName = "http.server.requests"
 
 func init() {
 	calculator.RegisterHandlerFactory("httpserver_requests_per_runner", RequestsPerRunnerHandlerFactory)
@@ -109,17 +109,18 @@ func (h *rprHandler) getRequestsMetrics(ctx context.Context) (float64, error) {
 			MetricStat: &types.MetricStat{
 				Metric: &types.Metric{
 					Namespace:  aws.String(h.calculatorSettings.CloudWatchNamespace),
-					MetricName: aws.String(MetricHttpRequestCount),
+					MetricName: aws.String(metric.CloudWatchMetricName(metricNamespace, MetricHttpRequestDuration)),
 					Dimensions: []types.Dimension{
 						{
-							Name:  aws.String("ServerName"),
+							Name:  aws.String(dimensionServerName),
 							Value: aws.String(serverName),
 						},
 					},
 				},
 				Period: aws.Int32(period),
-				Stat:   aws.String(string(types.StatisticSum)),
-				Unit:   types.StandardUnitCount,
+				// the request count is the number of observations of the request duration
+				Stat: aws.String(string(types.StatisticSampleCount)),
+				Unit: types.StandardUnitMilliseconds,
 			},
 		}
 	}

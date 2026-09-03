@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	metricNameRedisListOutputWrites = "StreamRedisListOutputWrites"
+	metricNameRedisListOutputWrites = "writes"
 )
 
 type RedisListOutputSettings struct {
@@ -37,7 +37,7 @@ func NewRedisListOutput(ctx context.Context, config cfg.Config, logger log.Logge
 	}
 
 	defaultMetrics := getRedisListOutputDefaultMetrics(settings)
-	mw := metric.NewWriter(defaultMetrics...)
+	mw := metric.NewWriter(metricNamespace, defaultMetrics...)
 
 	return NewRedisListOutputWithInterfaces(config, logger, mw, client, settings), nil
 }
@@ -80,9 +80,8 @@ func (o *redisListOutput) writeListWriteMetric(ctx context.Context, length int) 
 		Timestamp:  time.Now(),
 		MetricName: metricNameRedisListOutputWrites,
 		Dimensions: map[string]string{
-			"StreamName": fmt.Sprintf("%s-%s", o.settings.ServerName, o.settings.Key),
+			metric.DimensionMessagingDestination: redisListDestination(o.settings.ServerName, o.settings.Key),
 		},
-		Unit:  metric.UnitCount,
 		Value: float64(length),
 	}}
 
@@ -95,10 +94,11 @@ func getRedisListOutputDefaultMetrics(settings *RedisListOutputSettings) metric.
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameRedisListOutputWrites,
 			Dimensions: map[string]string{
-				"StreamName": fmt.Sprintf("%s-%s", settings.ServerName, settings.Key),
+				metric.DimensionMessagingDestination: redisListDestination(settings.ServerName, settings.Key),
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		},
 	}
 }

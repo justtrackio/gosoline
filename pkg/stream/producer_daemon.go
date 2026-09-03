@@ -20,10 +20,12 @@ import (
 const (
 	AttributeAggregate      = "goso.aggregate"
 	AttributeAggregateCount = "goso.aggregate.count"
-	metricNameMessageCount  = "MessageCount"
-	metricNameBatchSize     = "BatchSize"
-	metricNameAggregateSize = "AggregateSize"
-	metricNameIdleDuration  = "IdleDuration"
+	metricNameMessageCount  = "messages"
+	metricNameBatchSize     = "batch.size"
+	metricNameAggregateSize = "aggregate.size"
+	metricNameIdleDuration  = "idle.duration"
+
+	dimensionProducerDaemon = "stream.producer.name"
 )
 
 type (
@@ -134,7 +136,7 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 	}
 
 	defaultMetrics := getProducerDaemonDefaultMetrics(name)
-	metricWriter := metric.NewWriter(defaultMetrics...)
+	metricWriter := metric.NewWriter(metricNamespace, defaultMetrics...)
 
 	output, outputCapabilities, err := NewConfigurableOutput(ctx, config, logger, settings.Output)
 	if err != nil {
@@ -471,9 +473,10 @@ func (d *producerDaemon) outputLoop() error {
 
 func (d *producerDaemon) writeMetricMessageCount(ctx context.Context, count int) {
 	d.metric.WriteOne(ctx, &metric.Datum{
+		Priority:   metric.PriorityHigh,
 		MetricName: metricNameMessageCount,
 		Dimensions: map[string]string{
-			"ProducerDaemon": d.name,
+			dimensionProducerDaemon: d.name,
 		},
 		Value: float64(count),
 	})
@@ -481,9 +484,10 @@ func (d *producerDaemon) writeMetricMessageCount(ctx context.Context, count int)
 
 func (d *producerDaemon) writeMetricBatchSize(ctx context.Context, size int) {
 	d.metric.WriteOne(ctx, &metric.Datum{
+		Priority:   metric.PriorityHigh,
 		MetricName: metricNameBatchSize,
 		Dimensions: map[string]string{
-			"ProducerDaemon": d.name,
+			dimensionProducerDaemon: d.name,
 		},
 		Value: float64(size),
 	})
@@ -491,9 +495,10 @@ func (d *producerDaemon) writeMetricBatchSize(ctx context.Context, size int) {
 
 func (d *producerDaemon) writeMetricAggregateSize(ctx context.Context, size int) {
 	d.metric.WriteOne(ctx, &metric.Datum{
+		Priority:   metric.PriorityHigh,
 		MetricName: metricNameAggregateSize,
 		Dimensions: map[string]string{
-			"ProducerDaemon": d.name,
+			dimensionProducerDaemon: d.name,
 		},
 		Value: float64(size),
 	})
@@ -508,10 +513,11 @@ func (d *producerDaemon) writeMetricIdleDuration(ctx context.Context, idleDurati
 		Priority:   metric.PriorityHigh,
 		MetricName: metricNameIdleDuration,
 		Dimensions: map[string]string{
-			"ProducerDaemon": d.name,
+			dimensionProducerDaemon: d.name,
 		},
 		Unit:  metric.UnitMillisecondsAverage,
 		Value: float64(idleDuration.Milliseconds()),
+		Kind:  metric.KindHistogram.Build(),
 	})
 }
 
@@ -521,28 +527,31 @@ func getProducerDaemonDefaultMetrics(name string) metric.Data {
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameMessageCount,
 			Dimensions: map[string]string{
-				"ProducerDaemon": name,
+				dimensionProducerDaemon: name,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		},
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameBatchSize,
 			Dimensions: map[string]string{
-				"ProducerDaemon": name,
+				dimensionProducerDaemon: name,
 			},
 			Unit:  metric.UnitCountAverage,
 			Value: 0.0,
+			Kind:  metric.KindHistogram.Build(),
 		},
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameAggregateSize,
 			Dimensions: map[string]string{
-				"ProducerDaemon": name,
+				dimensionProducerDaemon: name,
 			},
 			Unit:  metric.UnitCountAverage,
 			Value: 0.0,
+			Kind:  metric.KindHistogram.Build(),
 		},
 	}
 }

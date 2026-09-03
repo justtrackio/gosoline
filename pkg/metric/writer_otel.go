@@ -129,57 +129,33 @@ func (w *otelWriter) Write(ctx context.Context, batch Data) {
 }
 
 func (w *otelWriter) record(ctx context.Context, datum *Datum) error {
-	name := FormatOtelMetricName(datum.MetricName)
-	unit := ToUcumUnit(datum.Unit)
+	name := renderOtelName(datum.Namespace, datum.MetricName)
+	unit := otelInstrumentUnit(datum.MetricName, datum.Unit)
+	value := datum.Value * unitScale(datum.Unit)
 	attrs := otelmetric.WithAttributes(w.attributes(datum)...)
 
-	switch w.effectiveKind(datum) {
+	switch effectiveKind(datum) {
 	case kindCounter:
 		instrument, err := w.counter(name, unit, datum.Kind.help)
 		if err != nil {
 			return err
 		}
-		instrument.Add(ctx, datum.Value, attrs)
+		instrument.Add(ctx, value, attrs)
 	case kindHistogram, kindSummary:
 		instrument, err := w.histogram(name, unit, datum.Kind.help, datum.Kind.buckets)
 		if err != nil {
 			return err
 		}
-		instrument.Record(ctx, datum.Value, attrs)
+		instrument.Record(ctx, value, attrs)
 	default:
 		instrument, err := w.gauge(name, unit, datum.Kind.help)
 		if err != nil {
 			return err
 		}
-		instrument.Record(ctx, datum.Value, attrs)
+		instrument.Record(ctx, value, attrs)
 	}
 
 	return nil
-}
-
-// effectiveKind resolves the metric kind, falling back to the unit when no explicit kind is set,
-// mirroring the prometheus writer so both writers classify metrics consistently.
-func (w *otelWriter) effectiveKind(datum *Datum) kind {
-	switch datum.Kind.kind {
-	case kindCounter, kindGauge, kindHistogram, kindSummary:
-		return datum.Kind.kind
-	}
-
-	switch datum.Unit {
-	case UnitCount:
-		return kindCounter
-	case UnitMilliseconds,
-		UnitMillisecondsMaximum,
-		UnitMillisecondsMinimum,
-		UnitMillisecondsAverage,
-		UnitSeconds,
-		UnitSecondsMaximum,
-		UnitSecondsMinimum,
-		UnitSecondsAverage:
-		return kindHistogram
-	default:
-		return kindGauge
-	}
 }
 
 func (w *otelWriter) attributes(datum *Datum) []attribute.KeyValue {

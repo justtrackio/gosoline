@@ -22,15 +22,22 @@ import (
 )
 
 const (
-	metricNameConsumerDuration          = "Duration"
-	metricNameConsumerError             = "Error"
-	metricNameConsumerProcessedCount    = "ProcessedCount"
-	metricNameConsumerRetryGetCount     = "RetryGetCount"
-	metricNameConsumerRetryPutCount     = "RetryPutCount"
-	metricNameConsumerUnknownModelError = "UnknownModelError"
-	dataSourceInput                     = "input"
-	dataSourceRetry                     = "retry"
-	metadataKeyConsumers                = "stream.consumers"
+	metricNameConsumerDuration        = "process.duration"
+	metricNameConsumerError           = "errors"
+	metricNameConsumerProcessedCount  = "client.consumed.messages"
+	metricNameConsumerRetryOperations = "retry.operations"
+
+	dimensionConsumer       = "stream.consumer.name"
+	dimensionRetryOperation = "retry.operation"
+
+	retryOperationGet = "get"
+	retryOperationPut = "put"
+
+	errorTypeUnknownModel = "unknown_model"
+
+	dataSourceInput      = "input"
+	dataSourceRetry      = "retry"
+	metadataKeyConsumers = "stream.consumers"
 )
 
 type ConsumerMetadata struct {
@@ -124,7 +131,7 @@ func NewBaseConsumer(
 	}
 
 	defaultMetrics := getConsumerDefaultMetrics(name)
-	metricWriter := metric.NewWriter(defaultMetrics...)
+	metricWriter := metric.NewWriter(metricNamespace, defaultMetrics...)
 
 	var input, retryInput Input
 	var retryHandler RetryHandler
@@ -366,7 +373,7 @@ func (c *baseConsumer) ingestDataFromSource(input Input, src string) func(ctx co
 				}
 
 				c.logger.Warn(newCtx, "retrying message with id %s", retryId)
-				c.writeMetricRetryCount(newCtx, metricNameConsumerRetryGetCount)
+				c.writeMetricRetryCount(newCtx, retryOperationGet)
 			}
 
 			c.data <- &consumerData{
@@ -428,7 +435,7 @@ func (c *baseConsumer) retry(ctx context.Context, msg *Message) {
 	})
 
 	c.logger.Warn(ctx, "putting message with id %s into retry", retryId)
-	c.writeMetricRetryCount(ctx, metricNameConsumerRetryPutCount)
+	c.writeMetricRetryCount(ctx, retryOperationPut)
 
 	ctx, stop := exec.WithDelayedCancelContext(ctx, c.settings.Retry.GraceTime)
 	defer stop()
@@ -472,11 +479,15 @@ func (c *baseConsumer) handleError(ctx context.Context, err error, msg string) {
 
 	c.metricWriter.Write(ctx, metric.Data{
 		&metric.Datum{
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerError,
 			Dimensions: map[string]string{
-				"Consumer": c.name,
+				dimensionConsumer:         c.name,
+				metric.DimensionErrorType: metric.ErrorType(err),
 			},
+			Unit:  metric.UnitCount,
 			Value: 1.0,
+			Kind:  metric.KindCounter.Build(),
 		},
 	})
 }
@@ -494,31 +505,56 @@ func (c *baseConsumer) writeMetricDurationAndProcessedCount(ctx context.Context,
 	c.metricWriter.Write(ctx, metric.Data{
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
+			Namespace:  metricNamespaceMessaging,
 			MetricName: metricNameConsumerDuration,
 			Dimensions: map[string]string{
-				"Consumer": c.name,
+				dimensionConsumer: c.name,
 			},
 			Unit:  metric.UnitMillisecondsAverage,
 			Value: float64(duration.Milliseconds()),
+			Kind:  metric.KindHistogram.Build(),
 		},
 		&metric.Datum{
+			Priority:   metric.PriorityHigh,
+			Namespace:  metricNamespaceMessaging,
 			MetricName: metricNameConsumerProcessedCount,
 			Dimensions: map[string]string{
-				"Consumer": c.name,
+				dimensionConsumer: c.name,
 			},
 			Value: float64(processedCount),
 		},
 	})
 }
 
-func (c *baseConsumer) writeMetricRetryCount(ctx context.Context, metricName string) {
+// writeMetricUnknownModelError counts a message whose model could not be determined. It is folded into
+// the consumer's error counter and told apart by its error type, so an unknown model does not need a
+// metric of its own.
+func (c *baseConsumer) writeMetricUnknownModelError(ctx context.Context) {
 	c.metricWriter.Write(ctx, metric.Data{
 		&metric.Datum{
-			MetricName: metricName,
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameConsumerError,
 			Dimensions: map[string]string{
-				"Consumer": c.name,
+				dimensionConsumer:         c.name,
+				metric.DimensionErrorType: errorTypeUnknownModel,
 			},
-			Value: float64(1),
+			Unit:  metric.UnitCount,
+			Value: 1.0,
+			Kind:  metric.KindCounter.Build(),
+		},
+	})
+}
+
+func (c *baseConsumer) writeMetricRetryCount(ctx context.Context, operation string) {
+	c.metricWriter.Write(ctx, metric.Data{
+		&metric.Datum{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameConsumerRetryOperations,
+			Dimensions: map[string]string{
+				dimensionConsumer:       c.name,
+				dimensionRetryOperation: operation,
+			},
+			Value: 1.0,
 		},
 	})
 }
@@ -527,48 +563,47 @@ func getConsumerDefaultMetrics(name string) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
+			Namespace:  metricNamespaceMessaging,
 			MetricName: metricNameConsumerProcessedCount,
 			Dimensions: map[string]string{
-				"Consumer": name,
+				dimensionConsumer: name,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		},
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerError,
 			Dimensions: map[string]string{
-				"Consumer": name,
+				dimensionConsumer:         name,
+				metric.DimensionErrorType: metric.DimensionDefault,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameConsumerRetryPutCount,
+			MetricName: metricNameConsumerRetryOperations,
 			Dimensions: map[string]string{
-				"Consumer": name,
+				dimensionConsumer:       name,
+				dimensionRetryOperation: retryOperationPut,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameConsumerRetryGetCount,
+			MetricName: metricNameConsumerRetryOperations,
 			Dimensions: map[string]string{
-				"Consumer": name,
+				dimensionConsumer:       name,
+				dimensionRetryOperation: retryOperationGet,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameConsumerUnknownModelError,
-			Dimensions: map[string]string{
-				"Consumer": name,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		},
 	}
 }

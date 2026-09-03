@@ -10,9 +10,13 @@ import (
 )
 
 const (
-	MetricNameDbAccessSuccess = "DbAccessSuccess"
-	MetricNameDbAccessFailure = "DbAccessFailure"
-	MetricNameDbAccessLatency = "DbAccessLatency"
+	// MetricNameDbOperationDuration records how long a repository operation took. Its observation count
+	// is the operation count and its error type tells a failure from a success, so neither needs a
+	// metric of its own.
+	MetricNameDbOperationDuration = "operation.duration"
+
+	// dimensionOperation is the semantic-convention attribute naming the database operation.
+	dimensionOperation = "db.operation.name"
 )
 
 type metricRepository struct {
@@ -23,7 +27,7 @@ type metricRepository struct {
 func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRepository {
 	modelIdString := repo.GetModelId()
 	defaults := getDefaultRepositoryMetrics(modelIdString)
-	output := metric.NewWriter(defaults...)
+	output := metric.NewWriter(metricNamespace, defaults...)
 
 	return &metricRepository{
 		Repository: repo,
@@ -72,65 +76,46 @@ func (r metricRepository) Query(ctx context.Context, qb *QueryBuilder, result an
 }
 
 func (r metricRepository) writeMetric(ctx context.Context, op string, err error, start time.Time) {
-	latencyNano := time.Since(start)
-	metricName := MetricNameDbAccessSuccess
+	latencyMillisecond := float64(time.Since(start)) / float64(time.Millisecond)
 
-	if err != nil {
-		metricName = MetricNameDbAccessFailure
-	}
-
-	r.output.WriteOne(ctx, &metric.Datum{
+	datum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
-		MetricName: metricName,
-		Dimensions: map[string]string{
-			"Operation": op,
-			"ModelId":   r.GetModelId(),
-		},
-		Unit:  metric.UnitCount,
-		Value: 1.0,
-	})
+		MetricName: MetricNameDbOperationDuration,
+		Dimensions: dbOperationDimensions(op, r.GetModelId(), metric.ErrorType(err)),
+		Value:      latencyMillisecond,
+	}
+	if err != nil {
+		datum.Unit = metric.UnitMillisecondsAverage
+		datum.Kind = metric.KindHistogram.Build()
+	}
 
-	latencyMillisecond := float64(latencyNano) / float64(time.Millisecond)
+	r.output.WriteOne(ctx, datum)
+}
 
-	r.output.WriteOne(ctx, &metric.Datum{
-		Timestamp:  time.Now(),
-		MetricName: MetricNameDbAccessLatency,
-		Dimensions: map[string]string{
-			"Operation": op,
-			"ModelId":   r.GetModelId(),
-		},
-		Unit:  metric.UnitMillisecondsAverage,
-		Value: latencyMillisecond,
-	})
+func dbOperationDimensions(op string, modelId string, errorType string) map[string]string {
+	if errorType == "" {
+		errorType = metric.DimensionDefault
+	}
+
+	return map[string]string{
+		dimensionOperation:        op,
+		metric.DimensionModelId:   modelId,
+		metric.DimensionErrorType: errorType,
+	}
 }
 
 func getDefaultRepositoryMetrics(modelIdString string) []*metric.Datum {
-	defaults := make([]*metric.Datum, 0)
+	defaults := make([]*metric.Datum, 0, len(operations))
 
 	for _, op := range operations {
-		for _, name := range []string{MetricNameDbAccessSuccess, MetricNameDbAccessFailure} {
-			defaults = append(defaults, &metric.Datum{
-				Priority:   metric.PriorityHigh,
-				MetricName: name,
-				Dimensions: map[string]string{
-					"Operation": op,
-					"ModelId":   modelIdString,
-				},
-				Unit:  metric.UnitCount,
-				Value: 0.0,
-			})
-		}
-
 		defaults = append(defaults, &metric.Datum{
 			Priority:   metric.PriorityLow,
-			MetricName: MetricNameDbAccessLatency,
-			Dimensions: map[string]string{
-				"Operation": op,
-				"ModelId":   modelIdString,
-			},
-			Unit:  metric.UnitMillisecondsAverage,
-			Value: 0.0,
+			MetricName: MetricNameDbOperationDuration,
+			Dimensions: dbOperationDimensions(op, modelIdString, ""),
+			Unit:       metric.UnitMillisecondsAverage,
+			Value:      0.0,
+			Kind:       metric.KindHistogram.Build(),
 		})
 	}
 

@@ -17,9 +17,9 @@ import (
 
 const (
 	PrmHandlerName              = "stream_messages_per_runner"
-	PerRunnerMetricName         = "StreamMessages"
-	MessagesAvailableMetricName = "StreamMessagesAvailable"
-	MessagesSentMetricName      = "StreamMessagesSent"
+	PerRunnerMetricName         = "stream.messages"
+	MessagesAvailableMetricName = "available.messages"
+	MessagesSentMetricName      = "sent.messages"
 )
 
 func init() {
@@ -90,12 +90,14 @@ func NewMessagesPerRunnerHandlerWithInterfaces(
 	}
 }
 
-func (h *mprHandler) createDatum(metricName string, value float64) *metric.Datum {
+func (h *mprHandler) createDatum(namespace string, metricName string, metricKind metric.Kind, value float64) *metric.Datum {
 	return &metric.Datum{
 		Priority:   metric.PriorityLow,
+		Namespace:  namespace,
 		MetricName: metricName,
 		Value:      value,
 		Unit:       metric.UnitCount,
+		Kind:       metricKind,
 	}
 }
 
@@ -110,8 +112,8 @@ func (h *mprHandler) GetMetrics(ctx context.Context) (metric.Data, error) {
 
 	messagesTotal = messagesSent + messagesAvailable
 
-	ma := h.createDatum(MessagesAvailableMetricName, messagesAvailable)
-	ms := h.createDatum(MessagesSentMetricName, messagesSent)
+	ma := h.createDatum(metricNamespace, MessagesAvailableMetricName, metric.KindGauge.Build(), messagesAvailable)
+	ms := h.createDatum(metricNamespace, MessagesSentMetricName, metric.KindCounter.Build(), messagesSent)
 
 	if rpr, err = h.CalculatePerRunnerMetrics(ctx, PerRunnerMetricName, messagesTotal, h.handlerSettings); err != nil {
 		h.logger.Warn(ctx, "can not calculate metrics per runner for handler: can not calculate httpserver per runner metrics: %s: %T", err.Error(), *h)

@@ -325,14 +325,14 @@ func TestConsumerRunIgnoresRetryableFetchError(t *testing.T) {
 	handler.EXPECT().Stop().Once()
 
 	dims := metric.Dimensions{
-		kafka.DimensionClientType: kafka.DimensionConsumer,
+		kafka.DimensionClientType: kafka.ClientTypeConsumer,
 		kafka.DimensionClient:     "test-consumer",
 		kafka.DimensionTopic:      "test-topic",
 	}
 	expectedMetrics := metric.Data{
-		metric.NewMetricDatum("PollCount", dims, 1.0, metric.UnitCount, metric.PriorityHigh),
-		metric.NewMetricDatum("PollDuration", dims, 0.0, metric.UnitMillisecondsAverage, metric.PriorityHigh),
-		metric.NewMetricDatum("RecordsConsumed", dims, 1.0, metric.UnitCount, metric.PriorityHigh),
+		{Priority: metric.PriorityHigh, MetricName: "polls", Dimensions: dims, Value: 1.0},
+		{Priority: metric.PriorityHigh, MetricName: "poll.duration", Dimensions: dims, Value: 0.0},
+		{Priority: metric.PriorityHigh, Namespace: "messaging", MetricName: "client.consumed.messages", Dimensions: dims, Value: 1.0},
 	}
 	metricWriter.EXPECT().Write(matcher.Context, expectedMetrics).Once()
 

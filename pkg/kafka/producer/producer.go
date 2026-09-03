@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	metricNameRecordsSent       = "RecordsSent"
-	metricNameRecordsSentFailed = "RecordsSentFailed"
-	metricNameProduceBatchSize  = "ProduceBatchSize"
-	metricNameProduceDuration   = "ProduceDuration"
+	metricNameRecordsSent       = "client.sent.messages"
+	metricNameRecordsSentFailed = "send.errors"
+	metricNameProduceBatchSize  = "batch.size"
+	metricNameProduceDuration   = "client.operation.duration"
 )
 
 //go:generate go run github.com/vektra/mockery/v2 --name Producer
@@ -55,7 +55,7 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	}
 
 	defaults := getProducerDefaultMetrics(name, fullTopicName)
-	metricWriter := metric.NewWriter(defaults...)
+	metricWriter := metric.NewWriter(metricNamespaceKafkaProducer, defaults...)
 
 	return NewProducerWithInterfaces(writer, metricWriter, name, fullTopicName), nil
 }
@@ -75,11 +75,11 @@ func (p *producer) ProduceSync(ctx context.Context, records ...*kgo.Record) erro
 	results := p.writer.ProduceSync(ctx, records...)
 	durationMs := float64(p.clock.Since(start).Milliseconds())
 
-	dims := metric.Dimensions{kafka.DimensionClientType: kafka.DimensionProducer, kafka.DimensionClient: p.name, kafka.DimensionTopic: p.topicName}
+	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeProducer, kafka.DimensionClient: p.name, kafka.DimensionTopic: p.topicName}
 
 	data := metric.Data{
-		metric.NewMetricDatum(metricNameProduceBatchSize, dims, float64(len(records)), metric.UnitCountAverage, metric.PriorityHigh),
-		metric.NewMetricDatum(metricNameProduceDuration, dims, durationMs, metric.UnitMillisecondsAverage, metric.PriorityHigh),
+		{Priority: metric.PriorityHigh, MetricName: metricNameProduceBatchSize, Dimensions: dims, Value: float64(len(records))},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceMessaging, MetricName: metricNameProduceDuration, Dimensions: dims, Value: durationMs},
 	}
 
 	if err := results.FirstErr(); err != nil {
@@ -93,8 +93,8 @@ func (p *producer) ProduceSync(ctx context.Context, records ...*kgo.Record) erro
 		}
 
 		data = append(data,
-			metric.NewMetricDatum(metricNameRecordsSent, dims, float64(sent), metric.UnitCount, metric.PriorityHigh),
-			metric.NewMetricDatum(metricNameRecordsSentFailed, dims, float64(failed), metric.UnitCount, metric.PriorityHigh),
+			recordsSentDatum(dims, float64(sent)),
+			&metric.Datum{Priority: metric.PriorityHigh, MetricName: metricNameRecordsSentFailed, Dimensions: dims, Value: float64(failed)},
 		)
 
 		p.metricWriter.Write(ctx, data)
@@ -102,20 +102,31 @@ func (p *producer) ProduceSync(ctx context.Context, records ...*kgo.Record) erro
 		return err
 	}
 
-	data = append(data, metric.NewMetricDatum(metricNameRecordsSent, dims, float64(len(records)), metric.UnitCount, metric.PriorityHigh))
+	data = append(data, recordsSentDatum(dims, float64(len(records))))
 
 	p.metricWriter.Write(ctx, data)
 
 	return nil
 }
 
+// recordsSentDatum reports messages handed to the broker under the messaging semantic convention.
+func recordsSentDatum(dims metric.Dimensions, value float64) *metric.Datum {
+	return &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		Namespace:  metricNamespaceMessaging,
+		MetricName: metricNameRecordsSent,
+		Dimensions: dims,
+		Value:      value,
+	}
+}
+
 func getProducerDefaultMetrics(name, topicName string) metric.Data {
-	dims := metric.Dimensions{kafka.DimensionClientType: kafka.DimensionProducer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName}
+	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeProducer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName}
 
 	return metric.Data{
-		{Priority: metric.PriorityHigh, MetricName: metricNameRecordsSent, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindDefault},
-		{Priority: metric.PriorityHigh, MetricName: metricNameRecordsSentFailed, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindDefault},
-		{Priority: metric.PriorityHigh, MetricName: metricNameProduceBatchSize, Dimensions: dims, Unit: metric.UnitCountAverage, Kind: metric.KindDefault},
-		{Priority: metric.PriorityHigh, MetricName: metricNameProduceDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindDefault},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceMessaging, MetricName: metricNameRecordsSent, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
+		{Priority: metric.PriorityHigh, MetricName: metricNameRecordsSentFailed, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
+		{Priority: metric.PriorityHigh, MetricName: metricNameProduceBatchSize, Dimensions: dims, Unit: metric.UnitCountAverage, Kind: metric.KindHistogram.Build()},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceMessaging, MetricName: metricNameProduceDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
 	}
 }

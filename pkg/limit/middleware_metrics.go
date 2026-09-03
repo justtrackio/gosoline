@@ -8,10 +8,10 @@ import (
 )
 
 const (
-	MetricNameRateLimitRelease  = "rate_limit_release"
-	MetricNameRateLimitTake     = "rate_limit_take"
-	MetricNameRateLimitThrottle = "rate_limit_throttle"
-	MetricNameRateLimitError    = "rate_limit_error"
+	MetricNameRateLimitRelease  = "rate_limit.releases"
+	MetricNameRateLimitTake     = "rate_limit.takes"
+	MetricNameRateLimitThrottle = "rate_limit.throttles"
+	MetricNameRateLimitError    = "rate_limit.errors"
 )
 
 type metricMiddleware struct {
@@ -19,7 +19,7 @@ type metricMiddleware struct {
 }
 
 func NewMetricMiddleware() Middleware {
-	metricWriter := metric.NewWriter()
+	metricWriter := metric.NewWriter(metricNamespace)
 
 	return NewMetricMiddlewareWithInterfaces(metricWriter)
 }
@@ -56,11 +56,12 @@ func (m metricMiddleware) buildMetric(metricName string, i Invocation) *metric.D
 		Timestamp:  clock.Provider.Now(),
 		MetricName: metricName,
 		Dimensions: metric.Dimensions{
-			"trace_id": i.GetTraceId(),
-			"name":     i.GetName(),
-			"prefix":   i.GetPrefix(),
+			"trace.id":     i.GetTraceId(),
+			"limit.name":   i.GetName(),
+			"limit.prefix": i.GetPrefix(),
 		},
 		Value: 1,
 		Unit:  metric.UnitCount,
+		Kind:  metric.KindCounter.Build(),
 	}
 }
