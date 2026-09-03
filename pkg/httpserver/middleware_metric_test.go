@@ -20,7 +20,7 @@ func TestMetricMiddlewareWritesOnlyRouteSeries(t *testing.T) {
 		metricMiddleware("api", ginCtx, writer, noopServerMetricRecorder{})
 	})
 
-	request := httptest.NewRequest(stdHttp.MethodGet, "/widgets/1", nil)
+	request := httptest.NewRequest(stdHttp.MethodGet, "/widgets/1", stdHttp.NoBody)
 	request = request.WithContext(context.WithValue(request.Context(), rejectedRequestKey{}, true))
 	router.ServeHTTP(httptest.NewRecorder(), request)
 

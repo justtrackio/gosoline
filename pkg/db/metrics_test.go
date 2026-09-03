@@ -65,6 +65,7 @@ func receiveConnectionMetricBatch(t *testing.T, batches <-chan metric.Data) metr
 		return batch
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for connection metric batch")
+
 		return nil
 	}
 }

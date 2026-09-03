@@ -59,6 +59,7 @@ func receiveCancellationMetric(t *testing.T, datums <-chan *metric.Datum) *metri
 		return datum
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for cancellation request-duration metric")
+
 		return nil
 	}
 }
