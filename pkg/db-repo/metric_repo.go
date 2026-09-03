@@ -27,7 +27,7 @@ type metricRepository struct {
 func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRepository {
 	modelIdString := repo.GetModelId()
 	defaults := getDefaultRepositoryMetrics(modelIdString)
-	output := metric.NewWriter(metric.NamespaceDbClient, defaults...)
+	output := metric.NewWriter(metricNamespace, defaults...)
 
 	return &metricRepository{
 		Repository: repo,

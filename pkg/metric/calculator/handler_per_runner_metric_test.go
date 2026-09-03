@@ -216,7 +216,7 @@ func (s *PerRunnerMetricHandlerTestSuite) mockSuccessLogger(currentValue, curren
 func (s *PerRunnerMetricHandlerTestSuite) getExpectedDatum(value float64) *metric.Datum {
 	return &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		Namespace:  metric.NamespaceAutoscalingPerRunner,
+		Namespace:  "autoscaling.per_runner",
 		MetricName: "requests",
 		Value:      value,
 		Unit:       metric.UnitCountAverage,

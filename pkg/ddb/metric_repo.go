@@ -10,6 +10,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
+const metricNamespace = "ddb"
+
 type metricRepository struct {
 	Repository
 	metric metric.Writer
@@ -17,7 +19,7 @@ type metricRepository struct {
 
 func NewMetricRepository(config cfg.Config, logger log.Logger, repo Repository) (*metricRepository, error) {
 	defaults := getDefaultMetrics(repo.GetModelId())
-	output := metric.NewWriter(metric.NamespaceDbClient, defaults...)
+	output := metric.NewWriter(metricNamespace, defaults...)
 
 	return &metricRepository{
 		Repository: repo,

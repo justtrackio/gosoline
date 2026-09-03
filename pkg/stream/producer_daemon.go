@@ -136,7 +136,7 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 	}
 
 	defaultMetrics := getProducerDaemonDefaultMetrics(name)
-	metricWriter := metric.NewWriter(metric.NamespaceStream, defaultMetrics...)
+	metricWriter := metric.NewWriter(metricNamespace, defaultMetrics...)
 
 	output, outputCapabilities, err := NewConfigurableOutput(ctx, config, logger, settings.Output)
 	if err != nil {

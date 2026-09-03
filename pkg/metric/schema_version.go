@@ -11,15 +11,19 @@ import (
 
 const (
 	// SchemaVersion is the version of the metric emission contract this gosoline build implements:
-	// metric name formatting, dimension keys and unit representation. Its current value is v3.0 and
+	// metric name formatting, dimension keys and unit representation. Its current value is v2.0 and
 	// it is the single source of truth for the value published under MetadataKeySchemaVersion.
 	//
-	// Increment rules:
+	// Maintainer-directed exception: this revision changes observable metric identities, but maintainers
+	// explicitly require publishing v2.0 rather than applying the normal major-version increment rule.
+	// Do not infer compatibility from the numeric sequence alone; consult the release inventory.
+	//
+	// Normal increment rules:
 	//   - MAJOR: a metric name, dimension key or unit representation is removed or renamed
 	//     (MINOR resets to 0), even if the same change also adds something.
 	//   - MINOR: purely additive change.
 	//   - unchanged: the observable contract is unchanged.
-	SchemaVersion = "v3.0"
+	SchemaVersion = "v2.0"
 
 	// MetadataKeySchemaVersion is the appctx metadata key under which SchemaVersion is published,
 	// and therefore exposed by the metadata server's root route, for applications whose metric

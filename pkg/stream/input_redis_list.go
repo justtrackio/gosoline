@@ -46,7 +46,7 @@ func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger
 	}
 
 	defaultMetrics := getRedisListInputDefaultMetrics(settings)
-	mw := metric.NewWriter(metric.NamespaceStream, defaultMetrics...)
+	mw := metric.NewWriter(metricNamespace, defaultMetrics...)
 
 	healthCheckTimer, err := clock.NewHealthCheckTimer(settings.HealthcheckTimeout)
 	if err != nil {

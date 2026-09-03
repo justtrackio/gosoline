@@ -19,7 +19,7 @@ type metricMiddleware struct {
 }
 
 func NewMetricMiddleware() Middleware {
-	metricWriter := metric.NewWriter(metric.NamespaceLimit)
+	metricWriter := metric.NewWriter(metricNamespace)
 
 	return NewMetricMiddlewareWithInterfaces(metricWriter)
 }

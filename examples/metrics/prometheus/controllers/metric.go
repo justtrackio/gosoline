@@ -20,7 +20,7 @@ type metricController struct {
 }
 
 func NewMetricController() *metricController {
-	mw := metric.NewWriter("example")
+	mw := metric.NewWriter(metricNamespace)
 
 	return &metricController{
 		mw: mw,

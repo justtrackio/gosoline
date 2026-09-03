@@ -172,101 +172,89 @@ Further consequences of the rename:
   parameter. Application code that writes its own metrics passes `metric.NewWriter("")` to keep its
   names unchanged.
 
-#### Metric name mapping
+#### Final canonical inventory (schema `v2.0`)
 
-| Former name | Namespace | Leaf |
-|---|---|---|
-| `Duration` (stream consumer), `ProcessDuration` | `messaging` | `process.duration` |
-| `ProcessedCount`, `RecordsConsumed`, `ReadRecords` | `messaging` | `client.consumed.messages` |
-| `RecordsSent`, `PutRecords` | `messaging` | `client.sent.messages` |
-| `ProduceDuration` | `messaging` | `client.operation.duration` |
-| `Error`, `UnknownModelError` | `stream.consumer` | `errors` |
-| `RetryGetCount`, `RetryPutCount` | `stream.consumer` | `retry.operations` |
-| `MessageCount` | `stream.producer` | `messages` |
-| `BatchSize` | `stream.producer` | `batch.size` |
-| `AggregateSize` | `stream.producer` | `aggregate.size` |
-| `IdleDuration` | `stream.producer` | `idle.duration` |
-| `StreamRedisListInputLength` | `stream.input.redis_list` | `message.count` |
-| `StreamRedisListInputReads` | `stream.input.redis_list` | `reads` |
-| `StreamRedisListOutputWrites` | `stream.output.redis_list` | `writes` |
-| `StreamMessagesAvailable` | `stream.input` | `available.messages` |
-| `StreamMessagesSent` | `stream.output` | `sent.messages` |
-| `StreamMessages` | `autoscaling.per_runner` | `stream.messages` |
-| `HttpServerRequests` | `autoscaling.per_runner` | `http.server.requests` |
-| `PerRunner<Name>` | `autoscaling.per_runner` | `<name>` |
-| `PollCount` | `kafka.consumer` | `polls` |
-| `PollDuration` | `kafka.consumer` | `poll.duration` |
-| `CommitDuration` | `kafka.consumer` | `commit.duration` |
-| `CommitFailures` | `kafka.consumer` | `commit.errors` |
-| `WaitDuration` (kafka) | `kafka.consumer` | `wait.duration` |
-| `RebalanceCount` | `kafka.consumer` | `rebalances` |
-| `RecordsConsumedFailed` | `kafka.consumer` | `consume.errors` |
-| `ProduceBatchSize` | `kafka.producer` | `batch.size` |
-| `RecordsSentFailed` | `kafka.producer` | `send.errors` |
-| `BrokerConnects`, `BrokerConnectsFailed` | `kafka.broker` | `connects` |
-| `BrokerThrottleCount` | `kafka.broker` | `throttles` |
-| `BrokerThrottleTime` | `kafka.broker` | `throttle.duration` |
-| `ProduceBatchRecords` | `kafka.broker` | `produce.batch.records` |
-| `ProduceBatchBytes` | `kafka.broker` | `produce.batch.size` (bytes) |
-| `ProduceBatchBytesCompressed` | `kafka.broker` | `produce.batch.compressed.size` (bytes) |
-| `FetchBatchRecords` | `kafka.broker` | `fetch.batch.records` |
-| `FetchBatchBytes` | `kafka.broker` | `fetch.batch.size` (bytes) |
-| `FetchBatchBytesCompressed` | `kafka.broker` | `fetch.batch.compressed.size` (bytes) |
-| `ReadCount` | `aws.kinesis.shard` | `reads` |
-| `FailedRecords` | `aws.kinesis.shard` | `consume.errors` |
-| `MillisecondsBehind` | `aws.kinesis.shard` | `lag` |
-| `AcquireShardDelaySeconds` | `aws.kinesis.shard` | `acquire.delay` |
-| `SleepDuration` | `aws.kinesis.shard` | `sleep.duration` |
-| `WaitDuration` (kinesis) | `aws.kinesis.shard` | `wait.duration` |
-| `PutRecordsBatchSize` | `aws.kinesis.producer` | `batch.size` |
-| `PutRecordsFailure` | `aws.kinesis.producer` | `send.errors` |
-| `kvStoreRead` | `kvstore` | `reads` |
-| `kvStoreWrite` | `kvstore` | `writes` |
-| `kvStoreDelete` | `kvstore` | `deletes` |
-| `kvStoreHit` | `kvstore` | `hits` |
-| `kvStoreSize` | `kvstore` | `item.count` |
-| `DbConnectionCount` (`inUse`, `idle`) | `db.client` | `connection.count` |
-| `DbConnectionCount` (`new`) | `db.client` | `connections` |
-| `DbAccessSuccess`, `DbAccessFailure`, `DbAccessLatency` | `db.client` | `operation.duration` |
-| `DdbAccessSuccess`, `DdbAccessFailure`, `DdbAccessLatency` | `db.client` | `operation.duration` |
-| `ModelEventNotifySuccess` | `db.repo` | `model_event.notifications` |
-| `ModelEventNotifyFailure` | `db.repo` | `model_event.notify.errors` |
-| `ModelEventConsumeSuccess` | `mdlsub` | `consumed.events` |
-| `ModelEventConsumeSkipped` | `mdlsub` | `skipped.events` |
-| `ModelEventConsumeFailure` | `mdlsub` | `consume.errors` |
-| `HttpRequestCount`, `HttpRequestCountPerRoute`, `HttpRequestResponseTime`, `HttpStatus2XX`–`HttpStatus5XX` | `http.server` | `request.duration` |
-| `HttpRequestsRejected` | `http.server` | `rejected.requests` |
-| `HttpConcurrentRequests` | `http.server` | `active_requests` |
-| `HttpOpenConnections` | `http.server` | `connection.count` |
-| `HttpClientRequest`, `HttpRequestDuration`, `HttpClientResponseCode*`, `HttpClientError` | `http.client` | `request.duration` |
-| `ApiRequestCount`, `ApiRequestResponseTime` | `rpc.server` | `duration` |
-| `BlobBatchRunner` | `blob` | `batch.operations` |
-| `schedulerBatchSize` | `conc.scheduler` | `batch.size` |
-| `schedulerTaskDelay` | `conc.scheduler` | `task.delay` |
-| `rate_limit_take` | `limit` | `rate_limit.takes` |
-| `rate_limit_release` | `limit` | `rate_limit.releases` |
-| `rate_limit_throttle` | `limit` | `rate_limit.throttles` |
-| `rate_limit_error` | `limit` | `rate_limit.errors` |
-| `sampling_decision` | `smpl` | `decisions` |
-| `debug`, `info`, `warn`, `error` | `log` | `records` |
+This is the complete final framework-authored inventory. It is grouped by canonical namespace; the
+backend writers apply their rendering rules after these names are authored.
 
-#### Metrics that no longer exist
-
-| Former name | Obtain it from |
+| Namespace | Canonical leaves |
 |---|---|
-| `HttpRequestCount`, `HttpRequestCountPerRoute`, `HttpClientRequest`, `ApiRequestCount` | the observation count of the corresponding duration histogram |
-| `HttpStatus2XX`–`HttpStatus5XX`, `HttpClientResponseCode*` | the `http.response.status_code` dimension of the duration histogram |
-| `HttpClientError` | the `error.type` dimension of `http.client` `request.duration` |
-| `DbAccessSuccess`/`Failure`, `DdbAccessSuccess`/`Failure`, `BrokerConnectsFailed` | the `error.type` dimension of the corresponding metric |
-| `ShardTaskRatio`, `ShardTaskRatioMax` | `aws.kinesis.consumer` `shard.count` divided by `client.count`, multiplied by 100 for the former scale, maximum taken across the stream dimension |
-| `DbConnectionCount` with `Type=open` | the sum of `db.client` `connection.count` across `db.client.connection.state` |
+| `autoscaling.per_runner` | `stream.messages`; `http.server.requests` |
+| `blob` | `batch.operations` |
+| `cloud.aws.kinesis` | `reads`; `consume.errors`; `lag`; `acquire.delay`; `sleep.duration`; `wait.duration`; `shard.count`; `client.count`; `batch.size`; `send.errors` |
+| `conc.scheduler` | `batch.size`; `task.delay` |
+| `db.client` | `connection.count`; `connections` |
+| `db.repo` | `operation.duration`; `model_event.notifications` |
+| `ddb` | `operation.duration` |
+| `http.client` | `request.duration` |
+| `http.server` | `request.duration`; `rejected.requests`; `active_requests`; `connection.count` |
+| `kafka` | `connects`; `throttles`; `throttle.duration`; `produce.batch.records`; `produce.batch.size`; `produce.batch.compressed.size`; `fetch.batch.records`; `fetch.batch.size`; `fetch.batch.compressed.size` |
+| `kafka.consumer` | `polls`; `poll.duration`; `commit.duration`; `commit.errors`; `wait.duration`; `rebalances`; `consume.errors` |
+| `kafka.producer` | `batch.size`; `send.errors` |
+| `kvstore` | `reads`; `writes`; `deletes`; `hits`; `item.count` |
+| `limit` | `rate_limit.takes`; `rate_limit.releases`; `rate_limit.throttles`; `rate_limit.errors` |
+| `mdlsub` | `consumed.events`; `skipped.events`; `consume.errors` |
+| `messaging` | `process.duration`; `client.consumed.messages`; `client.sent.messages`; `client.operation.duration` |
+| `metric` | `records` |
+| `rpc.server` | `duration` |
+| `smpl` | `decisions` |
+| `stream` | `errors`; `retry.operations`; `messages`; `batch.size`; `aggregate.size`; `idle.duration`; `available.messages`; `sent.messages`; `message.count`; `reads`; `writes` |
 
-#### Dimension key mapping
+#### Focused contract update status
 
-Every key an OpenTelemetry semantic convention defines is now spelled the way the convention spells
-it; every other key is canonical.
+`metric.SchemaVersion` remains **`v2.0`** by explicit maintainer direction. This is an exception to
+the normal version-increment policy: do not change the marker to `v3.0` for this focused revision.
+There is still no dual emission.
 
-| Former key | New key |
+| Status | Metric or behavior | Consumer action |
+|---|---|---|
+| Unchanged | Every final inventory entry not called out below | Keep using its canonical namespace and leaf. Moving namespace constants into emitting packages changes source ownership, not those emitted names. |
+| Renamed | SQL repository operations: `db.client.operation.duration` → `db.repo.operation.duration` | Re-key SQL repository dashboards, alerts, and queries to `db.repo`. |
+| Renamed | DynamoDB repository operations: `db.client.operation.duration` → `ddb.operation.duration` | Re-key DynamoDB repository dashboards, alerts, and queries to `ddb`. |
+| Deleted and consolidated | `db.repo.model_event.notify.errors` | Use `db.repo.model_event.notifications` for both outcomes; the former error-only metric is not emitted. |
+| Added outcome coverage | A cancelled HTTP client request | `http.client.request.duration` is emitted with `error.type=metric.ErrorType(context.Canceled)` before the original cancellation error is returned. |
+| Deleted aggregate series | HTTP server-only, Kafka topic-only, and Kinesis stream-only aggregate data | Query or aggregate the retained detailed series in the backend rather than searching for a framework-emitted `KindTotal` datum. |
+
+##### DB-repository notification outcomes
+
+The single counter is `db.repo.model_event.notifications`, with `UnitCount` and `KindCounter` for
+both paths. There is no `success` label.
+
+- Successful notification selector: ``db.repo.model_event.notifications{error.type="{{default}}"}``.
+- Failed notification selector: ``db.repo.model_event.notifications{error.type!="{{default}}"}``, or
+  filter for the concrete normalized `metric.ErrorType(err)` value.
+
+This consolidation replaces—not supplements—`db.repo.model_event.notify.errors`.
+
+##### HTTP cancellation duration
+
+If a client request ends with an error matching `context.Canceled`, gosoline records the total request
+duration under `http.client.request.duration` before returning that original error. The cancellation
+outcome is normalized as `metric.ErrorType(context.Canceled)`, rather than using a transport wrapper's
+type, and retains the normal default response-status dimension. Cancellations remain excluded from
+application-error logging.
+
+##### Aggregate-query guidance
+
+Gosoline no longer produces redundant aggregate `KindTotal` data:
+
+- HTTP server middleware emits the route/method/status duration and route/method rejection series
+  only; aggregate across those dimensions in the backend for server-level views.
+- Kafka emits its topic-and-partition series only; aggregate topic partitions in the backend.
+- Kinesis emits its stream-and-shard series only; aggregate stream shards in the backend.
+
+Prometheus may still render counter instruments with its conventional `_total` suffix. That naming
+rule is distinct from the removed framework-authored `KindTotal` aggregate datum.
+
+#### Dimension-key policy
+
+Every key an OpenTelemetry semantic convention defines remains spelled the way that convention
+spells it; all existing custom dimensions remain unchanged in this focused revision. Additional
+semantic-convention attributes may be added where appropriate. Future custom metric attributes must
+use a unique owned prefix such as `gosoline.*`; do not rename existing custom keys solely to apply
+that future convention.
+
+| Former key | Canonical key |
 |---|---|
 | `Consumer` (stream) | `stream.consumer.name` |
 | `ProducerDaemon` | `stream.producer.name` |
@@ -292,25 +280,7 @@ it; every other key is canonical.
 4. Remove `aggregate: true` from Prometheus or OTEL writer settings.
 5. Add `application.WithOtelShutdown` when OTEL trace and/or metric providers must be flushed during application shutdown.
 6. Pass a namespace to `metric.NewWriter`; use `metric.NewWriter("")` to keep application-authored metric names unchanged.
-7. Re-key every alarm, dashboard and query using the schema-specific mapping in this document; select by `metric.schema_version` (`v3.0` for this release).
-8. Update ECS scaling policies that reference `PerRunner*`, `StreamMessages`, `HttpServerRequests` or `ShardTaskRatio`.
-
-## Metric namespace migration (schema `v3.0`)
-
-`metric.SchemaVersion` is now `v3.0`. This is a breaking rename of framework-owned metric namespaces;
-there is no dual emission. The namespace values in the v2 mapping above are superseded as follows:
-
-| v2 namespace | v3 package namespace |
-|---|---|
-| `aws.kinesis.consumer`, `aws.kinesis.producer`, `aws.kinesis.shard` | `cloud.aws.kinesis` |
-| `kafka.broker` | `kafka` |
-| `stream.consumer`, `stream.producer`, `stream.input`, `stream.output`, `stream.input.redis_list`, `stream.output.redis_list` | `stream` |
-| `log` | `metric` |
-
-OpenTelemetry semantic-convention namespaces remain unchanged: `messaging`, `db.client`, `http.client`,
-`http.server`, and `rpc.server`. Explicit metrics authored in those namespaces continue to render without
-the `gosoline.` OTEL prefix. The shared `autoscaling.per_runner` namespace and application-authored
-metrics created with `metric.NewWriter("")` are also unchanged.
-
-Update alarms, dashboards, queries, and metric-calculator configuration to use the v3 namespace mapping
-when `metric.schema_version` reports `v3.0`.
+7. Re-key every alarm, dashboard, query, and metric-calculator configuration using the final inventory above; select by `metric.schema_version` (`v2.0` for this release).
+8. Re-key SQL repository operation telemetry to `db.repo.operation.duration` and DynamoDB repository operation telemetry to `ddb.operation.duration`.
+9. Replace notification-failure queries with `db.repo.model_event.notifications` filtered by `error.type`, and aggregate detailed HTTP, Kafka, and Kinesis series in the backend.
+10. Update ECS scaling policies that reference `PerRunner*`, `StreamMessages`, `HttpServerRequests` or `ShardTaskRatio`.

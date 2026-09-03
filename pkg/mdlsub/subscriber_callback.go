@@ -39,7 +39,7 @@ func NewSubscriberCallbackFactory(
 ) stream.UntypedConsumerCallbackFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.UntypedConsumerCallback, error) {
 		defaultMetrics := getSubscriberCallbackDefaultMetrics(core.GetModelIds())
-		metricWriter := metric.NewWriter(metric.NamespaceMdlSub, defaultMetrics...)
+		metricWriter := metric.NewWriter(metricNamespace, defaultMetrics...)
 
 		callback := &SubscriberCallback{
 			logger:           logger,
@@ -60,7 +60,7 @@ func NewSubscriberCallbackWithInterfaces(
 	sourceModel SubscriberModel,
 ) *SubscriberCallback {
 	defaultMetrics := getSubscriberCallbackDefaultMetrics(core.GetModelIds())
-	metricWriter := metric.NewWriter(metric.NamespaceMdlSub, defaultMetrics...)
+	metricWriter := metric.NewWriter(metricNamespace, defaultMetrics...)
 
 	return &SubscriberCallback{
 		logger:           logger,

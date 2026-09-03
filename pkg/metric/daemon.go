@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/kernel/common"
@@ -46,7 +47,8 @@ type Daemon struct {
 	settings *Settings
 
 	channel                 *metricChannel
-	ticker                  *time.Ticker
+	clock                   clock.Clock
+	ticker                  clock.Ticker
 	aggregatedMetricWriters []Writer
 	rawMetricWriters        []Writer
 
@@ -112,17 +114,22 @@ func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) 
 }
 
 func NewMetricDaemonWithInterfaces(logger log.Logger, channel *metricChannel, aggWriters []Writer, rawWriters []Writer, settings *Settings) (kernel.Module, error) {
+	return newMetricDaemonWithInterfaces(logger, channel, aggWriters, rawWriters, settings, clock.Provider), nil
+}
+
+func newMetricDaemonWithInterfaces(logger log.Logger, channel *metricChannel, aggWriters []Writer, rawWriters []Writer, settings *Settings, clk clock.Clock) *Daemon {
 	return &Daemon{
 		logger:                  logger.WithChannel("metrics"),
 		settings:                settings,
 		channel:                 channel,
-		ticker:                  time.NewTicker(settings.Interval),
+		clock:                   clk,
+		ticker:                  clk.NewTicker(settings.Interval),
 		aggregatedMetricWriters: aggWriters,
 		rawMetricWriters:        rawWriters,
 		batch:                   make(map[string]*BatchedMetricDatum),
 		dataPointCount:          0,
 		errorThrottles:          make(map[string]bool),
-	}, nil
+	}
 }
 
 func (d *Daemon) GetStage() int {
@@ -153,7 +160,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 			d.rawFanout(ctx, data)
 			d.appendBatch(ctx, data)
 
-		case <-d.ticker.C:
+		case <-d.ticker.Chan():
 			d.publish(ctx)
 		}
 	}
@@ -192,7 +199,7 @@ func (d *Daemon) append(ctx context.Context, datum *Datum) {
 		amendFromDefault(datum)
 
 		if err := datum.IsValid(); err != nil {
-			if d.throttleError(err.Error()) {
+			if d.throttleError(ctx, err.Error()) {
 				d.logger.Error(ctx, "invalid metric: %s", err.Error())
 			}
 
@@ -276,24 +283,27 @@ func (d *Daemon) buildMetricData() Data {
 }
 
 // we don't want to log errors every time they occur - it is enough to log them once they occur, at least for a minute
-func (d *Daemon) throttleError(err string) bool {
+func (d *Daemon) throttleError(ctx context.Context, err string) bool {
 	d.errorThrottlesLck.Lock()
-	defer d.errorThrottlesLck.Unlock()
-
 	if d.errorThrottles[err] {
+		d.errorThrottlesLck.Unlock()
 		return false
 	}
-
 	d.errorThrottles[err] = true
+	d.errorThrottlesLck.Unlock()
 
-	// automatically unlock the err after a minute
 	go func() {
-		time.Sleep(time.Minute)
+		ticker := d.clock.NewTicker(time.Minute)
+		defer ticker.Stop()
+
+		select {
+		case <-ctx.Done():
+		case <-ticker.Chan():
+		}
 
 		d.errorThrottlesLck.Lock()
-		defer d.errorThrottlesLck.Unlock()
-
 		delete(d.errorThrottles, err)
+		d.errorThrottlesLck.Unlock()
 	}()
 
 	return true

@@ -88,7 +88,7 @@ func (s *RequestsPerRunnerTestSuite) TestSuccess() {
 	expectedDatum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Time{},
-		Namespace:  metric.NamespaceAutoscalingPerRunner,
+		Namespace:  "autoscaling.per_runner",
 		MetricName: "http.server.requests",
 		Value:      50,
 		Unit:       metric.UnitCountAverage,

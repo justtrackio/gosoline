@@ -68,7 +68,7 @@ func NewBatchRunner(ctx context.Context, config cfg.Config, logger log.Logger, n
 	}
 
 	defaultMetrics := getDefaultRunnerMetrics()
-	metricWriter := metric.NewWriter(metric.NamespaceBlob, defaultMetrics...)
+	metricWriter := metric.NewWriter(metricNamespace, defaultMetrics...)
 
 	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, settings.ClientName)
 	if err != nil {

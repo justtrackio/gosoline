@@ -17,7 +17,7 @@ import (
 // exportedPerRunnerMetricName returns the name CloudWatch exports a per-runner metric under, which is
 // what reading the previous value back has to query for.
 func exportedPerRunnerMetricName(leaf string) string {
-	return metric.CloudWatchMetricName(metric.NamespaceAutoscalingPerRunner, leaf)
+	return metric.CloudWatchMetricName(metricNamespace, leaf)
 }
 
 type PerRunnerMetricSettings struct {
@@ -93,7 +93,7 @@ func (h *perRunnerMetricHandler) CalculatePerRunnerMetrics(ctx context.Context, 
 
 	datum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		Namespace:  metric.NamespaceAutoscalingPerRunner,
+		Namespace:  metricNamespace,
 		MetricName: name,
 		Unit:       metric.UnitCountAverage,
 		Value:      newPrm,

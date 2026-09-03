@@ -11,8 +11,10 @@
 - `channel.go` - buffered channel every `Write`/`WriteOne` call feeds into.
 - `writer_*.go` - backend writers selected through `metric.writers`.
 - `naming.go` - the three per-writer renderers plus the semantic-convention registry.
-- `contract.go` - the canonical namespaces and the shared dimension keys every package authors from.
-- `conformance_test.go` - the authored name and dimension-key set, asserted against the contract.
+- `contract.go` - shared public dimension keys and error-type normalization helpers; it deliberately
+  contains no namespace catalog.
+- `conformance_test.go` - the literal authored-name and dimension-key inventory, asserted against
+  the contract without creating package import cycles or a second ownership catalog.
 - `otel_naming.go` - UCUM unit and scale factor, and the OTEL non-unit derived from a plural leaf.
 - `custom_units.go` - the custom aggregation units and their resolution to a base unit.
 - `settings.go` - `Settings` struct read from the `metric` config key.
@@ -22,11 +24,39 @@
 A metric is authored as a **canonical namespace plus a leaf**: lowercase, components delimited by a
 dot, multiple words inside a component joined by an underscore. The canonical form carries no unit
 suffix, no `_total`, no part of the application's identity, and no value that is carried as a
-dimension. Namespaces live in `contract.go`; each package declares its own leaves.
+dimension.
 
-The namespace is passed once to `metric.NewWriter(namespace, defaults...)` and stamped onto every
-datum that does not already carry one, so a package emitting into two namespaces - a Kafka consumer
-reporting both `messaging.*` and `kafka.consumer.*` - overrides it per datum.
+Namespaces belong to the package that emits them. Each emitting package declares an unexported
+`metricNamespace`-style constant next to its metric code; `pkg/metric` must not restore exported
+`metric.Namespace*` constants or compatibility aliases. A package passes its namespace once to
+`metric.NewWriter(namespace, defaults...)`, which stamps it onto every datum that does not already
+carry one. A package emitting into two namespaces, such as a Kafka consumer reporting both
+`messaging.*` and `kafka.consumer.*`, overrides the datum namespace explicitly.
+
+### Permanent namespace-owner table
+
+| Namespace | Emitting package owner(s) |
+|---|---|
+| `autoscaling.per_runner` | `pkg/metric/calculator` |
+| `blob` | `pkg/blob` |
+| `cloud.aws.kinesis` | `pkg/cloud/aws/kinesis` |
+| `conc.scheduler` | `pkg/conc/scheduler` |
+| `db.client` | `pkg/db` |
+| `db.repo` | `pkg/db-repo` |
+| `ddb` | `pkg/ddb` |
+| `http.client` | `pkg/http` |
+| `http.server` | `pkg/httpserver` |
+| `kafka` | `pkg/kafka` |
+| `kafka.consumer` | `pkg/kafka/consumer` |
+| `kafka.producer` | `pkg/kafka/producer` |
+| `kvstore` | `pkg/kvstore` |
+| `limit` | `pkg/limit` |
+| `mdlsub` | `pkg/mdlsub` |
+| `messaging` | `pkg/cloud/aws/kinesis`, `pkg/kafka/consumer`, `pkg/kafka/producer`, `pkg/stream` |
+| `metric` | `pkg/metric` |
+| `rpc.server` | `pkg/grpcserver` |
+| `smpl` | `pkg/smpl` |
+| `stream` | `pkg/stream` |
 
 Each writer renders that one authored name into its own convention:
 
@@ -49,20 +79,29 @@ Adding or changing a metric means updating `authoredNames` in `conformance_test.
 test fails the build on a name that violates the contract, on a duplicate, and on a rendering
 regression.
 
+### Dimension-key policy
+OpenTelemetry semantic-convention attributes may be added where a convention defines the relevant
+attribute. Existing custom dimensions are unchanged in this focused revision. For future custom
+attributes, use a unique owned prefix such as `gosoline.*`; do not retroactively rename existing
+custom keys solely to apply that convention.
+
 ## Metric schema version
 The metric schema version identifies the metric emission contract a gosoline build implements, so
 tooling (dashboard generators, alert provisioning, metric pipelines) can branch on it without
 inspecting the gosoline version.
 
-- Current value: `v3.0`, defined by the exported constant `metric.SchemaVersion` in
+- Current value: `v2.0`, defined by the exported constant `metric.SchemaVersion` in
   `schema_version.go`. That constant is the single source of truth - no other package may define
   the literal value.
+- **Maintainer-directed exception:** this focused revision intentionally retains `v2.0` despite
+  observable contract changes. Do not change it to `v3.0`, and do not infer a version bump from the
+  normal rules below for this revision.
 - Metadata key: `metric.schema_version` (`metric.MetadataKeySchemaVersion`). The value is written
   into the `appctx.Metadata` carrier and therefore served by the metadata server's root route.
 - Format: `v<MAJOR>.<MINOR>`, both components decimal integers of 1 to 9 digits without leading
   zeros unless the component is exactly `0`. `metric.IsValidSchemaVersion` enforces it.
 
-### Increment rules
+### Increment rules for future revisions
 - **MAJOR**: a metric name, dimension key, or unit representation is removed or renamed. Increment
   MAJOR by 1 and reset MINOR to 0 - this also applies when the same change adds something.
 - **MINOR**: the change is purely additive (new metric name, dimension key, or unit
@@ -71,10 +110,10 @@ inspecting the gosoline version.
   the version untouched, including for refactorings and performance work.
 
 ### Release process
-1. Bump `metric.SchemaVersion` in `schema_version.go` in the same commit as the contract change,
-   following the increment rules above.
+1. For a future contract change, bump `metric.SchemaVersion` in `schema_version.go` in the same
+   commit, following the increment rules above unless maintainers explicitly direct an exception.
 2. Update the current value in this file so the documented value never drifts from the constant.
-3. Describe the contract change and the new version in `RELEASE_NOTES.md`.
+3. Describe the contract change and the version decision in `RELEASE_NOTES.md`.
 
 ### Publication requirements
 The version is published only by an **enabled metric daemon**: the application must wire
@@ -87,7 +126,9 @@ is the intended signal that the application emits no metrics.
 ## Common tasks
 - Add a writer: implement `Writer` and register it through `RegisterWriterFactory`, then document
   its settings key below `metric.writer_settings`.
-- Change the emitted contract: adjust the emitting code **and** apply the increment rules above.
+- Add or change an emitted metric: declare the namespace in the emitting package, update the literal
+  `authoredNames` inventory, and apply the future increment rules unless maintainers direct an
+  exception.
 - Adjust default metrics: see `defaults.go` and the per-package `metric.Datum` producers.
 
 ## Testing

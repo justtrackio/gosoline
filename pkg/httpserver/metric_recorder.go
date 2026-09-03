@@ -36,7 +36,7 @@ type serverMetricRecorder struct {
 func newServerMetricRecorder(name string) ServerMetricRecorder {
 	defaults := getMetricRecorderDefaults(name)
 
-	return newServerMetricRecorderWithInterfaces(name, clock.Provider, metric.NewWriter(metric.NamespaceHttpServer, defaults...), concurrencyMetricSampleInterval)
+	return newServerMetricRecorderWithInterfaces(name, clock.Provider, metric.NewWriter(metricNamespace, defaults...), concurrencyMetricSampleInterval)
 }
 
 func newServerMetricRecorderWithInterfaces(name string, clock clock.Clock, writer metric.Writer, sampleInterval time.Duration) ServerMetricRecorder {

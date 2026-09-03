@@ -131,7 +131,7 @@ func NewBaseConsumer(
 	}
 
 	defaultMetrics := getConsumerDefaultMetrics(name)
-	metricWriter := metric.NewWriter(metric.NamespaceStream, defaultMetrics...)
+	metricWriter := metric.NewWriter(metricNamespace, defaultMetrics...)
 
 	var input, retryInput Input
 	var retryHandler RetryHandler
@@ -505,7 +505,7 @@ func (c *baseConsumer) writeMetricDurationAndProcessedCount(ctx context.Context,
 	c.metricWriter.Write(ctx, metric.Data{
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
-			Namespace:  metric.NamespaceMessaging,
+			Namespace:  metricNamespaceMessaging,
 			MetricName: metricNameConsumerDuration,
 			Dimensions: map[string]string{
 				dimensionConsumer: c.name,
@@ -516,7 +516,7 @@ func (c *baseConsumer) writeMetricDurationAndProcessedCount(ctx context.Context,
 		},
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
-			Namespace:  metric.NamespaceMessaging,
+			Namespace:  metricNamespaceMessaging,
 			MetricName: metricNameConsumerProcessedCount,
 			Dimensions: map[string]string{
 				dimensionConsumer: c.name,
@@ -563,7 +563,7 @@ func getConsumerDefaultMetrics(name string) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			Namespace:  metric.NamespaceMessaging,
+			Namespace:  metricNamespaceMessaging,
 			MetricName: metricNameConsumerProcessedCount,
 			Dimensions: map[string]string{
 				dimensionConsumer: name,

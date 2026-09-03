@@ -268,7 +268,7 @@ func ProvideHttpClient(ctx context.Context, config cfg.Config, logger log.Logger
 }
 
 func newHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
-	metricWriter := metric.NewWriter(metric.NamespaceHttpClient)
+	metricWriter := metric.NewWriter(metricNamespace)
 	tracer, err := tracing.ProvideInstrumentor(ctx, config, logger)
 	if err != nil {
 		return nil, err
@@ -499,12 +499,15 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	c.prepareRequest(ctx, req, request)
 	start := c.clock.Now()
 	resp, err := req.Execute(method, url)
+	totalDuration := c.clock.Now().Sub(start)
 
 	if errors.Is(err, context.Canceled) {
+		c.writeRequestDuration(ctx, method, metric.Dimensions{
+			metric.DimensionErrorType: metric.ErrorType(context.Canceled),
+		}, float64(totalDuration/time.Millisecond))
+
 		return nil, err
 	}
-
-	totalDuration := c.clock.Now().Sub(start)
 
 	// Only log an error if the error was not caused by a canceled context
 	// Otherwise a user might spam our error logs by just canceling a lot of requests

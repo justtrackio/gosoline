@@ -66,7 +66,7 @@ func NewDecider(ctx context.Context, config cfg.Config) (Decider, error) {
 		strategies = append(strategies, strategy)
 	}
 
-	return NewDeciderWithInterfaces(strategies, settings, metric.NewWriter(metric.NamespaceSmpl)), nil
+	return NewDeciderWithInterfaces(strategies, settings, metric.NewWriter(metricNamespace)), nil
 }
 
 // NewDeciderWithInterfaces creates a new Decider with the given strategies, settings and metric writer.

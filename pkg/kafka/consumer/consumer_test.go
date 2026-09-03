@@ -332,7 +332,7 @@ func TestConsumerRunIgnoresRetryableFetchError(t *testing.T) {
 	expectedMetrics := metric.Data{
 		{Priority: metric.PriorityHigh, MetricName: "polls", Dimensions: dims, Value: 1.0},
 		{Priority: metric.PriorityHigh, MetricName: "poll.duration", Dimensions: dims, Value: 0.0},
-		{Priority: metric.PriorityHigh, Namespace: metric.NamespaceMessaging, MetricName: "client.consumed.messages", Dimensions: dims, Value: 1.0},
+		{Priority: metric.PriorityHigh, Namespace: "messaging", MetricName: "client.consumed.messages", Dimensions: dims, Value: 1.0},
 	}
 	metricWriter.EXPECT().Write(matcher.Context, expectedMetrics).Once()
 

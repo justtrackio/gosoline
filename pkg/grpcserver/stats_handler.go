@@ -32,7 +32,7 @@ type statsHandler struct {
 }
 
 func NewStatsHandler(logger log.Logger, settings *Settings) *statsHandler {
-	writer := metric.NewWriter(metric.NamespaceRpcServer)
+	writer := metric.NewWriter(metricNamespace)
 
 	return &statsHandler{
 		logger:       logger,

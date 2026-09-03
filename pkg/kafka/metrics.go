@@ -35,16 +35,9 @@ type MetricSpec struct {
 	Kind       metric.Kind
 }
 
-// MetricPair writes a metric at two granularities: topic-level (KindTotal, for the CloudWatch
-// cross-partition sum) and topic plus partition level. The client type and client name are always
+// MetricPair writes one metric for a topic partition. The client type and client name are always
 // carried, so the Prometheus label set is the same whatever the caller reports.
 func MetricPair(spec MetricSpec) metric.Data {
-	topicDimensions := metric.Dimensions{
-		DimensionClientType: spec.ClientType,
-		DimensionClient:     spec.ClientName,
-		DimensionTopic:      spec.Topic,
-	}
-
 	partitionDimensions := metric.Dimensions{
 		DimensionClientType: spec.ClientType,
 		DimensionClient:     spec.ClientName,
@@ -53,15 +46,6 @@ func MetricPair(spec MetricSpec) metric.Data {
 	}
 
 	return metric.Data{
-		{
-			Priority:   metric.PriorityHigh,
-			Namespace:  spec.Namespace,
-			MetricName: spec.Name,
-			Dimensions: topicDimensions,
-			Value:      spec.Value,
-			Unit:       spec.Unit,
-			Kind:       metric.KindTotal,
-		},
 		{
 			Priority:   metric.PriorityHigh,
 			Namespace:  spec.Namespace,

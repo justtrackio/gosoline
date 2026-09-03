@@ -109,7 +109,7 @@ func (h *rprHandler) getRequestsMetrics(ctx context.Context) (float64, error) {
 			MetricStat: &types.MetricStat{
 				Metric: &types.Metric{
 					Namespace:  aws.String(h.calculatorSettings.CloudWatchNamespace),
-					MetricName: aws.String(metric.CloudWatchMetricName(metric.NamespaceHttpServer, MetricHttpRequestDuration)),
+					MetricName: aws.String(metric.CloudWatchMetricName(metricNamespace, MetricHttpRequestDuration)),
 					Dimensions: []types.Dimension{
 						{
 							Name:  aws.String(dimensionServerName),

@@ -55,7 +55,7 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	}
 
 	defaults := getProducerDefaultMetrics(name, fullTopicName)
-	metricWriter := metric.NewWriter(metric.NamespaceKafkaProducer, defaults...)
+	metricWriter := metric.NewWriter(metricNamespaceKafkaProducer, defaults...)
 
 	return NewProducerWithInterfaces(writer, metricWriter, name, fullTopicName), nil
 }
@@ -79,7 +79,7 @@ func (p *producer) ProduceSync(ctx context.Context, records ...*kgo.Record) erro
 
 	data := metric.Data{
 		{Priority: metric.PriorityHigh, MetricName: metricNameProduceBatchSize, Dimensions: dims, Value: float64(len(records))},
-		{Priority: metric.PriorityHigh, Namespace: metric.NamespaceMessaging, MetricName: metricNameProduceDuration, Dimensions: dims, Value: durationMs},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceMessaging, MetricName: metricNameProduceDuration, Dimensions: dims, Value: durationMs},
 	}
 
 	if err := results.FirstErr(); err != nil {
@@ -113,7 +113,7 @@ func (p *producer) ProduceSync(ctx context.Context, records ...*kgo.Record) erro
 func recordsSentDatum(dims metric.Dimensions, value float64) *metric.Datum {
 	return &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		Namespace:  metric.NamespaceMessaging,
+		Namespace:  metricNamespaceMessaging,
 		MetricName: metricNameRecordsSent,
 		Dimensions: dims,
 		Value:      value,
@@ -124,9 +124,9 @@ func getProducerDefaultMetrics(name, topicName string) metric.Data {
 	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeProducer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName}
 
 	return metric.Data{
-		{Priority: metric.PriorityHigh, Namespace: metric.NamespaceMessaging, MetricName: metricNameRecordsSent, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceMessaging, MetricName: metricNameRecordsSent, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNameRecordsSentFailed, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNameProduceBatchSize, Dimensions: dims, Unit: metric.UnitCountAverage, Kind: metric.KindHistogram.Build()},
-		{Priority: metric.PriorityHigh, Namespace: metric.NamespaceMessaging, MetricName: metricNameProduceDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceMessaging, MetricName: metricNameProduceDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
 	}
 }

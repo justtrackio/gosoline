@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 const (
+	metricNamespace             = "db.client"
 	metricNameDbConnectionCount = "connection.count"
 	metricNameDbConnections     = "connections"
 
@@ -30,7 +32,7 @@ type metricDriver struct {
 }
 
 func newMetricDriver(driver driver.Driver) string {
-	mw := metric.NewWriter(metric.NamespaceDbClient)
+	mw := metric.NewWriter(metricNamespace)
 
 	id := uuid.New().NewV4()
 	md := &metricDriver{
@@ -55,20 +57,33 @@ func (m *metricDriver) Open(dsn string) (driver.Conn, error) {
 	return m.Driver.Open(dsn)
 }
 
-func publishConnectionMetrics(conn *sqlx.DB) {
-	output := metric.NewWriter(metric.NamespaceDbClient)
+func publishConnectionMetrics(ctx context.Context, conn *sqlx.DB) {
+	publishConnectionMetricsWithInterfaces(ctx, conn, clock.Provider, metric.NewWriter(metricNamespace))
+}
 
+func publishConnectionMetricsWithInterfaces(ctx context.Context, conn *sqlx.DB, clk clock.Clock, writer metric.Writer) {
 	go func() {
-		for {
+		ticker := clk.NewTicker(time.Minute)
+		defer ticker.Stop()
+
+		write := func() {
 			stats := conn.Stats()
 
 			// the total number of open connections is the sum of the states, so it is not emitted
-			output.Write(context.Background(), metric.Data{
+			writer.Write(ctx, metric.Data{
 				connectionCountDatum(connectionStateUsed, stats.InUse),
 				connectionCountDatum(connectionStateIdle, stats.Idle),
 			})
+		}
 
-			time.Sleep(time.Minute)
+		write()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.Chan():
+				write()
+			}
 		}
 	}()
 }

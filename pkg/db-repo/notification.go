@@ -10,8 +10,8 @@ import (
 )
 
 const (
+	metricNamespace         = "db.repo"
 	metricNameNotifications = "model_event.notifications"
-	metricNameNotifyErrors  = "model_event.notify.errors"
 )
 
 var NotificationTypes = []string{Create, Update, Delete}
@@ -35,7 +35,7 @@ type notifier struct {
 
 func newNotifier(logger log.Logger, modelId mdl.ModelId, version int) notifier {
 	defaults := getDefaultNotifierMetrics(modelId)
-	mtr := metric.NewWriter(metric.NamespaceDbRepo, defaults...)
+	mtr := metric.NewWriter(metricNamespace, defaults...)
 
 	return notifier{
 		logger:  logger,
@@ -51,16 +51,16 @@ func (n *notifier) writeMetric(ctx context.Context, err error) {
 		Timestamp:  time.Now(),
 		MetricName: metricNameNotifications,
 		Dimensions: map[string]string{
-			metric.DimensionModelId: n.modelId.String(),
+			metric.DimensionModelId:   n.modelId.String(),
+			metric.DimensionErrorType: metric.DimensionDefault,
 		},
+		Unit:  metric.UnitCount,
 		Value: 1.0,
+		Kind:  metric.KindCounter.Build(),
 	}
 
 	if err != nil {
-		datum.MetricName = metricNameNotifyErrors
 		datum.Dimensions[metric.DimensionErrorType] = metric.ErrorType(err)
-		datum.Unit = metric.UnitCount
-		datum.Kind = metric.KindCounter.Build()
 	}
 
 	n.metric.WriteOne(ctx, datum)
@@ -71,16 +71,6 @@ func getDefaultNotifierMetrics(modelId mdl.ModelId) []*metric.Datum {
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameNotifications,
-			Dimensions: map[string]string{
-				metric.DimensionModelId: modelId.String(),
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameNotifyErrors,
 			Dimensions: map[string]string{
 				metric.DimensionModelId:   modelId.String(),
 				metric.DimensionErrorType: metric.DimensionDefault,

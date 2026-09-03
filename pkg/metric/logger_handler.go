@@ -25,7 +25,7 @@ func LoggerHandlerFactory(_ cfg.Config, _ string) (log.Handler, error) {
 
 func NewLoggerHandler() *LoggerHandler {
 	defaults := getDefaultMetrics()
-	metricWriter := NewWriter(NamespaceMetric, defaults...)
+	metricWriter := NewWriter(metricNamespace, defaults...)
 
 	return &LoggerHandler{
 		writer: metricWriter,

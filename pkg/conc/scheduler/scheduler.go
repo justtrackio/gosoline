@@ -67,7 +67,7 @@ func NewScheduler[T any](config cfg.Config, batchRunner BatchRunner[T], name str
 		return nil, fmt.Errorf("failed to unmarshal scheduler settings for %s: %w", name, err)
 	}
 
-	metricWriter := metric.NewWriter(metric.NamespaceConcScheduler, getDefaultMetrics(name)...)
+	metricWriter := metric.NewWriter(metricNamespace, getDefaultMetrics(name)...)
 
 	return NewSchedulerWithSettings[T](batchRunner, metricWriter, name, settings), nil
 }

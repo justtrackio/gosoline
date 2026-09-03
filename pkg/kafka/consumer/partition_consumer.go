@@ -78,12 +78,12 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 			commitMs := float64(c.clock.Since(commitStart).Milliseconds())
 
 			var data metric.Data
-			data = append(data, c.metricPair(metric.NamespaceKafkaConsumer, metricNameWaitDuration, waitMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
-			data = append(data, c.metricPair(metric.NamespaceMessaging, metricNameProcessDuration, processMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
-			data = append(data, c.metricPair(metric.NamespaceKafkaConsumer, metricNameCommitDuration, commitMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
+			data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameWaitDuration, waitMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
+			data = append(data, c.metricPair(metricNamespaceMessaging, metricNameProcessDuration, processMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
+			data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameCommitDuration, commitMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
 
 			if err != nil {
-				data = append(data, c.metricPair(metric.NamespaceKafkaConsumer, metricNameCommitFailures, 1.0, metric.UnitCount, metric.KindCounter.Build())...)
+				data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameCommitFailures, 1.0, metric.UnitCount, metric.KindCounter.Build())...)
 
 				c.metricWriter.Write(ctx, data)
 
@@ -93,7 +93,7 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 			}
 
 			if handleFailed {
-				data = append(data, c.metricPair(metric.NamespaceKafkaConsumer, metricNameRecordsConsumedFailed, float64(len(records)), metric.UnitCount, metric.KindCounter.Build())...)
+				data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameRecordsConsumedFailed, float64(len(records)), metric.UnitCount, metric.KindCounter.Build())...)
 			}
 
 			c.metricWriter.Write(ctx, data)
