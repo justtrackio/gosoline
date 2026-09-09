@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	TypeChain    = "chain"
-	TypeDdb      = "ddb"
-	TypeInMemory = "inMemory"
-	TypeRedis    = "redis"
+	TypeChain     = "chain"
+	TypeConfigMap = "configmap"
+	TypeDdb       = "ddb"
+	TypeInMemory  = "inMemory"
+	TypeRedis     = "redis"
 )
 
 type ChainConfiguration struct {
@@ -121,6 +122,10 @@ func newKvStoreChainFromConfig[T any](ctx context.Context, config cfg.Config, lo
 		case TypeRedis:
 			if err := store.Add(NewRedisKvStore[T]); err != nil {
 				return nil, fmt.Errorf("can not add redis store: %w", err)
+			}
+		case TypeConfigMap:
+			if err := store.Add(NewConfigMapKvStore[T]); err != nil {
+				return nil, fmt.Errorf("can not add configmap store: %w", err)
 			}
 		default:
 			return nil, fmt.Errorf("invalid element type %s for kvstore chain", element)

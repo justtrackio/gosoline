@@ -12,6 +12,7 @@
 - `redis.go` - Redis backend implementation.
 - `ddb.go` - DynamoDB backend implementation.
 - `chain.go` - Chained store implementation (e.g., memory cache in front of Redis).
+- `configmap.go` - Kubernetes ConfigMap backend implementation (one ConfigMap per key).
 
 ## Common tasks
 - Adding a new backend: implement `KvStore` interface.
@@ -19,6 +20,24 @@
 - Redis Key Naming: configure `kvstore.<name>.redis.key_pattern` or `kvstore.default.redis.key_pattern`.
 
 ## Configuration
+
+### ConfigMap Namespace
+The ConfigMap store's `namespace` setting is optional and only an override.
+When empty, the store resolves the namespace it runs in at store creation:
+inside a pod the pod namespace from the mounted service account
+(`/var/run/secrets/kubernetes.io/serviceaccount/namespace`, the same service
+account the in-cluster client authenticates with), outside a pod the
+namespace of the kubeconfig's current context. The resolved namespace is
+cached in the app context; a missing namespace source is an error, never a
+silent fallback.
+
+```yaml
+# Uses the namespace the app runs in (default behavior)
+kvstore.mystore.configmap.namespace: ""
+
+# Override: target another namespace
+kvstore.mystore.configmap.namespace: "other-ns"
+```
 
 ### Redis Key Naming
 Redis key naming can be configured per store or globally using patterns with `cfg.Identity` placeholders.
