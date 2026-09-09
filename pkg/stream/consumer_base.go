@@ -22,6 +22,9 @@ import (
 )
 
 const (
+	metricNamespace          = "stream"
+	metricNamespaceMessaging = "messaging"
+
 	metricNameConsumerDuration        = "process.duration"
 	metricNameConsumerError           = "errors"
 	metricNameConsumerProcessedCount  = "client.consumed.messages"
@@ -33,12 +36,24 @@ const (
 	retryOperationGet = "get"
 	retryOperationPut = "put"
 
-	errorTypeUnknownModel = "unknown_model"
-
 	dataSourceInput      = "input"
 	dataSourceRetry      = "retry"
 	metadataKeyConsumers = "stream.consumers"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, metricNameConsumerError, "messages a consumer failed to process, by error type")
+	metric.RegisterHelp(metricNamespace, metricNameConsumerRetryOperations, "retry queue operations a consumer performed")
+	metric.RegisterHelp(metricNamespace, metricNameMessageCount, "messages a producer daemon accepted for delivery")
+	metric.RegisterHelp(metricNamespace, metricNameBatchSize, "messages a producer daemon wrote per batch")
+	metric.RegisterHelp(metricNamespace, metricNameAggregateSize, "messages a producer daemon combined into one aggregate")
+	metric.RegisterHelp(metricNamespace, metricNameIdleDuration, "time a producer daemon waited before flushing a partial batch")
+	metric.RegisterHelp(metricNamespace, metricNameRedisListInputLength, "messages a redis list input currently holds")
+	metric.RegisterHelp(metricNamespace, metricNameRedisListInputReads, "read operations a redis list input performed")
+	metric.RegisterHelp(metricNamespace, metricNameRedisListOutputWrites, "write operations a redis list output performed")
+	metric.RegisterHelp(metricNamespaceMessaging, metricNameConsumerProcessedCount, metric.HelpMessagingClientConsumedMessages)
+	metric.RegisterHelp(metricNamespaceMessaging, metricNameConsumerDuration, metric.HelpMessagingProcessDuration)
+}
 
 type ConsumerMetadata struct {
 	Name         string `json:"name"`
@@ -522,25 +537,6 @@ func (c *baseConsumer) writeMetricDurationAndProcessedCount(ctx context.Context,
 				dimensionConsumer: c.name,
 			},
 			Value: float64(processedCount),
-		},
-	})
-}
-
-// writeMetricUnknownModelError counts a message whose model could not be determined. It is folded into
-// the consumer's error counter and told apart by its error type, so an unknown model does not need a
-// metric of its own.
-func (c *baseConsumer) writeMetricUnknownModelError(ctx context.Context) {
-	c.metricWriter.Write(ctx, metric.Data{
-		&metric.Datum{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameConsumerError,
-			Dimensions: map[string]string{
-				dimensionConsumer:         c.name,
-				metric.DimensionErrorType: errorTypeUnknownModel,
-			},
-			Unit:  metric.UnitCount,
-			Value: 1.0,
-			Kind:  metric.KindCounter.Build(),
 		},
 	})
 }

@@ -10,6 +10,8 @@ import (
 )
 
 const (
+	metricNamespace = "kvstore"
+
 	// number of items stored in the store (if available)
 	metricNameKvStoreSize = "item.count"
 	// number of items we try to read from the store
@@ -24,6 +26,14 @@ const (
 	dimensionModel = "model.id"
 	dimensionStore = "store.type"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreRead, "read operations performed against a key-value store")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreWrite, "write operations performed against a key-value store")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreDelete, "delete operations performed against a key-value store")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreHit, "read operations a key-value store served from its own data")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreSize, "items a key-value store currently holds")
+}
 
 type MetricStore[T any] struct {
 	KvStore[T]

@@ -15,11 +15,22 @@ import (
 )
 
 const (
+	metricNamespaceKafka         = "kafka"
+	metricNamespaceKafkaProducer = "kafka.producer"
+	metricNamespaceMessaging     = "messaging"
+
 	metricNameRecordsSent       = "client.sent.messages"
 	metricNameRecordsSentFailed = "send.errors"
 	metricNameProduceBatchSize  = "batch.size"
 	metricNameProduceDuration   = "client.operation.duration"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespaceKafkaProducer, metricNameProduceBatchSize, "records a kafka producer sent per batch")
+	metric.RegisterHelp(metricNamespaceKafkaProducer, metricNameRecordsSentFailed, "records a kafka producer failed to send")
+	metric.RegisterHelp(metricNamespaceMessaging, metricNameRecordsSent, metric.HelpMessagingClientSentMessages)
+	metric.RegisterHelp(metricNamespaceMessaging, metricNameProduceDuration, metric.HelpMessagingClientOperationDuration)
+}
 
 //go:generate go run github.com/vektra/mockery/v2 --name Producer
 type Producer interface {

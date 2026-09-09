@@ -25,6 +25,11 @@ const (
 	connectionStateUsed = "used"
 )
 
+func init() {
+	metric.RegisterHelp(metricNamespace, metricNameDbConnectionCount, "database connections currently open")
+	metric.RegisterHelp(metricNamespace, metricNameDbConnections, "database connections opened since the process started")
+}
+
 type metricDriver struct {
 	driver.Driver
 

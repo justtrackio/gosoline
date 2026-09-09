@@ -14,6 +14,11 @@ const (
 	metricNameNotifications = "model_event.notifications"
 )
 
+func init() {
+	metric.RegisterHelp(metricNamespace, metricNameNotifications, "model event notifications a repository published, by error type")
+	metric.RegisterHelp(metricNamespace, MetricNameDbOperationDuration, "duration of a SQL repository operation")
+}
+
 var NotificationTypes = []string{Create, Update, Delete}
 
 type (

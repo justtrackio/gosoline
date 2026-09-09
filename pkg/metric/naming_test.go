@@ -150,26 +150,47 @@ func TestRenderOtelName(t *testing.T) {
 	}
 }
 
-// TestRenderersAreInertWithoutANamespace pins the renderers down for metrics authored outside
-// gosoline: without a namespace every renderer reproduces the name it was given, so introducing the
-// renderers changes no exported name before the gosoline names are authored.
-func TestRenderersAreInertWithoutANamespace(t *testing.T) {
-	names := []string{
-		"myMetricName",
-		"counter",
-		"already_snake",
-		"HttpRequestCount",
+// TestRenderersConvertALeafWithoutANamespace pins the renderers down for metrics authored outside
+// gosoline: a datum without a namespace still has its leaf converted into the convention each writer
+// exports under, because a leaf carries canonical separators whether or not a namespace precedes it.
+func TestRenderersConvertALeafWithoutANamespace(t *testing.T) {
+	tests := map[string]struct {
+		leaf               string
+		expectedCloudWatch string
+		expectedPrometheus string
+	}{
+		"single word": {
+			leaf:               "counter",
+			expectedCloudWatch: "Counter",
+			expectedPrometheus: "counter_seconds_total",
+		},
+		"camel case": {
+			leaf:               "myMetricName",
+			expectedCloudWatch: "MyMetricName",
+			expectedPrometheus: "myMetricName_seconds_total",
+		},
+		"underscore separated": {
+			leaf:               "already_snake",
+			expectedCloudWatch: "AlreadySnake",
+			expectedPrometheus: "already_snake_seconds_total",
+		},
+		"dotted leaf": {
+			leaf:               "request.duration",
+			expectedCloudWatch: "RequestDuration",
+			expectedPrometheus: "request_duration_seconds_total",
+		},
 	}
 
-	for _, name := range names {
+	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, name, renderCloudWatchName("", name))
+			assert.Equal(t, tt.expectedCloudWatch, renderCloudWatchName("", tt.leaf))
 
-			subsystem, promName := renderPrometheusName("", name, UnitMilliseconds, kindCounter)
-			assert.Empty(t, subsystem)
-			assert.Equal(t, name, promName)
+			subsystem, promName := renderPrometheusName("", tt.leaf, UnitMilliseconds, kindCounter)
+			assert.Empty(t, subsystem, "a datum without a namespace has no prometheus subsystem")
+			assert.Equal(t, tt.expectedPrometheus, promName)
+			assert.NotContains(t, promName, ".", "a dot is not a valid prometheus name character")
 
-			assert.Equal(t, FormatOtelMetricName(name), renderOtelName("", name))
+			assert.Equal(t, FormatOtelMetricName(tt.leaf), renderOtelName("", tt.leaf))
 		})
 	}
 }

@@ -131,24 +131,25 @@ func (w *otelWriter) Write(ctx context.Context, batch Data) {
 func (w *otelWriter) record(ctx context.Context, datum *Datum) error {
 	name := renderOtelName(datum.Namespace, datum.MetricName)
 	unit := otelInstrumentUnit(datum.MetricName, datum.Unit)
+	help := resolveHelp(datum)
 	value := datum.Value * unitScale(datum.Unit)
 	attrs := otelmetric.WithAttributes(w.attributes(datum)...)
 
 	switch effectiveKind(datum) {
 	case kindCounter:
-		instrument, err := w.counter(name, unit, datum.Kind.help)
+		instrument, err := w.counter(name, unit, help)
 		if err != nil {
 			return err
 		}
 		instrument.Add(ctx, value, attrs)
 	case kindHistogram, kindSummary:
-		instrument, err := w.histogram(name, unit, datum.Kind.help, datum.Kind.buckets)
+		instrument, err := w.histogram(name, unit, help, datum.Kind.buckets)
 		if err != nil {
 			return err
 		}
 		instrument.Record(ctx, value, attrs)
 	default:
-		instrument, err := w.gauge(name, unit, datum.Kind.help)
+		instrument, err := w.gauge(name, unit, help)
 		if err != nil {
 			return err
 		}

@@ -47,7 +47,7 @@ func buildMocksAndWrite(t *testing.T, ctx context.Context, now time.Time, metric
 		cwClient.EXPECT().PutMetricData(matcher.Context, &cloudwatch.PutMetricDataInput{
 			Namespace: aws.String("my/test/namespace/grp/app"),
 			MetricData: []types.MetricDatum{{
-				MetricName: aws.String("my-test-metric-name"),
+				MetricName: aws.String("My-test-metric-name"),
 				Dimensions: []types.Dimension{
 					{
 						Name:  aws.String("d1"),

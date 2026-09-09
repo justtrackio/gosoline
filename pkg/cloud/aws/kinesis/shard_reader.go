@@ -20,6 +20,9 @@ import (
 )
 
 const (
+	metricNamespaceCloudAwsKinesis = "cloud.aws.kinesis"
+	metricNamespaceMessaging       = "messaging"
+
 	metricNameAcquireShardDelaySeconds = "acquire.delay"
 	metricNameSleepDuration            = "sleep.duration"
 	metricNameFailedRecords            = "consume.errors"
@@ -34,6 +37,22 @@ const (
 	dimensionStream = metric.DimensionMessagingDestination
 	dimensionShard  = "messaging.destination.partition.id"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameReadCount, "read operations a kinesis shard reader performed")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameFailedRecords, "records a kinesis shard reader failed to process")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, "age of the last record a kinesis shard reader processed")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameAcquireShardDelaySeconds, "time a kinesis shard reader waited to acquire a shard")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameSleepDuration, "time a kinesis shard reader slept before polling again")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameWaitDuration, "time a kinesis shard reader waited for records to process")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameShardCount, "shards a kinesis stream currently has")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameClientCount, "clients currently consuming a kinesis stream")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNamePutRecordsBatchSize, "records a kinesis record writer sent per batch")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNamePutRecordsFailure, "records a kinesis record writer failed to send")
+	metric.RegisterHelp(metricNamespaceMessaging, metricNameReadRecords, metric.HelpMessagingClientConsumedMessages)
+	metric.RegisterHelp(metricNamespaceMessaging, metricNamePutRecords, metric.HelpMessagingClientSentMessages)
+	metric.RegisterHelp(metricNamespaceMessaging, metricNameProcessDuration, metric.HelpMessagingProcessDuration)
+}
 
 //go:generate go run github.com/vektra/mockery/v2 --name ShardReader
 type ShardReader interface {

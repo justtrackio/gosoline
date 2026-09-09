@@ -12,7 +12,15 @@ import (
 	"github.com/justtrackio/gosoline/pkg/smpl/smplctx"
 )
 
-const metricNameDecisions = "decisions"
+const (
+	metricNamespace = "smpl"
+
+	metricNameDecisions = "decisions"
+)
+
+func init() {
+	metric.RegisterHelp(metricNamespace, metricNameDecisions, "sampling decisions made, by outcome")
+}
 
 type (
 	ctxKeyDecider struct{}

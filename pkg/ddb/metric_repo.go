@@ -12,6 +12,10 @@ import (
 
 const metricNamespace = "ddb"
 
+func init() {
+	metric.RegisterHelp(metricNamespace, MetricNameOperationDuration, "duration of a DynamoDB repository operation")
+}
+
 type metricRepository struct {
 	Repository
 	metric metric.Writer

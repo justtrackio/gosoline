@@ -8,11 +8,20 @@ import (
 )
 
 const (
+	metricNamespace = "limit"
+
 	MetricNameRateLimitRelease  = "rate_limit.releases"
 	MetricNameRateLimitTake     = "rate_limit.takes"
 	MetricNameRateLimitThrottle = "rate_limit.throttles"
 	MetricNameRateLimitError    = "rate_limit.errors"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, MetricNameRateLimitTake, "rate limiter tokens taken")
+	metric.RegisterHelp(metricNamespace, MetricNameRateLimitRelease, "rate limiter tokens released")
+	metric.RegisterHelp(metricNamespace, MetricNameRateLimitThrottle, "attempts a rate limiter throttled")
+	metric.RegisterHelp(metricNamespace, MetricNameRateLimitError, "rate limiter operations that failed")
+}
 
 type metricMiddleware struct {
 	metricWriter metric.Writer

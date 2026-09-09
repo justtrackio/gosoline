@@ -14,11 +14,11 @@ const (
 	// metric name formatting, dimension keys and unit representation. Its current value is v2.0 and
 	// it is the single source of truth for the value published under MetadataKeySchemaVersion.
 	//
-	// Maintainer-directed exception: this revision changes observable metric identities, but maintainers
-	// explicitly require publishing v2.0 rather than applying the normal major-version increment rule.
-	// Do not infer compatibility from the numeric sequence alone; consult the release inventory.
+	// v2.0 is the one MAJOR increment covering the whole v1.0 contract migration. Every further
+	// rename, removal or unit change made while that migration is still unmerged belongs to the same
+	// increment, so do not raise the version again for one of them.
 	//
-	// Normal increment rules:
+	// Increment rules:
 	//   - MAJOR: a metric name, dimension key or unit representation is removed or renamed
 	//     (MINOR resets to 0), even if the same change also adds something.
 	//   - MINOR: purely additive change.

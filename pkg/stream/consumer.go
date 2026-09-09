@@ -203,8 +203,6 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 	var attributes map[string]string
 
 	if model, err = c.callback.GetModel(msg.Attributes); err != nil {
-		c.writeMetricUnknownModelError(ctx)
-
 		// Check if this error is ignorable based on consumer settings
 		var ignorableErr IgnorableGetModelError
 		if errors.As(err, &ignorableErr) && ignorableErr.IsIgnorableWithSettings(c.settings.IgnoreOnGetModelError) {

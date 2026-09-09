@@ -10,10 +10,19 @@ import (
 )
 
 const (
+	metricNamespace = "http.server"
+
 	concurrencyMetricSampleInterval = 10 * time.Second
 	MetricHttpConcurrentRequests    = "active_requests"
 	MetricHttpOpenConnections       = "connection.count"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, MetricHttpConcurrentRequests, "HTTP requests the server is currently handling")
+	metric.RegisterHelp(metricNamespace, MetricHttpOpenConnections, "connections the HTTP server currently holds open")
+	metric.RegisterHelp(metricNamespace, MetricHttpRequestDuration, "duration of an HTTP server request")
+	metric.RegisterHelp(metricNamespace, MetricHttpRequestsRejected, "HTTP requests the server rejected before handling them")
+}
 
 //go:generate go run github.com/vektra/mockery/v2 --name ServerMetricRecorder
 type ServerMetricRecorder interface {

@@ -13,11 +13,18 @@ import (
 )
 
 const (
+	metricNamespace = "conc.scheduler"
+
 	metricNameBatchSize = "batch.size"
 	metricNameTaskDelay = "task.delay"
 
 	dimensionScheduler = "scheduler.name"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, metricNameBatchSize, "tasks the scheduler ran per batch")
+	metric.RegisterHelp(metricNamespace, metricNameTaskDelay, "time a task waited before the scheduler ran it")
+}
 
 //go:generate go run github.com/vektra/mockery/v2 --name Scheduler
 type Scheduler[T any] interface {

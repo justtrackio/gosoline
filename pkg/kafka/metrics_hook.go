@@ -11,6 +11,8 @@ import (
 )
 
 const (
+	metricNamespace = "kafka"
+
 	MetricNameBrokerConnects       = "connects"
 	MetricNameBrokerThrottleCount  = "throttles"
 	MetricNameBrokerThrottleTime   = "throttle.duration"
@@ -21,6 +23,18 @@ const (
 	MetricNameFetchBatchBytes      = "fetch.batch.size"
 	MetricNameFetchBatchBytesCmp   = "fetch.batch.compressed.size"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, MetricNameBrokerConnects, "connections a kafka client opened to a broker")
+	metric.RegisterHelp(metricNamespace, MetricNameBrokerThrottleCount, "requests a broker throttled")
+	metric.RegisterHelp(metricNamespace, MetricNameBrokerThrottleTime, "time a broker throttled a kafka client for")
+	metric.RegisterHelp(metricNamespace, MetricNameProduceBatchRecords, "records a kafka client produced per batch")
+	metric.RegisterHelp(metricNamespace, MetricNameProduceBatchBytes, "uncompressed size of a batch a kafka client produced")
+	metric.RegisterHelp(metricNamespace, MetricNameProduceBatchBytesCmp, "compressed size of a batch a kafka client produced")
+	metric.RegisterHelp(metricNamespace, MetricNameFetchBatchRecords, "records a kafka client fetched per batch")
+	metric.RegisterHelp(metricNamespace, MetricNameFetchBatchBytes, "uncompressed size of a batch a kafka client fetched")
+	metric.RegisterHelp(metricNamespace, MetricNameFetchBatchBytesCmp, "compressed size of a batch a kafka client fetched")
+}
 
 // MetricsHook implements franz-go hook interfaces to emit metrics for broker
 // connectivity, throttling, and produce/consume batch operations.

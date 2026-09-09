@@ -18,6 +18,8 @@ import (
 )
 
 const (
+	metricNamespace = "blob"
+
 	metricName      = "batch.operations"
 	dimensionOp     = "operation"
 	operationCopy   = "Copy"
@@ -25,6 +27,10 @@ const (
 	operationRead   = "Read"
 	operationWrite  = "Write"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, metricName, "blob batch operations a runner completed")
+}
 
 type BatchRunnerSettings struct {
 	ClientName        string `cfg:"client_name" default:"default"`

@@ -13,6 +13,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
+const metricNamespace = "example"
+
 func apiDefiner(ctx context.Context, config cfg.Config, logger log.Logger) (*httpserver.Definitions, error) {
 	tracer, err := tracing.ProvideTracer(ctx, config, logger)
 	if err != nil {

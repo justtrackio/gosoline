@@ -20,10 +20,26 @@ import (
 )
 
 const (
+	metricNamespaceKafka         = "kafka"
+	metricNamespaceKafkaConsumer = "kafka.consumer"
+	metricNamespaceMessaging     = "messaging"
+
 	metricNameRecordsConsumed = "client.consumed.messages"
 	metricNamePollCount       = "polls"
 	metricNamePollDuration    = "poll.duration"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNamePollCount, "poll requests a kafka consumer issued")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNamePollDuration, "duration of a kafka consumer poll request")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameCommitDuration, "duration of a kafka consumer offset commit")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameCommitFailures, "kafka consumer offset commits that failed")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameWaitDuration, "time a kafka partition consumer waited for a record to process")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameRebalanceCount, "consumer group rebalances a kafka consumer took part in")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameRecordsConsumedFailed, "records a kafka consumer failed to process")
+	metric.RegisterHelp(metricNamespaceMessaging, metricNameRecordsConsumed, metric.HelpMessagingClientConsumedMessages)
+	metric.RegisterHelp(metricNamespaceMessaging, metricNameProcessDuration, metric.HelpMessagingProcessDuration)
+}
 
 // ReaderFactory creates a Reader using the run context and the partition manager.
 // It is called at the start of Run to create the kgo client with the correct lifecycle context.

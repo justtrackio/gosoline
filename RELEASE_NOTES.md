@@ -194,26 +194,62 @@ backend writers apply their rendering rules after these names are authored.
 | `limit` | `rate_limit.takes`; `rate_limit.releases`; `rate_limit.throttles`; `rate_limit.errors` |
 | `mdlsub` | `consumed.events`; `skipped.events`; `consume.errors` |
 | `messaging` | `process.duration`; `client.consumed.messages`; `client.sent.messages`; `client.operation.duration` |
-| `metric` | `records` |
+| `metric` | `log.records` |
 | `rpc.server` | `duration` |
 | `smpl` | `decisions` |
-| `stream` | `errors`; `retry.operations`; `messages`; `batch.size`; `aggregate.size`; `idle.duration`; `available.messages`; `sent.messages`; `message.count`; `reads`; `writes` |
+| `stream` | `errors`; `retry.operations`; `messages`; `batch.size`; `aggregate.size`; `idle.duration`; `message.count`; `reads`; `writes` |
 
 #### Focused contract update status
 
-`metric.SchemaVersion` remains **`v2.0`** by explicit maintainer direction. This is an exception to
-the normal version-increment policy: do not change the marker to `v3.0` for this focused revision.
-There is still no dual emission.
+`metric.SchemaVersion` is **`v2.0`**: this revision is one contract change, published under one
+version, rather than a version increment per edit inside it. There is still no dual emission.
 
 | Status | Metric or behavior | Consumer action |
 |---|---|---|
 | Unchanged | Every final inventory entry not called out below | Keep using its canonical namespace and leaf. Moving namespace constants into emitting packages changes source ownership, not those emitted names. |
 | Deleted | `autoscaling.per_runner.stream.messages`; `autoscaling.per_runner.http.server.requests` | Remove the per-runner calculator configuration and replace scaling policies with application-specific signals; the calculator and both handlers are no longer present. |
+| Deleted | `stream.available.messages`; `stream.sent.messages` | Their only emitter was the messages-per-runner handler, so nothing has written them since it was removed; drop them from dashboards and alerts. |
+| Renamed | Log records: `metric.records` → `metric.log.records` | Re-key log-volume dashboards and alerts. The leaf now says what is counted, so it cannot be mistaken for the metric records the daemon writes. |
 | Renamed | SQL repository operations: `db.client.operation.duration` → `db.repo.operation.duration` | Re-key SQL repository dashboards, alerts, and queries to `db.repo`. |
 | Renamed | DynamoDB repository operations: `db.client.operation.duration` → `ddb.operation.duration` | Re-key DynamoDB repository dashboards, alerts, and queries to `ddb`. |
 | Deleted and consolidated | `db.repo.model_event.notify.errors` | Use `db.repo.model_event.notifications` for both outcomes; the former error-only metric is not emitted. |
 | Added outcome coverage | A cancelled HTTP client request | `http.client.request.duration` is emitted with `error.type=metric.ErrorType(context.Canceled)` before the original cancellation error is returned. |
 | Deleted aggregate series | HTTP server-only, Kafka topic-only, and Kinesis stream-only aggregate data | Query or aggregate the retained detailed series in the backend rather than searching for a framework-emitted `KindTotal` datum. |
+| Dimension value changed | An unknown model on a stream consumer | `stream.errors` no longer carries `error.type="unknown_model"`, and the failure is no longer counted twice on the single-message consumer. Both consumers now count it once, through the shared error path, with the normalized Go error type. |
+| Help text added | Every metric in the inventory above | Each metric is exported with a description of what it counts instead of `unit: <unit>`. Emitting packages register it through `metric.RegisterHelp`; `Kind.WithHelp` still overrides it per datum. |
+| Renamed | **Your own** metrics written through `metric.NewWriter("")`, on CloudWatch | A namespace-less leaf is now PascalCased exactly like a namespaced one, so `my.custom.metric` exports as `MyCustomMetric` and `my-metric-name` as `My-metric-name`. This hits application-authored metrics, not only gosoline's: re-key every CloudWatch dashboard and alarm built on one. See "Metrics authored outside gosoline" below for the Prometheus and OTEL effect. |
+
+#### Prometheus writer: exported names no longer carry the application
+
+The Prometheus writer's namespace is now the fixed string `gosoline` rather than a namespace formatted
+from the application identity. `gosoline` names the framework that authored the metric; the application
+belongs in the labels the scrape target is discovered with, so carrying it in the metric name kept one
+query from spanning several applications.
+
+| | Before | After |
+|---|---|---|
+| Exported name | `<app.namespace>_<app.name>_http_server_request_duration_seconds` | `gosoline_http_server_request_duration_seconds` |
+
+**Every Prometheus query, recording rule, dashboard and alert has to be re-keyed**, and the
+`metric.writer_settings.prometheus.naming` configuration block - `namespace_pattern` and
+`namespace_delimiter` - is removed. Leaving it in a configuration file is harmless; it has no effect.
+`metric.NewPrometheusWriterWithInterfaces` lost its `namespace` parameter for the same reason.
+
+#### Metrics authored outside gosoline
+
+A datum written through a writer with no namespace is now rendered by the same rules as a namespaced
+one, minus the namespace, because its leaf can carry canonical separators just the same:
+
+| Writer | Leaf `my.custom.metric`, before | After |
+|---|---|---|
+| CloudWatch | `my.custom.metric` | `MyCustomMetric` |
+| Prometheus | `my.custom.metric`, rejected at registration | `my_custom_metric_total` on a counter |
+| OTEL | `my.custom.metric` | `my.custom.metric`, unchanged |
+
+The Prometheus rendering fixes an outright defect - a dotted name is not a valid Prometheus metric
+name, so those metrics were never exported. **The CloudWatch rendering renames custom metrics**, since
+a leaf is now PascalCased whether or not a namespace precedes it; re-key any CloudWatch dashboard built
+on a `metric.NewWriter("")` metric.
 
 ##### DB-repository notification outcomes
 

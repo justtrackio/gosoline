@@ -23,6 +23,12 @@ func init() {
 	RegisterWriterFactory(WriterTypePrometheus, ProvidePrometheusWriter)
 }
 
+// prometheusNamespace is the single prefix every metric this writer exports carries. It names the
+// framework that authored the metric rather than the application emitting it: application identity
+// belongs in the labels the scrape target is discovered with, so carrying it in the metric name
+// prevents one query from spanning several applications.
+const prometheusNamespace = "gosoline"
+
 var (
 	_            Writer = &prometheusWriter{}
 	promReplacer        = strings.NewReplacer("-", "_")
@@ -68,22 +74,11 @@ func ProvidePrometheusWriter(ctx context.Context, config cfg.Config, logger log.
 func NewPrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	var err error
 	var settings *PrometheusSettings
-	var identity cfg.Identity
-	var namespace string
 	var registry *prometheus.Registry
 
 	if settings, err = getMetricWriterSettings[PrometheusSettings](config, WriterTypePrometheus); err != nil {
 		return nil, fmt.Errorf("could not get prometheus writer settings: %w", err)
 	}
-
-	if identity, err = cfg.GetAppIdentity(config); err != nil {
-		return nil, fmt.Errorf("could not get app identity from config: %w", err)
-	}
-
-	if namespace, err = identity.Format(settings.Naming.NamespacePattern, settings.Naming.NamespaceDelimiter); err != nil {
-		return nil, fmt.Errorf("could not format prometheus namespace: %w", err)
-	}
-	namespace = promReplacer.Replace(namespace)
 
 	if registry, err = ProvideRegistry(ctx, prometheusDefaultRegistry); err != nil {
 		return nil, err
@@ -92,7 +87,6 @@ func NewPrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logg
 	return NewPrometheusWriterWithInterfaces(
 		logger,
 		registry,
-		namespace,
 		settings.MetricLimit,
 		settings.WriteGraceTime,
 	), nil
@@ -101,14 +95,13 @@ func NewPrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logg
 func NewPrometheusWriterWithInterfaces(
 	logger log.Logger,
 	registry *prometheus.Registry,
-	namespace string,
 	metricLimit int64,
 	writeGraceTime time.Duration,
 ) Writer {
 	return &prometheusWriter{
 		logger:         logger.WithChannel("metrics"),
 		registry:       registry,
-		namespace:      namespace,
+		namespace:      prometheusNamespace,
 		metricLimit:    metricLimit,
 		metrics:        mdl.Box(int64(0)),
 		writeGraceTime: writeGraceTime,
@@ -168,10 +161,11 @@ func (w *prometheusWriter) writeMetricFromDatum(ctx context.Context, datum *Datu
 	}()
 
 	metricKind := effectiveKind(datum)
+	datum.Kind.help = resolveHelp(datum)
 
 	subsystem, name := renderPrometheusName(datum.Namespace, datum.MetricName, datum.Unit, metricKind)
 	if strings.Contains(name, "-") {
-		w.logger.Error(ctx, "metric name %s is invalid, as it contains a - characters, gracefully replacing with an _ character", name)
+		w.logger.Warn(ctx, "metric name %s is invalid, as it contains a - characters, gracefully replacing with an _ character", name)
 		name = promReplacer.Replace(name)
 	}
 
@@ -190,20 +184,12 @@ func (w *prometheusWriter) writeMetricFromDatum(ctx context.Context, datum *Datu
 	}
 }
 
-func (w *prometheusWriter) buildHelp(datum *Datum) string {
-	if datum.Kind.help != "" {
-		return datum.Kind.help
-	}
-
-	return fmt.Sprintf("unit: %s", datum.Unit)
-}
-
 func (w *prometheusWriter) createCounter(subsystem string, datum *Datum) *prometheus.CounterVec {
 	return prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: w.namespace,
 		Subsystem: subsystem,
 		Name:      datum.MetricName,
-		Help:      w.buildHelp(datum),
+		Help:      datum.Kind.help,
 	}, w.DatumDimensionKeys(datum))
 }
 
@@ -212,7 +198,7 @@ func (w *prometheusWriter) createGauge(subsystem string, datum *Datum) *promethe
 		Namespace: w.namespace,
 		Subsystem: subsystem,
 		Name:      datum.MetricName,
-		Help:      w.buildHelp(datum),
+		Help:      datum.Kind.help,
 	}, w.DatumDimensionKeys(datum))
 }
 
@@ -221,7 +207,7 @@ func (w *prometheusWriter) createSummary(subsystem string, datum *Datum) *promet
 		Namespace:  w.namespace,
 		Subsystem:  subsystem,
 		Name:       datum.MetricName,
-		Help:       w.buildHelp(datum),
+		Help:       datum.Kind.help,
 		Objectives: datum.Kind.objectives,
 		MaxAge:     datum.Kind.maxAge,
 		AgeBuckets: datum.Kind.ageBuckets,
@@ -234,7 +220,7 @@ func (w *prometheusWriter) createHistogram(subsystem string, datum *Datum) *prom
 		Namespace: w.namespace,
 		Subsystem: subsystem,
 		Name:      datum.MetricName,
-		Help:      w.buildHelp(datum),
+		Help:      datum.Kind.help,
 		Buckets:   datum.Kind.buckets,
 	}, w.DatumDimensionKeys(datum))
 }

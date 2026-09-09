@@ -14,10 +14,18 @@ import (
 )
 
 const (
+	metricNamespace = "mdlsub"
+
 	MetricNameSuccess = "consumed.events"
 	MetricNameSkipped = "skipped.events"
 	MetricNameFailure = "consume.errors"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, MetricNameSuccess, "model events a subscriber applied")
+	metric.RegisterHelp(metricNamespace, MetricNameSkipped, "model events a subscriber skipped")
+	metric.RegisterHelp(metricNamespace, MetricNameFailure, "model events a subscriber failed to apply")
+}
 
 type SubscriberModel struct {
 	mdl.ModelId

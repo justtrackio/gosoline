@@ -10,10 +10,14 @@ import (
 
 func init() {
 	log.AddHandlerFactory("metric", LoggerHandlerFactory)
+	RegisterHelp(metricNamespace, metricNameLogRecords, "log records written at warn or error level, by level")
 }
 
 const (
-	metricNameLogRecords = "records"
+	// metricNamespace is the namespace this package emits its own metrics under.
+	metricNamespace = "metric"
+
+	metricNameLogRecords = "log.records"
 
 	// DimensionLogLevel names the level a log record was written at.
 	DimensionLogLevel = "log.level"

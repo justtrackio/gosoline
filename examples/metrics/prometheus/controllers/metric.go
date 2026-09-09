@@ -10,6 +10,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
+const metricNamespace = "example"
+
 type Response struct {
 	Val int64 `json:"val"`
 }

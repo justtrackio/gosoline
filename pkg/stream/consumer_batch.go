@@ -233,8 +233,6 @@ func (c *BatchConsumer) decodeMessages(
 	for _, cdata := range batch {
 		model, err := c.callback.GetModel(cdata.msg.Attributes)
 		if err != nil {
-			c.writeMetricUnknownModelError(batchCtx)
-
 			// Check if this error is ignorable based on consumer settings
 			var ignorableErr IgnorableGetModelError
 			if errors.As(err, &ignorableErr) && ignorableErr.IsIgnorableWithSettings(c.baseConsumer.settings.IgnoreOnGetModelError) {
@@ -243,7 +241,7 @@ func (c *BatchConsumer) decodeMessages(
 				continue
 			}
 
-			c.logger.Error(batchCtx, "an error occurred during the batch GetModel operation: %w", err)
+			c.handleError(batchCtx, err, "an error occurred during the batch GetModel operation")
 
 			continue
 		}

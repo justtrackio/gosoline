@@ -39,8 +39,6 @@ var authoredNames = []authoredName{
 	{"stream", "batch.size", UnitCount, kindHistogram, false},
 	{"stream", "aggregate.size", UnitCount, kindHistogram, false},
 	{"stream", "idle.duration", UnitMilliseconds, kindHistogram, false},
-	{"stream", "available.messages", UnitCount, kindGauge, false},
-	{"stream", "sent.messages", UnitCount, kindCounter, false},
 	{"stream", "message.count", UnitCount, kindGauge, false},
 	{"stream", "reads", UnitCount, kindCounter, false},
 	{"stream", "writes", UnitCount, kindCounter, false},
@@ -107,7 +105,7 @@ var authoredNames = []authoredName{
 	{"limit", "rate_limit.throttles", UnitCount, kindCounter, false},
 	{"limit", "rate_limit.errors", UnitCount, kindCounter, false},
 	{"smpl", "decisions", UnitCount, kindCounter, false},
-	{"metric", "records", UnitCount, kindCounter, false},
+	{"metric", "log.records", UnitCount, kindCounter, false},
 }
 
 // canonicalComponent matches one component of a canonical name: lowercase, starting with a letter,
@@ -224,7 +222,7 @@ func TestAuthoredNamesRenderForEveryWriter(t *testing.T) {
 			assert.Regexp(t, `^[a-z][a-z0-9_]*$`, promName, "prometheus name must be snake_case")
 			assert.Equal(t, name.kind == kindCounter, strings.HasSuffix(promName, "_total"),
 				"only a counter carries the _total suffix")
-			assert.Equal(t, prometheusUnitSuffix(name.unit) != "",
+			assert.Equal(t, prometheusUnitSuffix(name.unit, kindGauge) != "",
 				strings.Contains(promName, "_seconds") || strings.Contains(promName, "_bytes"),
 				"a measured unit carries a base-unit suffix")
 
@@ -254,8 +252,6 @@ func TestAuthoredNamesDeriveTheirOtelUnit(t *testing.T) {
 		"stream.batch.size":                   "1",
 		"stream.aggregate.size":               "1",
 		"stream.idle.duration":                "s",
-		"stream.available.messages":           "{message}",
-		"stream.sent.messages":                "{message}",
 		"stream.message.count":                "1",
 		"stream.reads":                        "{read}",
 		"stream.writes":                       "{write}",
@@ -314,7 +310,7 @@ func TestAuthoredNamesDeriveTheirOtelUnit(t *testing.T) {
 		"limit.rate_limit.throttles":          "{throttle}",
 		"limit.rate_limit.errors":             "{error}",
 		"smpl.decisions":                      "{decision}",
-		"metric.records":                      "{record}",
+		"metric.log.records":                  "{record}",
 	}
 
 	for _, name := range authoredNames {

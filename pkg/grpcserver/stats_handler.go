@@ -11,6 +11,12 @@ import (
 	"google.golang.org/grpc/stats"
 )
 
+const metricNamespace = "rpc.server"
+
+func init() {
+	metric.RegisterHelp(metricNamespace, MetricRpcServerDuration, "duration of a gRPC server call")
+}
+
 type key int
 
 const (

@@ -27,8 +27,9 @@ suffix, no `_total`, no part of the application's identity, and no value that is
 dimension.
 
 Namespaces belong to the package that emits them. Each emitting package declares an unexported
-`metricNamespace`-style constant next to its metric code; `pkg/metric` must not restore exported
-`metric.Namespace*` constants or compatibility aliases. A package passes its namespace once to
+`metricNamespace`-style constant **in the same const block as the metric names it owns**, never in a
+file of its own; `pkg/metric` must not restore exported `metric.Namespace*` constants or
+compatibility aliases. A package passes its namespace once to
 `metric.NewWriter(namespace, defaults...)`, which stamps it onto every datum that does not already
 carry one. A package emitting into two namespaces, such as a Kafka consumer reporting both
 `messaging.*` and `kafka.consumer.*`, overrides the datum namespace explicitly.
@@ -62,21 +63,43 @@ Each writer renders that one authored name into its own convention:
 | Writer | Rendering of `http.server` + `request.duration` |
 |--------|--------------------------------------------------|
 | CloudWatch | `HttpServerRequestDuration`, unscaled, milliseconds |
-| Prometheus | `<app>_http_server_request_duration_seconds`, scaled to seconds |
+| Prometheus | `gosoline_http_server_request_duration_seconds`, scaled to seconds |
 | OTEL | `http.server.request.duration`, unit `s` on the instrument |
 
 The OTEL renderer prefixes `gosoline.` unless an OpenTelemetry semantic convention owns the metric.
-Prometheus adds the base-unit suffix and `_total` on counters. Neither suffix nor prefix exists in the
-authored name. Prometheus also renders dimension keys, replacing dots with underscores, because a dot
-is not a valid label name character there and a datum carrying one is rejected at registration.
+The Prometheus writer carries the fixed namespace `gosoline`, which names the framework that authored
+the metric: application identity belongs in the labels the scrape target is discovered with, so it is
+not part of the exported name. Prometheus adds the base-unit suffix and `_total` on counters, both
+from `prometheusUnitSuffix`. Neither suffix nor prefix exists in the authored name. Prometheus also
+renders dimension keys, replacing dots with underscores, because a dot is not a valid label name
+character there and a datum carrying one is rejected at registration.
+
+A datum without a namespace - one authored outside gosoline - is rendered by exactly the same rules,
+minus the namespace: CloudWatch PascalCases its leaf and Prometheus replaces its dots and appends the
+convention suffixes. A leaf carries canonical separators whether or not a namespace precedes it, so
+the renderers may not pass it through untouched.
+
+### Help texts
+Every authored metric has a help text, registered once by its emitting package through
+`metric.RegisterHelp(namespace, metricName, help)` next to the name it describes. The Prometheus and
+OTEL writers resolve it via `resolveHelp`, which prefers a help the datum's own `Kind` carries (set
+with `WithHelp`), falls back to the registered one, and only then to a description of the unit.
+
+Registering the same help twice is a no-op, which is what lets the packages sharing `messaging.*`
+each register it. Registering a **different** help for the same name panics on purpose: a backend
+keeps one description per metric name, so a second description is rejected when the metric is
+registered and that metric silently stops being exported. The help of a metric several packages emit
+is therefore declared once, as a `metric.Help*` constant.
 
 Every gosoline metric declares its `Kind` explicitly. Unit-based inference (`inferKind`) remains only
 as the fallback for metrics authored outside gosoline, and is shared by both writers so they can never
 classify one datum differently.
 
-Adding or changing a metric means updating `authoredNames` in `conformance_test.go`; the conformance
-test fails the build on a name that violates the contract, on a duplicate, and on a rendering
-regression.
+Adding or changing a metric means updating `authoredNames` in `conformance_test.go` and registering a
+help text for it in the emitting package; the conformance test fails the build on a name that violates
+the contract, on a duplicate, and on a rendering regression. Removing the last emitter of a metric
+means removing its `authoredNames` entry in the same change, so the inventory never claims a metric
+nothing writes.
 
 ### Dimension-key policy
 OpenTelemetry semantic-convention attributes may be added where a convention defines the relevant
@@ -92,9 +115,10 @@ inspecting the gosoline version.
 - Current value: `v2.0`, defined by the exported constant `metric.SchemaVersion` in
   `schema_version.go`. That constant is the single source of truth - no other package may define
   the literal value.
-- **Maintainer-directed exception:** this focused revision intentionally retains `v2.0` despite
-  observable contract changes. Do not change it to `v3.0`, and do not infer a version bump from the
-  normal rules below for this revision.
+- `v2.0` is the **one** MAJOR increment covering the whole migration off the `v1.0` contract. Every
+  further rename, removal or unit change made while that migration is unmerged belongs to the same
+  increment: do not raise the version again for one of them, and never publish above `v2.0` from
+  this revision.
 - Metadata key: `metric.schema_version` (`metric.MetadataKeySchemaVersion`). The value is written
   into the `appctx.Metadata` carrier and therefore served by the metadata server's root route.
 - Format: `v<MAJOR>.<MINOR>`, both components decimal integers of 1 to 9 digits without leading

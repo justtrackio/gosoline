@@ -25,6 +25,8 @@ import (
 )
 
 const (
+	metricNamespace = "http.client"
+
 	DeleteRequest  = "DELETE"
 	GetRequest     = "GET"
 	PostRequest    = "POST"
@@ -39,6 +41,10 @@ const (
 	dimensionMethod     = "http.request.method"
 	dimensionStatusCode = "http.response.status_code"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, metricRequestDuration, "duration of an HTTP client request")
+}
 
 //go:generate go run github.com/vektra/mockery/v2 --name Client
 type Client interface {
