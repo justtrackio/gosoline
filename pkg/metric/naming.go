@@ -6,27 +6,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 )
 
-// otelGosolinePrefix namespaces every metric gosoline invents, so gosoline never defines a name
-// inside a namespace an OpenTelemetry semantic convention owns.
+// otelGosolinePrefix namespaces every metric gosoline emits. No gosoline metric claims a canonical
+// OpenTelemetry semantic-convention name: the conventions are followed for grammar, units and
+// attribute shape, while the names stay gosoline's own, so nothing gosoline exports can be mistaken
+// for the convention's metric.
 const otelGosolinePrefix = "gosoline."
-
-// semanticConventionNamespaces holds the namespaces an OpenTelemetry semantic convention owns.
-// Membership is matched exactly, so `db.repo` is gosoline's while `db.client` is the convention's.
-var semanticConventionNamespaces = map[string]struct{}{
-	"db.client":   {},
-	"http.client": {},
-	"http.server": {},
-	"messaging":   {},
-	"rpc.server":  {},
-}
-
-// gosolineNamesInSemanticConventionNamespaces holds the canonical names gosoline invents inside a
-// namespace a semantic convention owns. They carry the gosoline prefix despite their namespace.
-var gosolineNamesInSemanticConventionNamespaces = map[string]struct{}{
-	"db.client.connections":         {},
-	"http.server.connection.count":  {},
-	"http.server.rejected.requests": {},
-}
 
 // canonicalName joins a canonical namespace and leaf into the dotted canonical form. A leaf without
 // a namespace is its own canonical name.
@@ -66,32 +50,15 @@ func renderPrometheusName(namespace, leaf string, unit types.StandardUnit, metri
 }
 
 // renderOtelName renders a canonical namespace and leaf into the dotted canonical form, carrying no
-// application prefix because identity is a resource attribute. The name is prefixed with `gosoline.`
-// unless the metric corresponds to an OpenTelemetry semantic convention. A datum without a namespace
-// keeps its normalized name, so metrics authored outside gosoline are exported unchanged.
+// application prefix because identity is a resource attribute. Every name is prefixed with
+// `gosoline.`, so no exported name collides with an OpenTelemetry semantic convention. A datum without
+// a namespace keeps its normalized name, so metrics authored outside gosoline are exported unchanged.
 func renderOtelName(namespace, leaf string) string {
 	if namespace == "" {
 		return FormatOtelMetricName(leaf)
 	}
 
-	name := canonicalName(namespace, leaf)
-	if isSemanticConvention(namespace, name) {
-		return name
-	}
-
-	return otelGosolinePrefix + name
-}
-
-// isSemanticConvention reports whether a canonical name is defined by an OpenTelemetry semantic
-// convention rather than invented by gosoline.
-func isSemanticConvention(namespace, name string) bool {
-	if _, ok := gosolineNamesInSemanticConventionNamespaces[name]; ok {
-		return false
-	}
-
-	_, ok := semanticConventionNamespaces[namespace]
-
-	return ok
+	return otelGosolinePrefix + canonicalName(namespace, leaf)
 }
 
 // prometheusUnitSuffix returns the suffix the Prometheus convention requires for a datum: the plural

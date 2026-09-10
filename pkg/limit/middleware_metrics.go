@@ -10,10 +10,10 @@ import (
 const (
 	metricNamespace = "limit"
 
-	MetricNameRateLimitRelease  = "rate_limit.releases"
-	MetricNameRateLimitTake     = "rate_limit.takes"
-	MetricNameRateLimitThrottle = "rate_limit.throttles"
-	MetricNameRateLimitError    = "rate_limit.errors"
+	MetricNameRateLimitRelease  = "releases"
+	MetricNameRateLimitTake     = "takes"
+	MetricNameRateLimitThrottle = "throttles"
+	MetricNameRateLimitError    = "errors"
 )
 
 func init() {
@@ -65,9 +65,8 @@ func (m metricMiddleware) buildMetric(metricName string, i Invocation) *metric.D
 		Timestamp:  clock.Provider.Now(),
 		MetricName: metricName,
 		Dimensions: metric.Dimensions{
-			"trace.id":     i.GetTraceId(),
-			"limit.name":   i.GetName(),
-			"limit.prefix": i.GetPrefix(),
+			"name":   i.GetName(),
+			"prefix": i.GetPrefix(),
 		},
 		Value: 1,
 		Unit:  metric.UnitCount,

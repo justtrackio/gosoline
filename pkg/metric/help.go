@@ -5,17 +5,6 @@ import (
 	"sync"
 )
 
-// The help texts of the metrics an OpenTelemetry semantic convention defines. They are declared here
-// rather than in the emitting packages because several packages emit the same semantic-convention
-// metric: a stream consumer, a Kafka consumer and a Kinesis shard reader all report their processing
-// under `messaging`. A backend keeps one description per metric name, so these have to agree.
-const (
-	HelpMessagingProcessDuration         = "duration of processing a received message"
-	HelpMessagingClientConsumedMessages  = "messages consumed from a destination"
-	HelpMessagingClientSentMessages      = "messages produced to a destination"
-	HelpMessagingClientOperationDuration = "duration of a messaging client operation"
-)
-
 var (
 	metricHelpLock sync.RWMutex
 	metricHelps    = map[string]string{}

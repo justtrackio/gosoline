@@ -32,7 +32,27 @@ file of its own; `pkg/metric` must not restore exported `metric.Namespace*` cons
 compatibility aliases. A package passes its namespace once to
 `metric.NewWriter(namespace, defaults...)`, which stamps it onto every datum that does not already
 carry one. A package emitting into two namespaces, such as a Kafka consumer reporting both
-`messaging.*` and `kafka.consumer.*`, overrides the datum namespace explicitly.
+`kafka.consumer.*` and `kafka.*`, overrides the datum namespace explicitly.
+
+### Naming grammar
+
+Every metric follows these rules, so two metrics expressing the same kind of value are spelled the
+same way. **No gosoline metric carries a canonical OpenTelemetry semantic-convention name**: the
+conventions are followed for grammar, units and attribute shape, and the OTEL renderer prefixes every
+name with `gosoline.` so nothing gosoline exports can be mistaken for the convention's metric.
+
+1. The namespace names the owner. Never repeat it in the leaf.
+2. A monotonic counter of events is `[qualifier.]<plural-noun>`, the qualifier a past participle -
+   `consumed.messages`, `sent.messages`, `polls`, `rebalances`.
+3. A current amount is `<thing>.count` on a gauge - `shard.count`, `active_request.count`.
+4. Elapsed time is `<operation>.duration` on a histogram, in milliseconds. Never `delay`, never a
+   bare `duration`.
+5. Bytes are `<thing>.size`. Items per batch are `<thing>.<plural-noun>`, never `.size`.
+6. A failure is not its own metric: put `error.type` on the metric recording the operation, with
+   `{{default}}` when it succeeded.
+7. Components are lowercase, words inside a component joined by an underscore, hierarchy by a dot.
+8. An attribute key never repeats its metric's namespace. `error.type` is the one key taken verbatim
+   from a semantic convention; every other key is gosoline's own and carries no prefix.
 
 ### Permanent namespace-owner table
 
@@ -52,7 +72,6 @@ carry one. A package emitting into two namespaces, such as a Kafka consumer repo
 | `kvstore` | `pkg/kvstore` |
 | `limit` | `pkg/limit` |
 | `mdlsub` | `pkg/mdlsub` |
-| `messaging` | `pkg/cloud/aws/kinesis`, `pkg/kafka/consumer`, `pkg/kafka/producer`, `pkg/stream` |
 | `metric` | `pkg/metric` |
 | `rpc.server` | `pkg/grpcserver` |
 | `smpl` | `pkg/smpl` |
@@ -64,9 +83,10 @@ Each writer renders that one authored name into its own convention:
 |--------|--------------------------------------------------|
 | CloudWatch | `HttpServerRequestDuration`, unscaled, milliseconds |
 | Prometheus | `gosoline_http_server_request_duration_seconds`, scaled to seconds |
-| OTEL | `http.server.request.duration`, unit `s` on the instrument |
+| OTEL | `gosoline.http.server.request.duration`, unit `s` on the instrument |
 
-The OTEL renderer prefixes `gosoline.` unless an OpenTelemetry semantic convention owns the metric.
+The OTEL renderer prefixes `gosoline.` unconditionally, so no exported name is a canonical
+semantic-convention metric even where the namespace and leaf coincide with one.
 The Prometheus writer carries the fixed namespace `gosoline`, which names the framework that authored
 the metric: application identity belongs in the labels the scrape target is discovered with, so it is
 not part of the exported name. Prometheus adds the base-unit suffix and `_total` on counters, both
@@ -85,11 +105,10 @@ Every authored metric has a help text, registered once by its emitting package t
 OTEL writers resolve it via `resolveHelp`, which prefers a help the datum's own `Kind` carries (set
 with `WithHelp`), falls back to the registered one, and only then to a description of the unit.
 
-Registering the same help twice is a no-op, which is what lets the packages sharing `messaging.*`
-each register it. Registering a **different** help for the same name panics on purpose: a backend
-keeps one description per metric name, so a second description is rejected when the metric is
-registered and that metric silently stops being exported. The help of a metric several packages emit
-is therefore declared once, as a `metric.Help*` constant.
+Registering the same help twice is a no-op. Registering a **different** help for the same name panics
+on purpose: a backend keeps one description per metric name, so a second description is rejected when
+the metric is registered and that metric silently stops being exported. Each metric now has exactly
+one emitting package, so no help text needs to be shared across packages.
 
 Every gosoline metric declares its `Kind` explicitly. Unit-based inference (`inferKind`) remains only
 as the fallback for metrics authored outside gosoline, and is shared by both writers so they can never

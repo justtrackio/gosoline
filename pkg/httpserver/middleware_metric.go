@@ -16,10 +16,10 @@ const (
 	MetricHttpRequestDuration  = "request.duration"
 	MetricHttpRequestsRejected = "rejected.requests"
 
-	dimensionServerName = "http.server.name"
-	dimensionRoute      = "http.route"
-	dimensionMethod     = "http.request.method"
-	dimensionStatusCode = "http.response.status_code"
+	dimensionServerName = "name"
+	dimensionRoute      = "route"
+	dimensionMethod     = "request.method"
+	dimensionStatusCode = "response.status_code"
 )
 
 func NewMetricMiddleware(name string, metricRecorder ServerMetricRecorder) (middleware gin.HandlerFunc, setupHandler func(definitions []Definition)) {

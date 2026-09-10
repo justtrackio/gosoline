@@ -32,9 +32,9 @@ func TestProducerProduceSyncSuccess(t *testing.T) {
 		}
 
 		return hasNoUnitOrKind(data) &&
-			data[0].MetricName == "batch.size" && data[0].Value == 2.0 &&
-			data[1].MetricName == "client.operation.duration" &&
-			data[2].MetricName == "client.sent.messages" && data[2].Value == 2.0
+			data[0].MetricName == "batch.records" && data[0].Value == 2.0 &&
+			data[1].MetricName == "produce.duration" &&
+			data[2].MetricName == "sent.messages" && data[2].Value == 2.0
 	})).Once()
 
 	p := producer.NewProducerWithInterfaces(writer, metricWriter, "test-producer", "test-topic")
@@ -60,9 +60,9 @@ func TestProducerProduceSyncFailure(t *testing.T) {
 		}
 
 		return hasNoUnitOrKind(data) &&
-			data[0].MetricName == "batch.size" && data[0].Value == 2.0 &&
-			data[1].MetricName == "client.operation.duration" &&
-			data[2].MetricName == "client.sent.messages" && data[2].Value == 1.0 &&
+			data[0].MetricName == "batch.records" && data[0].Value == 2.0 &&
+			data[1].MetricName == "produce.duration" &&
+			data[2].MetricName == "sent.messages" && data[2].Value == 1.0 &&
 			data[3].MetricName == "send.errors" && data[3].Value == 1.0
 	})).Once()
 
@@ -90,9 +90,9 @@ func TestProducerProduceSyncBatchSize(t *testing.T) {
 		}
 
 		return hasNoUnitOrKind(data) &&
-			data[0].MetricName == "batch.size" && data[0].Value == 3.0 &&
-			data[1].MetricName == "client.operation.duration" &&
-			data[2].MetricName == "client.sent.messages" && data[2].Value == 3.0
+			data[0].MetricName == "batch.records" && data[0].Value == 3.0 &&
+			data[1].MetricName == "produce.duration" &&
+			data[2].MetricName == "sent.messages" && data[2].Value == 3.0
 	})).Once()
 
 	p := producer.NewProducerWithInterfaces(writer, metricWriter, "test-producer", "test-topic")

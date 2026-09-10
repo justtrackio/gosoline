@@ -38,8 +38,8 @@ const (
 	// of its own.
 	metricRequestDuration = "request.duration"
 
-	dimensionMethod     = "http.request.method"
-	dimensionStatusCode = "http.response.status_code"
+	dimensionMethod     = "request.method"
+	dimensionStatusCode = "response.status_code"
 )
 
 func init() {

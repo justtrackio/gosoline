@@ -129,7 +129,7 @@ func (d *defaultDecider) Decide(ctx context.Context, overwriteStrategies ...Stra
 		Value:      1.0,
 		Kind:       metric.KindCounter.Build(),
 		Dimensions: map[string]string{
-			"sampling.sampled": strconv.FormatBool(finalIsSampled),
+			"sampled": strconv.FormatBool(finalIsSampled),
 		},
 	})
 

@@ -21,37 +21,36 @@ import (
 
 const (
 	metricNamespaceCloudAwsKinesis = "cloud.aws.kinesis"
-	metricNamespaceMessaging       = "messaging"
 
-	metricNameAcquireShardDelaySeconds = "acquire.delay"
-	metricNameSleepDuration            = "sleep.duration"
-	metricNameFailedRecords            = "consume.errors"
-	metricNameMillisecondsBehind       = "lag"
-	metricNameProcessDuration          = "process.duration"
-	metricNameReadCount                = "reads"
-	metricNameReadRecords              = "client.consumed.messages"
-	metricNameWaitDuration             = "wait.duration"
-	metricNameShardCount               = "shard.count"
-	metricNameClientCount              = "client.count"
+	metricNameAcquireShardDuration = "acquire.duration"
+	metricNameSleepDuration        = "sleep.duration"
+	metricNameFailedRecords        = "consume.errors"
+	metricNameMillisecondsBehind   = "lag"
+	metricNameProcessDuration      = "process.duration"
+	metricNameReadCount            = "reads"
+	metricNameReadRecords          = "consumed.messages"
+	metricNameWaitDuration         = "wait.duration"
+	metricNameShardCount           = "shard.count"
+	metricNameClientCount          = "client.count"
 
-	dimensionStream = metric.DimensionMessagingDestination
-	dimensionShard  = "messaging.destination.partition.id"
+	dimensionStream = "stream.name"
+	dimensionShard  = "partition.id"
 )
 
 func init() {
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameReadCount, "read operations a kinesis shard reader performed")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameFailedRecords, "records a kinesis shard reader failed to process")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, "age of the last record a kinesis shard reader processed")
-	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameAcquireShardDelaySeconds, "time a kinesis shard reader waited to acquire a shard")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameAcquireShardDuration, "time a kinesis shard reader waited to acquire a shard")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameSleepDuration, "time a kinesis shard reader slept before polling again")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameWaitDuration, "time a kinesis shard reader waited for records to process")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameShardCount, "shards a kinesis stream currently has")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameClientCount, "clients currently consuming a kinesis stream")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNamePutRecordsBatchSize, "records a kinesis record writer sent per batch")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNamePutRecordsFailure, "records a kinesis record writer failed to send")
-	metric.RegisterHelp(metricNamespaceMessaging, metricNameReadRecords, metric.HelpMessagingClientConsumedMessages)
-	metric.RegisterHelp(metricNamespaceMessaging, metricNamePutRecords, metric.HelpMessagingClientSentMessages)
-	metric.RegisterHelp(metricNamespaceMessaging, metricNameProcessDuration, metric.HelpMessagingProcessDuration)
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameReadRecords, "records a kinesis shard reader took in")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNamePutRecords, "records a kinesis record writer handed to the stream")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameProcessDuration, "duration of processing one batch of kinesis records")
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name ShardReader
@@ -220,7 +219,7 @@ func (s *shardReader) acquireShard(ctx context.Context) (bool, error) {
 		}
 
 		tookSoFar := s.clock.Since(start)
-		s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameAcquireShardDelaySeconds, tookSoFar.Seconds(), metric.UnitSecondsMaximum, metric.KindHistogram.Build())
+		s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameAcquireShardDuration, tookSoFar.Seconds(), metric.UnitSecondsMaximum, metric.KindHistogram.Build())
 
 		timer := s.clock.NewTimer(s.settings.WaitTime)
 
@@ -423,8 +422,8 @@ func (s *shardReader) getAndProcessRecords(
 	}
 
 	processDuration := s.clock.Since(processStart)
-	s.writeMetric(ctx, metricNamespaceMessaging, metricNameProcessDuration, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
-	s.writeMetric(ctx, metricNamespaceMessaging, metricNameReadRecords, float64(processedSize), metric.UnitCount, metric.KindCounter.Build())
+	s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameProcessDuration, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
+	s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameReadRecords, float64(processedSize), metric.UnitCount, metric.KindCounter.Build())
 
 	s.logger.WithChannel("kinsumer-read").WithFields(log.Fields{
 		"count":       processedSize,
@@ -631,7 +630,7 @@ func getShardReaderDefaultMetrics(stream Stream) metric.Data {
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			Namespace:  metricNamespaceMessaging,
+			Namespace:  metricNamespaceCloudAwsKinesis,
 			MetricName: metricNameReadRecords,
 			Dimensions: map[string]string{
 				dimensionStream: string(stream),

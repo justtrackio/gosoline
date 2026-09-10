@@ -213,6 +213,6 @@ func (s *DeciderTestSuite) expectSamplingMetric(writer *metricMocks.Writer, samp
 			d.MetricName == "decisions" &&
 			d.Unit == metric.UnitCount &&
 			d.Value == 1.0 &&
-			d.Dimensions["sampling.sampled"] == sampledStr
+			d.Dimensions["sampled"] == sampledStr
 	})).Return()
 }

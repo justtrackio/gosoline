@@ -20,12 +20,12 @@ import (
 const (
 	AttributeAggregate      = "goso.aggregate"
 	AttributeAggregateCount = "goso.aggregate.count"
-	metricNameMessageCount  = "messages"
-	metricNameBatchSize     = "batch.size"
-	metricNameAggregateSize = "aggregate.size"
+	metricNameMessageCount  = "produced.messages"
+	metricNameBatchSize     = "batch.messages"
+	metricNameAggregateSize = "aggregate.messages"
 	metricNameIdleDuration  = "idle.duration"
 
-	dimensionProducerDaemon = "stream.producer.name"
+	dimensionProducerDaemon = "producer.name"
 )
 
 type (

@@ -80,7 +80,7 @@ func (o *redisListOutput) writeListWriteMetric(ctx context.Context, length int) 
 		Timestamp:  time.Now(),
 		MetricName: metricNameRedisListOutputWrites,
 		Dimensions: map[string]string{
-			metric.DimensionMessagingDestination: redisListDestination(o.settings.ServerName, o.settings.Key),
+			dimensionList: redisListDestination(o.settings.ServerName, o.settings.Key),
 		},
 		Value: float64(length),
 	}}
@@ -94,7 +94,7 @@ func getRedisListOutputDefaultMetrics(settings *RedisListOutputSettings) metric.
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameRedisListOutputWrites,
 			Dimensions: map[string]string{
-				metric.DimensionMessagingDestination: redisListDestination(settings.ServerName, settings.Key),
+				dimensionList: redisListDestination(settings.ServerName, settings.Key),
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,

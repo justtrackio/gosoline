@@ -116,30 +116,30 @@ func TestRenderOtelName(t *testing.T) {
 		leaf      string
 		expected  string
 	}{
-		"semantic convention metric": {
+		"name a semantic convention also defines is still prefixed": {
 			namespace: "http.server",
 			leaf:      "request.duration",
-			expected:  "http.server.request.duration",
+			expected:  "gosoline.http.server.request.duration",
 		},
 		"gosoline specific metric": {
 			namespace: "stream.consumer",
 			leaf:      "errors",
 			expected:  "gosoline.stream.consumer.errors",
 		},
-		"gosoline metric inside a semantic convention namespace": {
+		"multi component leaf": {
 			namespace: "http.server",
 			leaf:      "rejected.requests",
 			expected:  "gosoline.http.server.rejected.requests",
 		},
-		"semantic convention namespace is matched exactly": {
+		"compound word inside a leaf": {
 			namespace: "db.repo",
 			leaf:      "model_event.notifications",
 			expected:  "gosoline.db.repo.model_event.notifications",
 		},
-		"semantic convention messaging metric": {
-			namespace: "messaging",
+		"per transport processing metric": {
+			namespace: "kafka.consumer",
 			leaf:      "process.duration",
-			expected:  "messaging.process.duration",
+			expected:  "gosoline.kafka.consumer.process.duration",
 		},
 	}
 

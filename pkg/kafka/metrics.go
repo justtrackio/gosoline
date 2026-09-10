@@ -9,11 +9,11 @@ import (
 // Dimension keys for all Kafka metrics. A key an OpenTelemetry semantic convention defines is spelled
 // the way the convention spells it.
 const (
-	DimensionClientType = "kafka.client.type"
-	DimensionClient     = "kafka.client.name"
-	DimensionTopic      = metric.DimensionMessagingDestination
-	DimensionPartition  = "messaging.destination.partition.id"
-	DimensionBroker     = "kafka.broker.address"
+	DimensionClientType = "client.type"
+	DimensionClient     = "client.name"
+	DimensionTopic      = "topic.name"
+	DimensionPartition  = "partition.id"
+	DimensionBroker     = "broker.address"
 )
 
 // The values DimensionClientType takes, naming which side of the connection reported the metric.

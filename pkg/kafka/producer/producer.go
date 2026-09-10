@@ -17,19 +17,18 @@ import (
 const (
 	metricNamespaceKafka         = "kafka"
 	metricNamespaceKafkaProducer = "kafka.producer"
-	metricNamespaceMessaging     = "messaging"
 
-	metricNameRecordsSent       = "client.sent.messages"
+	metricNameRecordsSent       = "sent.messages"
 	metricNameRecordsSentFailed = "send.errors"
-	metricNameProduceBatchSize  = "batch.size"
-	metricNameProduceDuration   = "client.operation.duration"
+	metricNameProduceBatchSize  = "batch.records"
+	metricNameProduceDuration   = "produce.duration"
 )
 
 func init() {
 	metric.RegisterHelp(metricNamespaceKafkaProducer, metricNameProduceBatchSize, "records a kafka producer sent per batch")
 	metric.RegisterHelp(metricNamespaceKafkaProducer, metricNameRecordsSentFailed, "records a kafka producer failed to send")
-	metric.RegisterHelp(metricNamespaceMessaging, metricNameRecordsSent, metric.HelpMessagingClientSentMessages)
-	metric.RegisterHelp(metricNamespaceMessaging, metricNameProduceDuration, metric.HelpMessagingClientOperationDuration)
+	metric.RegisterHelp(metricNamespaceKafkaProducer, metricNameRecordsSent, "records a kafka producer handed to the broker")
+	metric.RegisterHelp(metricNamespaceKafkaProducer, metricNameProduceDuration, "duration of a kafka producer send")
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Producer
@@ -90,7 +89,7 @@ func (p *producer) ProduceSync(ctx context.Context, records ...*kgo.Record) erro
 
 	data := metric.Data{
 		{Priority: metric.PriorityHigh, MetricName: metricNameProduceBatchSize, Dimensions: dims, Value: float64(len(records))},
-		{Priority: metric.PriorityHigh, Namespace: metricNamespaceMessaging, MetricName: metricNameProduceDuration, Dimensions: dims, Value: durationMs},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaProducer, MetricName: metricNameProduceDuration, Dimensions: dims, Value: durationMs},
 	}
 
 	if err := results.FirstErr(); err != nil {
@@ -124,7 +123,7 @@ func (p *producer) ProduceSync(ctx context.Context, records ...*kgo.Record) erro
 func recordsSentDatum(dims metric.Dimensions, value float64) *metric.Datum {
 	return &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		Namespace:  metricNamespaceMessaging,
+		Namespace:  metricNamespaceKafkaProducer,
 		MetricName: metricNameRecordsSent,
 		Dimensions: dims,
 		Value:      value,
@@ -135,9 +134,9 @@ func getProducerDefaultMetrics(name, topicName string) metric.Data {
 	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeProducer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName}
 
 	return metric.Data{
-		{Priority: metric.PriorityHigh, Namespace: metricNamespaceMessaging, MetricName: metricNameRecordsSent, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaProducer, MetricName: metricNameRecordsSent, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNameRecordsSentFailed, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNameProduceBatchSize, Dimensions: dims, Unit: metric.UnitCountAverage, Kind: metric.KindHistogram.Build()},
-		{Priority: metric.PriorityHigh, Namespace: metricNamespaceMessaging, MetricName: metricNameProduceDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaProducer, MetricName: metricNameProduceDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
 	}
 }

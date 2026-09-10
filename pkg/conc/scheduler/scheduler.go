@@ -15,10 +15,10 @@ import (
 const (
 	metricNamespace = "conc.scheduler"
 
-	metricNameBatchSize = "batch.size"
-	metricNameTaskDelay = "task.delay"
+	metricNameBatchSize = "batch.tasks"
+	metricNameTaskDelay = "task.queue.duration"
 
-	dimensionScheduler = "scheduler.name"
+	dimensionScheduler = "name"
 )
 
 func init() {

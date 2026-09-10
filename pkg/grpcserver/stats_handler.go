@@ -24,11 +24,11 @@ const (
 
 	// MetricRpcServerDuration records how long an RPC took. Its observation count is the request count,
 	// so a separate request counter is not needed.
-	MetricRpcServerDuration = "duration"
+	MetricRpcServerDuration = "request.duration"
 
 	// The semantic-convention attributes identifying the RPC that was served.
-	MetricDimensionRpcService = "rpc.service"
-	MetricDimensionRpcMethod  = "rpc.method"
+	MetricDimensionRpcService = "service"
+	MetricDimensionRpcMethod  = "method"
 )
 
 type statsHandler struct {

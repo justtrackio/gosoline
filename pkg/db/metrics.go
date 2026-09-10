@@ -19,7 +19,7 @@ const (
 
 	// dimensionConnectionState is the semantic-convention attribute for the state a pooled database
 	// connection is in.
-	dimensionConnectionState = "db.client.connection.state"
+	dimensionConnectionState = "connection.state"
 
 	connectionStateIdle = "idle"
 	connectionStateUsed = "used"

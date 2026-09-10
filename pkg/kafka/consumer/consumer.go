@@ -22,9 +22,8 @@ import (
 const (
 	metricNamespaceKafka         = "kafka"
 	metricNamespaceKafkaConsumer = "kafka.consumer"
-	metricNamespaceMessaging     = "messaging"
 
-	metricNameRecordsConsumed = "client.consumed.messages"
+	metricNameRecordsConsumed = "consumed.messages"
 	metricNamePollCount       = "polls"
 	metricNamePollDuration    = "poll.duration"
 )
@@ -37,8 +36,8 @@ func init() {
 	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameWaitDuration, "time a kafka partition consumer waited for a record to process")
 	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameRebalanceCount, "consumer group rebalances a kafka consumer took part in")
 	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameRecordsConsumedFailed, "records a kafka consumer failed to process")
-	metric.RegisterHelp(metricNamespaceMessaging, metricNameRecordsConsumed, metric.HelpMessagingClientConsumedMessages)
-	metric.RegisterHelp(metricNamespaceMessaging, metricNameProcessDuration, metric.HelpMessagingProcessDuration)
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameRecordsConsumed, "records a kafka consumer took in from its topic")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameProcessDuration, "duration of processing one record in a kafka consumer callback")
 }
 
 // ReaderFactory creates a Reader using the run context and the partition manager.
@@ -330,7 +329,7 @@ func (c *consumer) writeMetrics(ctx context.Context, pollDurationMs float64, rec
 	c.metricWriter.Write(ctx, metric.Data{
 		{Priority: metric.PriorityHigh, MetricName: metricNamePollCount, Dimensions: dims, Value: 1.0},
 		{Priority: metric.PriorityHigh, MetricName: metricNamePollDuration, Dimensions: dims, Value: pollDurationMs},
-		{Priority: metric.PriorityHigh, Namespace: metricNamespaceMessaging, MetricName: metricNameRecordsConsumed, Dimensions: dims, Value: float64(recordCount)},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaConsumer, MetricName: metricNameRecordsConsumed, Dimensions: dims, Value: float64(recordCount)},
 	})
 }
 
@@ -339,11 +338,11 @@ func getConsumerDefaultMetrics(name, topicName string) metric.Data {
 	partitionDims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName, kafka.DimensionPartition: metric.DimensionDefault}
 
 	return metric.Data{
-		{Priority: metric.PriorityHigh, Namespace: metricNamespaceMessaging, MetricName: metricNameRecordsConsumed, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaConsumer, MetricName: metricNameRecordsConsumed, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNameRecordsConsumedFailed, Dimensions: partitionDims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNamePollCount, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNamePollDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
-		{Priority: metric.PriorityHigh, Namespace: metricNamespaceMessaging, MetricName: metricNameProcessDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaConsumer, MetricName: metricNameProcessDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNameWaitDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNameCommitDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNameCommitFailures, Dimensions: partitionDims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},

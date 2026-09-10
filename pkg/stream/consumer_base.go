@@ -22,16 +22,15 @@ import (
 )
 
 const (
-	metricNamespace          = "stream"
-	metricNamespaceMessaging = "messaging"
+	metricNamespace = "stream"
 
 	metricNameConsumerDuration        = "process.duration"
 	metricNameConsumerError           = "errors"
-	metricNameConsumerProcessedCount  = "client.consumed.messages"
+	metricNameConsumerProcessedCount  = "consumed.messages"
 	metricNameConsumerRetryOperations = "retry.operations"
 
-	dimensionConsumer       = "stream.consumer.name"
-	dimensionRetryOperation = "retry.operation"
+	dimensionConsumer       = "consumer.name"
+	dimensionRetryOperation = "operation"
 
 	retryOperationGet = "get"
 	retryOperationPut = "put"
@@ -51,8 +50,8 @@ func init() {
 	metric.RegisterHelp(metricNamespace, metricNameRedisListInputLength, "messages a redis list input currently holds")
 	metric.RegisterHelp(metricNamespace, metricNameRedisListInputReads, "read operations a redis list input performed")
 	metric.RegisterHelp(metricNamespace, metricNameRedisListOutputWrites, "write operations a redis list output performed")
-	metric.RegisterHelp(metricNamespaceMessaging, metricNameConsumerProcessedCount, metric.HelpMessagingClientConsumedMessages)
-	metric.RegisterHelp(metricNamespaceMessaging, metricNameConsumerDuration, metric.HelpMessagingProcessDuration)
+	metric.RegisterHelp(metricNamespace, metricNameConsumerProcessedCount, "messages a consumer took in from its input")
+	metric.RegisterHelp(metricNamespace, metricNameConsumerDuration, "duration of processing one message in a consumer callback")
 }
 
 type ConsumerMetadata struct {
@@ -520,7 +519,6 @@ func (c *baseConsumer) writeMetricDurationAndProcessedCount(ctx context.Context,
 	c.metricWriter.Write(ctx, metric.Data{
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
-			Namespace:  metricNamespaceMessaging,
 			MetricName: metricNameConsumerDuration,
 			Dimensions: map[string]string{
 				dimensionConsumer: c.name,
@@ -531,7 +529,6 @@ func (c *baseConsumer) writeMetricDurationAndProcessedCount(ctx context.Context,
 		},
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
-			Namespace:  metricNamespaceMessaging,
 			MetricName: metricNameConsumerProcessedCount,
 			Dimensions: map[string]string{
 				dimensionConsumer: c.name,
@@ -559,7 +556,6 @@ func getConsumerDefaultMetrics(name string) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			Namespace:  metricNamespaceMessaging,
 			MetricName: metricNameConsumerProcessedCount,
 			Dimensions: map[string]string{
 				dimensionConsumer: name,

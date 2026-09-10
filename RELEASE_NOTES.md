@@ -180,24 +180,23 @@ backend writers apply their rendering rules after these names are authored.
 | Namespace | Canonical leaves |
 |---|---|
 | `blob` | `batch.operations` |
-| `cloud.aws.kinesis` | `reads`; `consume.errors`; `lag`; `acquire.delay`; `sleep.duration`; `wait.duration`; `shard.count`; `client.count`; `batch.size`; `send.errors` |
-| `conc.scheduler` | `batch.size`; `task.delay` |
+| `cloud.aws.kinesis` | `consumed.messages`; `sent.messages`; `process.duration`; `reads`; `consume.errors`; `lag`; `acquire.duration`; `sleep.duration`; `wait.duration`; `shard.count`; `client.count`; `batch.records`; `send.errors` |
+| `conc.scheduler` | `batch.tasks`; `task.queue.duration` |
 | `db.client` | `connection.count`; `connections` |
 | `db.repo` | `operation.duration`; `model_event.notifications` |
 | `ddb` | `operation.duration` |
 | `http.client` | `request.duration` |
-| `http.server` | `request.duration`; `rejected.requests`; `active_requests`; `connection.count` |
+| `http.server` | `request.duration`; `rejected.requests`; `active_request.count`; `connection.count` |
 | `kafka` | `connects`; `throttles`; `throttle.duration`; `produce.batch.records`; `produce.batch.size`; `produce.batch.compressed.size`; `fetch.batch.records`; `fetch.batch.size`; `fetch.batch.compressed.size` |
-| `kafka.consumer` | `polls`; `poll.duration`; `commit.duration`; `commit.errors`; `wait.duration`; `rebalances`; `consume.errors` |
-| `kafka.producer` | `batch.size`; `send.errors` |
+| `kafka.consumer` | `consumed.messages`; `process.duration`; `polls`; `poll.duration`; `commit.duration`; `commit.errors`; `wait.duration`; `rebalances`; `consume.errors` |
+| `kafka.producer` | `sent.messages`; `produce.duration`; `batch.records`; `send.errors` |
 | `kvstore` | `reads`; `writes`; `deletes`; `hits`; `item.count` |
-| `limit` | `rate_limit.takes`; `rate_limit.releases`; `rate_limit.throttles`; `rate_limit.errors` |
+| `limit` | `takes`; `releases`; `throttles`; `errors` |
 | `mdlsub` | `consumed.events`; `skipped.events`; `consume.errors` |
-| `messaging` | `process.duration`; `client.consumed.messages`; `client.sent.messages`; `client.operation.duration` |
 | `metric` | `log.records` |
-| `rpc.server` | `duration` |
+| `rpc.server` | `request.duration` |
 | `smpl` | `decisions` |
-| `stream` | `errors`; `retry.operations`; `messages`; `batch.size`; `aggregate.size`; `idle.duration`; `message.count`; `reads`; `writes` |
+| `stream` | `consumed.messages`; `process.duration`; `errors`; `retry.operations`; `produced.messages`; `batch.messages`; `aggregate.messages`; `idle.duration`; `message.count`; `reads`; `writes` |
 
 #### Focused contract update status
 
@@ -282,31 +281,37 @@ Gosoline no longer produces redundant aggregate `KindTotal` data:
 Prometheus may still render counter instruments with its conventional `_total` suffix. That naming
 rule is distinct from the removed framework-authored `KindTotal` aggregate datum.
 
-#### Dimension-key policy
+#### Attribute-key policy
 
-Every key an OpenTelemetry semantic convention defines remains spelled the way that convention
-spells it; all existing custom dimensions remain unchanged in this focused revision. Additional
-semantic-convention attributes may be added where appropriate. Future custom metric attributes must
-use a unique owned prefix such as `gosoline.*`; do not rename existing custom keys solely to apply
-that future convention.
+**No gosoline metric carries a canonical OpenTelemetry semantic-convention name, and no attribute key
+carries a namespace prefix.** The conventions are followed for grammar, units and attribute shape; the
+names stay gosoline's own, and the OTEL renderer prefixes every one with `gosoline.`. `error.type` is
+the single key taken verbatim from a convention, because its values are what make an operation metric
+self-describing.
 
-| Former key | Canonical key |
+An attribute key never repeats the namespace of the metric it is attached to - the metric already names
+its subsystem.
+
+| Former key | Key now |
 |---|---|
-| `Consumer` (stream) | `stream.consumer.name` |
-| `ProducerDaemon` | `stream.producer.name` |
-| `Scheduler` | `scheduler.name` |
+| `Consumer` (stream) | `consumer.name` |
+| `ProducerDaemon` | `producer.name` |
+| `Scheduler` | `name` |
 | `ModelId` | `model.id` |
 | `model`, `store` (kvstore) | `model.id`, `store.type` |
-| `Operation` (blob) | `blob.operation` |
-| `Operation` (db, ddb) | `db.operation.name` |
-| `Type` (db connections) | `db.client.connection.state`, values `used` and `idle` |
-| `StreamName`, `Topic` | `messaging.destination.name` |
-| `ShardId`, `Partition` | `messaging.destination.partition.id` |
-| `ClientType`, `Client`, `Broker` | `kafka.client.type`, `kafka.client.name`, `kafka.broker.address` |
-| `Method`, `Path`, `ServerName` | `http.request.method`, `http.route`, `http.server.name` |
-| `full_method` | `rpc.service` and `rpc.method` |
-| `trace_id`, `name`, `prefix` (limit) | `trace.id`, `limit.name`, `limit.prefix` |
-| `sampled` | `sampling.sampled` |
+| `Operation` (blob) | `operation` |
+| `Operation` (db, ddb) | `operation.name` |
+| `Type` (db connections) | `connection.state`, values `used` and `idle` |
+| `Topic` | `topic.name` |
+| `StreamName` | `stream.name` |
+| redis list destination | `list.name` |
+| `ShardId`, `Partition` | `partition.id` |
+| `ClientType`, `Client`, `Broker` | `client.type`, `client.name`, `broker.address` |
+| `Method`, `Path`, `ServerName` | `request.method`, `route`, `name` |
+| `full_method` | `service` and `method` |
+| `name`, `prefix` (limit) | `name`, `prefix` |
+| `sampled` | `sampled` |
+| `trace_id` (limit) | **removed** - a trace id is unbounded cardinality and belongs on a span |
 
 ## Upgrade checklist
 

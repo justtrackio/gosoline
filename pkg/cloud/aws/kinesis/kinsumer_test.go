@@ -520,7 +520,7 @@ func (s *kinsumerTestSuite) mockShardDistribution(shardCount float64, clientCoun
 			Namespace:  "cloud.aws.kinesis",
 			MetricName: "shard.count",
 			Dimensions: metric.Dimensions{
-				metric.DimensionMessagingDestination: string(s.stream),
+				"stream.name": string(s.stream),
 			},
 			Value: shardCount,
 			Unit:  metric.UnitCountMaximum,
@@ -531,7 +531,7 @@ func (s *kinsumerTestSuite) mockShardDistribution(shardCount float64, clientCoun
 			Namespace:  "cloud.aws.kinesis",
 			MetricName: "client.count",
 			Dimensions: metric.Dimensions{
-				metric.DimensionMessagingDestination: string(s.stream),
+				"stream.name": string(s.stream),
 			},
 			Value: clientCount,
 			Unit:  metric.UnitCountMaximum,

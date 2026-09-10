@@ -71,7 +71,7 @@ func TestOtelWriterRendersCanonicalNames(t *testing.T) {
 		expectedName string
 		expectedUnit string
 	}{
-		"semantic convention metric": {
+		"name a semantic convention also defines": {
 			datum: &metric.Datum{
 				Priority:   metric.PriorityHigh,
 				Namespace:  "http.server",
@@ -80,7 +80,7 @@ func TestOtelWriterRendersCanonicalNames(t *testing.T) {
 				Value:      250,
 				Kind:       metric.KindHistogram.Build(),
 			},
-			expectedName: "http.server.request.duration",
+			expectedName: "gosoline.http.server.request.duration",
 			expectedUnit: "s",
 		},
 		"gosoline specific metric": {

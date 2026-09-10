@@ -16,7 +16,7 @@ const (
 	MetricNameDbOperationDuration = "operation.duration"
 
 	// dimensionOperation is the semantic-convention attribute naming the database operation.
-	dimensionOperation = "db.operation.name"
+	dimensionOperation = "operation.name"
 )
 
 type metricRepository struct {

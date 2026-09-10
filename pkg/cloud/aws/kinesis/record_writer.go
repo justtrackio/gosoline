@@ -22,9 +22,9 @@ import (
 const (
 	kinesisBatchSizeMax = 500
 
-	metricNamePutRecords          = "client.sent.messages"
+	metricNamePutRecords          = "sent.messages"
 	metricNamePutRecordsFailure   = "send.errors"
-	metricNamePutRecordsBatchSize = "batch.size"
+	metricNamePutRecordsBatchSize = "batch.records"
 )
 
 type Record struct {
@@ -260,7 +260,7 @@ func (w *recordWriter) writeMetrics(ctx context.Context, records int, failed int
 	w.metricWriter.Write(ctx, metric.Data{
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
-			Namespace:  metricNamespaceMessaging,
+			Namespace:  metricNamespaceCloudAwsKinesis,
 			MetricName: metricNamePutRecords,
 			Dimensions: dimensions,
 			Value:      float64(records - failed),
@@ -284,7 +284,7 @@ func getRecordWriterDefaultMetrics(streamName string) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			Namespace:  metricNamespaceMessaging,
+			Namespace:  metricNamespaceCloudAwsKinesis,
 			MetricName: metricNamePutRecords,
 			Dimensions: map[string]string{
 				dimensionStream: streamName,

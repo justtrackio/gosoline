@@ -79,7 +79,7 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 
 			var data metric.Data
 			data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameWaitDuration, waitMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
-			data = append(data, c.metricPair(metricNamespaceMessaging, metricNameProcessDuration, processMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
+			data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameProcessDuration, processMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
 			data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameCommitDuration, commitMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
 
 			if err != nil {

@@ -20,7 +20,7 @@ const (
 	metricNameLogRecords = "log.records"
 
 	// DimensionLogLevel names the level a log record was written at.
-	DimensionLogLevel = "log.level"
+	DimensionLogLevel = "level"
 )
 
 func LoggerHandlerFactory(_ cfg.Config, _ string) (log.Handler, error) {

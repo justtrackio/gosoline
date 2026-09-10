@@ -13,7 +13,7 @@ const (
 	metricNamespace = "http.server"
 
 	concurrencyMetricSampleInterval = 10 * time.Second
-	MetricHttpConcurrentRequests    = "active_requests"
+	MetricHttpConcurrentRequests    = "active_request.count"
 	MetricHttpOpenConnections       = "connection.count"
 )
 
