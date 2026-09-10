@@ -72,7 +72,7 @@ prefix stripped. It is **not** that attribute, and tooling keyed on the conventi
 
 ## The inventory
 
-63 metrics across 18 namespaces. `unit` is the authored unit; every writer renders it into its own
+62 metrics across 18 namespaces. `unit` is the authored unit; every writer renders it into its own
 convention (Prometheus scales durations to seconds and appends `_seconds`, OTEL sets the UCUM unit on
 the instrument).
 
@@ -95,14 +95,13 @@ the instrument).
 
 | Metric | Unit | Type | Attributes | Derived from |
 |---|---|---|---|---|
-| `consumed.messages` | count | counter | `client.type`, `client.name`, `topic.name` | `messaging.client.consumed.messages` |
+| `consumed.messages` | count | counter | `client.type`, `client.name`, `topic.name`, `partition.id`, `error.type` | `messaging.client.consumed.messages` |
 | `process.duration` | ms | histogram | `client.type`, `client.name`, `topic.name`, `partition.id` | `messaging.process.duration` |
 | `polls` | count | counter | `client.type`, `client.name`, `topic.name` | none |
 | `poll.duration` | ms | histogram | `client.type`, `client.name`, `topic.name` | none |
 | `commit.duration` | ms | histogram | + `partition.id`, `error.type` | none |
 | `wait.duration` | ms | histogram | + `partition.id` | none |
 | `rebalances` | count | counter | `client.type`, `client.name`, `topic.name` | none |
-| `consume.errors` | count | counter | + `partition.id` | none — see "Deliberate exceptions" |
 
 ### `kafka.producer` — `pkg/kafka/producer`
 
@@ -195,13 +194,6 @@ reports a per-record error code rather than an error value.
 | `metric.log.records` | count | counter | `level` | `pkg/metric` |
 
 ## Deliberate exceptions
-
-**`kafka.consumer.consume.errors` is still its own metric.** Rule 6 would fold it into an operation
-metric, but neither candidate works: `consumed.messages` is emitted per topic while the failures are
-counted per partition, so their attribute sets differ, and `process.duration` observes once per batch
-while the failures count records, so folding would change what the number means. Folding it needs the
-success series moved to partition granularity first, which changes its cardinality — a separate
-decision.
 
 **`limit.takes` is recorded when a take ends, not when it starts.** The middleware is told `OnTake`
 before the outcome is known, so counting there could not carry `outcome`. Attempts are the sum over

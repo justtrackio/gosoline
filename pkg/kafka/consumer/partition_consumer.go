@@ -13,10 +13,9 @@ import (
 )
 
 const (
-	metricNameProcessDuration       = "process.duration"
-	metricNameWaitDuration          = "wait.duration"
-	metricNameCommitDuration        = "commit.duration"
-	metricNameRecordsConsumedFailed = "consume.errors"
+	metricNameProcessDuration = "process.duration"
+	metricNameWaitDuration    = "wait.duration"
+	metricNameCommitDuration  = "commit.duration"
 )
 
 type PartitionConsumer struct {
@@ -69,7 +68,7 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 			waitMs := float64(c.clock.Since(waitStart).Milliseconds())
 
 			processStart := c.clock.Now()
-			handleFailed := c.handleWithRecovery(ctx, records)
+			handleErr := c.handleWithRecovery(ctx, records)
 			processMs := float64(c.clock.Since(processStart).Milliseconds())
 
 			commitStart := c.clock.Now()
@@ -79,6 +78,7 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 			var data metric.Data
 			data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameWaitDuration, waitMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
 			data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameProcessDuration, processMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
+			data = append(data, c.consumedMessagesPair(float64(len(records)), handleErr)...)
 			data = append(data, c.commitDurationPair(commitMs, err)...)
 
 			if err != nil {
@@ -89,14 +89,32 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 				return fmt.Errorf("failed to commit offset %d for partition %d of topic %s: %w", offset, c.partition, c.topic, err)
 			}
 
-			if handleFailed {
-				data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameRecordsConsumedFailed, float64(len(records)), metric.UnitCount, metric.KindCounter.Build())...)
-			}
-
 			c.metricWriter.Write(ctx, data)
 			waitStart = c.clock.Now()
 		}
 	}
+}
+
+// consumedMessagesPair reports records this partition consumer took in. Records whose handler failed are
+// the same metric told apart by its error type, so a failure needs no metric of its own.
+func (c *PartitionConsumer) consumedMessagesPair(value float64, err error) metric.Data {
+	errorType := metric.DimensionDefault
+	if err != nil {
+		errorType = metric.ErrorType(err)
+	}
+
+	return kafka.MetricPair(kafka.MetricSpec{
+		ClientType: kafka.ClientTypeConsumer,
+		ClientName: c.name,
+		Namespace:  metricNamespaceKafkaConsumer,
+		Name:       metricNameRecordsConsumed,
+		Topic:      c.topic,
+		Partition:  c.partition,
+		ErrorType:  errorType,
+		Value:      value,
+		Unit:       metric.UnitCount,
+		Kind:       metric.KindCounter.Build(),
+	})
 }
 
 // commitDurationPair reports how long an offset commit took. A failed commit is the same metric told
@@ -137,17 +155,17 @@ func (c *PartitionConsumer) metricPair(namespace string, name string, value floa
 	})
 }
 
-func (c *PartitionConsumer) handleWithRecovery(ctx context.Context, records []*kgo.Record) (failed bool) {
+func (c *PartitionConsumer) handleWithRecovery(ctx context.Context, records []*kgo.Record) (handleErr error) {
 	defer func() {
 		if err := coffin.ResolveRecovery(recover()); err != nil {
 			c.logger.Error(ctx, "panic in message handler for partition %d of topic %s: %w", c.partition, c.topic, err)
-			failed = true
+			handleErr = err
 		}
 	}()
 
 	c.messageHandler.Handle(records)
 
-	return false
+	return nil
 }
 
 func (c *PartitionConsumer) Stop() {

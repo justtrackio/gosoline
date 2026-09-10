@@ -188,7 +188,7 @@ backend writers apply their rendering rules after these names are authored.
 | `http.client` | `request.duration` |
 | `http.server` | `request.duration`; `rejected.requests`; `active_request.count`; `connection.count` |
 | `kafka` | `connects`; `throttles`; `throttle.duration`; `produce.batch.records`; `produce.batch.size`; `produce.batch.compressed.size`; `fetch.batch.records`; `fetch.batch.size`; `fetch.batch.compressed.size` |
-| `kafka.consumer` | `consumed.messages`; `process.duration`; `polls`; `poll.duration`; `commit.duration`; `wait.duration`; `rebalances`; `consume.errors` |
+| `kafka.consumer` | `consumed.messages`; `process.duration`; `polls`; `poll.duration`; `commit.duration`; `wait.duration`; `rebalances` |
 | `kafka.producer` | `sent.messages`; `produce.duration`; `batch.records` |
 | `kvstore` | `reads`; `writes`; `deletes`; `item.count` |
 | `limit` | `takes` |
@@ -220,7 +220,7 @@ version, rather than a version increment per edit inside it. There is still no d
 
 #### Failures and outcomes are attributes, not metrics
 
-Eleven metrics were folded into the metric recording the operation, so a failure or an alternative
+Twelve metrics were folded into the metric recording the operation, so a failure or an alternative
 outcome is a series on that metric rather than a metric of its own. Attempts are the sum over the
 attribute; failures are the non-`{{default}}` `error.type`.
 
@@ -234,10 +234,15 @@ attribute; failures are the non-`{{default}}` `error.type`.
 | `kvstore.hits` | `kvstore.reads` | `hit` (`true` / `false`) |
 | `limit.releases`, `limit.throttles`, `limit.errors` | `limit.takes` | `outcome` (`allowed` / `throttled` / `error`) plus `error.type` |
 | `mdlsub.consumed.events`, `mdlsub.skipped.events`, `mdlsub.consume.errors` | `mdlsub.events` | `outcome` (`applied` / `skipped`) plus `error.type` |
+| `kafka.consumer.consume.errors` | `kafka.consumer.consumed.messages` | `error.type` |
 
 `limit.takes` is now recorded when a take **ends** rather than when it starts, because its outcome is
-not known at the start. `kafka.consumer.consume.errors` was deliberately not folded - see
-`pkg/metric/SEMCONV.md`.
+not known at the start.
+
+`kafka.consumer.consumed.messages` moved from topic to **partition** granularity so it could absorb the
+failures, which were already counted per partition: it now carries `partition.id` as well, and is
+recorded by the partition consumer rather than by the poll. Re-key any query that grouped it by topic
+alone — summing over `partition.id` reproduces the old series.
 
 The full specification, including every metric's attributes and the semantic-convention metric it
 derives from, is `pkg/metric/SEMCONV.md`.
