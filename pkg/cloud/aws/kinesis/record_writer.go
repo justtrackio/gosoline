@@ -23,7 +23,6 @@ const (
 	kinesisBatchSizeMax = 500
 
 	metricNamePutRecords          = "sent.messages"
-	metricNamePutRecordsFailure   = "send.errors"
 	metricNamePutRecordsBatchSize = "batch.records"
 )
 
@@ -173,7 +172,7 @@ func (w *recordWriter) putRecordsBatch(ctx context.Context, batch []*Record) err
 			return fmt.Errorf("can not write batch to stream: %w", err)
 		}
 
-		w.writeMetrics(ctx, len(records), len(failedRecords))
+		w.writeMetrics(ctx, len(records), len(failedRecords), reason)
 		took := w.clock.Now().Sub(start)
 
 		if len(failedRecords) == 0 && attempt == 1 {
@@ -252,24 +251,21 @@ func (w *recordWriter) putRecordsAndCollectFailed(
 	return failedRecords, reason, nil
 }
 
-func (w *recordWriter) writeMetrics(ctx context.Context, records int, failed int) {
+// writeMetrics reports one PutRecords attempt. A record the stream rejected is the same
+// `sent.messages` metric told apart by its error type - the reason Kinesis gave - so a failure needs
+// no metric of its own.
+func (w *recordWriter) writeMetrics(ctx context.Context, records int, failed int, reason string) {
 	dimensions := map[string]string{
 		dimensionStream: w.fullStreamName,
 	}
 
-	w.metricWriter.Write(ctx, metric.Data{
+	data := metric.Data{
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
 			Namespace:  metricNamespaceCloudAwsKinesis,
 			MetricName: metricNamePutRecords,
-			Dimensions: dimensions,
+			Dimensions: sentMessagesDimensions(w.fullStreamName, metric.DimensionDefault),
 			Value:      float64(records - failed),
-		},
-		&metric.Datum{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNamePutRecordsFailure,
-			Dimensions: dimensions,
-			Value:      float64(failed),
 		},
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
@@ -277,7 +273,27 @@ func (w *recordWriter) writeMetrics(ctx context.Context, records int, failed int
 			Dimensions: dimensions,
 			Value:      float64(records),
 		},
-	})
+	}
+
+	if failed > 0 {
+		data = append(data, &metric.Datum{
+			Priority:   metric.PriorityHigh,
+			Namespace:  metricNamespaceCloudAwsKinesis,
+			MetricName: metricNamePutRecords,
+			Dimensions: sentMessagesDimensions(w.fullStreamName, reason),
+			Value:      float64(failed),
+		})
+	}
+
+	w.metricWriter.Write(ctx, data)
+}
+
+// sentMessagesDimensions builds the dimensions of one `sent.messages` series.
+func sentMessagesDimensions(streamName string, errorType string) metric.Dimensions {
+	return metric.Dimensions{
+		dimensionStream:           streamName,
+		metric.DimensionErrorType: errorType,
+	}
 }
 
 func getRecordWriterDefaultMetrics(streamName string) metric.Data {
@@ -286,22 +302,10 @@ func getRecordWriterDefaultMetrics(streamName string) metric.Data {
 			Priority:   metric.PriorityHigh,
 			Namespace:  metricNamespaceCloudAwsKinesis,
 			MetricName: metricNamePutRecords,
-			Dimensions: map[string]string{
-				dimensionStream: streamName,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNamePutRecordsFailure,
-			Dimensions: map[string]string{
-				dimensionStream: streamName,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
+			Dimensions: sentMessagesDimensions(streamName, metric.DimensionDefault),
+			Unit:       metric.UnitCount,
+			Value:      0.0,
+			Kind:       metric.KindCounter.Build(),
 		},
 		{
 			Priority:   metric.PriorityHigh,

@@ -63,7 +63,9 @@ func TestProducerProduceSyncFailure(t *testing.T) {
 			data[0].MetricName == "batch.records" && data[0].Value == 2.0 &&
 			data[1].MetricName == "produce.duration" &&
 			data[2].MetricName == "sent.messages" && data[2].Value == 1.0 &&
-			data[3].MetricName == "send.errors" && data[3].Value == 1.0
+			data[2].Dimensions["error.type"] == "{{default}}" &&
+			data[3].MetricName == "sent.messages" && data[3].Value == 1.0 &&
+			data[3].Dimensions["error.type"] != "{{default}}"
 	})).Once()
 
 	p := producer.NewProducerWithInterfaces(writer, metricWriter, "test-producer", "test-topic")

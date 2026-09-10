@@ -30,9 +30,13 @@ type MetricSpec struct {
 	Name       string
 	Topic      string
 	Partition  int32
-	Value      float64
-	Unit       metric.StandardUnit
-	Kind       metric.Kind
+	// ErrorType, when set, is attached as the error.type attribute, so a failed operation is the same
+	// metric as a successful one rather than a metric of its own. Pass metric.DimensionDefault for a
+	// successful operation.
+	ErrorType string
+	Value     float64
+	Unit      metric.StandardUnit
+	Kind      metric.Kind
 }
 
 // MetricPair writes one metric for a topic partition. The client type and client name are always
@@ -43,6 +47,10 @@ func MetricPair(spec MetricSpec) metric.Data {
 		DimensionClient:     spec.ClientName,
 		DimensionTopic:      spec.Topic,
 		DimensionPartition:  fmt.Sprintf("%d", spec.Partition),
+	}
+
+	if spec.ErrorType != "" {
+		partitionDimensions[metric.DimensionErrorType] = spec.ErrorType
 	}
 
 	return metric.Data{

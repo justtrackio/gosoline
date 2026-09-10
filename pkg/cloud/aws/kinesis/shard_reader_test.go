@@ -234,7 +234,7 @@ func (s *shardReaderTestSuite) TestConsumeTwoBatches() {
 	s.mockMetricCall("cloud.aws.kinesis", "lag", 1000, metric.UnitMillisecondsMaximum, metric.KindGauge.Build()).Once()
 	s.mockMetricCall("cloud.aws.kinesis", "lag", 0, metric.UnitMillisecondsMaximum, metric.KindGauge.Build()).Twice()
 	s.mockMetricCall("cloud.aws.kinesis", "reads", 1, metric.UnitCount, metric.KindCounter.Build()).Twice()
-	s.mockMetricCall("cloud.aws.kinesis", "consumed.messages", 1, metric.UnitCount, metric.KindCounter.Build()).Twice()
+	s.mockConsumedMessagesCall(metric.DimensionDefault, 1).Twice()
 	s.mockMetricCall("cloud.aws.kinesis", "wait.duration", 0, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Once()
 	s.mockMetricCall("cloud.aws.kinesis", "wait.duration", 1000, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Once()
 
@@ -308,7 +308,7 @@ func (s *shardReaderTestSuite) TestConsumeStartFromConsumeEmptyStream() {
 	s.mockMetricCall("cloud.aws.kinesis", "lag", 1000, metric.UnitMillisecondsMaximum, metric.KindGauge.Build()).Once()
 	s.mockMetricCall("cloud.aws.kinesis", "lag", 0, metric.UnitMillisecondsMaximum, metric.KindGauge.Build()).Twice()
 	s.mockMetricCall("cloud.aws.kinesis", "reads", 1, metric.UnitCount, metric.KindCounter.Build()).Twice()
-	s.mockMetricCall("cloud.aws.kinesis", "consumed.messages", 0, metric.UnitCount, metric.KindCounter.Build()).Twice()
+	s.mockConsumedMessagesCall(metric.DimensionDefault, 0).Twice()
 	s.mockMetricCall("cloud.aws.kinesis", "wait.duration", 0, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Once()
 	s.mockMetricCall("cloud.aws.kinesis", "wait.duration", 1000, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Once()
 
@@ -365,10 +365,9 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 
 	s.mockMetricCall("cloud.aws.kinesis", "process.duration", 0, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Twice()
 	s.mockMetricCall("cloud.aws.kinesis", "lag", 0, metric.UnitMillisecondsMaximum, metric.KindGauge.Build()).Times(3)
-	s.mockMetricCall("cloud.aws.kinesis", "consume.errors", 1, metric.UnitCount, metric.KindCounter.Build()).Once()
+	s.mockConsumedMessagesCall("*errors.errorString", 1).Once()
 	s.mockMetricCall("cloud.aws.kinesis", "reads", 1, metric.UnitCount, metric.KindCounter.Build()).Twice()
-	s.mockMetricCall("cloud.aws.kinesis", "consumed.messages", 1, metric.UnitCount, metric.KindCounter.Build()).Once()
-	s.mockMetricCall("cloud.aws.kinesis", "consumed.messages", 0, metric.UnitCount, metric.KindCounter.Build()).Once()
+	s.mockConsumedMessagesCall(metric.DimensionDefault, 0).Twice()
 	s.mockMetricCall("cloud.aws.kinesis", "wait.duration", 1000, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Twice()
 
 	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
@@ -474,7 +473,7 @@ func (s *shardReaderTestSuite) TestPersisterPersistCanceled() {
 	})
 	s.mockMetricCall("cloud.aws.kinesis", "lag", 0, metric.UnitMillisecondsMaximum, metric.KindGauge.Build()).Twice()
 	s.mockMetricCall("cloud.aws.kinesis", "reads", 1, metric.UnitCount, metric.KindCounter.Build()).Once()
-	s.mockMetricCall("cloud.aws.kinesis", "consumed.messages", 0, metric.UnitCount, metric.KindCounter.Build()).Once()
+	s.mockConsumedMessagesCall(metric.DimensionDefault, 0).Once()
 	s.mockMetricCall("cloud.aws.kinesis", "wait.duration", 0, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
@@ -526,7 +525,7 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithWait() {
 	s.mockMetricCall("cloud.aws.kinesis", "process.duration", 1000, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Once()
 	s.mockMetricCall("cloud.aws.kinesis", "lag", 0, metric.UnitMillisecondsMaximum, metric.KindGauge.Build()).Twice()
 	s.mockMetricCall("cloud.aws.kinesis", "reads", 1, metric.UnitCount, metric.KindCounter.Build()).Once()
-	s.mockMetricCall("cloud.aws.kinesis", "consumed.messages", 1, metric.UnitCount, metric.KindCounter.Build()).Once()
+	s.mockConsumedMessagesCall(metric.DimensionDefault, 1).Once()
 	s.mockMetricCall("cloud.aws.kinesis", "wait.duration", 0, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
@@ -591,7 +590,7 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithOldRecord() {
 	s.mockMetricCall("cloud.aws.kinesis", "process.duration", 0, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Once()
 	s.mockMetricCall("cloud.aws.kinesis", "lag", 0, metric.UnitMillisecondsMaximum, metric.KindGauge.Build()).Twice()
 	s.mockMetricCall("cloud.aws.kinesis", "reads", 1, metric.UnitCount, metric.KindCounter.Build()).Once()
-	s.mockMetricCall("cloud.aws.kinesis", "consumed.messages", 1, metric.UnitCount, metric.KindCounter.Build()).Once()
+	s.mockConsumedMessagesCall(metric.DimensionDefault, 1).Once()
 	s.mockMetricCall("cloud.aws.kinesis", "wait.duration", 1000, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
@@ -648,7 +647,7 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWait() {
 	s.mockMetricCall("cloud.aws.kinesis", "process.duration", 0, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Once()
 	s.mockMetricCall("cloud.aws.kinesis", "lag", 0, metric.UnitMillisecondsMaximum, metric.KindGauge.Build()).Twice()
 	s.mockMetricCall("cloud.aws.kinesis", "reads", 1, metric.UnitCount, metric.KindCounter.Build()).Once()
-	s.mockMetricCall("cloud.aws.kinesis", "consumed.messages", 0, metric.UnitCount, metric.KindCounter.Build()).Once()
+	s.mockConsumedMessagesCall(metric.DimensionDefault, 0).Once()
 	s.mockMetricCall("cloud.aws.kinesis", "wait.duration", 1000, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(ctx, s.shardId).Return(checkpoint, nil).Once()
@@ -714,7 +713,7 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWaitNoRecords() {
 	s.mockMetricCall("cloud.aws.kinesis", "process.duration", 0, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Once()
 	s.mockMetricCall("cloud.aws.kinesis", "lag", 0, metric.UnitMillisecondsMaximum, metric.KindGauge.Build()).Twice()
 	s.mockMetricCall("cloud.aws.kinesis", "reads", 1, metric.UnitCount, metric.KindCounter.Build()).Once()
-	s.mockMetricCall("cloud.aws.kinesis", "consumed.messages", 0, metric.UnitCount, metric.KindCounter.Build()).Once()
+	s.mockConsumedMessagesCall(metric.DimensionDefault, 0).Once()
 	s.mockMetricCall("cloud.aws.kinesis", "wait.duration", 1000, metric.UnitMillisecondsAverage, metric.KindHistogram.Build()).Once()
 
 	s.metadataRepository.EXPECT().AcquireShard(ctx, s.shardId).Return(checkpoint, nil).Once()
@@ -753,6 +752,26 @@ func (s *shardReaderTestSuite) consumeRecord(record []byte) error {
 	s.consumedRecords = append(s.consumedRecords, record)
 
 	return s.consumeRecordError
+}
+
+// mockConsumedMessagesCall expects one `consumed.messages` series, which carries its error type so a
+// failed record is the same metric rather than one of its own.
+func (s *shardReaderTestSuite) mockConsumedMessagesCall(errorType string, value float64) *metricMocks.Writer_Write_Call {
+	return s.metricWriter.EXPECT().Write(matcher.Context, metric.Data{
+		{
+			Priority:   metric.PriorityHigh,
+			Namespace:  "cloud.aws.kinesis",
+			MetricName: "consumed.messages",
+			Dimensions: metric.Dimensions{
+				"stream.name":             string(s.stream),
+				"partition.id":            string(s.shardId),
+				metric.DimensionErrorType: errorType,
+			},
+			Value: value,
+			Unit:  metric.UnitCount,
+			Kind:  metric.KindCounter.Build(),
+		},
+	})
 }
 
 func (s *shardReaderTestSuite) mockMetricCall(namespace string, metricName string, value float64, unit metric.StandardUnit, metricKind metric.Kind) *metricMocks.Writer_Write_Call {

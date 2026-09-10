@@ -16,7 +16,6 @@ const (
 	metricNameProcessDuration       = "process.duration"
 	metricNameWaitDuration          = "wait.duration"
 	metricNameCommitDuration        = "commit.duration"
-	metricNameCommitFailures        = "commit.errors"
 	metricNameRecordsConsumedFailed = "consume.errors"
 )
 
@@ -80,11 +79,9 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 			var data metric.Data
 			data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameWaitDuration, waitMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
 			data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameProcessDuration, processMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
-			data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameCommitDuration, commitMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
+			data = append(data, c.commitDurationPair(commitMs, err)...)
 
 			if err != nil {
-				data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameCommitFailures, 1.0, metric.UnitCount, metric.KindCounter.Build())...)
-
 				c.metricWriter.Write(ctx, data)
 
 				offset := records[len(records)-1].Offset + 1
@@ -100,6 +97,28 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 			waitStart = c.clock.Now()
 		}
 	}
+}
+
+// commitDurationPair reports how long an offset commit took. A failed commit is the same metric told
+// apart by its error type, so a failure needs no metric of its own.
+func (c *PartitionConsumer) commitDurationPair(value float64, err error) metric.Data {
+	errorType := metric.DimensionDefault
+	if err != nil {
+		errorType = metric.ErrorType(err)
+	}
+
+	return kafka.MetricPair(kafka.MetricSpec{
+		ClientType: kafka.ClientTypeConsumer,
+		ClientName: c.name,
+		Namespace:  metricNamespaceKafkaConsumer,
+		Name:       metricNameCommitDuration,
+		Topic:      c.topic,
+		Partition:  c.partition,
+		ErrorType:  errorType,
+		Value:      value,
+		Unit:       metric.UnitMillisecondsAverage,
+		Kind:       metric.KindHistogram.Build(),
+	})
 }
 
 // metricPair reports one measurement of this partition consumer at both topic and partition

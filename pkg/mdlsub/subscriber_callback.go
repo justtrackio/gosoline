@@ -16,15 +16,18 @@ import (
 const (
 	metricNamespace = "mdlsub"
 
-	MetricNameSuccess = "consumed.events"
-	MetricNameSkipped = "skipped.events"
-	MetricNameFailure = "consume.errors"
+	MetricNameEvents = "events"
+
+	// dimensionOutcome tells apart what a subscriber did with an event. A failed event is told apart by
+	// error.type instead, so one metric answers how many events arrived and what became of them.
+	dimensionOutcome = "outcome"
+
+	OutcomeApplied = "applied"
+	OutcomeSkipped = "skipped"
 )
 
 func init() {
-	metric.RegisterHelp(metricNamespace, MetricNameSuccess, "model events a subscriber applied")
-	metric.RegisterHelp(metricNamespace, MetricNameSkipped, "model events a subscriber skipped")
-	metric.RegisterHelp(metricNamespace, MetricNameFailure, "model events a subscriber failed to apply")
+	metric.RegisterHelp(metricNamespace, MetricNameEvents, "model events a subscriber received, by outcome and error type")
 }
 
 type SubscriberModel struct {
@@ -162,7 +165,7 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 
 	if model == nil {
 		logger.Info(ctx, "skipping %s op for subscription for modelId %s and version %d", spec.CrudType, spec.ModelId, spec.Version)
-		s.writeMetric(ctx, MetricNameSkipped, spec)
+		s.writeMetric(ctx, OutcomeSkipped, spec)
 
 		return true, nil
 	}
@@ -194,78 +197,46 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 		model.GetId(),
 	)
 
-	s.writeMetric(ctx, MetricNameSuccess, spec)
+	s.writeMetric(ctx, OutcomeApplied, spec)
 
 	return true, nil
 }
 
-func (s *SubscriberCallback) writeMetric(ctx context.Context, metricName string, spec *ModelSpecification) {
-	s.metric.WriteOne(ctx, &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		Timestamp:  time.Now(),
-		MetricName: metricName,
-		Dimensions: map[string]string{
-			metric.DimensionModelId: spec.ModelId,
-		},
-		Value: 1.0,
-	})
+func (s *SubscriberCallback) writeMetric(ctx context.Context, outcome string, spec *ModelSpecification) {
+	s.metric.WriteOne(ctx, eventDatum(spec.ModelId, outcome, metric.DimensionDefault, 1.0))
 }
 
 // writeErrorMetric counts a failed consumption, identified by the type of error that failed it.
 func (s *SubscriberCallback) writeErrorMetric(ctx context.Context, spec *ModelSpecification, err error) {
-	s.metric.WriteOne(ctx, &metric.Datum{
+	s.metric.WriteOne(ctx, eventDatum(spec.ModelId, OutcomeApplied, metric.ErrorType(err), 1.0))
+}
+
+// eventDatum counts one model event a subscriber received. What became of it is carried by the outcome
+// and by error.type, so a skip and a failure need no metric of their own.
+func eventDatum(modelId string, outcome string, errorType string, value float64) *metric.Datum {
+	return &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
-		MetricName: MetricNameFailure,
+		MetricName: MetricNameEvents,
 		Dimensions: map[string]string{
-			metric.DimensionModelId:   spec.ModelId,
-			metric.DimensionErrorType: metric.ErrorType(err),
+			metric.DimensionModelId:   modelId,
+			dimensionOutcome:          outcome,
+			metric.DimensionErrorType: errorType,
 		},
 		Unit:  metric.UnitCount,
-		Value: 1.0,
+		Value: value,
 		Kind:  metric.KindCounter.Build(),
-	})
+	}
 }
 
 func getSubscriberCallbackDefaultMetrics(modelIds []string) []*metric.Datum {
-	defaults := make([]*metric.Datum, 0)
+	defaults := make([]*metric.Datum, 0, len(modelIds)*2)
 
 	for _, modelId := range modelIds {
-		success := &metric.Datum{
-			Priority:   metric.PriorityHigh,
-			MetricName: MetricNameSuccess,
-			Dimensions: map[string]string{
-				metric.DimensionModelId: modelId,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
-		}
-
-		skipped := &metric.Datum{
-			Priority:   metric.PriorityHigh,
-			MetricName: MetricNameSkipped,
-			Dimensions: map[string]string{
-				metric.DimensionModelId: modelId,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
-		}
-
-		failure := &metric.Datum{
-			Priority:   metric.PriorityHigh,
-			MetricName: MetricNameFailure,
-			Dimensions: map[string]string{
-				metric.DimensionModelId:   modelId,
-				metric.DimensionErrorType: metric.DimensionDefault,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
-		}
-
-		defaults = append(defaults, success, skipped, failure)
+		defaults = append(defaults,
+			eventDatum(modelId, OutcomeApplied, metric.DimensionDefault, 0.0),
+			eventDatum(modelId, OutcomeSkipped, metric.DimensionDefault, 0.0),
+		)
 	}
 
 	return defaults

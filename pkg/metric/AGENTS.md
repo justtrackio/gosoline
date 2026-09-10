@@ -19,6 +19,8 @@
 - `custom_units.go` - the custom aggregation units and their resolution to a base unit.
 - `settings.go` - `Settings` struct read from the `metric` config key.
 - `schema_version.go` - metric schema version constant, format validation, metadata registration.
+- `SEMCONV.md` - the metric specification: every metric, its attributes, and the semantic convention it
+  derives from. Kept up to date with every metric change.
 
 ## The emission contract
 A metric is authored as a **canonical namespace plus a leaf**: lowercase, components delimited by a
@@ -114,11 +116,16 @@ Every gosoline metric declares its `Kind` explicitly. Unit-based inference (`inf
 as the fallback for metrics authored outside gosoline, and is shared by both writers so they can never
 classify one datum differently.
 
-Adding or changing a metric means updating `authoredNames` in `conformance_test.go` and registering a
-help text for it in the emitting package; the conformance test fails the build on a name that violates
-the contract, on a duplicate, and on a rendering regression. Removing the last emitter of a metric
-means removing its `authoredNames` entry in the same change, so the inventory never claims a metric
-nothing writes.
+Adding or changing a metric means updating `authoredNames` in `conformance_test.go`, registering a
+help text for it in the emitting package, **and updating `SEMCONV.md` in the same commit**; the
+conformance test fails the build on a name that violates the contract, on a duplicate, and on a
+rendering regression, but it cannot check the specification, so that part is on you. Removing the last
+emitter of a metric means removing its `authoredNames` entry and its `SEMCONV.md` row in the same
+change, so neither ever claims a metric nothing writes.
+
+`SEMCONV.md` is the specification: it records every metric with its unit, instrument type, attributes
+and the semantic-convention metric it derives from or deliberately diverges from, plus the exceptions to
+the grammar and why each exists.
 
 ### Dimension-key policy
 OpenTelemetry semantic-convention attributes may be added where a convention defines the relevant

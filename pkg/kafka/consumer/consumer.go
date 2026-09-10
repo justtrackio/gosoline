@@ -31,8 +31,7 @@ const (
 func init() {
 	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNamePollCount, "poll requests a kafka consumer issued")
 	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNamePollDuration, "duration of a kafka consumer poll request")
-	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameCommitDuration, "duration of a kafka consumer offset commit")
-	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameCommitFailures, "kafka consumer offset commits that failed")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameCommitDuration, "duration of a kafka consumer offset commit, by error type")
 	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameWaitDuration, "time a kafka partition consumer waited for a record to process")
 	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameRebalanceCount, "consumer group rebalances a kafka consumer took part in")
 	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameRecordsConsumedFailed, "records a kafka consumer failed to process")
@@ -336,6 +335,13 @@ func (c *consumer) writeMetrics(ctx context.Context, pollDurationMs float64, rec
 func getConsumerDefaultMetrics(name, topicName string) metric.Data {
 	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName}
 	partitionDims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName, kafka.DimensionPartition: metric.DimensionDefault}
+	commitDims := metric.Dimensions{
+		kafka.DimensionClientType: kafka.ClientTypeConsumer,
+		kafka.DimensionClient:     name,
+		kafka.DimensionTopic:      topicName,
+		kafka.DimensionPartition:  metric.DimensionDefault,
+		metric.DimensionErrorType: metric.DimensionDefault,
+	}
 
 	return metric.Data{
 		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaConsumer, MetricName: metricNameRecordsConsumed, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
@@ -344,8 +350,7 @@ func getConsumerDefaultMetrics(name, topicName string) metric.Data {
 		{Priority: metric.PriorityHigh, MetricName: metricNamePollDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
 		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaConsumer, MetricName: metricNameProcessDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNameWaitDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
-		{Priority: metric.PriorityHigh, MetricName: metricNameCommitDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
-		{Priority: metric.PriorityHigh, MetricName: metricNameCommitFailures, Dimensions: partitionDims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
+		{Priority: metric.PriorityHigh, MetricName: metricNameCommitDuration, Dimensions: commitDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNameRebalanceCount, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
 	}
 }

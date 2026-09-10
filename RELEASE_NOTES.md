@@ -180,7 +180,7 @@ backend writers apply their rendering rules after these names are authored.
 | Namespace | Canonical leaves |
 |---|---|
 | `blob` | `batch.operations` |
-| `cloud.aws.kinesis` | `consumed.messages`; `sent.messages`; `process.duration`; `reads`; `consume.errors`; `lag`; `acquire.duration`; `sleep.duration`; `wait.duration`; `shard.count`; `client.count`; `batch.records`; `send.errors` |
+| `cloud.aws.kinesis` | `consumed.messages`; `sent.messages`; `process.duration`; `reads`; `lag`; `acquire.duration`; `sleep.duration`; `wait.duration`; `shard.count`; `client.count`; `batch.records` |
 | `conc.scheduler` | `batch.tasks`; `task.queue.duration` |
 | `db.client` | `connection.count`; `connections` |
 | `db.repo` | `operation.duration`; `model_event.notifications` |
@@ -188,15 +188,15 @@ backend writers apply their rendering rules after these names are authored.
 | `http.client` | `request.duration` |
 | `http.server` | `request.duration`; `rejected.requests`; `active_request.count`; `connection.count` |
 | `kafka` | `connects`; `throttles`; `throttle.duration`; `produce.batch.records`; `produce.batch.size`; `produce.batch.compressed.size`; `fetch.batch.records`; `fetch.batch.size`; `fetch.batch.compressed.size` |
-| `kafka.consumer` | `consumed.messages`; `process.duration`; `polls`; `poll.duration`; `commit.duration`; `commit.errors`; `wait.duration`; `rebalances`; `consume.errors` |
-| `kafka.producer` | `sent.messages`; `produce.duration`; `batch.records`; `send.errors` |
-| `kvstore` | `reads`; `writes`; `deletes`; `hits`; `item.count` |
-| `limit` | `takes`; `releases`; `throttles`; `errors` |
-| `mdlsub` | `consumed.events`; `skipped.events`; `consume.errors` |
+| `kafka.consumer` | `consumed.messages`; `process.duration`; `polls`; `poll.duration`; `commit.duration`; `wait.duration`; `rebalances`; `consume.errors` |
+| `kafka.producer` | `sent.messages`; `produce.duration`; `batch.records` |
+| `kvstore` | `reads`; `writes`; `deletes`; `item.count` |
+| `limit` | `takes` |
+| `mdlsub` | `events` |
 | `metric` | `log.records` |
 | `rpc.server` | `request.duration` |
 | `smpl` | `decisions` |
-| `stream` | `consumed.messages`; `process.duration`; `errors`; `retry.operations`; `produced.messages`; `batch.messages`; `aggregate.messages`; `idle.duration`; `message.count`; `reads`; `writes` |
+| `stream` | `consumed.messages`; `process.duration`; `retry.operations`; `produced.messages`; `batch.messages`; `aggregate.messages`; `idle.duration`; `message.count`; `reads`; `writes` |
 
 #### Focused contract update status
 
@@ -217,6 +217,30 @@ version, rather than a version increment per edit inside it. There is still no d
 | Dimension value changed | An unknown model on a stream consumer | `stream.errors` no longer carries `error.type="unknown_model"`, and the failure is no longer counted twice on the single-message consumer. Both consumers now count it once, through the shared error path, with the normalized Go error type. |
 | Help text added | Every metric in the inventory above | Each metric is exported with a description of what it counts instead of `unit: <unit>`. Emitting packages register it through `metric.RegisterHelp`; `Kind.WithHelp` still overrides it per datum. |
 | Renamed | **Your own** metrics written through `metric.NewWriter("")`, on CloudWatch | A namespace-less leaf is now PascalCased exactly like a namespaced one, so `my.custom.metric` exports as `MyCustomMetric` and `my-metric-name` as `My-metric-name`. This hits application-authored metrics, not only gosoline's: re-key every CloudWatch dashboard and alarm built on one. See "Metrics authored outside gosoline" below for the Prometheus and OTEL effect. |
+
+#### Failures and outcomes are attributes, not metrics
+
+Eleven metrics were folded into the metric recording the operation, so a failure or an alternative
+outcome is a series on that metric rather than a metric of its own. Attempts are the sum over the
+attribute; failures are the non-`{{default}}` `error.type`.
+
+| Removed | Now query | Attribute that tells them apart |
+|---|---|---|
+| `stream.errors` | `stream.consumed.messages` | `error.type` |
+| `kafka.consumer.commit.errors` | `kafka.consumer.commit.duration` | `error.type` |
+| `kafka.producer.send.errors` | `kafka.producer.sent.messages` | `error.type` |
+| `cloud.aws.kinesis.send.errors` | `cloud.aws.kinesis.sent.messages` | `error.type`, carrying the reason Kinesis reported |
+| `cloud.aws.kinesis.consume.errors` | `cloud.aws.kinesis.consumed.messages` | `error.type` |
+| `kvstore.hits` | `kvstore.reads` | `hit` (`true` / `false`) |
+| `limit.releases`, `limit.throttles`, `limit.errors` | `limit.takes` | `outcome` (`allowed` / `throttled` / `error`) plus `error.type` |
+| `mdlsub.consumed.events`, `mdlsub.skipped.events`, `mdlsub.consume.errors` | `mdlsub.events` | `outcome` (`applied` / `skipped`) plus `error.type` |
+
+`limit.takes` is now recorded when a take **ends** rather than when it starts, because its outcome is
+not known at the start. `kafka.consumer.consume.errors` was deliberately not folded - see
+`pkg/metric/SEMCONV.md`.
+
+The full specification, including every metric's attributes and the semantic-convention metric it
+derives from, is `pkg/metric/SEMCONV.md`.
 
 #### Prometheus writer: exported names no longer carry the application
 
