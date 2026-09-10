@@ -15,8 +15,11 @@ import (
 )
 
 const (
-	metricNameRedisListInputLength = "StreamRedisListInputLength"
-	metricNameRedisListInputReads  = "StreamRedisListInputReads"
+	metricNameRedisListInputLength = "message.count"
+	metricNameRedisListInputReads  = "reads"
+
+	// dimensionList names the redis list a message is read from or written to.
+	dimensionList = "list.name"
 )
 
 type RedisListInputSettings struct {
@@ -46,7 +49,7 @@ func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger
 	}
 
 	defaultMetrics := getRedisListInputDefaultMetrics(settings)
-	mw := metric.NewWriter(defaultMetrics...)
+	mw := metric.NewWriter(metricNamespace, defaultMetrics...)
 
 	healthCheckTimer, err := clock.NewHealthCheckTimer(settings.HealthcheckTimeout)
 	if err != nil {
@@ -149,10 +152,11 @@ func (i *redisListInput) writeListLengthMetric(ctx context.Context) {
 		Priority:   metric.PriorityHigh,
 		MetricName: metricNameRedisListInputLength,
 		Dimensions: map[string]string{
-			"StreamName": fmt.Sprintf("%s-%s", i.settings.ServerName, i.settings.Key),
+			dimensionList: redisListDestination(i.settings.ServerName, i.settings.Key),
 		},
 		Unit:  metric.UnitCountAverage,
 		Value: float64(llen),
+		Kind:  metric.KindGauge.Build(),
 	}}
 
 	i.mw.Write(ctx, data)
@@ -160,9 +164,10 @@ func (i *redisListInput) writeListLengthMetric(ctx context.Context) {
 
 func (i *redisListInput) writeListReadMetric(ctx context.Context) {
 	data := metric.Data{{
+		Priority:   metric.PriorityHigh,
 		MetricName: metricNameRedisListInputReads,
 		Dimensions: map[string]string{
-			"StreamName": fmt.Sprintf("%s-%s", i.settings.ServerName, i.settings.Key),
+			dimensionList: redisListDestination(i.settings.ServerName, i.settings.Key),
 		},
 		Value: 1.0,
 	}}
@@ -176,10 +181,16 @@ func getRedisListInputDefaultMetrics(settings *RedisListInputSettings) metric.Da
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameRedisListInputReads,
 			Dimensions: map[string]string{
-				"StreamName": fmt.Sprintf("%s-%s", settings.ServerName, settings.Key),
+				dimensionList: redisListDestination(settings.ServerName, settings.Key),
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		},
 	}
+}
+
+// redisListDestination names the redis list a stream reads from or writes to.
+func redisListDestination(serverName string, key string) string {
+	return fmt.Sprintf("%s-%s", serverName, key)
 }

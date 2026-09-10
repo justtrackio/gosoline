@@ -13,11 +13,9 @@ import (
 )
 
 const (
-	metricNameProcessDuration       = "ProcessDuration"
-	metricNameWaitDuration          = "WaitDuration"
-	metricNameCommitDuration        = "CommitDuration"
-	metricNameCommitFailures        = "CommitFailures"
-	metricNameRecordsConsumedFailed = "RecordsConsumedFailed"
+	metricNameProcessDuration = "process.duration"
+	metricNameWaitDuration    = "wait.duration"
+	metricNameCommitDuration  = "commit.duration"
 )
 
 type PartitionConsumer struct {
@@ -70,7 +68,7 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 			waitMs := float64(c.clock.Since(waitStart).Milliseconds())
 
 			processStart := c.clock.Now()
-			handleFailed := c.handleWithRecovery(ctx, records)
+			handleErr := c.handleWithRecovery(ctx, records)
 			processMs := float64(c.clock.Since(processStart).Milliseconds())
 
 			commitStart := c.clock.Now()
@@ -78,22 +76,17 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 			commitMs := float64(c.clock.Since(commitStart).Milliseconds())
 
 			var data metric.Data
-			data = append(data, kafka.MetricPair(kafka.DimensionConsumer, c.name, metricNameWaitDuration, c.topic, c.partition, waitMs, metric.UnitMillisecondsAverage)...)
-			data = append(data, kafka.MetricPair(kafka.DimensionConsumer, c.name, metricNameProcessDuration, c.topic, c.partition, processMs, metric.UnitMillisecondsAverage)...)
-			data = append(data, kafka.MetricPair(kafka.DimensionConsumer, c.name, metricNameCommitDuration, c.topic, c.partition, commitMs, metric.UnitMillisecondsAverage)...)
+			data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameWaitDuration, waitMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
+			data = append(data, c.metricPair(metricNamespaceKafkaConsumer, metricNameProcessDuration, processMs, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())...)
+			data = append(data, c.consumedMessagesPair(float64(len(records)), handleErr)...)
+			data = append(data, c.commitDurationPair(commitMs, err)...)
 
 			if err != nil {
-				data = append(data, kafka.MetricPair(kafka.DimensionConsumer, c.name, metricNameCommitFailures, c.topic, c.partition, 1.0, metric.UnitCount)...)
-
 				c.metricWriter.Write(ctx, data)
 
 				offset := records[len(records)-1].Offset + 1
 
 				return fmt.Errorf("failed to commit offset %d for partition %d of topic %s: %w", offset, c.partition, c.topic, err)
-			}
-
-			if handleFailed {
-				data = append(data, kafka.MetricPair(kafka.DimensionConsumer, c.name, metricNameRecordsConsumedFailed, c.topic, c.partition, float64(len(records)), metric.UnitCount)...)
 			}
 
 			c.metricWriter.Write(ctx, data)
@@ -102,17 +95,77 @@ func (c *PartitionConsumer) Consume(ctx context.Context) error {
 	}
 }
 
-func (c *PartitionConsumer) handleWithRecovery(ctx context.Context, records []*kgo.Record) (failed bool) {
+// consumedMessagesPair reports records this partition consumer took in. Records whose handler failed are
+// the same metric told apart by its error type, so a failure needs no metric of its own.
+func (c *PartitionConsumer) consumedMessagesPair(value float64, err error) metric.Data {
+	errorType := metric.DimensionDefault
+	if err != nil {
+		errorType = metric.ErrorType(err)
+	}
+
+	return kafka.MetricPair(kafka.MetricSpec{
+		ClientType: kafka.ClientTypeConsumer,
+		ClientName: c.name,
+		Namespace:  metricNamespaceKafkaConsumer,
+		Name:       metricNameRecordsConsumed,
+		Topic:      c.topic,
+		Partition:  c.partition,
+		ErrorType:  errorType,
+		Value:      value,
+		Unit:       metric.UnitCount,
+		Kind:       metric.KindCounter.Build(),
+	})
+}
+
+// commitDurationPair reports how long an offset commit took. A failed commit is the same metric told
+// apart by its error type, so a failure needs no metric of its own.
+func (c *PartitionConsumer) commitDurationPair(value float64, err error) metric.Data {
+	errorType := metric.DimensionDefault
+	if err != nil {
+		errorType = metric.ErrorType(err)
+	}
+
+	return kafka.MetricPair(kafka.MetricSpec{
+		ClientType: kafka.ClientTypeConsumer,
+		ClientName: c.name,
+		Namespace:  metricNamespaceKafkaConsumer,
+		Name:       metricNameCommitDuration,
+		Topic:      c.topic,
+		Partition:  c.partition,
+		ErrorType:  errorType,
+		Value:      value,
+		Unit:       metric.UnitMillisecondsAverage,
+		Kind:       metric.KindHistogram.Build(),
+	})
+}
+
+// metricPair reports one measurement of this partition consumer at both topic and partition
+// granularity.
+func (c *PartitionConsumer) metricPair(namespace string, name string, value float64, unit metric.StandardUnit, metricKind metric.Kind) metric.Data {
+	return kafka.MetricPair(kafka.MetricSpec{
+		ClientType: kafka.ClientTypeConsumer,
+		ClientName: c.name,
+		Namespace:  namespace,
+		Name:       name,
+		Topic:      c.topic,
+		Partition:  c.partition,
+		Value:      value,
+		Unit:       unit,
+		Kind:       metricKind,
+	})
+}
+
+func (c *PartitionConsumer) handleWithRecovery(ctx context.Context, records []*kgo.Record) (handleErr error) {
 	defer func() {
 		if err := coffin.ResolveRecovery(recover()); err != nil {
 			c.logger.Error(ctx, "panic in message handler for partition %d of topic %s: %w", c.partition, c.topic, err)
-			failed = true
+			handleErr = err
 		}
 	}()
 
 	c.messageHandler.Handle(records)
 
-	return false
+	return nil
 }
 
 func (c *PartitionConsumer) Stop() {

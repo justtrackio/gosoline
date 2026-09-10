@@ -10,9 +10,14 @@ import (
 )
 
 const (
-	metricNameNotifySuccess = "ModelEventNotifySuccess"
-	metricNameNotifyFailure = "ModelEventNotifyFailure"
+	metricNamespace         = "db.repo"
+	metricNameNotifications = "model_event.notifications"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, metricNameNotifications, "model event notifications a repository published, by error type")
+	metric.RegisterHelp(metricNamespace, MetricNameDbOperationDuration, "duration of a SQL repository operation")
+}
 
 var NotificationTypes = []string{Create, Update, Delete}
 
@@ -35,7 +40,7 @@ type notifier struct {
 
 func newNotifier(logger log.Logger, modelId mdl.ModelId, version int) notifier {
 	defaults := getDefaultNotifierMetrics(modelId)
-	mtr := metric.NewWriter(defaults...)
+	mtr := metric.NewWriter(metricNamespace, defaults...)
 
 	return notifier{
 		logger:  logger,
@@ -46,43 +51,38 @@ func newNotifier(logger log.Logger, modelId mdl.ModelId, version int) notifier {
 }
 
 func (n *notifier) writeMetric(ctx context.Context, err error) {
-	metricName := "ModelEventNotifySuccess"
-
-	if err != nil {
-		metricName = "ModelEventNotifyFailure"
-	}
-
-	n.metric.WriteOne(ctx, &metric.Datum{
+	datum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
-		MetricName: metricName,
+		MetricName: metricNameNotifications,
 		Dimensions: map[string]string{
-			"ModelId": n.modelId.String(),
+			metric.DimensionModelId:   n.modelId.String(),
+			metric.DimensionErrorType: metric.DimensionDefault,
 		},
 		Unit:  metric.UnitCount,
 		Value: 1.0,
-	})
+		Kind:  metric.KindCounter.Build(),
+	}
+
+	if err != nil {
+		datum.Dimensions[metric.DimensionErrorType] = metric.ErrorType(err)
+	}
+
+	n.metric.WriteOne(ctx, datum)
 }
 
 func getDefaultNotifierMetrics(modelId mdl.ModelId) []*metric.Datum {
 	return []*metric.Datum{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameNotifySuccess,
+			MetricName: metricNameNotifications,
 			Dimensions: map[string]string{
-				"ModelId": modelId.String(),
+				metric.DimensionModelId:   modelId.String(),
+				metric.DimensionErrorType: metric.DimensionDefault,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameNotifyFailure,
-			Dimensions: map[string]string{
-				"ModelId": modelId.String(),
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		},
 	}
 }

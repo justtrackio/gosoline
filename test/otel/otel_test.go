@@ -110,7 +110,8 @@ func (s *OtelTestSuite) TestMetricExport() {
 	histMetric := findMetric(metrics, "request_duration")
 	s.NotNil(histMetric, "request_duration not found in metrics")
 	s.Equal("Histogram", histMetric.DataType)
-	s.Equal("ms", histMetric.Unit)
+	// a duration recorded in milliseconds is exported in seconds, the base unit OTEL reports time in
+	s.Equal("s", histMetric.Unit)
 
 	gaugeMetric := findMetric(metrics, "active_connections")
 	s.NotNil(gaugeMetric, "active_connections not found in metrics")

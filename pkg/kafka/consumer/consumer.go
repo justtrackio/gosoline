@@ -20,10 +20,23 @@ import (
 )
 
 const (
-	metricNameRecordsConsumed = "RecordsConsumed"
-	metricNamePollCount       = "PollCount"
-	metricNamePollDuration    = "PollDuration"
+	metricNamespaceKafka         = "kafka"
+	metricNamespaceKafkaConsumer = "kafka.consumer"
+
+	metricNameRecordsConsumed = "consumed.messages"
+	metricNamePollCount       = "polls"
+	metricNamePollDuration    = "poll.duration"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNamePollCount, "poll requests a kafka consumer issued")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNamePollDuration, "duration of a kafka consumer poll request")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameCommitDuration, "duration of a kafka consumer offset commit, by error type")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameWaitDuration, "time a kafka partition consumer waited for a record to process")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameRebalanceCount, "consumer group rebalances a kafka consumer took part in")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameRecordsConsumed, "records a kafka consumer took in from its topic, by error type")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameProcessDuration, "duration of processing one record in a kafka consumer callback")
+}
 
 // ReaderFactory creates a Reader using the run context and the partition manager.
 // It is called at the start of Run to create the kgo client with the correct lifecycle context.
@@ -70,7 +83,7 @@ func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger, hand
 	}
 
 	defaults := getConsumerDefaultMetrics(name, fullTopicName)
-	metricWriter := metric.NewWriter(defaults...)
+	metricWriter := metric.NewWriter(metricNamespaceKafkaConsumer, defaults...)
 
 	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManagerConsumer(name, fullTopicName, conn.Brokers)); err != nil {
 		return nil, fmt.Errorf("failed to add kafka consumer lifecycle manager: %w", err)
@@ -220,7 +233,7 @@ func (c *consumer) Run(ctx context.Context) error {
 			return nil
 		}
 
-		c.writeMetrics(ctx, pollDuration, countRecords(fetches))
+		c.writeMetrics(ctx, pollDuration)
 		c.processPartitions(ctx, fetches)
 
 		c.pollingOrRebalancing.Store(true)
@@ -232,16 +245,6 @@ func (c *consumer) Run(ctx context.Context) error {
 			c.clock.Sleep(c.settings.IdleWaitTime)
 		}
 	}
-}
-
-func countRecords(fetches kgo.Fetches) int {
-	var count int
-
-	fetches.EachPartition(func(p kgo.FetchTopicPartition) {
-		count += len(p.Records)
-	})
-
-	return count
 }
 
 func (c *consumer) Stop(_ context.Context) {
@@ -308,29 +311,34 @@ func (c *consumer) processPartitions(ctx context.Context, fetches kgo.Fetches) {
 	})
 }
 
-func (c *consumer) writeMetrics(ctx context.Context, pollDurationMs float64, recordCount int) {
-	dims := metric.Dimensions{kafka.DimensionClientType: kafka.DimensionConsumer, kafka.DimensionClient: c.name, kafka.DimensionTopic: c.fullTopicName}
+func (c *consumer) writeMetrics(ctx context.Context, pollDurationMs float64) {
+	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClient: c.name, kafka.DimensionTopic: c.fullTopicName}
 
 	c.metricWriter.Write(ctx, metric.Data{
-		metric.NewMetricDatum(metricNamePollCount, dims, 1.0, metric.UnitCount, metric.PriorityHigh),
-		metric.NewMetricDatum(metricNamePollDuration, dims, pollDurationMs, metric.UnitMillisecondsAverage, metric.PriorityHigh),
-		metric.NewMetricDatum(metricNameRecordsConsumed, dims, float64(recordCount), metric.UnitCount, metric.PriorityHigh),
+		{Priority: metric.PriorityHigh, MetricName: metricNamePollCount, Dimensions: dims, Value: 1.0},
+		{Priority: metric.PriorityHigh, MetricName: metricNamePollDuration, Dimensions: dims, Value: pollDurationMs},
 	})
 }
 
 func getConsumerDefaultMetrics(name, topicName string) metric.Data {
-	dims := metric.Dimensions{kafka.DimensionClientType: kafka.DimensionConsumer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName}
-	partitionDims := metric.Dimensions{kafka.DimensionClientType: kafka.DimensionConsumer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName, kafka.DimensionPartition: metric.DimensionDefault}
+	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName}
+	partitionDims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName, kafka.DimensionPartition: metric.DimensionDefault}
+	// outcomeDims belong to the metrics that carry an outcome, so they add error.type.
+	outcomeDims := metric.Dimensions{
+		kafka.DimensionClientType: kafka.ClientTypeConsumer,
+		kafka.DimensionClient:     name,
+		kafka.DimensionTopic:      topicName,
+		kafka.DimensionPartition:  metric.DimensionDefault,
+		metric.DimensionErrorType: metric.DimensionDefault,
+	}
 
 	return metric.Data{
-		{Priority: metric.PriorityHigh, MetricName: metricNameRecordsConsumed, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindDefault},
-		{Priority: metric.PriorityHigh, MetricName: metricNameRecordsConsumedFailed, Dimensions: partitionDims, Unit: metric.UnitCount, Kind: metric.KindDefault},
-		{Priority: metric.PriorityHigh, MetricName: metricNamePollCount, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindDefault},
-		{Priority: metric.PriorityHigh, MetricName: metricNamePollDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindDefault},
-		{Priority: metric.PriorityHigh, MetricName: metricNameProcessDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindDefault},
-		{Priority: metric.PriorityHigh, MetricName: metricNameWaitDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindDefault},
-		{Priority: metric.PriorityHigh, MetricName: metricNameCommitDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindDefault},
-		{Priority: metric.PriorityHigh, MetricName: metricNameCommitFailures, Dimensions: partitionDims, Unit: metric.UnitCount, Kind: metric.KindDefault},
-		{Priority: metric.PriorityHigh, MetricName: metricNameRebalanceCount, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindDefault},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaConsumer, MetricName: metricNameRecordsConsumed, Dimensions: outcomeDims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
+		{Priority: metric.PriorityHigh, MetricName: metricNamePollCount, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
+		{Priority: metric.PriorityHigh, MetricName: metricNamePollDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaConsumer, MetricName: metricNameProcessDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
+		{Priority: metric.PriorityHigh, MetricName: metricNameWaitDuration, Dimensions: partitionDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
+		{Priority: metric.PriorityHigh, MetricName: metricNameCommitDuration, Dimensions: outcomeDims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
+		{Priority: metric.PriorityHigh, MetricName: metricNameRebalanceCount, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
 	}
 }

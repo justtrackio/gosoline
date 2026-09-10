@@ -86,3 +86,28 @@ func TestAmendFromDefault_DoesNotOverwriteExistingFields(t *testing.T) {
 	assert.Equal(t, PriorityLow, target.Priority)
 	assert.Equal(t, UnitMilliseconds, target.Unit)
 }
+
+func TestAmendFromDefault_DoesNotApplyToDifferentDimensions(t *testing.T) {
+	def := &Datum{
+		Namespace:  "test-default-dimensions",
+		MetricName: "requests",
+		Dimensions: Dimensions{
+			"error.type": DimensionDefault,
+		},
+		Unit: UnitCount,
+		Kind: KindCounter.Build(),
+	}
+	addMetricDefaults(def)
+
+	target := &Datum{
+		Namespace:  "test-default-dimensions",
+		MetricName: "requests",
+		Dimensions: Dimensions{
+			"error.type": "timeout",
+		},
+	}
+	amendFromDefault(target)
+
+	assert.Empty(t, target.Unit)
+	assert.Equal(t, Kind{}, target.Kind)
+}

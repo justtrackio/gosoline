@@ -59,6 +59,17 @@ func resolveCustomUnit(unit types.StandardUnit, values []float64) (resolvedUnit 
 	return unit, sum(values)
 }
 
+// resolveBaseUnit maps a custom aggregation unit to the unit it actually measures. A custom unit
+// expresses how batched values are reduced rather than what is measured, so every writer resolves it
+// before rendering the unit. A unit that is not a custom aggregation unit is returned unchanged.
+func resolveBaseUnit(unit types.StandardUnit) types.StandardUnit {
+	if customMetric, ok := customUnits[unit]; ok {
+		return customMetric.Unit
+	}
+
+	return unit
+}
+
 func average(xs []float64) float64 {
 	return sum(xs) / float64(len(xs))
 }
