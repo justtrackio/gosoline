@@ -105,7 +105,7 @@ func (s *sesSenderTestSuite) TestSendEmailWithAttachments() {
 	sender := email.NewSesSenderWithInterfaces(s.logger, s.client, s.clock, from)
 
 	s.client.EXPECT().SendEmail(matcher.Context, mock.MatchedBy(func(input *sesv2.SendEmailInput) bool {
-		s.Equal("sender@example.com", aws.ToString(input.FromEmailAddress))
+		s.Equal(`"Sender" <sender@example.com>`, aws.ToString(input.FromEmailAddress))
 		s.Equal([]string{"recipient@example.com"}, input.Destination.ToAddresses)
 		s.Nil(input.Content.Simple)
 		s.NotNil(input.Content.Raw)
