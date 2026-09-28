@@ -115,7 +115,7 @@ func (s *sesSender) emailInput(email EmailWithAttachments, envelope emailEnvelop
 	}
 
 	return &sesv2.SendEmailInput{
-		FromEmailAddress: aws.String(envelope.sender.Address),
+		FromEmailAddress: aws.String(envelope.senderMailbox()),
 		Destination:      &types.Destination{ToAddresses: envelope.recipientAddresses()},
 		Content:          &types.EmailContent{Raw: &types.RawMessage{Data: body.Bytes()}},
 	}, nil
