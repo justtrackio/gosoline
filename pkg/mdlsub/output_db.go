@@ -58,23 +58,23 @@ type outputDbOrmSettings struct {
 }
 
 type outputDbOrmClient struct {
-	db.Client
+	client db.Client
 }
 
 func (c outputDbOrmClient) Exec(query string, args ...any) (sql.Result, error) {
-	return c.Client.Exec(context.Background(), query, args...)
+	return c.client.Exec(context.Background(), query, args...)
 }
 
 func (c outputDbOrmClient) Prepare(query string) (*sql.Stmt, error) {
-	return c.Client.Prepare(context.Background(), query)
+	return c.client.Prepare(context.Background(), query)
 }
 
 func (c outputDbOrmClient) Query(query string, args ...any) (*sql.Rows, error) {
-	return c.Client.Query(context.Background(), query, args...)
+	return c.client.Query(context.Background(), query, args...)
 }
 
 func (c outputDbOrmClient) QueryRow(query string, args ...any) *sql.Row {
-	return c.Client.QueryRow(context.Background(), query, args...)
+	return c.client.QueryRow(context.Background(), query, args...)
 }
 
 type outputDbNoopLogger struct{}
@@ -92,7 +92,7 @@ func NewOutputDb(ctx context.Context, config cfg.Config, logger log.Logger) (*Ou
 		return nil, fmt.Errorf("can not create orm: failed to unmarshal orm settings for key %q: %w", "db.default", err)
 	}
 
-	orm, err := gorm.Open(settings.Driver, outputDbOrmClient{client})
+	orm, err := gorm.Open(settings.Driver, outputDbOrmClient{client: client})
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
