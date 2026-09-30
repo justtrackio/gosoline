@@ -26,12 +26,14 @@ func TestOutputDbOrmCloseKeepsSharedConnectionOpen(t *testing.T) {
 	orm, err := gorm.Open("mysql", outputDbOrmClient{client: client})
 	require.NoError(t, err)
 
-	_ = orm.Close()
+	require.Error(t, orm.Close())
 
 	mock.ExpectQuery("SELECT 1").WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1))
 	rows, err := client.Query(t.Context(), "SELECT 1")
 	require.NoError(t, err)
-	defer rows.Close()
+	t.Cleanup(func() {
+		require.NoError(t, rows.Close())
+	})
 	require.True(t, rows.Next())
 	var value int
 	require.NoError(t, rows.Scan(&value))
