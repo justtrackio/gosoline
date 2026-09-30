@@ -7,8 +7,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/VividCortex/mysqlerr"
 	"github.com/go-sql-driver/mysql"
+	"github.com/jinzhu/gorm"
 	dbPkg "github.com/justtrackio/gosoline/pkg/db"
-	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdlsub"
 	"github.com/stretchr/testify/suite"
@@ -43,9 +43,7 @@ func (s *OutputDbTestSuite) SetupTest() {
 	db, mock, err := sqlmock.New()
 	s.Require().NoError(err)
 
-	orm, err := dbRepo.NewOrmWithInterfaces(db, dbRepo.OrmSettings{
-		Driver: "mysql",
-	})
+	orm, err := gorm.Open("mysql", db)
 	s.Require().NoError(err)
 
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
@@ -103,17 +101,17 @@ func (s *OutputDbTestSuite) TestPersistUpdateWithNoRowsAffectedDoesNotPanic() {
 	s.expectSelect(true)
 
 	s.NotPanics(func() {
-		s.NoError(s.output.Persist(s.T().Context(), s.model, dbRepo.Update))
+		s.NoError(s.output.Persist(s.T().Context(), s.model, mdlsub.TypeUpdate))
 	})
 }
 
 func (s *OutputDbTestSuite) TestPersistWithPointerModelReturnsError() {
-	err := s.output.Persist(s.T().Context(), &s.model, dbRepo.Update)
+	err := s.output.Persist(s.T().Context(), &s.model, mdlsub.TypeUpdate)
 	s.EqualError(err, "model must not be a pointer")
 }
 
 func (s *OutputDbTestSuite) TestPersistWithNilModelReturnsError() {
-	err := s.output.Persist(s.T().Context(), nil, dbRepo.Update)
+	err := s.output.Persist(s.T().Context(), nil, mdlsub.TypeUpdate)
 	s.EqualError(err, "model must not be nil")
 }
 
@@ -127,7 +125,7 @@ func (s *OutputDbTestSuite) TestPersistRetriesOnDuplicateEntry() {
 	// Retry: the row now exists, so the UPDATE matches and Save succeeds.
 	s.expectUpdate(1)
 
-	s.NoError(s.output.Persist(s.T().Context(), s.model, dbRepo.Update))
+	s.NoError(s.output.Persist(s.T().Context(), s.model, mdlsub.TypeUpdate))
 }
 
 func (s *OutputDbTestSuite) TestPersistReturnsErrorWhenDuplicateEntryPersists() {
@@ -139,7 +137,7 @@ func (s *OutputDbTestSuite) TestPersistReturnsErrorWhenDuplicateEntryPersists() 
 		s.expectInsertDuplicate("name")
 	}
 
-	err := s.output.Persist(s.T().Context(), s.model, dbRepo.Update)
+	err := s.output.Persist(s.T().Context(), s.model, mdlsub.TypeUpdate)
 	s.Error(err)
 	s.True(dbPkg.IsDuplicateEntryError(err), "expected a duplicate entry error, got: %v", err)
 }

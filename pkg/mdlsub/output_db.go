@@ -2,13 +2,16 @@ package mdlsub
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"reflect"
+	"time"
 
+	"github.com/iancoleman/strcase"
 	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/db"
-	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -46,10 +49,67 @@ type OutputDb struct {
 	orm    *gorm.DB
 }
 
+type outputDbOrmSettings struct {
+	Driver      string `cfg:"driver" validation:"required"`
+	Application string `cfg:"application" default:"{app.name}"`
+	Migrations  struct {
+		TablePrefixed bool `cfg:"table_prefixed" default:"true"`
+	} `cfg:"migrations"`
+}
+
+type outputDbOrmClient struct {
+	client db.Client
+}
+
+func (c outputDbOrmClient) Exec(query string, args ...any) (sql.Result, error) {
+	return c.client.Exec(context.Background(), query, args...)
+}
+
+func (c outputDbOrmClient) Prepare(query string) (*sql.Stmt, error) {
+	return c.client.Prepare(context.Background(), query)
+}
+
+func (c outputDbOrmClient) Query(query string, args ...any) (*sql.Rows, error) {
+	return c.client.Query(context.Background(), query, args...)
+}
+
+func (c outputDbOrmClient) QueryRow(query string, args ...any) *sql.Row {
+	return c.client.QueryRow(context.Background(), query, args...)
+}
+
+type outputDbNoopLogger struct{}
+
+func (outputDbNoopLogger) Print(...any) {}
+
 func NewOutputDb(ctx context.Context, config cfg.Config, logger log.Logger) (*OutputDb, error) {
-	orm, err := dbRepo.NewOrm(ctx, config, logger, "default")
+	client, err := db.NewClient(ctx, config, logger, "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not create orm: can not create db connection: %w", err)
+	}
+
+	var settings outputDbOrmSettings
+	if err := config.UnmarshalKey("db.default", &settings); err != nil {
+		return nil, fmt.Errorf("can not create orm: failed to unmarshal orm settings for key %q: %w", "db.default", err)
+	}
+
+	orm, err := gorm.Open(settings.Driver, outputDbOrmClient{client: client})
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
+	}
+
+	orm.LogMode(false)
+	orm.SetLogger(outputDbNoopLogger{})
+	orm = orm.Set("gorm:auto_preload", true)
+	orm = orm.Set("gorm:save_associations", false)
+	orm.SetNowFuncOverride(func() time.Time {
+		return clock.Provider.Now()
+	})
+
+	if settings.Migrations.TablePrefixed {
+		prefix := strcase.ToSnake(settings.Application)
+		gorm.DefaultTableNameHandler = func(_ *gorm.DB, table string) string {
+			return fmt.Sprintf("%s_%s", prefix, table)
+		}
 	}
 
 	return NewOutputDbWithInterfaces(logger, orm), nil
@@ -69,9 +129,9 @@ func (p *OutputDb) Persist(ctx context.Context, model Model, op string) error {
 	}
 
 	switch op {
-	case dbRepo.Create, dbRepo.Update:
+	case TypeCreate, TypeUpdate:
 		err = p.save(ctx, addressableModel)
-	case dbRepo.Delete:
+	case TypeDelete:
 		err = p.orm.Delete(addressableModel).Error
 	default:
 		err = fmt.Errorf("unknown operation %s in OutputDb", op)
