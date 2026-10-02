@@ -165,5 +165,13 @@ func UnmarshalSettings(config cfg.Config, settings any, typ string, name string)
 		return fmt.Errorf("can not unmarshal settings: %w", err)
 	}
 
+	if containerSettings, ok := settings.(interface{ setRunnerType(string) }); ok {
+		managerSettings := &ContainerManagerSettings{}
+		if err := config.UnmarshalKey("test.container_manager", managerSettings); err != nil {
+			return fmt.Errorf("can not unmarshal container manager settings: %w", err)
+		}
+		containerSettings.setRunnerType(managerSettings.RunnerType)
+	}
+
 	return nil
 }
