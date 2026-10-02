@@ -2,6 +2,7 @@ package log
 
 import (
 	"context"
+	"maps"
 	"sync"
 
 	"github.com/justtrackio/gosoline/pkg/funk"
@@ -166,9 +167,7 @@ func appendContextFields(ctx context.Context, newFields map[string]any, local bo
 		updateFields.lck.Lock()
 		defer updateFields.lck.Unlock()
 
-		for k, v := range newFields {
-			updateFields.data[k] = v
-		}
+		maps.Copy(updateFields.data, newFields)
 
 		return ctx
 	}
