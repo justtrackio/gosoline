@@ -179,6 +179,12 @@ SQS inputs acknowledge each successfully processed message individually by defau
 from a receive result. Batch acknowledgement reduces delete requests, but waits for the complete receive batch to finish
 processing before deleting any of its messages.
 
+### Retry context propagation
+
+Consumers decode a copy of the message attributes so context decoders can remove propagation attributes from the
+callback's view while the original message retains them for retries and redelivery. Preserve this separation for both
+single messages and aggregates.
+
 ## Related packages
 - `pkg/cloud/aws/sqs`, `sns`, `kinesis` - AWS transport clients
 - `pkg/kafka` - Kafka client integration

@@ -1,0 +1,16 @@
+app:
+  env: test
+  name: producer-test
+  tags:
+    project: gosoline
+    family: test
+    group: grp
+
+stream:
+  producer:
+    testEvent:
+      encoding: application/json
+
+  output:
+    testEvent:
+      type: inMemory

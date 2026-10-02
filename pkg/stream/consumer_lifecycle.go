@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"sync/atomic"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/coffin"
@@ -151,7 +150,8 @@ func (c *Consumer) logConsumeCounter(ctx context.Context) error {
 }
 
 func (c *Consumer) logProcessedMessages(ctx context.Context, lastLog *time.Time) {
-	processed := atomic.SwapInt32(&c.processed, 0)
+	processed := c.processed.Swap(0)
+
 	now := c.clock.Now()
 	took := now.Sub(*lastLog)
 	*lastLog = now

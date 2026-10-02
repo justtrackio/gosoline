@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
@@ -14,6 +15,7 @@ type DataModel struct {
 
 type Callback struct {
 	aut                suite.AppUnderTest
+	logger             log.Logger
 	receivedModels     []DataModel
 	receivedAttributes []map[string]string
 }
@@ -27,6 +29,7 @@ func (c *Callback) GetModel(attributes map[string]string) any {
 }
 
 func (c *Callback) Consume(ctx context.Context, model DataModel, attributes map[string]string) (bool, error) {
+	c.logger.Info(ctx, "received retry test message")
 	c.receivedModels = append(c.receivedModels, model)
 	c.receivedAttributes = append(c.receivedAttributes, attributes)
 

@@ -19,6 +19,15 @@ import (
 
 type Option func(s *SuiteConfiguration)
 
+// WithAppOptions adds application options to each application under test.
+func WithAppOptions(options ...application.Option) Option {
+	return func(s *SuiteConfiguration) {
+		for _, option := range options {
+			s.addAppOption(option)
+		}
+	}
+}
+
 func withAppCtx(ctx context.Context) Option {
 	return func(s *SuiteConfiguration) {
 		s.appCtx = ctx
