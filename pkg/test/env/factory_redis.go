@@ -19,7 +19,8 @@ const componentRedis = "redis"
 type redisSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	Port int `cfg:"port" default:"0"`
+	ContainerBindingSettings
+	DB int `cfg:"db" default:"0" validate:"min=0"`
 }
 
 type redisFactory struct {
@@ -70,34 +71,36 @@ func (f *redisFactory) DescribeContainers(settings any) ComponentContainerDescri
 
 func (f *redisFactory) configureContainer(settings any) *ContainerConfig {
 	s := settings.(*redisSettings)
+	ports := PortBindings{
+		"main": {ContainerPort: 6379, HostPort: s.Port, Protocol: "tcp"},
+	}
+	if s.isExternal() {
+		return externalContainer(s.Host, ports)
+	}
 
 	return &ContainerConfig{
-		Auth:       s.Image.Auth,
-		Repository: s.Image.Repository,
-		Tag:        s.Image.Tag,
-		PortBindings: PortBindings{
-			"main": {
-				ContainerPort: 6379,
-				HostPort:      s.Port,
-				Protocol:      "tcp",
-			},
-		},
+		Auth:         s.Image.Auth,
+		Repository:   s.Image.Repository,
+		Tag:          s.Image.Tag,
+		PortBindings: ports,
 	}
 }
 
 func (f *redisFactory) healthCheck() ComponentHealthCheck {
 	return func(container *Container) error {
-		client := f.client(container)
+		client := f.client(container, 0)
 		err := client.Ping(context.Background()).Err()
 
 		return err
 	}
 }
 
-func (f *redisFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*Container, _ any) (Component, error) {
+func (f *redisFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*Container, settings any) (Component, error) {
+	s := settings.(*redisSettings)
 	component := &RedisComponent{
 		address: f.address(containers["main"]),
-		client:  f.client(containers["main"]),
+		client:  f.client(containers["main"], s.DB),
+		db:      s.DB,
 	}
 
 	return component, nil
@@ -110,8 +113,9 @@ func (f *redisFactory) address(container *Container) string {
 	return address
 }
 
-func (f *redisFactory) client(container *Container) *baseRedis.Client {
+func (f *redisFactory) client(container *Container, db int) *baseRedis.Client {
 	address := f.address(container)
+	key := fmt.Sprintf("%s/%d", address, db)
 
 	f.lck.Lock()
 	defer f.lck.Unlock()
@@ -120,11 +124,12 @@ func (f *redisFactory) client(container *Container) *baseRedis.Client {
 		f.clients = make(map[string]*baseRedis.Client)
 	}
 
-	if _, ok := f.clients[address]; !ok {
-		f.clients[address] = baseRedis.NewClient(&baseRedis.Options{
+	if _, ok := f.clients[key]; !ok {
+		f.clients[key] = baseRedis.NewClient(&baseRedis.Options{
 			Addr: address,
+			DB:   db,
 		})
 	}
 
-	return f.clients[address]
+	return f.clients[key]
 }
