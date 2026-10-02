@@ -31,9 +31,8 @@ type mysqlSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
 	ContainerBindingSettings
-	Credentials          mysqlCredentials `cfg:"credentials"`
-	ToxiproxyEnabled     bool             `cfg:"toxiproxy_enabled"      default:"false"`
-	UseExternalContainer bool             `cfg:"use_external_container" default:"false"`
+	Credentials      mysqlCredentials `cfg:"credentials"`
+	ToxiproxyEnabled bool             `cfg:"toxiproxy_enabled" default:"false"`
 }
 
 type mysqlFactory struct {
@@ -114,22 +113,18 @@ func (f *mysqlFactory) DescribeContainers(settings any) ComponentContainerDescri
 func (f *mysqlFactory) configureContainer(settings any) *ContainerConfig {
 	s := settings.(*mysqlSettings)
 
-	if s.UseExternalContainer {
+	if s.isExternal() {
 		// When using an external instance we need to generate a new database name
 		// to avoid conflicts with other tests using the same external container
 		s.Credentials.DatabaseName = uuid.New().NewV4()
 
-		return &ContainerConfig{
-			RunnerType:   RunnerTypeExternal,
-			ExternalHost: s.Host,
-			PortBindings: PortBindings{
-				"main": {
-					ContainerPort: s.Port,
-					HostPort:      s.Port,
-					Protocol:      "tcp",
-				},
+		return externalContainer(s.Host, PortBindings{
+			"main": {
+				ContainerPort: 3306,
+				HostPort:      s.Port,
+				Protocol:      "tcp",
 			},
-		}
+		})
 	}
 
 	env := map[string]string{
