@@ -523,28 +523,32 @@ func (s *shardReader) processRecordsUnordered(ctx context.Context, processingCtx
 	close(jobs)
 
 	cfn := coffin.New()
-	workerCount := min(len(records), s.settings.RunnerCount)
-	for range workerCount {
-		cfn.Go(func() error {
-			for i := range jobs {
-				record := records[i]
-				s.delayConsume(ctx, record)
+	cfn.Go(func() error {
+		workerCount := min(len(records), s.settings.RunnerCount)
+		for range workerCount {
+			cfn.Go(func() error {
+				for i := range jobs {
+					record := records[i]
+					s.delayConsume(ctx, record)
 
-				select {
-				case <-ctx.Done():
-					// Use the same sentinel as a stopped handler so checkpointing stops before this record.
-					results[i] = errMessageProcessorStopped
-				default:
-					results[i] = s.handleWithRecovery(processingCtx, record, handler)
+					select {
+					case <-ctx.Done():
+						// Use the same sentinel as a stopped handler so checkpointing stops before this record.
+						results[i] = errMessageProcessorStopped
+					default:
+						results[i] = s.handleWithRecovery(processingCtx, record, handler)
+					}
+					if !errors.Is(results[i], errMessageProcessorStopped) {
+						s.healthCheckTimer.MarkHealthy()
+					}
 				}
-				if !errors.Is(results[i], errMessageProcessorStopped) {
-					s.healthCheckTimer.MarkHealthy()
-				}
-			}
 
-			return nil
-		})
-	}
+				return nil
+			})
+		}
+
+		return nil
+	})
 
 	// Workers only return nil, so an error here is a panic recovered by the coffin.
 	if err := cfn.Wait(); err != nil {
