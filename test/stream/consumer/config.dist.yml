@@ -1,0 +1,23 @@
+app:
+  env: test
+  name: consumer-test
+  tags:
+    project: gosoline
+    family: test
+    group: grp
+
+tracing:
+  provider: noop
+
+stream:
+  consumer:
+    default:
+      input: testEvent
+      encoding: application/json
+      retry:
+        enabled: false
+
+  input:
+    testEvent:
+      type: inMemory
+      runner_count: 1

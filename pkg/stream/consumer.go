@@ -62,7 +62,7 @@ type Consumer struct {
 	id              string
 	name            string
 	settings        ConsumerSettings
-	processed       int32
+	processed       atomic.Int32
 	callback        UntypedConsumerCallback
 	samplingDecider smpl.Decider
 }
@@ -293,7 +293,10 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, msg *Message, pr
 	var err error
 	batch := make([]*Message, 0)
 
-	if ctx, _, err = c.encoder.Decode(ctx, msg, &batch); err != nil {
+	// Decoders consume context attributes; preserve the original message for redelivery.
+	decodeMsg := *msg
+	decodeMsg.Attributes = maps.Clone(msg.Attributes)
+	if ctx, _, err = c.encoder.Decode(ctx, &decodeMsg, &batch); err != nil {
 		c.handleError(ctx, err, "an error occurred during disaggregation of the message")
 
 		return
@@ -316,7 +319,7 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, msg *Message, pr
 		allSucceeded = allSucceeded && succeeded
 
 		duration := c.clock.Since(start)
-		atomic.AddInt32(&c.processed, 1)
+		c.processed.Add(1)
 
 		c.writeMetricDurationAndProcessedCount(ctx, duration, 1)
 	}
@@ -337,7 +340,7 @@ func (c *Consumer) processSingleMessage(gracedCtx context.Context, msg *Message)
 	ack = c.process(gracedCtx, msg, c.hasNativeRetry())
 
 	duration := c.clock.Since(start)
-	atomic.AddInt32(&c.processed, 1)
+	c.processed.Add(1)
 	c.writeMetricDurationAndProcessedCount(gracedCtx, duration, 1)
 
 	return
@@ -403,7 +406,10 @@ func (c *Consumer) process(gracedCtx context.Context, msg *Message, hasNativeRet
 		return false
 	}
 
-	if gracedCtx, attributes, err = c.encoder.Decode(gracedCtx, msg, model); err != nil {
+	// Decoders consume context attributes; preserve the original message for retries.
+	decodeMsg := *msg
+	decodeMsg.Attributes = maps.Clone(msg.Attributes)
+	if gracedCtx, attributes, err = c.encoder.Decode(gracedCtx, &decodeMsg, model); err != nil {
 		c.handleError(gracedCtx, err, "an error occurred during the consume operation")
 
 		return false

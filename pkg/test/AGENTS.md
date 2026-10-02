@@ -52,6 +52,9 @@ func TestMySuite(t *testing.T) {
 ```
 
 ## Environment helpers
+Use `suite.WithAppOptions(...)` to configure applications under test with application options, such as
+`application.WithLoggerContextFieldsMessageEncoder` for global logger context propagation through stream messages.
+
 | Helper | Package | Purpose |
 |--------|---------|--------|
 | `env/` | LocalStack, Redis, MySQL | Docker container management |
