@@ -3,6 +3,7 @@ package env
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -20,7 +21,8 @@ type redisSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
 	ContainerBindingSettings
-	DB int `cfg:"db" default:"0" validate:"min=0"`
+	DB     int  `cfg:"db" default:"0" validate:"min=0"`
+	AutoDB bool `cfg:"auto_db" default:"false"`
 }
 
 type redisFactory struct {
@@ -97,6 +99,14 @@ func (f *redisFactory) healthCheck() ComponentHealthCheck {
 
 func (f *redisFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*Container, settings any) (Component, error) {
 	s := settings.(*redisSettings)
+	if s.AutoDB && s.isExternal() && s.DB == 0 {
+		db, err := f.allocateDatabase(containers["main"])
+		if err != nil {
+			return nil, err
+		}
+		s.DB = db
+	}
+
 	component := &RedisComponent{
 		address: f.address(containers["main"]),
 		client:  f.client(containers["main"], s.DB),
@@ -104,6 +114,28 @@ func (f *redisFactory) Component(_ cfg.Config, _ log.Logger, containers map[stri
 	}
 
 	return component, nil
+}
+
+func (f *redisFactory) allocateDatabase(container *Container) (int, error) {
+	client := f.client(container, 0)
+	ctx := context.Background()
+	databases, err := client.ConfigGet(ctx, "databases").Result()
+	if err != nil {
+		return 0, fmt.Errorf("can not read Redis database count: %w", err)
+	}
+	count, err := strconv.Atoi(databases["databases"])
+	if err != nil {
+		return 0, fmt.Errorf("invalid Redis database count: %w", err)
+	}
+	db, err := client.Incr(ctx, "gosoline:test:next-db").Result()
+	if err != nil {
+		return 0, fmt.Errorf("can not allocate Redis database: %w", err)
+	}
+	if db >= int64(count) {
+		return 0, fmt.Errorf("Redis database allocation exhausted: database %d, configured count %d", db, count)
+	}
+
+	return int(db), nil
 }
 
 func (f *redisFactory) address(container *Container) string {

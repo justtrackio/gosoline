@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -15,6 +16,12 @@ import (
 type TestData struct {
 	Id   string `json:"id" ddb:"key=hash"`
 	Data string `json:"data"`
+	Ttl  int64  `json:"ttl" ddb:"ttl=enabled"`
+}
+
+type TestDataByData struct {
+	Data string `json:"data" ddb:"global=hash"`
+	Id   string `json:"id"`
 	Ttl  int64  `json:"ttl" ddb:"ttl=enabled"`
 }
 
@@ -48,6 +55,7 @@ func (s *DdbTestSuite) SetupTest() error {
 			ReadCapacityUnits:  1,
 			WriteCapacityUnits: 1,
 		},
+		Global: []ddb.GlobalSettings{{Name: "by-data", Model: &TestDataByData{}}},
 	}
 	var err error
 	s.repo, err = ddb.NewRepository(s.Env().Context(), s.Env().Config(), s.Env().Logger(), ddbConfig)
@@ -56,6 +64,24 @@ func (s *DdbTestSuite) SetupTest() error {
 	}
 
 	return nil
+}
+
+func (s *DdbTestSuite) TestConditionalWriteAndIndexQuery() {
+	ctx := s.T().Context()
+	item := s.makeItem("conditional", "indexed-value", time.Hour)
+	condition := expression.AttributeNotExists(expression.Name("id"))
+	write, err := s.repo.PutItem(ctx, s.repo.PutItemBuilder().WithCondition(condition), item)
+	s.Require().NoError(err)
+	s.False(write.ConditionalCheckFailed)
+	write, err = s.repo.PutItem(ctx, s.repo.PutItemBuilder().WithCondition(condition), item)
+	s.Require().NoError(err)
+	s.True(write.ConditionalCheckFailed)
+	var items []*TestDataByData
+	result, err := s.repo.Query(ctx, s.repo.QueryBuilder().WithIndex("by-data").WithHash("indexed-value"), &items)
+	s.Require().NoError(err)
+	s.Equal(int32(1), result.ItemCount)
+	s.Require().Len(items, 1)
+	s.Equal(&TestDataByData{Id: item.Id, Data: item.Data, Ttl: item.Ttl}, items[0])
 }
 
 func (s *DdbTestSuite) TestWriteReadUpdateDeleteItem() {
