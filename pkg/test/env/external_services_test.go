@@ -2,6 +2,7 @@ package env
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
@@ -70,6 +71,8 @@ func TestS3BucketIsolation(t *testing.T) {
 			"app.env": "test", "app.name": "blob-test", "app.namespace": "gosoline-test",
 			"blob.first.bucket": "shared-bucket", "blob.first.prefix": "original-prefix",
 			"blob.second.bucket":                          "shared-bucket",
+			"blob.longfirst.bucket":                       strings.Repeat("a", 62) + "b",
+			"blob.longsecond.bucket":                      strings.Repeat("a", 62) + "c",
 			"cloud.aws.dynamodb.clients.default.endpoint": "http://dynamodb:8000",
 		})))
 		component, err := factory.Component(config, nil, containers, &s3Settings{Region: "eu-central-1"})
@@ -80,6 +83,12 @@ func TestS3BucketIsolation(t *testing.T) {
 		otherBucket, err := config.GetString("blob.second.bucket")
 		require.NoError(t, err)
 		require.Equal(t, bucket, otherBucket)
+		longFirst, err := config.GetString("blob.longfirst.bucket")
+		require.NoError(t, err)
+		longSecond, err := config.GetString("blob.longsecond.bucket")
+		require.NoError(t, err)
+		require.Len(t, longFirst, 63)
+		require.NotEqual(t, longFirst, longSecond)
 		buckets = append(buckets, bucket)
 		prefix, err := config.GetString("blob.first.prefix")
 		require.NoError(t, err)

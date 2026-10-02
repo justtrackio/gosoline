@@ -2,6 +2,7 @@ package env
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"strings"
 
@@ -83,6 +84,10 @@ func (f *s3Factory) Component(config cfg.Config, _ log.Logger, containers map[st
 			return nil, fmt.Errorf("can not read blob store %s: %w", name, err)
 		}
 		bucket := store.Bucket[:min(len(store.Bucket), 50)]
+		if len(store.Bucket) > 50 {
+			digest := sha256.Sum256([]byte(store.Bucket))
+			bucket = fmt.Sprintf("%s-%x", bucket[:41], digest[:4])
+		}
 		component.buckets[name] = strings.TrimRight(bucket, "-.") + "-" + suffix
 	}
 
