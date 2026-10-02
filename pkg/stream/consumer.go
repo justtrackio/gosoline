@@ -12,6 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -260,7 +261,7 @@ func (c *Consumer) processData(ctx context.Context, msg *Message) (ack bool) {
 
 	// Keep the input context's values, but let in-flight processing outlive the input's cancellation
 	// until the shared shutdown drain deadline expires.
-	gracedCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	gracedCtx, cancel := exec.WithManualCancelContext(ctx)
 	defer cancel()
 
 	// Cancel this message when the shared drain window ends instead of starting a separate grace timer per message.

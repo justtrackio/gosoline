@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/funk"
 )
 
 const RequestCanceledError = requestCanceledError("RequestCanceled")
@@ -35,35 +36,26 @@ func AddRequestCancelCheck(check RequestCanceledCheck) {
 	requestCancelChecks = append(requestCancelChecks, check)
 }
 
-// IsRequestCanceled checks if the given error was (only) caused by a canceled context - if there is any other error contained in it, we
-// return false. Thus, if IsRequestCanceled returns true, you can (and should) ignore the error and stop processing instead.
+// IsRequestCanceled checks if the given error was caused by a canceled context - even if there is any other error contained in it, we
+// return true. Thus, if IsRequestCanceled returns true, you can expect the context got canceled somewhere during that operation.
 func IsRequestCanceled(err error) bool {
 	type multipleErrors interface {
 		Unwrap() []error
 	}
 
 	if multiErr, ok := err.(multipleErrors); ok {
-		// check if one of the errors is no request canceled
-		for _, err := range multiErr.Unwrap() {
-			if !IsRequestCanceled(err) {
-				return false
-			}
+		// check if one of the errors is request canceled
+		if funk.Any(multiErr.Unwrap(), IsRequestCanceled) {
+			return true
 		}
-
-		// all errors are a canceled request (if there are any)
-		return len(multiErr.Unwrap()) > 0
 	}
 
 	multiErr := &multierror.Error{}
 	if errors.As(err, &multiErr) {
-		// check if one of the errors is no request canceled
-		for _, err := range multiErr.Errors {
-			if !IsRequestCanceled(err) {
-				return false
-			}
+		// check if one of the errors is request canceled
+		if funk.Any(multiErr.Errors, IsRequestCanceled) {
+			return true
 		}
-
-		return len(multiErr.Errors) > 0
 	}
 
 	for _, check := range requestCancelChecks {

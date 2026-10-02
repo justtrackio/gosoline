@@ -114,9 +114,7 @@ func (c *Consumer) trackInputRun(input Input, stopCtx context.Context, stopOnRet
 		// therefore keep them alive until this context is done instead of running a second timer over the same record.
 		dyingCtx = exec.WithDrainContext(dyingCtx, c.drainCtx)
 
-		err := input.Run(dyingCtx, func(ctx context.Context, msg *Message) (ack bool) {
-			return c.processData(ctx, msg)
-		})
+		err := input.Run(dyingCtx, c.processData)
 
 		if stopOnReturn {
 			// The consumer input returned on its own, so no further messages will arrive. Stop the remaining inputs
