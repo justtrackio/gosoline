@@ -18,12 +18,19 @@ import (
 )
 
 const (
-	metricName      = "BlobBatchRunner"
+	metricNamespace = "blob"
+
+	metricName      = "batch.operations"
+	dimensionOp     = "operation"
 	operationCopy   = "Copy"
 	operationDelete = "Delete"
 	operationRead   = "Read"
 	operationWrite  = "Write"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, metricName, "blob batch operations a runner completed")
+}
 
 type BatchRunnerSettings struct {
 	ClientName        string `cfg:"client_name" default:"default"`
@@ -67,7 +74,7 @@ func NewBatchRunner(ctx context.Context, config cfg.Config, logger log.Logger, n
 	}
 
 	defaultMetrics := getDefaultRunnerMetrics()
-	metricWriter := metric.NewWriter(defaultMetrics...)
+	metricWriter := metric.NewWriter(metricNamespace, defaultMetrics...)
 
 	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, settings.ClientName)
 	if err != nil {
@@ -253,50 +260,28 @@ func (r *batchRunner) writeMetric(ctx context.Context, operation string) {
 		MetricName: metricName,
 		Priority:   metric.PriorityHigh,
 		Dimensions: map[string]string{
-			"Operation": operation,
+			dimensionOp: operation,
 		},
-		Unit:  metric.UnitCount,
 		Value: 1.0,
 	})
 }
 
 func getDefaultRunnerMetrics() []*metric.Datum {
-	return []*metric.Datum{
-		{
+	operations := []string{operationRead, operationWrite, operationCopy, operationDelete}
+	defaults := make([]*metric.Datum, 0, len(operations))
+
+	for _, operation := range operations {
+		defaults = append(defaults, &metric.Datum{
 			MetricName: metricName,
 			Priority:   metric.PriorityHigh,
 			Dimensions: map[string]string{
-				"Operation": operationRead,
+				dimensionOp: operation,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
-		},
-		{
-			MetricName: metricName,
-			Priority:   metric.PriorityHigh,
-			Dimensions: map[string]string{
-				"Operation": operationWrite,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-		},
-		{
-			MetricName: metricName,
-			Priority:   metric.PriorityHigh,
-			Dimensions: map[string]string{
-				"Operation": operationCopy,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-		},
-		{
-			MetricName: metricName,
-			Priority:   metric.PriorityHigh,
-			Dimensions: map[string]string{
-				"Operation": operationDelete,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-		},
+			Kind:  metric.KindCounter.Build(),
+		})
 	}
+
+	return defaults
 }

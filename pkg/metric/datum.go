@@ -8,8 +8,12 @@ import (
 )
 
 type Datum struct {
-	Priority   int          `json:"-"`
-	Timestamp  time.Time    `json:"timestamp"`
+	Priority  int       `json:"-"`
+	Timestamp time.Time `json:"timestamp"`
+	// Namespace is the canonical namespace the metric is authored in, stamped by the writer it is
+	// written through. It is data on the datum, independent of any backend-specific namespace such as
+	// the CloudWatch namespace, and each writer renders it into its own naming convention.
+	Namespace  string       `json:"namespace,omitempty"`
 	MetricName string       `json:"metricName"`
 	Dimensions Dimensions   `json:"dimensions"`
 	Value      float64      `json:"value"`
@@ -18,7 +22,7 @@ type Datum struct {
 }
 
 func (d *Datum) Id() string {
-	return fmt.Sprintf("%s:%s", d.MetricName, d.DimensionKV())
+	return fmt.Sprintf("%s:%s:%s", d.Namespace, d.MetricName, d.DimensionKV())
 }
 
 func (d *Datum) DimensionKV() string {
