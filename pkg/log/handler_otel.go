@@ -3,6 +3,7 @@ package log
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -93,19 +94,15 @@ func (h *handlerOtel) Log(ctx context.Context, timestamp time.Time, level int, m
 	record.SetSeverityText(LevelName(level))
 	record.SetBody(otellog.StringValue(body))
 
-	attributes := make([]otellog.KeyValue, 0, len(data.Fields)+len(data.ContextFields)+1)
-	attributes = append(attributes, otellog.String("channel", data.Channel))
-
-	for key, value := range data.ContextFields {
-		attributes = append(attributes, toOtelKeyValue(key, value))
-	}
-
-	for key, value := range data.Fields {
-		attributes = append(attributes, toOtelKeyValue(key, value))
-	}
+	attributeCapacity := len(data.Fields) + len(data.ContextFields) + 2
+	attributes := make([]otellog.KeyValue, 0, attributeCapacity)
+	attributeKeys := make(map[string]struct{}, attributeCapacity)
+	attributes = appendOtelAttribute(attributes, attributeKeys, "channel", "metadata", data.Channel)
+	attributes = appendOtelAttributes(attributes, attributeKeys, "context", data.ContextFields)
+	attributes = appendOtelAttributes(attributes, attributeKeys, "fields", data.Fields)
 
 	if logErr != nil {
-		attributes = append(attributes, otellog.String("error", logErr.Error()))
+		attributes = appendOtelAttribute(attributes, attributeKeys, "error", "log", logErr.Error())
 	}
 
 	record.AddAttributes(attributes...)
@@ -113,6 +110,36 @@ func (h *handlerOtel) Log(ctx context.Context, timestamp time.Time, level int, m
 	h.logger.Emit(ctx, record)
 
 	return nil
+}
+
+// appendOtelAttributes keeps attributes unique after context and message fields
+// are flattened into the same OTEL namespace. Earlier sources keep their keys;
+// collisions from later sources are retained under a source prefix.
+func appendOtelAttributes(attributes []otellog.KeyValue, keys map[string]struct{}, namespace string, values map[string]any) []otellog.KeyValue {
+	valueKeys := make([]string, 0, len(values))
+	for key := range values {
+		valueKeys = append(valueKeys, key)
+	}
+	sort.Strings(valueKeys)
+
+	for _, key := range valueKeys {
+		attributes = appendOtelAttribute(attributes, keys, key, namespace, values[key])
+	}
+
+	return attributes
+}
+
+func appendOtelAttribute(attributes []otellog.KeyValue, keys map[string]struct{}, key, namespace string, value any) []otellog.KeyValue {
+	for {
+		if _, exists := keys[key]; !exists {
+			break
+		}
+
+		key = namespace + "." + key
+	}
+
+	keys[key] = struct{}{}
+	return append(attributes, toOtelKeyValue(key, value))
 }
 
 func (h *handlerOtel) Close(ctx context.Context) error {
