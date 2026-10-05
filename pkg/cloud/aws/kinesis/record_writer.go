@@ -203,7 +203,7 @@ func (w *recordWriter) putRecordsBatch(ctx context.Context, batch []*Record) err
 
 		// sleep some time before retrying to give the stream some time to recover from a ProvisionedThroughputExceededException
 		sleep := backoff.NextBackOff()
-		w.clock.Sleep(sleep)
+		w.clock.SleepWithContext(ctx, sleep)
 		attempt++
 	}
 

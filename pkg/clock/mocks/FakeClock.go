@@ -3,7 +3,10 @@
 package mocks
 
 import (
+	context "context"
+
 	clock "github.com/justtrackio/gosoline/pkg/clock"
+
 	mock "github.com/stretchr/testify/mock"
 
 	time "time"
@@ -389,35 +392,36 @@ func (_c *FakeClock_Since_Call) RunAndReturn(run func(time.Time) time.Duration) 
 	return _c
 }
 
-// Sleep provides a mock function with given fields: d
-func (_m *FakeClock) Sleep(d time.Duration) {
-	_m.Called(d)
+// SleepWithContext provides a mock function with given fields: ctx, d
+func (_m *FakeClock) SleepWithContext(ctx context.Context, d time.Duration) {
+	_m.Called(ctx, d)
 }
 
-// FakeClock_Sleep_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Sleep'
-type FakeClock_Sleep_Call struct {
+// FakeClock_SleepWithContext_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SleepWithContext'
+type FakeClock_SleepWithContext_Call struct {
 	*mock.Call
 }
 
-// Sleep is a helper method to define mock.On call
+// SleepWithContext is a helper method to define mock.On call
+//   - ctx context.Context
 //   - d time.Duration
-func (_e *FakeClock_Expecter) Sleep(d interface{}) *FakeClock_Sleep_Call {
-	return &FakeClock_Sleep_Call{Call: _e.mock.On("Sleep", d)}
+func (_e *FakeClock_Expecter) SleepWithContext(ctx interface{}, d interface{}) *FakeClock_SleepWithContext_Call {
+	return &FakeClock_SleepWithContext_Call{Call: _e.mock.On("SleepWithContext", ctx, d)}
 }
 
-func (_c *FakeClock_Sleep_Call) Run(run func(d time.Duration)) *FakeClock_Sleep_Call {
+func (_c *FakeClock_SleepWithContext_Call) Run(run func(ctx context.Context, d time.Duration)) *FakeClock_SleepWithContext_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(time.Duration))
+		run(args[0].(context.Context), args[1].(time.Duration))
 	})
 	return _c
 }
 
-func (_c *FakeClock_Sleep_Call) Return() *FakeClock_Sleep_Call {
+func (_c *FakeClock_SleepWithContext_Call) Return() *FakeClock_SleepWithContext_Call {
 	_c.Call.Return()
 	return _c
 }
 
-func (_c *FakeClock_Sleep_Call) RunAndReturn(run func(time.Duration)) *FakeClock_Sleep_Call {
+func (_c *FakeClock_SleepWithContext_Call) RunAndReturn(run func(context.Context, time.Duration)) *FakeClock_SleepWithContext_Call {
 	_c.Run(run)
 	return _c
 }

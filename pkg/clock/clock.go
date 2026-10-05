@@ -1,6 +1,7 @@
 package clock
 
 import (
+	"context"
 	"time"
 )
 
@@ -31,8 +32,9 @@ type Clock interface {
 	Now() time.Time
 	// Since returns the time which passed since t.
 	Since(t time.Time) time.Duration
-	// Sleep blocks execution of your go routine for at least the given duration.
-	Sleep(d time.Duration)
+	// SleepWithContext sleeps for the given duration, but cancels the sleep the moment the context is canceled.
+	// No error is returned, it is the responsibility of the caller to check if the context is still active.
+	SleepWithContext(ctx context.Context, d time.Duration)
 }
 
 type realClock struct{}
@@ -47,8 +49,14 @@ func (c realClock) After(d time.Duration) <-chan time.Time {
 	return c.NewTimer(d).Chan()
 }
 
-func (c realClock) Sleep(d time.Duration) {
-	time.Sleep(d)
+func (c realClock) SleepWithContext(ctx context.Context, d time.Duration) {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+	case <-timer.C:
+	}
 }
 
 func (c realClock) Now() time.Time {
