@@ -1,11 +1,13 @@
 package clock_test
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,7 +18,6 @@ func TestNewFakeClock(t *testing.T) {
 	time.Sleep(time.Millisecond)
 	assert.Equal(t, now, c.Now())
 
-	//
 	c2 := clock.NewFakeClock()
 	assert.Equal(t, c.Now(), c2.Now())
 }
@@ -40,12 +41,10 @@ func TestFakeClock_AdvanceSleep(t *testing.T) {
 	c := clock.NewFakeClock()
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		c.Sleep(time.Minute)
 		i++
-		wg.Done()
-	}()
+	})
 
 	c.BlockUntil(1)
 	assert.Equal(t, 0, i)
@@ -56,6 +55,85 @@ func TestFakeClock_AdvanceSleep(t *testing.T) {
 	c.Advance(time.Second * 59)
 	wg.Wait()
 	assert.Equal(t, 1, i)
+}
+
+func TestFakeClock_SleepWithContext(t *testing.T) {
+	i := 0
+	c := clock.NewFakeClock()
+
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		c.SleepWithContext(t.Context(), time.Minute)
+		i++
+	})
+
+	c.BlockUntil(1)
+	assert.Equal(t, 0, i)
+
+	c.Advance(time.Second)
+	assert.Equal(t, 0, i)
+
+	c.Advance(time.Second * 59)
+	wg.Wait()
+	assert.Equal(t, 1, i)
+}
+
+func TestFakeClock_SleepWithContext_ContextCancelled(t *testing.T) {
+	i := 0
+	c := clock.NewFakeClock()
+	ctx, cancel := context.WithCancel(t.Context())
+
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		c.SleepWithContext(ctx, time.Minute)
+		i++
+	})
+
+	c.BlockUntil(1)
+	assert.Equal(t, 0, i)
+
+	cancel()
+	wg.Wait()
+	assert.Equal(t, 1, i)
+}
+
+func TestFakeClock_SleepWithContext_CanceledSleeperUnregistered(t *testing.T) {
+	c := clock.NewFakeClock()
+	ctxA, cancelA := context.WithCancel(t.Context())
+	ctxB, cancelB := context.WithCancel(t.Context())
+
+	aDone := make(chan struct{})
+	bDone := make(chan struct{})
+	go func() {
+		c.SleepWithContext(ctxA, time.Minute)
+		close(aDone)
+	}()
+	go func() {
+		c.SleepWithContext(ctxB, time.Minute)
+		close(bDone)
+	}()
+
+	c.BlockUntil(2)
+	cancelA()
+	<-aDone
+
+	// A's canceled sleeper must no longer be counted as waiting, so BlockUntil(2)
+	// must not return while only B is still sleeping
+	unblocked := make(chan struct{})
+	go func() {
+		c.BlockUntil(2)
+		close(unblocked)
+	}()
+	select {
+	case <-unblocked:
+		t.Fatal("BlockUntil(2) returned although only one sleeper is waiting")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	// B's sleeper must still be registered and fire when the clock advances
+	c.Advance(time.Minute)
+	<-bDone
+	cancelB()
 }
 
 func TestFakeClockAfter(t *testing.T) {
@@ -137,67 +215,52 @@ func TestFakeClock_BlockUntil(t *testing.T) {
 }
 
 func TestFakeClock_BlockUntilTimers(t *testing.T) {
-	c := clock.NewFakeClock()
-	timers := make([]clock.Timer, 3)
-
-	for _, waitForBlocked := range []bool{false, true} {
-		ch := make(chan struct{})
-		go func() {
-			close(ch)
-			c.BlockUntilTimers(len(timers))
-			c.Advance(time.Second)
-		}()
-
-		// BlockUntilTimers has two paths - either we already have enough timers waiting or we need to wait for more timers.
-		// Thus, we at least once want to wait for the go routine to have a chance to run (although this is not a guarantee
-		// that it also entered BlockUntilTimers, but there is not much we can do about that)
-		if waitForBlocked {
-			<-ch
-		}
-
-		for i := range timers {
-			if timers[i] == nil {
-				timers[i] = c.NewTimer(time.Second)
-			} else {
-				timers[i].Reset(time.Second)
-			}
-		}
-
-		for _, timer := range timers {
-			<-timer.Chan()
-		}
-	}
+	blockUntilSomethingTest(clock.FakeClock.BlockUntilTimers, clock.FakeClock.NewTimer)
 }
 
 func TestFakeClock_BlockUntilTickers(t *testing.T) {
+	blockUntilSomethingTest(clock.FakeClock.BlockUntilTickers, clock.FakeClock.NewTicker)
+}
+
+type timerOrTicker interface {
+	comparable
+	Reset(duration time.Duration)
+	Chan() <-chan time.Time
+}
+
+func blockUntilSomethingTest[T timerOrTicker](
+	blockUntilSomething func(fakeClock clock.FakeClock, count int),
+	mkEntry func(fakeClock clock.FakeClock, duration time.Duration) T,
+) {
 	c := clock.NewFakeClock()
-	tickers := make([]clock.Ticker, 3)
+	entries := make([]T, 3)
 
 	for _, waitForBlocked := range []bool{false, true} {
 		ch := make(chan struct{})
 		go func() {
 			close(ch)
-			c.BlockUntilTickers(len(tickers))
+			blockUntilSomething(c, len(entries))
 			c.Advance(time.Second)
 		}()
 
-		// BlockUntilTickers has two paths - either we already have enough tickers waiting or we need to wait for more tickers.
-		// Thus, we at least once want to wait for the go routine to have a chance to run (although this is not a guarantee
-		// that it also entered BlockUntilTickers, but there is not much we can do about that)
+		// BlockUntilTimers/BlockUntilTickers have two paths - either we already have enough timers/tickers waiting
+		// or we need to wait for more timers/tickers. Thus, we at least once want to wait for the go routine to
+		// have a chance to run (although this is not a guarantee that it also entered BlockUntilTimers/BlockUntilTickers,
+		// but there is not much we can do about that)
 		if waitForBlocked {
 			<-ch
 		}
 
-		for i := range tickers {
-			if tickers[i] == nil {
-				tickers[i] = c.NewTicker(time.Second)
+		for i := range entries {
+			if entries[i] == mdl.Empty[T]() {
+				entries[i] = mkEntry(c, time.Second)
 			} else {
-				tickers[i].Reset(time.Second)
+				entries[i].Reset(time.Second)
 			}
 		}
 
-		for _, ticker := range tickers {
-			<-ticker.Chan()
+		for _, entry := range entries {
+			<-entry.Chan()
 		}
 	}
 }

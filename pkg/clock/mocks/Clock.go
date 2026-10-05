@@ -3,7 +3,10 @@
 package mocks
 
 import (
+	context "context"
+
 	clock "github.com/justtrackio/gosoline/pkg/clock"
+
 	mock "github.com/stretchr/testify/mock"
 
 	time "time"
@@ -286,6 +289,40 @@ func (_c *Clock_Sleep_Call) Return() *Clock_Sleep_Call {
 }
 
 func (_c *Clock_Sleep_Call) RunAndReturn(run func(time.Duration)) *Clock_Sleep_Call {
+	_c.Run(run)
+	return _c
+}
+
+// SleepWithContext provides a mock function with given fields: ctx, d
+func (_m *Clock) SleepWithContext(ctx context.Context, d time.Duration) {
+	_m.Called(ctx, d)
+}
+
+// Clock_SleepWithContext_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SleepWithContext'
+type Clock_SleepWithContext_Call struct {
+	*mock.Call
+}
+
+// SleepWithContext is a helper method to define mock.On call
+//   - ctx context.Context
+//   - d time.Duration
+func (_e *Clock_Expecter) SleepWithContext(ctx interface{}, d interface{}) *Clock_SleepWithContext_Call {
+	return &Clock_SleepWithContext_Call{Call: _e.mock.On("SleepWithContext", ctx, d)}
+}
+
+func (_c *Clock_SleepWithContext_Call) Run(run func(ctx context.Context, d time.Duration)) *Clock_SleepWithContext_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *Clock_SleepWithContext_Call) Return() *Clock_SleepWithContext_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Clock_SleepWithContext_Call) RunAndReturn(run func(context.Context, time.Duration)) *Clock_SleepWithContext_Call {
 	_c.Run(run)
 	return _c
 }
