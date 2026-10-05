@@ -20,17 +20,35 @@ import (
 )
 
 const (
-	metricNameAcquireShardDelaySeconds = "AcquireShardDelaySeconds"
-	metricNameSleepDuration            = "SleepDuration"
-	metricNameFailedRecords            = "FailedRecords"
-	metricNameMillisecondsBehind       = "MillisecondsBehind"
-	metricNameProcessDuration          = "ProcessDuration"
-	metricNameReadCount                = "ReadCount"
-	metricNameReadRecords              = "ReadRecords"
-	metricNameShardTaskRatio           = "ShardTaskRatio"
-	metricNameShardTaskRatioMax        = "ShardTaskRatioMax"
-	metricNameWaitDuration             = "WaitDuration"
+	metricNamespaceCloudAwsKinesis = "cloud.aws.kinesis"
+
+	dimensionStream = "stream.name"
+	dimensionShard  = "partition.id"
+
+	metricNameAcquireShardDuration = "acquire.duration"
+	metricNameSleepDuration        = "sleep.duration"
+	metricNameMillisecondsBehind   = "lag"
+	metricNameProcessDuration      = "process.duration"
+	metricNameReadCount            = "reads"
+	metricNameConsumedMessages     = "consumed.messages"
+	metricNameWaitDuration         = "wait.duration"
+	metricNameShardCount           = "shard.count"
+	metricNameClientCount          = "client.count"
+
+	errorTypeProcessingFailed = "processing_failed"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameConsumedMessages, "records a kinesis shard reader took in, by error type")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameReadCount, "GetRecords calls a kinesis shard reader performed")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, "age of the last record a kinesis shard reader processed")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameAcquireShardDuration, "time a kinesis shard reader waited to acquire a shard")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameSleepDuration, "time a kinesis shard reader slept before polling again")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameProcessDuration, "duration of processing one batch of kinesis records")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameWaitDuration, "time a kinesis shard reader waited for records to process")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameShardCount, "shards a kinesis stream currently has")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameClientCount, "clients currently consuming a kinesis stream")
+}
 
 //go:generate go run github.com/vektra/mockery/v2 --name ShardReader
 type ShardReader interface {
@@ -202,7 +220,7 @@ func (s *shardReader) acquireShard(ctx context.Context) (bool, error) {
 		}
 
 		tookSoFar := s.clock.Since(start)
-		s.writeMetric(ctx, metricNameAcquireShardDelaySeconds, tookSoFar.Seconds(), metric.UnitSecondsMaximum)
+		s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameAcquireShardDuration, tookSoFar.Seconds(), metric.UnitSecondsMaximum, metric.KindHistogram.Build())
 
 		timer := s.clock.NewTimer(s.settings.WaitTime)
 
@@ -395,9 +413,9 @@ func (s *shardReader) getAndProcessRecords(
 	millisecondsBehindChan <- float64(millisecondsBehind)
 
 	processStart := s.clock.Now()
-	var processedSize int
+	var processedSize, failedSize int
 
-	if processedSize, err = s.processRecords(ctx, processingCtx, records, lastSequenceNumber, *iterator, handler); err != nil {
+	if processedSize, failedSize, err = s.processRecords(ctx, processingCtx, records, lastSequenceNumber, *iterator, handler); err != nil {
 		return 0, err
 	} else if processedSize == len(records) {
 		// only advance the iterator if we processed the whole batch - if we don't do it like this, we could get
@@ -407,8 +425,9 @@ func (s *shardReader) getAndProcessRecords(
 	}
 
 	processDuration := s.clock.Since(processStart)
-	s.writeMetric(ctx, metricNameProcessDuration, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage)
-	s.writeMetric(ctx, metricNameReadRecords, float64(processedSize), metric.UnitCount)
+	s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameProcessDuration, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
+	// The failed share was already counted per record in logHandlerError; the rest succeeded.
+	s.writeConsumedMessages(ctx, metric.DimensionDefault, float64(processedSize-failedSize))
 
 	s.logger.WithChannel("kinsumer-read").WithFields(log.Fields{
 		"count":       processedSize,
@@ -417,7 +436,7 @@ func (s *shardReader) getAndProcessRecords(
 
 	// if the results are older than our wait time, continue immediately
 	if time.Duration(millisecondsBehind) > (s.settings.WaitTime + s.settings.ConsumeDelay) {
-		s.writeMetric(ctx, metricNameWaitDuration, 0.0, metric.UnitMillisecondsAverage)
+		s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameWaitDuration, 0.0, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
 
 		return 0, nil
 	}
@@ -425,7 +444,7 @@ func (s *shardReader) getAndProcessRecords(
 	durationSinceLastGetRecordsCall := s.clock.Since(getRecordsStart)
 	waitTime := max(0, s.settings.WaitTime-durationSinceLastGetRecordsCall)
 
-	s.writeMetric(ctx, metricNameWaitDuration, float64(waitTime.Milliseconds()), metric.UnitMillisecondsAverage)
+	s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameWaitDuration, float64(waitTime.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
 
 	return waitTime, nil
 }
@@ -441,7 +460,7 @@ func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (r
 		return nil, "", 0, fmt.Errorf("failed to get records from shard: %w", err)
 	}
 
-	s.writeMetric(ctx, metricNameReadCount, 1.0, metric.UnitCount)
+	s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameReadCount, 1.0, metric.UnitCount, metric.KindCounter.Build())
 
 	records = output.Records
 	nextIterator = ShardIterator(mdl.EmptyIfNil(output.NextShardIterator))
@@ -449,15 +468,15 @@ func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (r
 	return records, nextIterator, mdl.EmptyIfNil(output.MillisBehindLatest), nil
 }
 
-func (s *shardReader) processRecords(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, nextIterator ShardIterator, handler RecordHandler) (int, error) {
+func (s *shardReader) processRecords(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, nextIterator ShardIterator, handler RecordHandler) (processed int, failed int, err error) {
 	// if our batch is empty, just write the next iterator to the checkpoint
 	if len(records) == 0 {
 		err := s.getCheckpoint().Advance(*lastSequenceNumber, nextIterator)
 		if err != nil {
-			return 0, fmt.Errorf("failed to advance checkpoint: %w", err)
+			return 0, 0, fmt.Errorf("failed to advance checkpoint: %w", err)
 		}
 
-		return 0, nil
+		return 0, 0, nil
 	}
 
 	switch s.settings.ProcessingMode {
@@ -466,12 +485,13 @@ func (s *shardReader) processRecords(ctx context.Context, processingCtx context.
 	case ProcessingModeOrdered:
 		return s.processRecordsOrdered(ctx, processingCtx, records, lastSequenceNumber, handler)
 	default:
-		return 0, fmt.Errorf("unknown processing mode %s", s.settings.ProcessingMode)
+		return 0, 0, fmt.Errorf("unknown processing mode %s", s.settings.ProcessingMode)
 	}
 }
 
-func (s *shardReader) processRecordsOrdered(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, handler RecordHandler) (int, error) {
+func (s *shardReader) processRecordsOrdered(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, handler RecordHandler) (processed int, failed int, err error) {
 	processedSize := 0
+	failedSize := 0
 
 	for _, record := range records {
 		s.delayConsume(ctx, record)
@@ -479,14 +499,15 @@ func (s *shardReader) processRecordsOrdered(ctx context.Context, processingCtx c
 		// if context was canceled in the meantime, stop processing
 		select {
 		case <-ctx.Done():
-			return processedSize, nil
+			return processedSize, failedSize, nil
 		default:
 		}
 
 		if err := s.handleWithRecovery(processingCtx, record, handler); errors.Is(err, errMessageProcessorStopped) {
-			return processedSize, nil
+			return processedSize, failedSize, nil
 		} else if err != nil {
 			s.logHandlerError(ctx, record, err)
+			failedSize++
 		}
 
 		// mark us as healthy as we managed to pass a record to downstream and are still making progress
@@ -498,7 +519,7 @@ func (s *shardReader) processRecordsOrdered(ctx context.Context, processingCtx c
 		// stream expire (which is at least a day away if we are keeping up with the stream)).
 		err := s.getCheckpoint().Advance(*lastSequenceNumber, "")
 		if err != nil {
-			return processedSize, fmt.Errorf("failed to advance checkpoint: %w", err)
+			return processedSize, failedSize, fmt.Errorf("failed to advance checkpoint: %w", err)
 		}
 
 		processedSize++
@@ -506,15 +527,15 @@ func (s *shardReader) processRecordsOrdered(ctx context.Context, processingCtx c
 		// if context was canceled in the meantime, stop processing
 		select {
 		case <-ctx.Done():
-			return processedSize, nil
+			return processedSize, failedSize, nil
 		default:
 		}
 	}
 
-	return processedSize, nil
+	return processedSize, failedSize, nil
 }
 
-func (s *shardReader) processRecordsUnordered(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, handler RecordHandler) (int, error) {
+func (s *shardReader) processRecordsUnordered(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, handler RecordHandler) (processed int, failed int, err error) {
 	results := make([]error, len(records))
 	jobs := make(chan int, len(records))
 	for i := range records {
@@ -548,7 +569,7 @@ func (s *shardReader) processRecordsUnordered(ctx context.Context, processingCtx
 
 	// Workers only return nil, so an error here is a panic recovered by the coffin.
 	if err := cfn.Wait(); err != nil {
-		return 0, fmt.Errorf("unexpected error during record processing: %w", err)
+		return 0, 0, fmt.Errorf("unexpected error during record processing: %w", err)
 	}
 
 	return s.checkpointProcessedRecords(ctx, records, results, lastSequenceNumber)
@@ -575,8 +596,9 @@ func (s *shardReader) handleWithRecovery(ctx context.Context, record types.Recor
 	return err
 }
 
-func (s *shardReader) checkpointProcessedRecords(ctx context.Context, records []types.Record, results []error, lastSequenceNumber *SequenceNumber) (int, error) {
+func (s *shardReader) checkpointProcessedRecords(ctx context.Context, records []types.Record, results []error, lastSequenceNumber *SequenceNumber) (processed int, failed int, err error) {
 	processedSize := 0
+	failedSize := 0
 	for i, err := range results {
 		if errors.Is(err, errMessageProcessorStopped) {
 			break
@@ -584,23 +606,26 @@ func (s *shardReader) checkpointProcessedRecords(ctx context.Context, records []
 
 		if err != nil {
 			s.logHandlerError(ctx, records[i], err)
+			failedSize++
 		}
 
 		*lastSequenceNumber = SequenceNumber(mdl.EmptyIfNil(records[i].SequenceNumber))
 		if err := s.getCheckpoint().Advance(*lastSequenceNumber, ""); err != nil {
-			return processedSize, fmt.Errorf("failed to advance checkpoint: %w", err)
+			return processedSize, failedSize, fmt.Errorf("failed to advance checkpoint: %w", err)
 		}
 
 		processedSize++
 	}
 
-	return processedSize, nil
+	return processedSize, failedSize, nil
 }
 
+// logHandlerError logs a failed record and counts it on consumed.messages under the action that failed. The failed
+// share of consumed.messages is this metric's only record of failures; there is no separate error counter.
 func (s *shardReader) logHandlerError(ctx context.Context, record types.Record, err error) {
 	// Kinesis can not selectively retry a record without replaying its successors, so stream retry owns retries.
 	s.logger.Error(ctx, "failed to handle record %s: %w", mdl.EmptyIfNil(record.SequenceNumber), err)
-	s.writeMetric(ctx, metricNameFailedRecords, 1, metric.UnitCount)
+	s.writeConsumedMessages(ctx, errorTypeProcessingFailed, 1)
 }
 
 // drainContext returns the context admitted handlers run with.
@@ -660,7 +685,7 @@ func (s *shardReader) delayConsume(ctx context.Context, record types.Record) {
 		case <-ctx.Done():
 			return
 		case <-timer.Chan():
-			s.writeMetric(ctx, metricNameSleepDuration, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage)
+			s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameSleepDuration, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
 
 			return
 		case <-ticker.Chan():
@@ -677,12 +702,12 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 	defer ticker.Stop()
 
 	currentMillisecondsBehind := 0.0
-	s.writeMetric(context.Background(), metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+	s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindGauge.Build())
 
 	for {
 		select {
 		case <-ticker.Chan():
-			s.writeMetric(context.Background(), metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+			s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindGauge.Build())
 		case newMillisecondsBehind, ok := <-millisecondsBehindChan:
 			if !ok {
 				// the producer stopped, so we also need to stop
@@ -690,32 +715,45 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 			}
 
 			currentMillisecondsBehind = newMillisecondsBehind
-			s.writeMetric(context.Background(), metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+			s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindGauge.Build())
 		}
 	}
 }
 
-func (s *shardReader) writeMetric(ctx context.Context, metricName string, value float64, unit metric.StandardUnit) {
+func (s *shardReader) writeMetric(ctx context.Context, namespace string, metricName string, value float64, unit metric.StandardUnit, metricKind metric.Kind) {
 	s.metricWriter.Write(ctx, metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
+			Namespace:  namespace,
 			MetricName: metricName,
 			Dimensions: metric.Dimensions{
-				"StreamName": string(s.stream),
+				dimensionStream: string(s.stream),
+				dimensionShard:  string(s.shardId),
 			},
 			Value: value,
 			Unit:  unit,
-			Kind:  metric.KindTotal,
+			Kind:  metricKind,
 		},
+	})
+}
+
+// writeConsumedMessages counts records this shard reader took in, split by outcome: the succeeded share
+// carries the default error.type, a failed record its handler's error type. The failed share of
+// consumed.messages is the only record of failures; there is no separate error counter.
+func (s *shardReader) writeConsumedMessages(ctx context.Context, errorType string, value float64) {
+	s.metricWriter.Write(ctx, metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricName,
+			Namespace:  metricNamespaceCloudAwsKinesis,
+			MetricName: metricNameConsumedMessages,
 			Dimensions: metric.Dimensions{
-				"StreamName": string(s.stream),
-				"ShardId":    string(s.shardId),
+				dimensionStream:           string(s.stream),
+				dimensionShard:            string(s.shardId),
+				metric.DimensionErrorType: errorType,
 			},
 			Value: value,
-			Unit:  unit,
+			Unit:  metric.UnitCount,
+			Kind:  metric.KindCounter.Build(),
 		},
 	})
 }
@@ -729,34 +767,24 @@ func getShardReaderDefaultMetrics(stream Stream) metric.Data {
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameReadCount,
 			Dimensions: map[string]string{
-				"StreamName": string(stream),
-				"ShardId":    metric.DimensionDefault,
+				dimensionStream: string(stream),
+				dimensionShard:  metric.DimensionDefault,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
-			Kind:  metric.KindDefault,
+			Kind:  metric.KindCounter.Build(),
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameReadRecords,
+			MetricName: metricNameConsumedMessages,
 			Dimensions: map[string]string{
-				"StreamName": string(stream),
-				"ShardId":    metric.DimensionDefault,
+				dimensionStream:           string(stream),
+				dimensionShard:            metric.DimensionDefault,
+				metric.DimensionErrorType: metric.DimensionDefault,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
-			Kind:  metric.KindDefault,
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameFailedRecords,
-			Dimensions: map[string]string{
-				"StreamName": string(stream),
-				"ShardId":    metric.DimensionDefault,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindDefault,
+			Kind:  metric.KindCounter.Build(),
 		},
 	}
 }

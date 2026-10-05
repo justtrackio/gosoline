@@ -10,6 +10,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
+const metricNamespace = "example"
+
 type Response struct {
 	Val int64 `json:"val"`
 }
@@ -20,7 +22,7 @@ type metricController struct {
 }
 
 func NewMetricController() *metricController {
-	mw := metric.NewWriter()
+	mw := metric.NewWriter(metricNamespace)
 
 	return &metricController{
 		mw: mw,

@@ -353,7 +353,7 @@ func (s *ConsumerTestSuite) TestConsumerRunRecoversProcessingPanicAndCommits() {
 			reader.EXPECT().CloseAllowingRebalance().Once()
 			metricWriter.EXPECT().Write(matcher.Context, mock.Anything).Run(func(_ context.Context, data metric.Data) {
 				for _, datum := range data {
-					if datum.MetricName == "RecordsConsumedFailed" && datum.Value == 1 {
+					if datum.MetricName == "consumed.messages" && datum.Dimensions["error.type"] == "processing_failed" && datum.Value == 1 {
 						failedMetric.Add(1)
 					}
 				}
@@ -434,7 +434,7 @@ func (s *ConsumerTestSuite) TestConsumerRunProcessesRecordsUnorderedConcurrently
 	reader.EXPECT().CloseAllowingRebalance().Once()
 	s.metricWriter.EXPECT().Write(matcher.Context, mock.Anything).Run(func(_ context.Context, data metric.Data) {
 		for _, datum := range data {
-			if datum.MetricName == "RecordsConsumedFailed" && datum.Value == 1 {
+			if datum.MetricName == "consumed.messages" && datum.Dimensions["error.type"] == "processing_failed" && datum.Value == 1 {
 				failedMetric.Add(1)
 			}
 		}
@@ -857,7 +857,7 @@ func (s *ConsumerTestSuite) TestConsumerRunProcessesOrderedPartitionsConcurrentl
 	reader.EXPECT().CloseAllowingRebalance().Once()
 	s.metricWriter.EXPECT().Write(matcher.Context, mock.Anything).Run(func(_ context.Context, data metric.Data) {
 		for _, datum := range data {
-			if datum.MetricName == "RecordsConsumedFailed" && datum.Value == 1 {
+			if datum.MetricName == "consumed.messages" && datum.Dimensions["error.type"] == "processing_failed" && datum.Value == 1 {
 				failedMetric.Add(1)
 			}
 		}
@@ -1145,15 +1145,14 @@ func (s *ConsumerTestSuite) TestConsumerRunIgnoresRetryableFetchError() {
 	reader.EXPECT().CloseAllowingRebalance().Once()
 
 	dims := metric.Dimensions{
-		kafka.DimensionClientType: kafka.DimensionConsumer,
+		kafka.DimensionClientType: kafka.ClientTypeConsumer,
 		kafka.DimensionClient:     "test-consumer",
 		kafka.DimensionTopic:      "test-topic",
 	}
 	expectedMetrics := metric.Data{
-		metric.NewMetricDatum("PollCount", dims, 1.0, metric.UnitCount, metric.PriorityHigh),
-		metric.NewMetricDatum("PollDuration", dims, 0.0, metric.UnitMillisecondsAverage, metric.PriorityHigh),
-		metric.NewMetricDatum("ProcessDuration", dims, 0.0, metric.UnitMillisecondsAverage, metric.PriorityHigh),
-		metric.NewMetricDatum("RecordsConsumed", dims, 1.0, metric.UnitCount, metric.PriorityHigh),
+		{Priority: metric.PriorityHigh, MetricName: "polls", Dimensions: dims, Value: 1.0},
+		{Priority: metric.PriorityHigh, MetricName: "poll.duration", Dimensions: dims, Value: 0.0},
+		{Priority: metric.PriorityHigh, MetricName: "process.duration", Dimensions: dims, Value: 0.0},
 	}
 	metricWriter.EXPECT().Write(matcher.Context, expectedMetrics).Once()
 	metricWriter.EXPECT().Write(matcher.Context, mock.Anything).Times(2)
@@ -1645,7 +1644,7 @@ func (s *ConsumerTestSuite) expectMetricWrites(count int) func() []float64 {
 		defer lck.Unlock()
 
 		for _, datum := range data {
-			if datum.MetricName == "SleepDuration" {
+			if datum.MetricName == "sleep.duration" {
 				sleepDurations = append(sleepDurations, datum.Value)
 			}
 		}
