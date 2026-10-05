@@ -11,7 +11,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
@@ -109,7 +108,7 @@ func (c *Consumer) processData(ctx context.Context, msg *Message) (ack bool) {
 		}
 
 		c.logger.Warn(newCtx, "retrying message with id %s", retryId)
-		c.writeMetricRetryCount(newCtx, metricNameConsumerRetryGetCount)
+		c.writeMetricRetryCount(newCtx, retryOperationGet)
 	}
 
 	if _, ok := msg.Attributes[AttributeAggregate]; ok {
@@ -204,15 +203,6 @@ func (c *Consumer) process(gracedCtx context.Context, msg *Message, hasNativeRet
 	var attributes map[string]string
 
 	if model, err = c.callback.GetModel(msg.Attributes); err != nil {
-		c.metricWriter.Write(gracedCtx, metric.Data{
-			&metric.Datum{
-				MetricName: metricNameConsumerUnknownModelError,
-				Dimensions: map[string]string{
-					metricDimensionConsumer: c.name,
-				},
-				Value: 1.0,
-			},
-		})
 
 		// Check if this error is ignorable based on consumer settings
 		var ignorableErr IgnorableGetModelError
@@ -256,6 +246,8 @@ func (c *Consumer) process(gracedCtx context.Context, msg *Message, hasNativeRet
 
 	if ack, err = c.callback.Consume(gracedCtx, model, attributes); err != nil {
 		c.handleError(gracedCtx, err, "an error occurred during the consume operation")
+	} else if !ack {
+		c.writeMetricProcessingFailed(gracedCtx, 1)
 	}
 
 	if !ack && !hasNativeRetry {
@@ -298,13 +290,13 @@ func (c *Consumer) retry(ctx context.Context, msg *Message) {
 	ctx = log.AppendGlobalContextFields(ctx, log.Fields{"retry_id": retryId})
 
 	c.logger.Warn(ctx, "putting message with id %s into retry", retryId)
-	c.writeMetricRetryCount(ctx, metricNameConsumerRetryPutCount)
+	c.writeMetricRetryCount(ctx, retryOperationPut)
 
 	ctx, stop := exec.WithDelayedCancelContext(ctx, c.settings.Retry.GraceTime)
 	defer stop()
 
 	if err := c.retryHandler.Put(ctx, retryMsg); err != nil {
-		c.handleError(ctx, err, "can not put the message into the retry handler")
+		c.logError(ctx, err, "can not put the message into the retry handler")
 	}
 }
 
