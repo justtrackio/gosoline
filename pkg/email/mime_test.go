@@ -16,7 +16,7 @@ import (
 var testMessageDate = time.Date(2026, time.August, 21, 10, 30, 0, 0, time.UTC)
 
 func compileMIMEForTest(email EmailWithAttachments, fromAddress string, nextBoundary func() string) ([]byte, error) {
-	envelope, err := parseEmailEnvelope(fromAddress, email.Recipients)
+	envelope, err := parseEmailEnvelope(fromAddress, email.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -171,6 +171,28 @@ func TestCompileMIMEWithoutAttachments(t *testing.T) {
 
 	_, err = reader.NextPart()
 	require.ErrorIs(t, err, io.EOF)
+}
+
+func TestCompileMIMECcAndBccHeaders(t *testing.T) {
+	text := "body"
+	email := Email{Recipients: []string{"to@example.com"}, Subject: "Subject", TextBody: &text}
+
+	rawMessage, err := compileMIMEForTest(EmailWithAttachments{Email: email}, "sender@example.com", func() string { return "boundary" })
+	require.NoError(t, err)
+	require.NotContains(t, string(rawMessage), "Cc:")
+
+	email.CcRecipients = []string{"Cc Recipient <cc@example.com>", "other-cc@example.com"}
+	email.BccRecipients = []string{"Hidden <bcc@example.com>"}
+	rawMessage, err = compileMIMEForTest(EmailWithAttachments{Email: email}, "sender@example.com", func() string { return "boundary" })
+	require.NoError(t, err)
+	require.NotContains(t, string(rawMessage), "bcc@example.com")
+	require.NotContains(t, string(rawMessage), "Bcc:")
+
+	message, err := mail.ReadMessage(bytes.NewReader(rawMessage))
+	require.NoError(t, err)
+	ccRecipients, err := message.Header.AddressList("Cc")
+	require.NoError(t, err)
+	require.Equal(t, []*mail.Address{{Name: "Cc Recipient", Address: "cc@example.com"}, {Address: "other-cc@example.com"}}, ccRecipients)
 }
 
 func TestFormatMailboxAddress(t *testing.T) {

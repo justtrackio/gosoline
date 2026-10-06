@@ -103,7 +103,7 @@ func (s *smtpSender) SendEmailWithAttachments(ctx context.Context, email EmailWi
 }
 
 func (s *smtpSender) sendEmail(_ context.Context, email EmailWithAttachments) error {
-	envelope, err := parseEmailEnvelope(s.fromAddress, email.Recipients)
+	envelope, err := parseEmailEnvelope(s.fromAddress, email.Email)
 	if err != nil {
 		return fmt.Errorf("could not parse email envelope: %w", err)
 	}
@@ -119,7 +119,7 @@ func (s *smtpSender) sendEmail(_ context.Context, email EmailWithAttachments) er
 		return fmt.Errorf("cannot dial smtp server: %w", err)
 	}
 
-	return client.SendMail(envelope.sender.Address, envelope.recipientAddresses(), body)
+	return client.SendMail(envelope.sender.Address, envelope.deliveryAddresses(), body)
 }
 
 func (s *smtpSender) compileBody(email EmailWithAttachments, envelope emailEnvelope) (io.Reader, error) {

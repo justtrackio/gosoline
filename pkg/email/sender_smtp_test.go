@@ -183,6 +183,47 @@ Content-Type: text/html; charset="utf-8"
 	s.NoError(err)
 }
 
+func (s *senderSmtpTestSuite) TestSendEmail_CcAndBccRecipients() {
+	email := email.Email{
+		Recipients:    []string{"foo@bar.com"},
+		CcRecipients:  []string{"Manager <manager@bar.com>"},
+		BccRecipients: []string{"Team <team@bar.com>", "audit@bar.com"},
+		Subject:       "Test Email",
+		TextBody:      mdl.Box("Hello! We're sending you a test email."),
+	}
+
+	s.uuid.EXPECT().NewV4().Return("gosoMail")
+
+	expectedBody := `Date: Fri, 21 Aug 2026 10:30:00 +0000
+From: test@gosoline.com
+To: foo@bar.com
+Cc: "Manager" <manager@bar.com>
+Subject: Test Email
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary=gosoMail
+
+--gosoMail
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+
+Hello! We're sending you a test email.
+
+--gosoMail--
+`
+
+	expectedBody = strings.ReplaceAll(expectedBody, "\n", "\r\n")
+
+	s.client.EXPECT().SendMail(s.from, []string{"foo@bar.com", "manager@bar.com", "team@bar.com", "audit@bar.com"}, mock.AnythingOfType("*bytes.Reader")).
+		Run(func(_ string, _ []string, r io.Reader) {
+			bytes, err := io.ReadAll(r)
+			s.NoError(err)
+			s.Equal(expectedBody, string(bytes))
+		}).Return(nil)
+
+	s.NoError(s.sender.SendEmail(s.T().Context(), email))
+}
+
 func (s *senderSmtpTestSuite) TestSendEmailWithAttachments() {
 	recipients := []string{"Foo Bar <foo@bar.com>"}
 	subject := "Your résumé"
@@ -281,6 +322,26 @@ func (s *senderSmtpTestSuite) TestSendEmail_InvalidEmailDoesNotDialSMTP() {
 				TextBody:   &body,
 			},
 			expected: "could not parse email envelope: format email sender:",
+		},
+		{
+			name: "invalid cc recipient",
+			from: s.from,
+			email: email.Email{
+				Recipients:   []string{"recipient@example.com"},
+				CcRecipients: []string{"not an address"},
+				TextBody:     &body,
+			},
+			expected: "could not parse email envelope: format email cc recipients:",
+		},
+		{
+			name: "invalid bcc recipient",
+			from: s.from,
+			email: email.Email{
+				Recipients:    []string{"recipient@example.com"},
+				BccRecipients: []string{"not an address"},
+				TextBody:      &body,
+			},
+			expected: "could not parse email envelope: format email bcc recipients:",
 		},
 		{
 			name: "invalid attachment",
