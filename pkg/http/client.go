@@ -70,13 +70,15 @@ type Response struct {
 type headers map[string]string
 
 type client struct {
-	logger         log.Logger
-	clock          clock.Clock
-	defaultHeaders headers
-	http           restyClient
-	metricWriter   metric.Writer
-	forwardTraceId bool
-	requestTimeout time.Duration
+	logger            log.Logger
+	clock             clock.Clock
+	defaultHeaders    headers
+	http              restyClient
+	metricWriter      metric.Writer
+	forwardTraceId    bool
+	redirectValidator func(request *http.Request) bool
+	requestTimeout    time.Duration
+	urlValidator      UrlValidator
 }
 
 type Settings struct {
@@ -91,6 +93,7 @@ type Settings struct {
 	CircuitBreakerSettings CircuitBreakerSettings `cfg:"circuit_breaker"`
 	TransportSettings      TransportSettings      `cfg:"transport"`
 	TracingSettings        TracingSettings        `cfg:"tracing"`
+	UrlValidationSettings  UrlValidationSettings  `cfg:"url_validation"`
 }
 
 type TransportSettings struct {
@@ -266,6 +269,14 @@ type InstrumentationSettings struct {
 	Enabled bool `cfg:"enabled" default:"false"`
 }
 
+// UrlValidationSettings controls whether the client validates the urls it is
+// asked to fetch. When enabled, every request (and every redirect it follows)
+// is checked to not point at an internal address, and the connection is made
+// to the exact ip addresses the host resolved to at validation time.
+type UrlValidationSettings struct {
+	Enabled bool `cfg:"enabled" default:"false"`
+}
+
 func ProvideHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, options ...Option) (Client, error) {
 	type httpClientName string
 
@@ -293,26 +304,51 @@ func newHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, na
 		)
 	}
 
-	dialerOptions, transportOptions := partitionOptions(options)
+	clientOptions, dialerOptions, transportOptions := partitionOptions(options)
+
 	restyClient, err := newRestyClient(tracer, settings, dialerOptions, transportOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create resty client: %w", err)
 	}
 
-	client := NewHttpClientWithInterfaces(
+	urlValidator := NewNopUrlValidator()
+	if settings.UrlValidationSettings.Enabled {
+		urlValidator = NewUrlValidator()
+	}
+
+	client := buildHttpClientWithInterfaces(
 		logger,
 		clock.Provider,
 		metricWriter,
 		restyClient,
 		settings.TracingSettings.ForwardTraceId,
 		settings.RequestTimeout,
+		urlValidator,
 	)
 
-	if settings.CircuitBreakerSettings.Enabled {
-		client = NewCircuitBreakerClientWithInterfaces(client, logger, clock.Provider, name, settings.CircuitBreakerSettings)
+	if settings.FollowRedirects {
+		restyClient.SetRedirectPolicy(
+			resty.FlexibleRedirectPolicy(10),
+			resty.RedirectPolicyFunc(client.validateRedirect),
+		)
+	} else {
+		restyClient.SetRedirectPolicy(resty.RedirectPolicyFunc(func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		}))
 	}
 
-	return client, nil
+	for _, option := range clientOptions {
+		if err := option(client); err != nil {
+			return nil, err
+		}
+	}
+
+	result := Client(client)
+	if settings.CircuitBreakerSettings.Enabled {
+		result = NewCircuitBreakerClientWithInterfaces(client, logger, clock.Provider, name, settings.CircuitBreakerSettings)
+	}
+
+	return result, nil
 }
 
 func newRestyClient(
@@ -347,7 +383,7 @@ func newRestyClient(
 
 	transport := &http.Transport{
 		Proxy:                  http.ProxyFromEnvironment,
-		DialContext:            dialer.DialContext,
+		DialContext:            dialValidated(dialer.DialContext),
 		ForceAttemptHTTP2:      true,
 		TLSHandshakeTimeout:    settings.TransportSettings.TLSHandshakeTimeout,
 		DisableKeepAlives:      settings.TransportSettings.DisableKeepAlives,
@@ -375,13 +411,6 @@ func newRestyClient(
 		}
 	}
 
-	if settings.FollowRedirects {
-		httpClient.SetRedirectPolicy(resty.FlexibleRedirectPolicy(10))
-	} else {
-		httpClient.SetRedirectPolicy(resty.RedirectPolicyFunc(func(_ *http.Request, _ []*http.Request) error {
-			return http.ErrUseLastResponse
-		}))
-	}
 	httpClient.SetRetryCount(settings.RetryCount)
 	httpClient.SetTimeout(settings.RequestTimeout)
 	httpClient.SetRetryWaitTime(settings.RetryWaitTime)
@@ -431,7 +460,20 @@ func NewHttpClientWithInterfaces(
 	httpClient restyClient,
 	forwardTraceId bool,
 	requestTimeout time.Duration,
+	urlValidator UrlValidator,
 ) Client {
+	return buildHttpClientWithInterfaces(logger, clock, metricWriter, httpClient, forwardTraceId, requestTimeout, urlValidator)
+}
+
+func buildHttpClientWithInterfaces(
+	logger log.Logger,
+	clock clock.Clock,
+	metricWriter metric.Writer,
+	httpClient restyClient,
+	forwardTraceId bool,
+	requestTimeout time.Duration,
+	urlValidator UrlValidator,
+) *client {
 	return &client{
 		logger:         logger,
 		clock:          clock,
@@ -439,7 +481,11 @@ func NewHttpClientWithInterfaces(
 		http:           httpClient,
 		metricWriter:   metricWriter,
 		forwardTraceId: forwardTraceId,
+		redirectValidator: func(_ *http.Request) bool {
+			return true
+		},
 		requestTimeout: requestTimeout,
+		urlValidator:   urlValidator,
 	}
 }
 
@@ -492,16 +538,27 @@ func (c *client) AddRetryCondition(f RetryConditionFunc) {
 }
 
 func (c *client) SetRedirectValidator(allowRequest func(request *http.Request) bool) {
-	c.http.SetRedirectPolicy(
-		resty.FlexibleRedirectPolicy(10),
-		resty.RedirectPolicyFunc(func(request *http.Request, _ []*http.Request) error {
-			if !allowRequest(request) {
-				return http.ErrUseLastResponse
-			}
+	c.redirectValidator = allowRequest
+}
 
-			return nil
-		}),
-	)
+func (c *client) validateRedirect(request *http.Request, _ []*http.Request) error {
+	if !c.redirectValidator(request) {
+		return fmt.Errorf("the redirect to %s is not allowed by the redirect validator", request.URL)
+	}
+
+	fixedEntry, ok := getFixedDialerEntry(request.Context())
+	if !ok {
+		return fmt.Errorf("the redirect to %s is not allowed: no fixed dialer entry in the request context", request.URL)
+	}
+
+	ips, err := c.urlValidator.Validate(request.Context(), request.URL.String())
+	if err != nil {
+		return fmt.Errorf("the redirect to %s is not allowed: %w", request.URL, err)
+	}
+
+	fixedEntry.set(request.URL.Hostname(), ips)
+
+	return nil
 }
 
 func (c *client) Delete(ctx context.Context, request *Request) (*Response, error) {
@@ -538,6 +595,11 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 		logger.Error(ctx, "failed to assemble request: %w", err)
 
 		return nil, fmt.Errorf("failed to assemble request: %w", err)
+	}
+
+	ctx, err = c.validateUrl(ctx, url)
+	if err != nil {
+		return nil, fmt.Errorf("url validation failed for %s: %w", url, err)
 	}
 
 	c.prepareRequest(ctx, req, request)
@@ -581,6 +643,23 @@ func (c *client) withRequestTimeout(ctx context.Context) (context.Context, conte
 	}
 
 	return context.WithTimeout(ctx, c.requestTimeout)
+}
+
+func (c *client) validateUrl(ctx context.Context, rawUrl string) (context.Context, error) {
+	ips, err := c.urlValidator.Validate(ctx, rawUrl)
+	if err != nil {
+		return ctx, err
+	}
+
+	parsed, err := netUrl.Parse(rawUrl)
+	if err != nil {
+		return ctx, fmt.Errorf("parsing the url %q: %w", rawUrl, err)
+	}
+
+	dialer := &fixedDialerEntry{}
+	dialer.set(parsed.Hostname(), ips)
+
+	return withFixedDialerEntry(ctx, dialer), nil
 }
 
 func (c *client) prepareRequest(ctx context.Context, req *resty.Request, request *Request) {
