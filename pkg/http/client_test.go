@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	netHttp "net/http"
 	"net/http/httptest"
+	netUrl "net/url"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -13,8 +15,11 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/http"
+	httpMocks "github.com/justtrackio/gosoline/pkg/http/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // A copy of context.emptyCtx
@@ -277,4 +282,154 @@ func TestClient_Post(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 200, response.StatusCode)
 	})
+}
+
+// getValidatingClient builds a client with the given url validator and retries
+// disabled, so a rejected request is not retried.
+func getValidatingClient(t *testing.T, validator http.UrlValidator) http.Client {
+	ctx := appctx.WithContainer(t.Context())
+	config := cfg.New()
+	err := config.Option(cfg.WithConfigMap(map[string]any{
+		"http_client": map[string]any{
+			"default": map[string]any{
+				"request_timeout": "5s",
+				"retry_count":     0,
+			},
+		},
+	}))
+	assert.NoError(t, err)
+
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+
+	client, err := http.ProvideHttpClient(ctx, config, logger, "default", http.WithUrlValidator(validator))
+	assert.NoError(t, err)
+
+	return client
+}
+
+// testUrlValidator is a UrlValidator test double for integration tests. It
+// resolves each host via the given resolver and allows it, so tests can point
+// validated requests at local (loopback) test servers, which the production
+// validator would reject. Hosts in rejectedHosts are rejected instead, to
+// exercise the redirect-rejection path.
+type testUrlValidator struct {
+	resolver      http.Resolver
+	rejectedHosts map[string]bool
+}
+
+func (v *testUrlValidator) Validate(ctx context.Context, rawUrl string) ([]net.IPAddr, error) {
+	parsed, err := netUrl.Parse(rawUrl)
+	if err != nil {
+		return nil, fmt.Errorf("parsing the url %q: %w", rawUrl, err)
+	}
+
+	host := parsed.Hostname()
+	if v.rejectedHosts[host] {
+		return nil, fmt.Errorf("the host %q is not allowed", host)
+	}
+
+	return v.resolver.LookupIPAddr(ctx, host)
+}
+
+func TestClient_UrlValidationRejectsInternalAddress(t *testing.T) {
+	resolver := httpMocks.NewResolver(t)
+	resolver.EXPECT().LookupIPAddr(mock.Anything, "internal.example.com").
+		Return(ipAddresses(net.ParseIP("10.0.0.1")), nil)
+	client := getValidatingClient(t, http.NewUrlValidatorWithInterfaces(resolver))
+
+	request := client.NewRequest().WithUrl("http://internal.example.com/secret")
+	response, err := client.Get(t.Context(), request)
+
+	assert.Error(t, err)
+	assert.Nil(t, response)
+	assert.Contains(t, err.Error(), "restricted")
+}
+
+func TestClient_UrlValidationAllowsPublicHost(t *testing.T) {
+	runTestServer(t, "GET", 200, 0, func(host string) {
+		resolver := httpMocks.NewResolver(t)
+		resolver.EXPECT().LookupIPAddr(mock.Anything, "127.0.0.1").
+			Return(ipAddresses(net.ParseIP("127.0.0.1")), nil)
+		client := getValidatingClient(t, &testUrlValidator{resolver: resolver})
+
+		request := client.NewRequest().WithUrl(fmt.Sprintf("http://%s", host))
+		response, err := client.Get(t.Context(), request)
+
+		require.NoError(t, err)
+		assert.Equal(t, 200, response.StatusCode)
+	})
+}
+
+func TestClient_UrlValidationRejectsRedirectToInternal(t *testing.T) {
+	redirectServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, req *netHttp.Request) {
+		res.Header().Set("Location", "http://internal.example.com/secret")
+		res.WriteHeader(netHttp.StatusFound)
+	}))
+	defer redirectServer.Close()
+
+	resolver := httpMocks.NewResolver(t)
+	resolver.EXPECT().LookupIPAddr(mock.Anything, "127.0.0.1").
+		Return(ipAddresses(net.ParseIP("127.0.0.1")), nil)
+	client := getValidatingClient(t, &testUrlValidator{
+		resolver:      resolver,
+		rejectedHosts: map[string]bool{"internal.example.com": true},
+	})
+
+	request := client.NewRequest().WithUrl(redirectServer.URL)
+	response, err := client.Get(t.Context(), request)
+
+	assert.Error(t, err)
+	assert.Nil(t, response)
+	assert.Contains(t, err.Error(), "not allowed")
+}
+
+func TestClient_UrlValidationAllowsRedirectToValidHost(t *testing.T) {
+	finalServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, req *netHttp.Request) {
+		res.WriteHeader(netHttp.StatusOK)
+	}))
+	defer finalServer.Close()
+
+	redirectServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, req *netHttp.Request) {
+		res.Header().Set("Location", finalServer.URL)
+		res.WriteHeader(netHttp.StatusFound)
+	}))
+	defer redirectServer.Close()
+
+	resolver := httpMocks.NewResolver(t)
+	resolver.EXPECT().LookupIPAddr(mock.Anything, "127.0.0.1").
+		Return(ipAddresses(net.ParseIP("127.0.0.1")), nil)
+	client := getValidatingClient(t, &testUrlValidator{resolver: resolver})
+
+	request := client.NewRequest().WithUrl(redirectServer.URL)
+	response, err := client.Get(t.Context(), request)
+
+	require.NoError(t, err)
+	assert.Equal(t, 200, response.StatusCode)
+}
+
+// TestClient_UrlValidationUsesPinnedIps guards against a time-of-check/time-of-use
+// attack: the host resolves to the test server at validation time, but a
+// re-resolution would not reach it. The request only succeeds if the transport
+// dials the pinned address instead of resolving the host again.
+func TestClient_UrlValidationUsesPinnedIps(t *testing.T) {
+	testServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, req *netHttp.Request) {
+		res.WriteHeader(netHttp.StatusOK)
+	}))
+	defer testServer.Close()
+
+	_, port, err := net.SplitHostPort(testServer.Listener.Addr().String())
+	require.NoError(t, err)
+
+	resolver := httpMocks.NewResolver(t)
+	// at validation time the host resolves to the test server's loopback address
+	resolver.EXPECT().LookupIPAddr(mock.Anything, "toctou.example.com").
+		Return(ipAddresses(net.ParseIP("127.0.0.1")), nil).Once()
+
+	client := getValidatingClient(t, &testUrlValidator{resolver: resolver})
+
+	request := client.NewRequest().WithUrl("http://toctou.example.com:" + port)
+	response, err := client.Get(t.Context(), request)
+
+	require.NoError(t, err)
+	assert.Equal(t, 200, response.StatusCode)
 }

@@ -11,29 +11,40 @@ import (
 )
 
 type (
+	ClientOption    func(client *client) error
 	DialerOption    func(dialer *net.Dialer) error
 	TransportOption func(transport *http.Transport) error
 )
 
 type Option struct {
+	ClientOption    ClientOption
 	DialerOption    DialerOption
 	TransportOption TransportOption
 }
 
-func WithDialerOption(dialer DialerOption) Option {
+func WithClientOption(option ClientOption) Option {
 	return Option{
-		DialerOption: dialer,
+		ClientOption: option,
 	}
 }
 
-func WithTransportOption(transport TransportOption) Option {
+func WithDialerOption(option DialerOption) Option {
 	return Option{
-		TransportOption: transport,
+		DialerOption: option,
 	}
 }
 
-func partitionOptions(options []Option) (dialerOptions []DialerOption, transportOptions []TransportOption) {
+func WithTransportOption(option TransportOption) Option {
+	return Option{
+		TransportOption: option,
+	}
+}
+
+func partitionOptions(options []Option) (clientOptions []ClientOption, dialerOptions []DialerOption, transportOptions []TransportOption) {
 	for _, option := range options {
+		if option.ClientOption != nil {
+			clientOptions = append(clientOptions, option.ClientOption)
+		}
 		if option.DialerOption != nil {
 			dialerOptions = append(dialerOptions, option.DialerOption)
 		}
@@ -42,7 +53,18 @@ func partitionOptions(options []Option) (dialerOptions []DialerOption, transport
 		}
 	}
 
-	return dialerOptions, transportOptions
+	return clientOptions, dialerOptions, transportOptions
+}
+
+// WithUrlValidator installs a custom UrlValidator on the client. When set, it
+// takes precedence over the validator derived from the url_validation config
+// and every request (including all redirects) is validated before being sent.
+func WithUrlValidator(validator UrlValidator) Option {
+	return WithClientOption(func(client *client) error {
+		client.urlValidator = validator
+
+		return nil
+	})
 }
 
 func withTLSConfig(mutate func(tlsConfig *tls.Config) error) TransportOption {
