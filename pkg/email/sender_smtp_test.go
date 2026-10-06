@@ -224,6 +224,20 @@ Hello! We're sending you a test email.
 	s.NoError(s.sender.SendEmail(s.T().Context(), email))
 }
 
+func (s *senderSmtpTestSuite) TestSendEmail_DuplicateRecipientsAreDeliveredOnce() {
+	email := email.Email{
+		Recipients:    []string{"foo@bar.com"},
+		CcRecipients:  []string{"Manager <manager@bar.com>", "foo@bar.com"},
+		BccRecipients: []string{"manager@bar.com", "team@bar.com", "Foo <foo@bar.com>"},
+		TextBody:      mdl.Box("Hello!"),
+	}
+
+	s.uuid.EXPECT().NewV4().Return("gosoMail")
+	s.client.EXPECT().SendMail(s.from, []string{"foo@bar.com", "manager@bar.com", "team@bar.com"}, mock.AnythingOfType("*bytes.Reader")).Return(nil)
+
+	s.NoError(s.sender.SendEmail(s.T().Context(), email))
+}
+
 func (s *senderSmtpTestSuite) TestSendEmailWithAttachments() {
 	recipients := []string{"Foo Bar <foo@bar.com>"}
 	subject := "Your résumé"

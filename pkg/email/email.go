@@ -15,6 +15,7 @@ type Attachment struct {
 
 // Email is an email message without attachments.
 type Email struct {
+	// Recipients must not be empty, even when CcRecipients or BccRecipients are set.
 	Recipients    []string
 	CcRecipients  []string
 	BccRecipients []string

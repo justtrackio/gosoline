@@ -28,7 +28,7 @@ func (e emailEnvelope) bccAddresses() []string {
 }
 
 func (e emailEnvelope) deliveryAddresses() []string {
-	return append(append(e.recipientAddresses(), e.ccAddresses()...), e.bccAddresses()...)
+	return funk.Uniq(append(append(e.recipientAddresses(), e.ccAddresses()...), e.bccAddresses()...))
 }
 
 func (e emailEnvelope) senderMailbox() string {
