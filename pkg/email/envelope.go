@@ -27,7 +27,6 @@ func (e emailEnvelope) bccAddresses() []string {
 	return addresses(e.bccRecipients)
 }
 
-// deliveryAddresses lists every address the message is delivered to, including the bcc recipients missing from its headers.
 func (e emailEnvelope) deliveryAddresses() []string {
 	return append(append(e.recipientAddresses(), e.ccAddresses()...), e.bccAddresses()...)
 }
@@ -56,7 +55,6 @@ func (e emailEnvelope) ccHeader() string {
 	return strings.Join(e.ccMailboxes(), ", ")
 }
 
-// addresses and mailboxes return nil for an empty list, so optional destinations stay unset in provider requests.
 func addresses(list []*mail.Address) []string {
 	if len(list) == 0 {
 		return nil

@@ -15,10 +15,8 @@ type Attachment struct {
 
 // Email is an email message without attachments.
 type Email struct {
-	Recipients []string
-	// CcRecipients receive the message and are listed in its Cc header.
-	CcRecipients []string
-	// BccRecipients receive the message without being listed in its headers.
+	Recipients    []string
+	CcRecipients  []string
 	BccRecipients []string
 	Subject       string
 	TextBody      *string

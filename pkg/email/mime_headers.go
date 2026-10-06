@@ -45,8 +45,7 @@ func formatMailboxAddress(mailbox *mail.Address) string {
 }
 
 // writeMessageHeaders writes the top level headers of a message. It takes the envelope instead of preformatted values so
-// that the From, To and Cc headers cannot drift apart from the addresses the message is actually sent to. Bcc recipients
-// are never written.
+// that the From, To and Cc headers cannot drift apart from the addresses the message is actually sent to.
 func writeMessageHeaders(body io.Writer, envelope emailEnvelope, subject string, contentType string, boundary string, now time.Time) error {
 	headers := []messageHeader{
 		{name: "Date", value: now.Format(time.RFC1123Z)},
