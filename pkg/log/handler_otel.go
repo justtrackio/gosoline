@@ -97,15 +97,14 @@ func (h *handlerOtel) Log(ctx context.Context, timestamp time.Time, level int, m
 	attributeCapacity := len(data.Fields) + len(data.ContextFields) + 2
 	attributes := make([]otellog.KeyValue, 0, attributeCapacity)
 	attributeKeys := make(map[string]struct{}, attributeCapacity)
-	warnDuplicateAttribute := func(key string) {
-		h.warnDuplicateAttribute(ctx, timestamp, key)
-	}
-	attributes = appendOtelAttribute(attributes, attributeKeys, "metadata", "channel", data.Channel, warnDuplicateAttribute)
-	attributes = appendOtelAttributes(attributes, attributeKeys, "context", data.ContextFields, warnDuplicateAttribute)
-	attributes = appendOtelAttributes(attributes, attributeKeys, "fields", data.Fields, warnDuplicateAttribute)
+	// Preserve flat keys with fixed precedence: metadata, context, fields, then errors.
+	// Map keys are sorted below so collision resolution does not depend on map iteration.
+	attributes = appendOtelAttribute(attributes, attributeKeys, "channel", "metadata", data.Channel)
+	attributes = appendOtelAttributes(attributes, attributeKeys, "context", data.ContextFields)
+	attributes = appendOtelAttributes(attributes, attributeKeys, "fields", data.Fields)
 
 	if logErr != nil {
-		attributes = appendOtelAttribute(attributes, attributeKeys, "log", "error", logErr.Error(), warnDuplicateAttribute)
+		attributes = appendOtelAttribute(attributes, attributeKeys, "error", "log", logErr.Error())
 	}
 
 	record.AddAttributes(attributes...)
@@ -115,9 +114,10 @@ func (h *handlerOtel) Log(ctx context.Context, timestamp time.Time, level int, m
 	return nil
 }
 
-// appendOtelAttributes prefixes each attribute with its source namespace so keys
-// remain deterministic when context and message fields contain the same name.
-func appendOtelAttributes(attributes []otellog.KeyValue, keys map[string]struct{}, namespace string, values map[string]any, warnDuplicate func(string)) []otellog.KeyValue {
+// appendOtelAttributes keeps attributes unique after context and message fields
+// are flattened into the same OTEL namespace. Earlier sources keep their keys;
+// collisions from later sources are retained under a source prefix.
+func appendOtelAttributes(attributes []otellog.KeyValue, keys map[string]struct{}, namespace string, values map[string]any) []otellog.KeyValue {
 	valueKeys := make([]string, 0, len(values))
 	for key := range values {
 		valueKeys = append(valueKeys, key)
@@ -125,33 +125,24 @@ func appendOtelAttributes(attributes []otellog.KeyValue, keys map[string]struct{
 	sort.Strings(valueKeys)
 
 	for _, key := range valueKeys {
-		attributes = appendOtelAttribute(attributes, keys, namespace, key, values[key], warnDuplicate)
+		attributes = appendOtelAttribute(attributes, keys, key, namespace, values[key])
 	}
 
 	return attributes
 }
 
-func appendOtelAttribute(attributes []otellog.KeyValue, keys map[string]struct{}, namespace, key string, value any, warnDuplicate func(string)) []otellog.KeyValue {
-	key = namespace + "." + key
-	if _, exists := keys[key]; exists {
-		warnDuplicate(key)
+func appendOtelAttribute(attributes []otellog.KeyValue, keys map[string]struct{}, key, namespace string, value any) []otellog.KeyValue {
+	for {
+		if _, exists := keys[key]; !exists {
+			break
+		}
 
-		return attributes
+		key = namespace + "." + key
 	}
 
 	keys[key] = struct{}{}
 
 	return append(attributes, toOtelKeyValue(key, value))
-}
-
-func (h *handlerOtel) warnDuplicateAttribute(ctx context.Context, timestamp time.Time, key string) {
-	var record otellog.Record
-	record.SetTimestamp(timestamp)
-	record.SetSeverity(toOtelSeverity(PriorityWarn))
-	record.SetSeverityText(LevelName(PriorityWarn))
-	record.SetBody(otellog.StringValue("duplicate OTel log attribute key; attribute dropped"))
-	record.AddAttributes(otellog.String("log.attribute_key", key))
-	h.logger.Emit(ctx, record)
 }
 
 func (h *handlerOtel) Close(ctx context.Context) error {
