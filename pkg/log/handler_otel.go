@@ -139,6 +139,7 @@ func appendOtelAttribute(attributes []otellog.KeyValue, keys map[string]struct{}
 	}
 
 	keys[key] = struct{}{}
+
 	return append(attributes, toOtelKeyValue(key, value))
 }
 
