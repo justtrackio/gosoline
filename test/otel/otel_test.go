@@ -165,14 +165,14 @@ func (s *OtelTestSuite) TestLogExport() {
 	infoLog := findLogRecord(records, "user alice logged in")
 	s.NotNil(infoLog, "info log not found")
 	s.Equal("info", infoLog.SeverityText)
-	s.Equal("auth", infoLog.Attributes["channel"])
-	s.Equal("req-123", infoLog.Attributes["request_id"])
-	s.Equal("42", infoLog.Attributes["user_id"])
+	s.Equal("auth", infoLog.Attributes["metadata.channel"])
+	s.Equal("req-123", infoLog.Attributes["context.request_id"])
+	s.Equal("42", infoLog.Attributes["fields.user_id"])
 
 	errorLog := findLogRecord(records, "database connection failed")
 	s.NotNil(errorLog, "error log not found")
 	s.Equal("error", errorLog.SeverityText)
-	s.Equal("db", errorLog.Attributes["channel"])
+	s.Equal("db", errorLog.Attributes["metadata.channel"])
 
 	s.NoError(provider.Shutdown(ctx))
 }
