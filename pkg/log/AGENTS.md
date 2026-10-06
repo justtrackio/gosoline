@@ -50,6 +50,7 @@ log.handlers.sentry.dsn: ""
 - `pkg/metric` - metrics emission alongside logging
 
 ## Tips
+- OTel context attributes keep flat keys; message attributes always use `fields.`. The `fields.` prefix and framework keys `channel` and `error` are reserved for their respective sources. Invalid context keys and unexpected duplicates are skipped with a direct stderr warning, without recursively logging.
 - Avoid global loggers; expose factories via DI modules.
 - Document new config options under `log.handlers.<name>.*` and keep defaults safe for production.
 - When adding new handler dependencies, update root `go.mod` carefully to avoid bloat.

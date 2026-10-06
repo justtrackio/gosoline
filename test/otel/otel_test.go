@@ -143,8 +143,8 @@ func (s *OtelTestSuite) TestLogExport() {
 
 	err = handler.Log(ctx, time.Now(), log.PriorityInfo, "user %s logged in", []any{"alice"}, nil, log.Data{
 		Channel:       "auth",
-		ContextFields: map[string]any{"request_id": "req-123"},
-		Fields:        map[string]any{"user_id": "42"},
+		ContextFields: map[string]any{"request_id": "req-123", "sdk_version": "8.0.0"},
+		Fields:        map[string]any{"user_id": "42", "sdk_version": "13.2.0"},
 	})
 	s.NoError(err)
 
@@ -167,7 +167,9 @@ func (s *OtelTestSuite) TestLogExport() {
 	s.Equal("info", infoLog.SeverityText)
 	s.Equal("auth", infoLog.Attributes["channel"])
 	s.Equal("req-123", infoLog.Attributes["request_id"])
-	s.Equal("42", infoLog.Attributes["user_id"])
+	s.Equal("42", infoLog.Attributes["fields.user_id"])
+	s.Equal("8.0.0", infoLog.Attributes["sdk_version"])
+	s.Equal("13.2.0", infoLog.Attributes["fields.sdk_version"])
 
 	errorLog := findLogRecord(records, "database connection failed")
 	s.NotNil(errorLog, "error log not found")

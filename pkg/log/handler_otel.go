@@ -3,7 +3,10 @@ package log
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -97,14 +100,14 @@ func (h *handlerOtel) Log(ctx context.Context, timestamp time.Time, level int, m
 	attributeCapacity := len(data.Fields) + len(data.ContextFields) + 2
 	attributes := make([]otellog.KeyValue, 0, attributeCapacity)
 	attributeKeys := make(map[string]struct{}, attributeCapacity)
-	// Preserve flat keys with fixed precedence: metadata, context, fields, then errors.
-	// Map keys are sorted below so collision resolution does not depend on map iteration.
-	attributes = appendOtelAttribute(attributes, attributeKeys, "channel", "metadata", data.Channel)
-	attributes = appendOtelAttributes(attributes, attributeKeys, "context", data.ContextFields)
-	attributes = appendOtelAttributes(attributes, attributeKeys, "fields", data.Fields)
+	// Context keys stay flat; message keys always use fields., independently of collisions.
+	// Framework keys and the fields. prefix are reserved so sources cannot overlap.
+	attributes = appendOtelAttribute(attributes, attributeKeys, "channel", "", data.Channel, os.Stderr)
+	attributes = appendOtelAttributes(attributes, attributeKeys, "", data.ContextFields, os.Stderr)
+	attributes = appendOtelAttributes(attributes, attributeKeys, "fields", data.Fields, os.Stderr)
 
 	if logErr != nil {
-		attributes = appendOtelAttribute(attributes, attributeKeys, "error", "log", logErr.Error())
+		attributes = appendOtelAttribute(attributes, attributeKeys, "error", "", logErr.Error(), os.Stderr)
 	}
 
 	record.AddAttributes(attributes...)
@@ -114,10 +117,9 @@ func (h *handlerOtel) Log(ctx context.Context, timestamp time.Time, level int, m
 	return nil
 }
 
-// appendOtelAttributes keeps attributes unique after context and message fields
-// are flattened into the same OTEL namespace. Earlier sources keep their keys;
-// collisions from later sources are retained under a source prefix.
-func appendOtelAttributes(attributes []otellog.KeyValue, keys map[string]struct{}, namespace string, values map[string]any) []otellog.KeyValue {
+// appendOtelAttributes assigns names by source and sorts keys for stable output.
+// An empty namespace denotes context fields, which cannot use reserved keys.
+func appendOtelAttributes(attributes []otellog.KeyValue, keys map[string]struct{}, namespace string, values map[string]any, warnings io.Writer) []otellog.KeyValue {
 	valueKeys := make([]string, 0, len(values))
 	for key := range values {
 		valueKeys = append(valueKeys, key)
@@ -125,19 +127,29 @@ func appendOtelAttributes(attributes []otellog.KeyValue, keys map[string]struct{
 	sort.Strings(valueKeys)
 
 	for _, key := range valueKeys {
-		attributes = appendOtelAttribute(attributes, keys, key, namespace, values[key])
+		if namespace == "" && (key == "channel" || key == "error" || strings.HasPrefix(key, "fields.")) {
+			// Write directly to avoid recursively invoking this log handler.
+			_, _ = fmt.Fprintf(warnings, "Warning: dropping OTel context attribute %q: key is reserved\n", key) //nolint:errcheck // Diagnostics must not prevent exporting the original log record.
+
+			continue
+		}
+
+		attributes = appendOtelAttribute(attributes, keys, key, namespace, values[key], warnings)
 	}
 
 	return attributes
 }
 
-func appendOtelAttribute(attributes []otellog.KeyValue, keys map[string]struct{}, key, namespace string, value any) []otellog.KeyValue {
-	for {
-		if _, exists := keys[key]; !exists {
-			break
-		}
-
+func appendOtelAttribute(attributes []otellog.KeyValue, keys map[string]struct{}, key, namespace string, value any, warnings io.Writer) []otellog.KeyValue {
+	if namespace != "" {
 		key = namespace + "." + key
+	}
+
+	if _, exists := keys[key]; exists {
+		// Duplicates indicate a bug: do not give the same field another name.
+		_, _ = fmt.Fprintf(warnings, "Warning: duplicate OTel log attribute %q ignored\n", key) //nolint:errcheck // Diagnostics must not prevent exporting the original log record.
+
+		return attributes
 	}
 
 	keys[key] = struct{}{}
