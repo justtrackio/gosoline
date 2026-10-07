@@ -14,6 +14,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
+	"github.com/justtrackio/gosoline/pkg/smpl"
+	"github.com/justtrackio/gosoline/pkg/smpl/smplctx"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/stream/health"
 	streamMocks "github.com/justtrackio/gosoline/pkg/stream/mocks"
@@ -34,19 +36,20 @@ func TestBatchConsumerTestSuite(t *testing.T) {
 type BatchConsumerTestSuite struct {
 	suite.Suite
 
-	consumer      *stream.BatchConsumer
-	input         *batchTestInput
-	cancel        context.CancelFunc
-	done          chan struct{}
-	err           error
-	retryInput    *batchTestRetryInput
-	retryMessages chan *stream.Message
-	retryWriteErr error
-	output        *streamMocks.Output
-	logger        log.Logger
-	metrics       *metricMocks.Writer
-	settings      stream.ConsumerSettings
-	batchSettings stream.BatchConsumerSettings
+	consumer        *stream.BatchConsumer
+	input           *batchTestInput
+	cancel          context.CancelFunc
+	done            chan struct{}
+	err             error
+	retryInput      *batchTestRetryInput
+	retryMessages   chan *stream.Message
+	retryWriteErr   error
+	output          *streamMocks.Output
+	logger          log.Logger
+	metrics         *metricMocks.Writer
+	settings        stream.ConsumerSettings
+	batchSettings   stream.BatchConsumerSettings
+	samplingDecider smpl.Decider
 }
 
 // Each table-driven case gets independent inputs, channels and mock expectations.
@@ -63,13 +66,26 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 	s.retryMessages = make(chan *stream.Message, 100)
 	s.output = streamMocks.NewOutput(t)
 	s.output.EXPECT().WriteOne(matcher.Context, mock.Anything).RunAndReturn(func(_ context.Context, message stream.WritableMessage) error {
+		var err error
+		var wire string
+
 		if s.retryWriteErr != nil {
 			return s.retryWriteErr
 		}
 
 		msg := message.(*stream.Message)
 		s.retryMessages <- msg
-		s.retryInput.Publish(msg)
+
+		if wire, err = msg.MarshalToString(); err != nil {
+			return err
+		}
+
+		var received stream.Message
+		if err := received.UnmarshalFromString(wire); err != nil {
+			return err
+		}
+
+		s.retryInput.Publish(&received)
 
 		return nil
 	}).Maybe()
@@ -82,6 +98,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 		Healthcheck: health.HealthCheckSettings{Timeout: 10 * time.Millisecond},
 	}
 	s.batchSettings = stream.BatchConsumerSettings{BatchSize: 1}
+	s.samplingDecider = smpl.NewDeciderWithInterfaces(nil, &smpl.Settings{}, nil)
 }
 
 // TestAcknowledgesAdmissionAndFlushesOnSize verifies that primary messages are acknowledged
@@ -376,7 +393,13 @@ func (batchContextHandler) Encode(ctx context.Context, _ any, attributes map[str
 }
 
 func (batchContextHandler) Decode(ctx context.Context, _ any, attributes map[string]string) (context.Context, map[string]string, error) {
-	value := attributes["correlation"]
+	var ok bool
+	var value string
+
+	if value, ok = attributes["correlation"]; !ok {
+		return ctx, attributes, nil
+	}
+
 	delete(attributes, "correlation")
 
 	return context.WithValue(ctx, batchContextKey{}, value), attributes, nil
@@ -461,6 +484,181 @@ func (s *BatchConsumerTestSuite) TestDisaggregatesAndRetriesMalformedMessages() 
 	if s.err != nil {
 		require.ErrorContains(t, s.err, "unsuccessful acknowledged messages requiring replay")
 	}
+}
+
+func (s *BatchConsumerTestSuite) TestLaterAggregateUsesItsOwnContextAfterDecodeFailure() {
+	t := s.T()
+	processed := make(chan string, 1)
+	s.startConsumerWithCallback(2, time.Hour, &batchTestCallback{
+		consume: func(ctx context.Context, models []any, attributes []map[string]string) ([]bool, error) {
+			processed <- ctx.Value(batchContextKey{}).(string)
+
+			return successfulBatch(ctx, models, attributes)
+		},
+	}, batchContextHandler{})
+	bad := stream.NewJsonMessage("not json", map[string]string{"correlation": "wrong"})
+	s.input.Publish(bad)
+	child, err := stream.MarshalJsonMessage(batchTestModel{Value: 42})
+	require.NoError(t, err)
+	aggregate, err := stream.MarshalJsonMessage([]*stream.Message{child}, map[string]string{
+		stream.AttributeAggregate: "true", "correlation": "aggregate",
+	})
+	require.NoError(t, err)
+	s.input.Publish(aggregate)
+
+	select {
+	case value := <-processed:
+		require.Equal(t, "aggregate", value)
+	case <-time.After(time.Second):
+		t.Fatal("aggregate did not process")
+	}
+
+	s.cancel()
+	waitBatchTest(t, s.done)
+	require.NoError(t, s.err)
+}
+
+func (s *BatchConsumerTestSuite) TestAggregateChildRetriesPreserveEnvelopeAndOverrides() {
+	t := s.T()
+	observed := make(chan string, 3)
+	var calls atomic.Int32
+	s.startConsumerWithCallback(3, time.Hour, &batchTestCallback{
+		consume: func(ctx context.Context, models []any, attributes []map[string]string) ([]bool, error) {
+			childOverride := models[0].(*batchTestModel).Value == 3
+			require.Equal(t, childOverride, smplctx.IsSampled(ctx))
+			scope := "envelope"
+
+			if childOverride {
+				scope = "child"
+			}
+
+			require.Equal(t, scope, log.GlobalContextFieldsResolver(ctx)["scope"])
+			observed <- ctx.Value(batchContextKey{}).(string)
+
+			if calls.Add(1) == 1 {
+				return []bool{true, false, false}, nil
+			}
+
+			require.Len(t, models, 1)
+
+			return successfulBatch(ctx, models, attributes)
+		},
+	}, batchContextHandler{}, smpl.NewMessageWithSamplingEncoder(), log.NewMessageWithLoggingFieldsEncoderWithInterfaces(s.logger))
+	children := make([]*stream.Message, 3)
+
+	for i := range children {
+		var err error
+		attributes := map[string]string{}
+
+		if i == 2 {
+			attributes["correlation"] = "child"
+			attributes["sampled"] = "true"
+			attributes[log.MessageAttributeLoggerContext] = `{"scope":"child"}`
+		}
+
+		children[i], err = stream.MarshalJsonMessage(batchTestModel{Value: i + 1}, attributes)
+		require.NoError(t, err)
+	}
+
+	encoder := stream.NewMessageEncoder(&stream.MessageEncoderSettings{
+		Compression: stream.CompressionGZip, EncodeHandlers: []stream.EncodeHandler{batchContextHandler{}},
+	})
+	aggregate, err := encoder.Encode(t.Context(), children, map[string]string{
+		stream.AttributeAggregate: "true", "correlation": "envelope",
+		"sampled": "false", log.MessageAttributeLoggerContext: `{"scope":"envelope"}`,
+	})
+	require.NoError(t, err)
+	s.input.Publish(aggregate)
+	contexts := make([]string, 0, 3)
+
+	for range 3 {
+		select {
+		case value := <-observed:
+			contexts = append(contexts, value)
+		case <-time.After(time.Second):
+			t.Fatal("missing initial or retry processing")
+		}
+	}
+
+	require.Equal(t, "envelope", contexts[0])
+	require.ElementsMatch(t, []string{"envelope", "child"}, contexts[1:])
+	s.cancel()
+	waitBatchTest(t, s.done)
+	require.NoError(t, s.err)
+	require.Len(t, s.retryMessages, 2)
+	require.Equal(t, "envelope", aggregate.Attributes["correlation"])
+}
+
+func (s *BatchConsumerTestSuite) TestSamplingUsesConfiguredDeciderAndPreservesPropagation() {
+	for _, propagated := range []string{"", "false", "true"} {
+		s.Run("propagated="+propagated, func() {
+			t := s.T()
+			var strategies atomic.Int32
+			strategy := func(context.Context) (bool, bool, error) {
+				strategies.Add(1)
+
+				return true, false, nil
+			}
+			s.samplingDecider = smpl.NewDeciderWithInterfaces([]smpl.Strategy{strategy}, &smpl.Settings{Enabled: true}, s.metrics)
+
+			if propagated == "" {
+				s.metrics.EXPECT().WriteOne(matcher.Context, mock.Anything).Once()
+			}
+
+			observed := make(chan bool, 1)
+			s.startConsumerWithCallback(1, time.Hour, &batchTestCallback{
+				consume: func(ctx context.Context, models []any, attributes []map[string]string) ([]bool, error) {
+					observed <- smplctx.IsSampled(ctx)
+
+					return successfulBatch(ctx, models, attributes)
+				},
+			}, smpl.NewMessageWithSamplingEncoder())
+			attributes := map[string]string{}
+
+			if propagated != "" {
+				attributes["sampled"] = propagated
+			}
+
+			message, err := stream.MarshalJsonMessage(batchTestModel{Value: 1}, attributes)
+			require.NoError(t, err)
+			s.input.Publish(message)
+
+			select {
+			case sampled := <-observed:
+				require.Equal(t, propagated == "true", sampled)
+			case <-time.After(time.Second):
+				t.Fatal("sampling callback did not run")
+			}
+
+			s.cancel()
+			waitBatchTest(t, s.done)
+			require.NoError(t, s.err)
+
+			if propagated == "" {
+				require.EqualValues(t, 1, strategies.Load())
+			} else {
+				require.Zero(t, strategies.Load())
+			}
+		})
+	}
+}
+
+func (s *BatchConsumerTestSuite) TestSamplingErrorStillProcessesBatch() {
+	t := s.T()
+	s.samplingDecider = smpl.NewDeciderWithInterfaces([]smpl.Strategy{
+		func(context.Context) (bool, bool, error) { return false, false, errors.New("sampling unavailable") },
+	}, &smpl.Settings{Enabled: true}, s.metrics)
+	processed := make(chan struct{}, 1)
+	s.startConsumer(1, time.Hour, func(ctx context.Context, models []any, attributes []map[string]string) ([]bool, error) {
+		processed <- struct{}{}
+
+		return successfulBatch(ctx, models, attributes)
+	})
+	s.publishModel(1)
+	waitBatchTest(t, processed)
+	s.cancel()
+	waitBatchTest(t, s.done)
+	require.NoError(t, s.err)
 }
 
 // TestBatchConsumerFactoryRejectsUnknownRetryHandler verifies that factory construction
@@ -578,6 +776,7 @@ func (s *BatchConsumerTestSuite) TestFailedRetryWriteBeforeDrainingRequiresRepla
 				message, err := stream.MarshalJsonMessage(batchTestModel{Value: 2})
 				require.NoError(t, err)
 				s.retryInput.Publish(message)
+
 				select {
 				case ack := <-s.retryInput.results:
 					require.True(t, ack)
@@ -648,7 +847,7 @@ func TestTypedBatchConsumerFactoryAndTypeErasure(t *testing.T) {
 			"input":    map[string]any{"batch-factory": map[string]any{"type": "inMemory"}},
 		},
 	})
-	factory := stream.NewTypedBatchConsumer("test", func(context.Context, cfg.Config, log.Logger) (stream.BatchConsumerCallback[batchTestModel], error) {
+	factory := stream.NewBatchConsumer("test", func(context.Context, cfg.Config, log.Logger) (stream.BatchConsumerCallback[batchTestModel], error) {
 		return typedBatchTestCallback{}, nil
 	})
 	module, err := factory(appctx.WithContainer(t.Context()), config, logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)))
@@ -686,7 +885,7 @@ func (s *BatchConsumerTestSuite) startConsumerWithCallback(size int, interval ti
 		stream.NewRetryHandlerSqsWithInterfaces(s.output, &stream.RetryHandlerSqsSettings{RetryHandlerSettings: stream.RetryHandlerSettings{After: time.Second, MaxAttempts: 3}}),
 		s.settings,
 		"test",
-		nil,
+		s.samplingDecider,
 		clock.NewRealClock(),
 	)
 

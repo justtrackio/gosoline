@@ -62,8 +62,8 @@ type untypedBatchConsumerCallback[M any] struct {
 	callback BatchConsumerCallback[M]
 }
 
-// NewTypedBatchConsumer constructs a batch consumer with typed model decoding.
-func NewTypedBatchConsumer[M any](name string, factory BatchConsumerCallbackFactory[M]) kernel.ModuleFactory {
+// NewBatchConsumer constructs a batch consumer with typed model decoding.
+func NewBatchConsumer[M any](name string, factory BatchConsumerCallbackFactory[M]) kernel.ModuleFactory {
 	return NewUntypedBatchConsumer(name, EraseBatchConsumerCallbackFactoryTypes(factory))
 }
 

@@ -5,7 +5,7 @@ flushes its two remaining records as one batch.
 
 Use `application.RunBatchConsumer` / `RunBatchConsumers` for typed callbacks, or
 `RunUntypedBatchConsumer` / `RunUntypedBatchConsumers` for mixed models. Module
-factories are `stream.NewTypedBatchConsumer`, `NewUntypedBatchConsumer`,
+factories are `stream.NewBatchConsumer`, `NewUntypedBatchConsumer`,
 `NewBatchConsumerFactory`, and `NewUntypedBatchConsumerFactory`.
 
 `batch_size` triggers processing when enough records have been collected;

@@ -128,12 +128,16 @@ func (s *ConsumerTestSuite) SetupTest() {
 // buildConsumer wires a consumer from the current settings. Tests which need different settings than the defaults
 // from SetupTest can adjust s.settings and call this again before running the consumer.
 func (s *ConsumerTestSuite) buildConsumer() {
+	s.buildConsumerWithInput(s.input)
+}
+
+func (s *ConsumerTestSuite) buildConsumerWithInput(input stream.Input) {
 	base := stream.NewConsumerBaseWithInterfaces(
 		s.uuidGen,
 		s.logger,
 		s.metricWriter,
 		s.tracer,
-		s.input,
+		input,
 		s.encoder,
 		s.retryInput,
 		s.retryHandler,
@@ -209,10 +213,94 @@ func (s *ConsumerTestSuite) TestGetModelNil() {
 
 	s.callback.EXPECT().GetModel(mock.AnythingOfType("map[string]string")).Return(nil, nil).Once()
 	s.callback.EXPECT().Run(matcher.Context).Return(nil).Once()
+	s.expectPreparationRetry()
 
 	err := s.consumer.Run(s.kernelCtx)
 
 	s.NoError(err, "there should be no error during run")
+}
+
+func (s *ConsumerTestSuite) expectPreparationRetry() {
+	s.uuidGen.EXPECT().NewV4().Return("preparation-retry").Once()
+	s.retryHandler.EXPECT().Put(matcher.Context, mock.MatchedBy(func(msg *stream.Message) bool {
+		return msg.Attributes[stream.AttributeRetryId] == "preparation-retry"
+	})).Return(nil).Once()
+}
+
+func (s *ConsumerTestSuite) TestGetModelErrorRetries() {
+	s.expectRetryInputRun()
+	s.expectInputRun(stream.NewJsonMessage(`"foo"`))
+	s.callback.EXPECT().GetModel(mock.Anything).Return(nil, fmt.Errorf("unknown model")).Once()
+	s.callback.EXPECT().Run(matcher.Context).Return(nil).Once()
+	s.expectPreparationRetry()
+	s.NoError(s.consumer.Run(s.kernelCtx))
+}
+
+func (s *ConsumerTestSuite) TestDecodeErrorRetries() {
+	s.expectRetryInputRun()
+	s.expectInputRun(stream.NewJsonMessage(`not json`))
+	s.callback.EXPECT().GetModel(mock.Anything).Return(mdl.Box(""), nil).Once()
+	s.callback.EXPECT().Run(matcher.Context).Return(nil).Once()
+	s.expectPreparationRetry()
+	s.NoError(s.consumer.Run(s.kernelCtx))
+}
+
+func (s *ConsumerTestSuite) TestAggregateDecodeErrorRetries() {
+	s.expectRetryInputRun()
+	s.expectInputRun(stream.BuildAggregateMessage(`not json`))
+	s.callback.EXPECT().Run(matcher.Context).Return(nil).Once()
+	s.expectPreparationRetry()
+	s.NoError(s.consumer.Run(s.kernelCtx))
+}
+
+type nativeRetryTestInput struct {
+	stream.Input
+}
+
+func (i nativeRetryTestInput) GetRetryHandler() (stream.Input, stream.RetryHandler) {
+	return nil, nil
+}
+
+func (s *ConsumerTestSuite) TestPreparationFailureUsesNativeRedelivery() {
+	s.buildConsumerWithInput(nativeRetryTestInput{Input: s.input})
+	s.expectRetryInputRun()
+	message := stream.NewJsonMessage(`"foo"`)
+	s.input.EXPECT().Run(matcher.Context, mock.Anything).RunAndReturn(func(ctx context.Context, process stream.InputProcess) error {
+		s.False(process(ctx, message))
+
+		return nil
+	}).Once()
+	s.callback.EXPECT().Run(matcher.Context).Return(nil).Once()
+	s.callback.EXPECT().GetModel(mock.Anything).Return(nil, fmt.Errorf("unknown model")).Once()
+	// The retry-handler mock has no Put expectation: the original transport owns redelivery.
+	s.NoError(s.consumer.Run(s.kernelCtx))
+}
+
+func (s *ConsumerTestSuite) TestAggregatePanicUsesEffectiveRetryPolicy() {
+	s.buildConsumerWithInput(nativeRetryTestInput{Input: s.input})
+	s.expectRetryInputRun()
+	aggregate := stream.BuildAggregateMessage(`[{"body":"\"foo\"","attributes":{"encoding":"application/json"}},{"body":"\"bar\"","attributes":{"encoding":"application/json"}}]`)
+	s.input.EXPECT().Run(matcher.Context, mock.Anything).RunAndReturn(func(ctx context.Context, process stream.InputProcess) error {
+		s.True(process(ctx, aggregate), "the successful sibling acknowledges the envelope")
+
+		return nil
+	}).Once()
+	s.callback.EXPECT().Run(matcher.Context).Return(nil).Once()
+	s.callback.EXPECT().GetModel(mock.Anything).RunAndReturn(func(map[string]string) (any, error) {
+		return mdl.Box(""), nil
+	}).Twice()
+	s.callback.EXPECT().Consume(matcher.Context, mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, model any, _ map[string]string) (bool, error) {
+		if *model.(*string) == "bar" {
+			panic("business panic")
+		}
+
+		return true, nil
+	}).Twice()
+	s.uuidGen.EXPECT().NewV4().Return("panic-retry").Once()
+	s.retryHandler.EXPECT().Put(matcher.Context, mock.MatchedBy(func(msg *stream.Message) bool {
+		return msg.Body == `"bar"` && msg.Attributes[stream.AttributeRetryId] == "panic-retry"
+	})).Return(nil).Once()
+	s.NoError(s.consumer.Run(s.kernelCtx))
 }
 
 func (s *ConsumerTestSuite) TestRun() {
@@ -636,6 +724,7 @@ func (s *ConsumerTestSuite) TestRun_WaitsForCanceledInFlightProcessingBeforeStop
 	case <-time.After(time.Second):
 		s.FailNow("message processing did not start")
 	}
+
 	<-callbackStarted
 	s.kernelCancel()
 	<-inputStopped
@@ -1097,6 +1186,7 @@ func (s *ConsumerTestSuite) TestRun_InputAndCallbackShareOneProcessingDeadline()
 		RunAndReturn(func(ctx context.Context, process stream.InputProcess) error {
 			drainCtx, ok := exec.DrainContextFrom(ctx)
 			close(drainAttached)
+
 			if !s.True(ok, "the consumer must publish its processing deadline to the input") {
 				return nil
 			}

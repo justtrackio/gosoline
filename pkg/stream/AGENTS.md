@@ -127,7 +127,7 @@ callbacks.
 
 ### Batch consumers
 
-`NewTypedBatchConsumer` / `NewUntypedBatchConsumer` and their multi-factories
+`NewBatchConsumer` / `NewUntypedBatchConsumer` and their multi-factories
 provide serial, channel-driven collection using `batch_size` and `idle_timeout`.
 The bounded admission channel uses `buffer_size` (default: `batch_size`); inputs
 can retain their default single runner. The timer resets on each flush.
@@ -148,6 +148,12 @@ primary admission acknowledgement does not depend on `aggregate_message_mode`.
 Retry envelopes acknowledge only if all children succeed. One aggregate may
 exceed the batch-size threshold. Preserve original propagation
 attributes for retries while decoding copies for the callback.
+
+Each record is decoded with its own input/envelope context and the shared drain
+cancellation. The first successfully decoded record supplies the batch callback's
+context; configured sampling is applied to that context, respecting propagated
+decisions. Failed aggregate children are retried in individual, uncompressed JSON
+aggregate envelopes retaining the original envelope attributes and child overrides.
 
 See `examples/stream/batch-consumer` for a runnable file-input example and all
 application runners. Unit tests are in `consumer_batch_test.go`: the testify
@@ -230,6 +236,17 @@ processing before deleting any of its messages.
 Consumers decode a copy of the message attributes so context decoders can remove propagation attributes from the
 callback's view while the original message retains them for retries and redelivery. Preserve this separation for both
 single messages and aggregates.
+
+Model selection, nil-model and decoding failures follow the same retry policy as
+callback failures. Aggregate panic recovery uses the effective aggregate retry
+policy rather than just the primary transport's native-redelivery capability.
+
+`Message` JSON serialization uses the `attributes`/`body` representation for UTF-8
+data. Attribute values must be strings; numeric and boolean values are rejected
+rather than converted. Non-UTF-8 bodies use `bodyBase64`; non-UTF-8 attribute values use
+`attributesBase64`. Both decode back to the original bytes, including inside
+aggregates, so schema-registry Kafka payloads and binary headers survive SQS retries.
+Readers must support these additional fields before receiving binary-safe envelopes.
 
 ## Related packages
 - `pkg/cloud/aws/sqs`, `sns`, `kinesis` - AWS transport clients

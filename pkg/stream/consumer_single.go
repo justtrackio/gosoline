@@ -124,6 +124,10 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, msg *Message, pr
 	if ctx, _, err = c.encoder.Decode(ctx, &decodeMsg, &batch); err != nil {
 		c.handleError(ctx, err, "an error occurred during disaggregation of the message")
 
+		if !c.hasNativeRetry() {
+			c.retry(ctx, msg)
+		}
+
 		return
 	}
 
@@ -172,7 +176,7 @@ func (c *Consumer) processSingleMessage(gracedCtx context.Context, msg *Message)
 }
 
 func (c *Consumer) process(gracedCtx context.Context, msg *Message, hasNativeRetry bool) bool {
-	defer c.recover(gracedCtx, msg)
+	defer c.recover(gracedCtx, msg, hasNativeRetry)
 
 	// if we are shutting down, don't acknowledge any messages and try to retry them if needed
 	select {
@@ -209,16 +213,13 @@ func (c *Consumer) process(gracedCtx context.Context, msg *Message, hasNativeRet
 			return true
 		}
 
-		c.handleError(gracedCtx, err, "an error occurred during the consume operation")
-
-		return false
+		return c.failPreparation(gracedCtx, msg, err, hasNativeRetry)
 	}
 
 	if model == nil {
 		err := fmt.Errorf("can not get model for message attributes %v", msg.Attributes)
-		c.handleError(gracedCtx, err, "an error occurred during the consume operation")
 
-		return false
+		return c.failPreparation(gracedCtx, msg, err, hasNativeRetry)
 	}
 
 	// Decoders consume context attributes; preserve the original message for retries.
@@ -226,9 +227,7 @@ func (c *Consumer) process(gracedCtx context.Context, msg *Message, hasNativeRet
 	decodeMsg.Attributes = maps.Clone(msg.Attributes)
 
 	if gracedCtx, attributes, err = c.encoder.Decode(gracedCtx, &decodeMsg, model); err != nil {
-		c.handleError(gracedCtx, err, "an error occurred during the consume operation")
-
-		return false
+		return c.failPreparation(gracedCtx, msg, err, hasNativeRetry)
 	}
 
 	if smplCtx, _, err := c.samplingDecider.Decide(gracedCtx); err != nil {
@@ -257,14 +256,24 @@ func (c *Consumer) process(gracedCtx context.Context, msg *Message, hasNativeRet
 	return ack
 }
 
-func (c *Consumer) recover(ctx context.Context, msg *Message) {
+func (c *Consumer) failPreparation(ctx context.Context, msg *Message, err error, hasNativeRetry bool) bool {
+	c.handleError(ctx, err, "an error occurred during the consume operation")
+
+	if !hasNativeRetry {
+		c.retry(ctx, msg)
+	}
+
+	return false
+}
+
+func (c *Consumer) recover(ctx context.Context, msg *Message, hasNativeRetry bool) {
 	err := coffin.ResolveRecovery(recover())
 	if err == nil {
 		return
 	}
 
 	c.handleError(ctx, err, "a panic occurred during the consume operation")
-	if msg == nil || c.hasNativeRetry() {
+	if msg == nil || hasNativeRetry {
 		return
 	}
 

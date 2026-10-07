@@ -39,6 +39,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -75,7 +76,9 @@ type BatchConsumerSettings struct {
 type batchMessage struct {
 	ctx     context.Context
 	message *Message
-	result  chan bool
+	// retryMessage retains envelope context when a flattened child fails.
+	retryMessage *Message
+	result       chan bool
 }
 
 // BatchConsumer acknowledges transport messages when admitted to memory, then
@@ -261,6 +264,8 @@ func (c *BatchConsumer) collectMessage(ctx context.Context, message batchMessage
 func (c *BatchConsumer) collect(ctx context.Context, message batchMessage) int {
 	var err error
 	var childCtx context.Context
+	var body []byte
+	var retryMessage *Message
 
 	if _, aggregate := message.message.Attributes[AttributeAggregate]; !aggregate {
 		c.batch = append(c.batch, message)
@@ -295,7 +300,31 @@ func (c *BatchConsumer) collect(ctx context.Context, message batchMessage) int {
 	}
 
 	for _, child := range children {
-		c.batch = append(c.batch, batchMessage{ctx: childCtx, message: child, result: message.result})
+		if message.result == nil {
+			// Keep propagation handlers and child overrides working identically on
+			// retry. Only this child is replayed, in a fresh uncompressed JSON envelope.
+			if body, err = json.Marshal([]*Message{child}); err != nil {
+				c.handleError(ctx, err, "could not encode aggregate child for retry")
+
+				if !c.retryBatchMessage(ctx, message) {
+					return 1
+				}
+
+				return 0
+			}
+
+			attributes := maps.Clone(message.message.Attributes)
+			attributes[AttributeEncoding] = EncodingJson.String()
+			delete(attributes, AttributeCompression)
+			retryMessage = &Message{Body: string(body), Attributes: attributes}
+		}
+
+		c.batch = append(c.batch, batchMessage{
+			ctx:          childCtx,
+			message:      child,
+			retryMessage: retryMessage,
+			result:       message.result,
+		})
 	}
 
 	return 0
@@ -339,32 +368,30 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context) (failed int) {
 	c.processingStartedAt.Put(processingID, start)
 	defer c.processingStartedAt.Remove(processingID)
 
-	batchCtx, cancel := context.WithCancel(batch[0].ctx)
-	defer cancel()
-
-	stop := context.AfterFunc(ctx, cancel)
+	stop := withBatchProcessingContexts(ctx, batch)
 	defer stop()
 
-	if ctx.Err() != nil {
-		cancel()
-	}
-
-	ctx = batchCtx
-	ctx, span := c.startTracingContext(ctx)
+	decoded := c.decodeBatch(batch[0].ctx, batch)
+	failed = decoded.failed
+	ctx, span := c.startTracingContext(decoded.ctx)
 	defer span.Finish()
+
 	defer func() {
 		c.processed.Add(int32(len(batch)))
 		c.writeMetricDurationAndProcessedCount(ctx, c.clock.Since(start), len(batch))
 	}()
 
-	decoded := c.decodeBatch(ctx, batch)
-	failed = decoded.failed
-
 	if len(decoded.messages) == 0 {
 		return failed
 	}
 
-	if acks, err = c.callBatch(decoded.ctx, decoded.models, decoded.attributes); err != nil {
+	if samplingCtx, _, err := c.samplingDecider.Decide(ctx); err != nil {
+		c.logger.Warn(ctx, "could not decide on sampling: %s", err)
+	} else {
+		ctx = samplingCtx
+	}
+
+	if acks, err = c.callBatch(ctx, decoded.models, decoded.attributes); err != nil {
 		c.handleError(ctx, err, "batch processing failed")
 	}
 
@@ -391,6 +418,34 @@ type decodedBatch struct {
 	models     []any
 	attributes []map[string]string
 	failed     int
+}
+
+// withBatchProcessingContexts keeps each record's values and attaches shared
+// cancellation. Its cleanup lives until the entire batch callback and retries finish.
+func withBatchProcessingContexts(ctx context.Context, batch []batchMessage) func() {
+	cleanup := make([]func(), 0, len(batch))
+
+	for i := range batch {
+		messageCtx, cancel := context.WithCancel(batch[i].ctx)
+		stop := context.AfterFunc(ctx, cancel)
+
+		cleanup = append(cleanup, func() {
+			stop()
+			cancel()
+		})
+
+		if ctx.Err() != nil {
+			cancel()
+		}
+
+		batch[i].ctx = messageCtx
+	}
+
+	return func() {
+		for _, stop := range cleanup {
+			stop()
+		}
+	}
 }
 
 // decodeBatch prepares callback models and attributes while preserving originals for retry.
@@ -433,7 +488,7 @@ func (c *BatchConsumer) decodeBatch(ctx context.Context, batch []batchMessage) d
 		decodeMsg := *message.message
 		decodeMsg.Attributes = maps.Clone(decodeMsg.Attributes)
 
-		if decodeCtx, attr, err = c.encoder.Decode(ctx, &decodeMsg, model); err != nil {
+		if decodeCtx, attr, err = c.encoder.Decode(message.ctx, &decodeMsg, model); err != nil {
 			c.handleError(decodeCtx, err, "batch decoding failed")
 
 			if !c.retryBatchMessage(ctx, message) {
@@ -497,7 +552,12 @@ func (c *BatchConsumer) retryBatchMessage(ctx context.Context, message batchMess
 		return false
 	}
 
-	retryMessage, _ := c.buildRetryMessage(message.message)
+	msg := message.message
+	if message.retryMessage != nil {
+		msg = message.retryMessage
+	}
+
+	retryMessage, _ := c.buildRetryMessage(msg)
 	c.writeMetricRetryCount(ctx, metricNameConsumerRetryPutCount)
 
 	ctx, cancel := exec.WithDelayedCancelContext(ctx, c.settings.Retry.GraceTime)

@@ -71,8 +71,10 @@ func NewConsumer[M any](name string, callbackFactory ConsumerCallbackFactory[M])
 
 func EraseConsumerCallbackFactoryTypes[M any](callbackFactory ConsumerCallbackFactory[M]) UntypedConsumerCallbackFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (UntypedConsumerCallback, error) {
-		callback, err := callbackFactory(ctx, config, logger)
-		if err != nil {
+		var err error
+		var callback ConsumerCallback[M]
+
+		if callback, err = callbackFactory(ctx, config, logger); err != nil {
 			return nil, err
 		}
 
