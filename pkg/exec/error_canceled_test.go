@@ -2,6 +2,7 @@ package exec_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"testing"
@@ -47,6 +48,10 @@ func TestIsRequestCanceled(t *testing.T) {
 			err:        fmt.Errorf("error %w", context.Canceled),
 			isCanceled: true,
 		},
+		"two wrapped": {
+			err:        fmt.Errorf("%w: error %w", errors.New("unrelated"), context.Canceled),
+			isCanceled: true,
+		},
 		"exec": {
 			err:        exec.RequestCanceledError,
 			isCanceled: true,
@@ -75,13 +80,17 @@ func TestIsRequestCanceled(t *testing.T) {
 			err:        multierror.Append(nil, fmt.Errorf("error %w", context.Canceled), fmt.Errorf("error %w", exec.RequestCanceledError)),
 			isCanceled: true,
 		},
+		"multierror multiple": {
+			err:        multierror.Append(nil, io.ErrClosedPipe, io.EOF),
+			isCanceled: false,
+		},
 		"multierror mixed": {
 			err:        multierror.Append(nil, context.Canceled, io.EOF),
-			isCanceled: false,
+			isCanceled: true,
 		},
 		"multierror mixed swapped": {
 			err:        multierror.Append(nil, io.EOF, context.Canceled),
-			isCanceled: false,
+			isCanceled: true,
 		},
 		"from canceled context": {
 			err:        ctxForCancel.Err(),
