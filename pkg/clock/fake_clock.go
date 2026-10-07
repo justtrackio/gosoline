@@ -1,8 +1,11 @@
 package clock
 
 import (
+	"context"
 	"sync"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/funk"
 )
 
 // A FakeClock provides the functionality of a Clock with the added functionality to Advance said Clock and block until
@@ -13,7 +16,7 @@ type FakeClock interface {
 	Clock
 	// Advance advances the FakeClock to a new point in time as well as any tickers and timers created from it.
 	Advance(d time.Duration)
-	// BlockUntil will block until the FakeClock has the given number of calls to Clock.Sleep or Clock.After.
+	// BlockUntil will block until the FakeClock has the given number of calls to Clock.Sleep, Clock.SleepWithContext, or Clock.After.
 	BlockUntil(n int)
 	// BlockUntilTimers will block until the FakeClock has at least the given number of timers created (similar to BlockUntil).
 	// Only timers which are currently not stopped or expired are counted.
@@ -116,6 +119,12 @@ func (f *fakeClock) Since(t time.Time) time.Duration {
 }
 
 func (f *fakeClock) After(d time.Duration) <-chan time.Time {
+	c, _ := f.after(d)
+
+	return c
+}
+
+func (f *fakeClock) after(d time.Duration) (c <-chan time.Time, unregister func()) {
 	f.lck.Lock()
 	defer f.lck.Unlock()
 
@@ -133,17 +142,30 @@ func (f *fakeClock) After(d time.Duration) <-chan time.Time {
 		sleeper.c <- f.now
 	}
 
-	return sleeper.c
+	return sleeper.c, func() {
+		f.lck.Lock()
+		defer f.lck.Unlock()
+
+		f.sleepers = funk.Filter(f.sleepers, func(s *fakeSleeper) bool {
+			return s != sleeper
+		})
+	}
 }
 
-func (f *fakeClock) Sleep(d time.Duration) {
+func (f *fakeClock) SleepWithContext(ctx context.Context, d time.Duration) {
 	if f.nonBlockingSleep {
 		f.Advance(d)
 
 		return
 	}
 
-	<-f.After(d)
+	c, unregister := f.after(d)
+	defer unregister()
+
+	select {
+	case <-ctx.Done():
+	case <-c:
+	}
 }
 
 func (f *fakeClock) BlockUntil(n int) {
