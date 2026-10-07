@@ -1,177 +1,77 @@
 package log
 
 import (
-	"bytes"
-	"io"
+	"context"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	otellog "go.opentelemetry.io/otel/log"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 )
 
-func TestAppendOtelAttributesNamesBySource(t *testing.T) {
-	tests := []struct {
-		name    string
-		context map[string]any
-		fields  map[string]any
-		want    map[string]string
-	}{
-		{
-			name:    "context only",
-			context: map[string]any{"sdk_version": "8.0.0"},
-			want:    map[string]string{"channel": "sdkLogs", "sdk_version": "8.0.0"},
+func TestHandlerOtelNamespacesAttributesBySource(t *testing.T) {
+	processor := &captureLogProcessor{}
+	provider := sdklog.NewLoggerProvider(sdklog.WithProcessor(processor))
+	handler := NewHandlerOtel(nil, PriorityInfo, "test", provider)
+
+	err := handler.Log(context.Background(), time.Now(), PriorityInfo, "message", nil, errors.New("failure"), Data{
+		Channel: "app",
+		ContextFields: map[string]any{
+			"channel":           "context channel",
+			"error":             "context error",
+			"fields.custom_key": "nested-context-value",
+			"custom_key":        "context-value",
 		},
-		{
-			name:   "message only",
-			fields: map[string]any{"sdk_version": "13.2.0"},
-			want:   map[string]string{"channel": "sdkLogs", "fields.sdk_version": "13.2.0"},
+		Fields: map[string]any{
+			"channel":    "message channel",
+			"error":      "message error",
+			"custom_key": "field-value",
 		},
-		{
-			name: "both sources",
-			context: map[string]any{
-				"sdk_platform": "android",
-				"sdk_version":  "8.0.0",
-			},
-			fields: map[string]any{
-				"level":       "info",
-				"sdk_version": "13.2.0",
-			},
-			want: map[string]string{
-				"channel":            "sdkLogs",
-				"sdk_platform":       "android",
-				"sdk_version":        "8.0.0",
-				"fields.level":       "info",
-				"fields.sdk_version": "13.2.0",
-			},
-		},
-		{
-			name: "literal message prefixes",
-			fields: map[string]any{
-				"sdk_version":               "13.2.0",
-				"fields.sdk_version":        "literal namespace",
-				"fields.fields.sdk_version": "literal repeated namespace",
-			},
-			want: map[string]string{
-				"channel":                          "sdkLogs",
-				"fields.sdk_version":               "13.2.0",
-				"fields.fields.sdk_version":        "literal namespace",
-				"fields.fields.fields.sdk_version": "literal repeated namespace",
-			},
-		},
-	}
+	})
+	require.NoError(t, err)
+	require.NoError(t, provider.Shutdown(context.Background()))
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var warnings bytes.Buffer
-			keys := make(map[string]struct{})
-			attributes := appendOtelAttribute(nil, keys, "channel", "", "sdkLogs", &warnings)
-			attributes = appendOtelAttributes(attributes, keys, "", tt.context, &warnings)
-			attributes = appendOtelAttributes(attributes, keys, "fields", tt.fields, &warnings)
+	attributes := make(map[string]string, processor.record.AttributesLen())
+	processor.record.WalkAttributes(func(attribute otellog.KeyValue) bool {
+		attributes[attribute.Key] = attribute.Value.AsString()
 
-			assert.Equal(t, tt.want, otelStringAttributes(t, attributes))
-			assert.Empty(t, warnings.String())
-		})
-	}
+		return true
+	})
+
+	assert.Equal(t, map[string]string{
+		"channel":                   "app",
+		"context.channel":           "context channel",
+		"context.error":             "context error",
+		"context.fields.custom_key": "nested-context-value",
+		"context.custom_key":        "context-value",
+		"fields.channel":            "message channel",
+		"fields.error":              "message error",
+		"fields.custom_key":         "field-value",
+		"error":                     "failure",
+	}, attributes)
 }
 
-func TestAppendOtelAttributesNamesIndependentOfSourceOrder(t *testing.T) {
-	context := map[string]any{"sdk_version": "8.0.0", "sdk_platform": "android"}
-	fields := map[string]any{"sdk_version": "13.2.0", "level": "info"}
-	want := map[string]string{
-		"sdk_platform":       "android",
-		"sdk_version":        "8.0.0",
-		"fields.level":       "info",
-		"fields.sdk_version": "13.2.0",
-	}
-
-	for _, messageFirst := range []bool{false, true} {
-		var warnings bytes.Buffer
-		keys := make(map[string]struct{})
-		var attributes []otellog.KeyValue
-		if messageFirst {
-			attributes = appendOtelAttributes(attributes, keys, "fields", fields, &warnings)
-			attributes = appendOtelAttributes(attributes, keys, "", context, &warnings)
-		} else {
-			attributes = appendOtelAttributes(attributes, keys, "", context, &warnings)
-			attributes = appendOtelAttributes(attributes, keys, "fields", fields, &warnings)
-		}
-
-		assert.Equal(t, want, otelStringAttributes(t, attributes))
-		assert.Empty(t, warnings.String())
-	}
+type captureLogProcessor struct {
+	record sdklog.Record
 }
 
-func TestAppendOtelAttributesSortsMapKeys(t *testing.T) {
-	want := []otellog.KeyValue{
-		otellog.String("fields.level", "info"),
-		otellog.String("fields.sdk_version", "13.2.0"),
-	}
-
-	for range 25 {
-		attributes := appendOtelAttributes(nil, make(map[string]struct{}), "fields", map[string]any{
-			"sdk_version": "13.2.0",
-			"level":       "info",
-		}, io.Discard)
-
-		assert.Equal(t, want, attributes)
-	}
+func (p *captureLogProcessor) Enabled(context.Context, sdklog.EnabledParameters) bool {
+	return true
 }
 
-func TestAppendOtelAttributesRejectsReservedContextKeys(t *testing.T) {
-	for _, key := range []string{"fields.sdk_version", "fields.other", "channel", "error"} {
-		t.Run(key, func(t *testing.T) {
-			// Reserved keys are rejected even when no competing attribute is present.
-			var warnings bytes.Buffer
-			keys := make(map[string]struct{})
-			attributes := appendOtelAttributes(nil, keys, "", map[string]any{
-				key:           "invalid context value",
-				"sdk_version": "8.0.0",
-			}, &warnings)
+func (p *captureLogProcessor) OnEmit(_ context.Context, record *sdklog.Record) error {
+	p.record = record.Clone()
 
-			assert.Equal(t, map[string]string{"sdk_version": "8.0.0"}, otelStringAttributes(t, attributes))
-			assert.NotContains(t, keys, key)
-			assert.Equal(t, "Warning: dropping OTel context attribute \""+key+"\": key is reserved\n", warnings.String())
-
-			attributes = appendOtelAttributes(attributes, keys, "fields", map[string]any{"sdk_version": "13.2.0"}, io.Discard)
-			attributes = appendOtelAttribute(attributes, keys, "channel", "", "sdkLogs", io.Discard)
-			attributes = appendOtelAttribute(attributes, keys, "error", "", "actual error", io.Discard)
-			assert.Equal(t, map[string]string{
-				"sdk_version":        "8.0.0",
-				"fields.sdk_version": "13.2.0",
-				"channel":            "sdkLogs",
-				"error":              "actual error",
-			}, otelStringAttributes(t, attributes))
-		})
-	}
+	return nil
 }
 
-func TestAppendOtelAttributeWarnsOnUnexpectedDuplicate(t *testing.T) {
-	for _, namespace := range []string{"", "fields"} {
-		t.Run(namespace, func(t *testing.T) {
-			var warnings bytes.Buffer
-			keys := make(map[string]struct{})
-			attributes := appendOtelAttribute(nil, keys, "sdk_version", namespace, "original", &warnings)
-			attributes = appendOtelAttribute(attributes, keys, "sdk_version", namespace, "duplicate", &warnings)
-			key := "sdk_version"
-			if namespace != "" {
-				key = namespace + "." + key
-			}
-
-			assert.Equal(t, map[string]string{key: "original"}, otelStringAttributes(t, attributes))
-			assert.Equal(t, "Warning: duplicate OTel log attribute \""+key+"\" ignored\n", warnings.String())
-		})
-	}
+func (p *captureLogProcessor) Shutdown(context.Context) error {
+	return nil
 }
 
-func otelStringAttributes(t *testing.T, attributes []otellog.KeyValue) map[string]string {
-	t.Helper()
-
-	got := make(map[string]string, len(attributes))
-	for _, attribute := range attributes {
-		require.NotContains(t, got, attribute.Key, "OTel attributes must have unique keys")
-		got[attribute.Key] = attribute.Value.AsString()
-	}
-
-	return got
+func (p *captureLogProcessor) ForceFlush(context.Context) error {
+	return nil
 }
