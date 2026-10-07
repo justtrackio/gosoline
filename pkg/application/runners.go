@@ -106,6 +106,28 @@ func RunUntypedConsumers(consumers stream.UntypedConsumerCallbackMap, options ..
 	Run(options...)
 }
 
+// RunBatchConsumer runs a typed, in-memory-buffered batch consumer application.
+func RunBatchConsumer[M any](callback stream.BatchConsumerCallbackFactory[M], options ...Option) {
+	RunBatchConsumers(stream.BatchConsumerCallbackMap[M]{"default": callback}, options...)
+}
+
+// RunBatchConsumers runs typed batch consumers accepting the same model type.
+func RunBatchConsumers[M any](callbacks stream.BatchConsumerCallbackMap[M], options ...Option) {
+	options = append(options, WithModuleMultiFactory(stream.NewBatchConsumerFactory(callbacks)), WithExecBackoffInfinite)
+	Run(options...)
+}
+
+// RunUntypedBatchConsumer runs an untyped, in-memory-buffered batch application.
+func RunUntypedBatchConsumer(callback stream.UntypedBatchConsumerCallbackFactory, options ...Option) {
+	RunUntypedBatchConsumers(stream.UntypedBatchConsumerCallbackMap{"default": callback}, options...)
+}
+
+// RunUntypedBatchConsumers runs untyped batch consumer applications.
+func RunUntypedBatchConsumers(callbacks stream.UntypedBatchConsumerCallbackMap, options ...Option) {
+	options = append(options, WithModuleMultiFactory(stream.NewUntypedBatchConsumerFactory(callbacks)), WithExecBackoffInfinite)
+	Run(options...)
+}
+
 func RunMdlSubscriber(transformers mdlsub.TransformerMapTypeVersionFactories, options ...Option) {
 	subs := mdlsub.NewSubscriberFactory(transformers)
 

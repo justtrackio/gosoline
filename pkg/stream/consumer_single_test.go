@@ -128,21 +128,22 @@ func (s *ConsumerTestSuite) SetupTest() {
 // buildConsumer wires a consumer from the current settings. Tests which need different settings than the defaults
 // from SetupTest can adjust s.settings and call this again before running the consumer.
 func (s *ConsumerTestSuite) buildConsumer() {
-	s.consumer = stream.NewUntypedConsumerWithInterfaces(
+	base := stream.NewConsumerBaseWithInterfaces(
 		s.uuidGen,
 		s.logger,
 		s.metricWriter,
-		s.tracer,
+		tracing.NewLocalTracer(),
 		s.input,
 		s.encoder,
 		s.retryInput,
 		s.retryHandler,
-		s.callback,
 		s.settings,
 		"test",
-		s.samplingDecider,
-		s.clock,
+		nil,
+		clock.NewRealClock(),
 	)
+
+	s.consumer = stream.NewUntypedConsumerWithInterfaces(base, s.callback)
 }
 
 func (s *ConsumerTestSuite) expectInputRun(messages ...*stream.Message) {

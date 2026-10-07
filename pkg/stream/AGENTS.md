@@ -6,7 +6,10 @@
 - Powers mdlsub, metrics exporters, and application stream modules.
 
 ## Key files
-- `consumer*.go`, `producer*.go` - base logic and module factories for stream processing.
+- `consumer_base.go` - shared dependencies, callback hook wiring and methods for input lifecycle, shutdown, health, tracing and metrics.
+- `consumer.go` - callback interfaces and default metric definitions.
+- `consumer_single.go`, `consumer_batch.go` - independent single-record and batch processing built on the internal `consumerBase`.
+- `consumer*_module_factory.go`, `producer*.go` - module factories and producer logic.
 - `input_*.go`, `output_*.go` - transport-specific adapters.
 - `encoding_*.go`, `message*.go` - serialization formats and message helpers.
 - `kinsumer_*` - autoscaling components for Kinesis-based consumers.
@@ -121,6 +124,49 @@ processing across all shards owned by one kinsumer. In `ordered` mode it process
 concurrency across shards; in `unordered` mode records from the same shard may be processed concurrently, but checkpoints
 still advance in shard order. In-memory inputs use `runner_count` to control the number of concurrent message-processing
 callbacks.
+
+### Batch consumers
+
+`NewTypedBatchConsumer` / `NewUntypedBatchConsumer` and their multi-factories
+provide serial, channel-driven collection using `batch_size` and `idle_timeout`.
+The bounded admission channel uses `buffer_size` (default: `batch_size`); inputs
+can retain their default single runner. The timer resets on each flush.
+
+Primary transport callbacks acknowledge buffering, before business processing.
+Callback results use existing retry handlers (`retry.type: sqs` by default).
+Batch consumers construct independent retry queues even for primary transports
+with native redelivery, because primary records have already been acknowledged.
+Retry callbacks wait for business completion; failures stay unacknowledged for
+SQS redelivery/DLQ. Retry envelopes flush promptly so a single runner can progress
+without filling a batch. No batch-specific retry scheduler or backlog is needed.
+
+Batch processing uses the shared consumer drain deadline and flushes admitted
+records when inputs finish. Failed primary work goes to the retry handler; a
+failed final retry write is logged and returns a run error. Metrics, tracing and
+health track actual batch work. Aggregate envelopes flatten into children;
+primary admission acknowledgement does not depend on `aggregate_message_mode`.
+Retry envelopes acknowledge only if all children succeed. One aggregate may
+exceed the batch-size threshold. Preserve original propagation
+attributes for retries while decoding copies for the callback.
+
+See `examples/stream/batch-consumer` for a runnable file-input example and all
+application runners. Unit tests are in `consumer_batch_test.go`: the testify
+`BatchConsumerTestSuite` owns fresh fixtures for each test and subtest, with
+explicit consumer startup and cleanup before mock assertions. Factory and
+type-erasure tests remain standalone.
+
+Single `Consumer` and `BatchConsumer` both embed an internal `consumerBase`;
+batch factories construct the base directly rather than creating a single-record
+consumer with a nil callback. Each concrete consumer owns its processing and
+acknowledgement/retry policies. The existing batch WithInterfaces constructor
+can still reuse an unstarted single consumer's base for dependency injection.
+`NewUntypedBatchConsumerWithInterfaces` returns `(*BatchConsumer, error)`;
+invalid batch or buffer sizes return a construction error.
+Consumer lifecycle uses internal `init`, `run`, and `inputsFinished` hooks directly on `consumerBase`,
+independent of single-record processing. Batch consumers wire collection and
+optional callback background work directly, closing admission after both inputs
+finish. Schema configuration is passed separately during encoder construction;
+batch callbacks do not need a single-record adapter.
 
 ### Delayed consumption
 

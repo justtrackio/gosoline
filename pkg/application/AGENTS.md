@@ -9,6 +9,7 @@
 - `app.go` - core application struct, `Default()` and `New()` factory functions.
 - `options.go` - functional options for adding modules, health checks, and shared components.
 - `runners.go` - `Run()` entrypoint and helpers for wiring background runners/modules.
+- Batch helpers in `runners.go`: `RunBatchConsumer(s)` and `RunUntypedBatchConsumer(s)` wire the stream batch factories. They acknowledge primary admission to memory and use shared retry handlers (SQS by default); see `examples/stream/batch-consumer`.
 - `metadata_server.go` - HTTP server exposing build info and module metadata.
 
 ## Common tasks
