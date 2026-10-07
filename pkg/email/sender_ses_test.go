@@ -75,6 +75,75 @@ func (s *sesSenderTestSuite) TestSendEmailKeepsSenderDisplayName() {
 	s.NoError(sender.SendEmail(s.ctx, email.Email{Recipients: []string{"recipient@example.com"}, Subject: subject, TextBody: &body}))
 }
 
+func (s *sesSenderTestSuite) TestSendEmailCcAndBccRecipients() {
+	subject := "Test Subject"
+	body := "This is a plain text email."
+	expectedInput := &sesv2.SendEmailInput{
+		FromEmailAddress: aws.String("sender@example.com"),
+		Destination: &types.Destination{
+			ToAddresses:  []string{"recipient@example.com"},
+			CcAddresses:  []string{`"Manager" <manager@example.com>`},
+			BccAddresses: []string{`"Team" <team@example.com>`, "audit@example.com"},
+		},
+		Content: &types.EmailContent{Simple: &types.Message{
+			Subject: &types.Content{Data: aws.String(subject), Charset: aws.String("UTF-8")},
+			Body:    &types.Body{Text: &types.Content{Data: aws.String(body), Charset: aws.String("UTF-8")}},
+		}},
+	}
+	s.client.EXPECT().SendEmail(matcher.Context, expectedInput).Return(&sesv2.SendEmailOutput{}, nil)
+
+	s.NoError(s.sender.SendEmail(s.ctx, email.Email{
+		Recipients:    []string{"recipient@example.com"},
+		CcRecipients:  []string{"Manager <manager@example.com>"},
+		BccRecipients: []string{"Team <team@example.com>", "audit@example.com"},
+		Subject:       subject,
+		TextBody:      &body,
+	}))
+}
+
+func (s *sesSenderTestSuite) TestSendEmailWithAttachmentsCcAndBccRecipients() {
+	recipients := []string{"recipient@example.com"}
+	subject := "Invoice"
+	textBody := "Your invoice is attached."
+	htmlBody := "<p>Your invoice is attached.</p>"
+	attachments := []email.Attachment{{Filename: "invoice.pdf", ContentType: "application/pdf", Content: []byte("%PDF-1.7\ninvoice")}}
+
+	s.client.EXPECT().SendEmail(matcher.Context, mock.MatchedBy(func(input *sesv2.SendEmailInput) bool {
+		s.Equal(recipients, input.Destination.ToAddresses)
+		s.Equal([]string{"manager@example.com"}, input.Destination.CcAddresses)
+		s.Equal([]string{"team@example.com"}, input.Destination.BccAddresses)
+		s.Contains(string(input.Content.Raw.Data), "\r\nCc: \"Manager\" <manager@example.com>\r\n")
+		s.NotContains(string(input.Content.Raw.Data), "team@example.com")
+		assertAttachmentsMessage(s.T(), bytes.NewReader(input.Content.Raw.Data), "sender@example.com", recipients, subject, textBody, htmlBody, attachments)
+
+		return true
+	})).Return(&sesv2.SendEmailOutput{}, nil)
+
+	s.NoError(s.sender.SendEmailWithAttachments(s.ctx, email.EmailWithAttachments{
+		Email: email.Email{
+			Recipients:    recipients,
+			CcRecipients:  []string{"Manager <manager@example.com>"},
+			BccRecipients: []string{"Team <team@example.com>"},
+			Subject:       subject,
+			TextBody:      &textBody,
+			HtmlBody:      &htmlBody,
+		},
+		Attachments: attachments,
+	}))
+}
+
+func (s *sesSenderTestSuite) TestSendEmailInvalidCcOrBccRecipient() {
+	body := "This is a plain text email."
+	recipients := []string{"recipient@example.com"}
+	invalid := []string{"not an address"}
+
+	err := s.sender.SendEmail(s.ctx, email.Email{Recipients: recipients, CcRecipients: invalid, TextBody: &body})
+	s.ErrorContains(err, "could not parse email envelope: format email cc recipients:")
+
+	err = s.sender.SendEmail(s.ctx, email.Email{Recipients: recipients, BccRecipients: invalid, TextBody: &body})
+	s.ErrorContains(err, "could not parse email envelope: format email bcc recipients:")
+}
+
 func (s *sesSenderTestSuite) TestSendEmailHtmlEmail() {
 	recipients := []string{"recipient@example.com"}
 	subject := "Test Subject"

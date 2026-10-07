@@ -84,7 +84,7 @@ func (s *sesSender) SendEmailWithAttachments(ctx context.Context, email EmailWit
 }
 
 func (s *sesSender) sendEmail(ctx context.Context, email EmailWithAttachments) error {
-	envelope, err := parseEmailEnvelope(s.fromAddress, email.Recipients)
+	envelope, err := parseEmailEnvelope(s.fromAddress, email.Email)
 	if err != nil {
 		return fmt.Errorf("could not parse email envelope: %w", err)
 	}
@@ -103,7 +103,7 @@ func (s *sesSender) emailInput(email EmailWithAttachments, envelope emailEnvelop
 	if len(email.Attachments) == 0 {
 		return &sesv2.SendEmailInput{
 			FromEmailAddress: aws.String(envelope.senderMailbox()),
-			Destination:      &types.Destination{ToAddresses: envelope.recipientMailboxes()},
+			Destination:      &types.Destination{ToAddresses: envelope.recipientMailboxes(), CcAddresses: envelope.ccMailboxes(), BccAddresses: envelope.bccMailboxes()},
 			Content:          simpleEmailContent(email.Email),
 		}, nil
 	}
@@ -116,7 +116,7 @@ func (s *sesSender) emailInput(email EmailWithAttachments, envelope emailEnvelop
 
 	return &sesv2.SendEmailInput{
 		FromEmailAddress: aws.String(envelope.senderMailbox()),
-		Destination:      &types.Destination{ToAddresses: envelope.recipientAddresses()},
+		Destination:      &types.Destination{ToAddresses: envelope.recipientAddresses(), CcAddresses: envelope.ccAddresses(), BccAddresses: envelope.bccAddresses()},
 		Content:          &types.EmailContent{Raw: &types.RawMessage{Data: body.Bytes()}},
 	}, nil
 }
