@@ -16,7 +16,7 @@ type Settings struct {
 	MaxIdleConnections    int               `cfg:"max_idle_connections"    default:"2"` // 0 or negative number=no idle connections, sql driver default=2
 	MaxOpenConnections    int               `cfg:"max_open_connections"    default:"0"` // 0 or negative number=unlimited, sql driver default=0
 	Migrations            MigrationSettings `cfg:"migrations"`
-	MultiStatements       bool              `cfg:"multi_statements"        default:"true"`
+	MultiStatements       bool              `cfg:"multi_statements"        default:"false"`
 	Parameters            map[string]string `cfg:"parameters"`
 	ParseTime             bool              `cfg:"parse_time"              default:"true"`
 	Retry                 SettingsRetry     `cfg:"retry"`
