@@ -36,27 +36,6 @@ func TestFakeClock_Since(t *testing.T) {
 	assert.Equal(t, time.Hour, c.Since(start))
 }
 
-func TestFakeClock_AdvanceSleep(t *testing.T) {
-	i := 0
-	c := clock.NewFakeClock()
-
-	var wg sync.WaitGroup
-	wg.Go(func() {
-		c.Sleep(time.Minute)
-		i++
-	})
-
-	c.BlockUntil(1)
-	assert.Equal(t, 0, i)
-
-	c.Advance(time.Second)
-	assert.Equal(t, 0, i)
-
-	c.Advance(time.Second * 59)
-	wg.Wait()
-	assert.Equal(t, 1, i)
-}
-
 func TestFakeClock_SleepWithContext(t *testing.T) {
 	i := 0
 	c := clock.NewFakeClock()

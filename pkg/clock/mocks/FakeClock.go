@@ -392,39 +392,6 @@ func (_c *FakeClock_Since_Call) RunAndReturn(run func(time.Time) time.Duration) 
 	return _c
 }
 
-// Sleep provides a mock function with given fields: d
-func (_m *FakeClock) Sleep(d time.Duration) {
-	_m.Called(d)
-}
-
-// FakeClock_Sleep_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Sleep'
-type FakeClock_Sleep_Call struct {
-	*mock.Call
-}
-
-// Sleep is a helper method to define mock.On call
-//   - d time.Duration
-func (_e *FakeClock_Expecter) Sleep(d interface{}) *FakeClock_Sleep_Call {
-	return &FakeClock_Sleep_Call{Call: _e.mock.On("Sleep", d)}
-}
-
-func (_c *FakeClock_Sleep_Call) Run(run func(d time.Duration)) *FakeClock_Sleep_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(time.Duration))
-	})
-	return _c
-}
-
-func (_c *FakeClock_Sleep_Call) Return() *FakeClock_Sleep_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *FakeClock_Sleep_Call) RunAndReturn(run func(time.Duration)) *FakeClock_Sleep_Call {
-	_c.Run(run)
-	return _c
-}
-
 // SleepWithContext provides a mock function with given fields: ctx, d
 func (_m *FakeClock) SleepWithContext(ctx context.Context, d time.Duration) {
 	_m.Called(ctx, d)

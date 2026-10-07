@@ -24,14 +24,6 @@ func TestRealClock_NowYieldsUTC(t *testing.T) {
 	assert.Equal(t, now.UTC(), now)
 }
 
-func TestRealClock_Sleep(t *testing.T) {
-	c := clock.NewRealClock()
-	start := c.Now()
-	c.Sleep(time.Millisecond * 5)
-	took := c.Now().Sub(start)
-	assert.GreaterOrEqual(t, took, time.Millisecond*5)
-}
-
 func TestRealClock_SleepWithContext(t *testing.T) {
 	c := clock.NewRealClock()
 	start := c.Now()

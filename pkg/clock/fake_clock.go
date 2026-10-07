@@ -152,16 +152,6 @@ func (f *fakeClock) after(d time.Duration) (c <-chan time.Time, unregister func(
 	}
 }
 
-func (f *fakeClock) Sleep(d time.Duration) {
-	if f.nonBlockingSleep {
-		f.Advance(d)
-
-		return
-	}
-
-	<-f.After(d)
-}
-
 func (f *fakeClock) SleepWithContext(ctx context.Context, d time.Duration) {
 	if f.nonBlockingSleep {
 		f.Advance(d)
