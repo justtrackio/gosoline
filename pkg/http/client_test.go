@@ -7,7 +7,6 @@ import (
 	"net"
 	netHttp "net/http"
 	"net/http/httptest"
-	netUrl "net/url"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -17,8 +16,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/http"
 	httpMocks "github.com/justtrackio/gosoline/pkg/http/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,13 +69,13 @@ func getConfig(t *testing.T, retries int, timeout time.Duration) cfg.Config {
 	return config
 }
 
-func getClient(t *testing.T, retries int, timeout time.Duration) http.Client {
+func getClient(t *testing.T, retries int, timeout time.Duration, options ...http.Option) http.Client {
 	ctx := appctx.WithContainer(t.Context())
 	config := getConfig(t, retries, timeout)
 
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
-	client, err := http.ProvideHttpClient(ctx, config, logger, "default")
+	client, err := http.ProvideHttpClient(ctx, config, logger, "default", options...)
 	assert.NoError(t, err)
 
 	return client
@@ -284,58 +283,11 @@ func TestClient_Post(t *testing.T) {
 	})
 }
 
-// getValidatingClient builds a client with the given url validator and retries
-// disabled, so a rejected request is not retried.
-func getValidatingClient(t *testing.T, validator http.UrlValidator) http.Client {
-	ctx := appctx.WithContainer(t.Context())
-	config := cfg.New()
-	err := config.Option(cfg.WithConfigMap(map[string]any{
-		"http_client": map[string]any{
-			"default": map[string]any{
-				"request_timeout": "5s",
-				"retry_count":     0,
-			},
-		},
-	}))
-	assert.NoError(t, err)
-
-	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
-
-	client, err := http.ProvideHttpClient(ctx, config, logger, "default", http.WithUrlValidator(validator))
-	assert.NoError(t, err)
-
-	return client
-}
-
-// testUrlValidator is a UrlValidator test double for integration tests. It
-// resolves each host via the given resolver and allows it, so tests can point
-// validated requests at local (loopback) test servers, which the production
-// validator would reject. Hosts in rejectedHosts are rejected instead, to
-// exercise the redirect-rejection path.
-type testUrlValidator struct {
-	resolver      http.Resolver
-	rejectedHosts map[string]bool
-}
-
-func (v *testUrlValidator) Validate(ctx context.Context, rawUrl string) ([]net.IPAddr, error) {
-	parsed, err := netUrl.Parse(rawUrl)
-	if err != nil {
-		return nil, fmt.Errorf("parsing the url %q: %w", rawUrl, err)
-	}
-
-	host := parsed.Hostname()
-	if v.rejectedHosts[host] {
-		return nil, fmt.Errorf("the host %q is not allowed", host)
-	}
-
-	return v.resolver.LookupIPAddr(ctx, host)
-}
-
 func TestClient_UrlValidationRejectsInternalAddress(t *testing.T) {
 	resolver := httpMocks.NewResolver(t)
-	resolver.EXPECT().LookupIPAddr(mock.Anything, "internal.example.com").
+	resolver.EXPECT().LookupIPAddr(matcher.Context, "internal.example.com").
 		Return(ipAddresses(net.ParseIP("10.0.0.1")), nil)
-	client := getValidatingClient(t, http.NewUrlValidatorWithInterfaces(resolver))
+	client := getClient(t, 0, time.Second, http.WithUrlValidator(http.NewUrlValidatorWithInterfaces(resolver)))
 
 	request := client.NewRequest().WithUrl("http://internal.example.com/secret")
 	response, err := client.Get(t.Context(), request)
@@ -347,12 +299,17 @@ func TestClient_UrlValidationRejectsInternalAddress(t *testing.T) {
 
 func TestClient_UrlValidationAllowsPublicHost(t *testing.T) {
 	runTestServer(t, "GET", 200, 0, func(host string) {
-		resolver := httpMocks.NewResolver(t)
-		resolver.EXPECT().LookupIPAddr(mock.Anything, "127.0.0.1").
-			Return(ipAddresses(net.ParseIP("127.0.0.1")), nil)
-		client := getValidatingClient(t, &testUrlValidator{resolver: resolver})
+		url := fmt.Sprintf("http://%s", host)
 
-		request := client.NewRequest().WithUrl(fmt.Sprintf("http://%s", host))
+		validator := httpMocks.NewUrlValidator(t)
+		validator.EXPECT().
+			Validate(matcher.Context, url).
+			Return(ipAddresses(net.ParseIP("127.0.0.1")), nil).
+			Once()
+
+		client := getClient(t, 0, time.Second, http.WithUrlValidator(validator))
+
+		request := client.NewRequest().WithUrl(url)
 		response, err := client.Get(t.Context(), request)
 
 		require.NoError(t, err)
@@ -367,13 +324,17 @@ func TestClient_UrlValidationRejectsRedirectToInternal(t *testing.T) {
 	}))
 	defer redirectServer.Close()
 
-	resolver := httpMocks.NewResolver(t)
-	resolver.EXPECT().LookupIPAddr(mock.Anything, "127.0.0.1").
-		Return(ipAddresses(net.ParseIP("127.0.0.1")), nil)
-	client := getValidatingClient(t, &testUrlValidator{
-		resolver:      resolver,
-		rejectedHosts: map[string]bool{"internal.example.com": true},
-	})
+	validator := httpMocks.NewUrlValidator(t)
+	validator.EXPECT().
+		Validate(matcher.Context, redirectServer.URL).
+		Return(ipAddresses(net.ParseIP("127.0.0.1")), nil).
+		Once()
+	validator.EXPECT().
+		Validate(matcher.Context, "http://internal.example.com/secret").
+		Return(nil, fmt.Errorf("blocked")).
+		Once()
+
+	client := getClient(t, 0, time.Second, http.WithUrlValidator(validator))
 
 	request := client.NewRequest().WithUrl(redirectServer.URL)
 	response, err := client.Get(t.Context(), request)
@@ -395,10 +356,17 @@ func TestClient_UrlValidationAllowsRedirectToValidHost(t *testing.T) {
 	}))
 	defer redirectServer.Close()
 
-	resolver := httpMocks.NewResolver(t)
-	resolver.EXPECT().LookupIPAddr(mock.Anything, "127.0.0.1").
-		Return(ipAddresses(net.ParseIP("127.0.0.1")), nil)
-	client := getValidatingClient(t, &testUrlValidator{resolver: resolver})
+	validator := httpMocks.NewUrlValidator(t)
+	validator.EXPECT().
+		Validate(matcher.Context, redirectServer.URL).
+		Return(ipAddresses(net.ParseIP("127.0.0.1")), nil).
+		Once()
+	validator.EXPECT().
+		Validate(matcher.Context, finalServer.URL).
+		Return(ipAddresses(net.ParseIP("127.0.0.1")), nil).
+		Once()
+
+	client := getClient(t, 0, time.Second, http.WithUrlValidator(validator))
 
 	request := client.NewRequest().WithUrl(redirectServer.URL)
 	response, err := client.Get(t.Context(), request)
@@ -420,14 +388,17 @@ func TestClient_UrlValidationUsesPinnedIps(t *testing.T) {
 	_, port, err := net.SplitHostPort(testServer.Listener.Addr().String())
 	require.NoError(t, err)
 
-	resolver := httpMocks.NewResolver(t)
-	// at validation time the host resolves to the test server's loopback address
-	resolver.EXPECT().LookupIPAddr(mock.Anything, "toctou.example.com").
-		Return(ipAddresses(net.ParseIP("127.0.0.1")), nil).Once()
+	url := "http://toctou.example.com:" + port
 
-	client := getValidatingClient(t, &testUrlValidator{resolver: resolver})
+	validator := httpMocks.NewUrlValidator(t)
+	validator.EXPECT().
+		Validate(matcher.Context, url).
+		Return(ipAddresses(net.ParseIP("127.0.0.1")), nil).
+		Once()
 
-	request := client.NewRequest().WithUrl("http://toctou.example.com:" + port)
+	client := getClient(t, 0, time.Second, http.WithUrlValidator(validator))
+
+	request := client.NewRequest().WithUrl(url)
 	response, err := client.Get(t.Context(), request)
 
 	require.NoError(t, err)
