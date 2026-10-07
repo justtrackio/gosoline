@@ -93,19 +93,19 @@ func (h *handlerOtel) Log(ctx context.Context, timestamp time.Time, level int, m
 	record.SetSeverityText(LevelName(level))
 	record.SetBody(otellog.StringValue(body))
 
-	attributes := make([]otellog.KeyValue, 0, len(data.Fields)+len(data.ContextFields)+1)
-	attributes = append(attributes, otellog.String("channel", data.Channel))
+	attributes := make([]otellog.KeyValue, 0, len(data.Fields)+len(data.ContextFields)+2)
+	attributes = append(attributes, toOtelKeyValue("channel", data.Channel))
 
 	for key, value := range data.ContextFields {
-		attributes = append(attributes, toOtelKeyValue(key, value))
+		attributes = append(attributes, toOtelKeyValue("context."+key, value))
 	}
 
 	for key, value := range data.Fields {
-		attributes = append(attributes, toOtelKeyValue(key, value))
+		attributes = append(attributes, toOtelKeyValue("fields."+key, value))
 	}
 
 	if logErr != nil {
-		attributes = append(attributes, otellog.String("error", logErr.Error()))
+		attributes = append(attributes, toOtelKeyValue("error", logErr.Error()))
 	}
 
 	record.AddAttributes(attributes...)
