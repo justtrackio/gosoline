@@ -530,6 +530,75 @@ func (s *BatchConsumerTestSuite) TestFailedFinalRetryWriteRequiresReplay() {
 	require.Empty(t, s.retryMessages)
 }
 
+// TestFailedRetryWriteBeforeDrainingRequiresReplay verifies that failures from every
+// collection path remain visible after subsequent work succeeds and the inputs drain.
+func (s *BatchConsumerTestSuite) TestFailedRetryWriteBeforeDrainingRequiresReplay() {
+	for _, tc := range []struct {
+		name      string
+		batchSize int
+		interval  time.Duration
+		malformed bool
+		retry     bool
+	}{
+		{name: "size flush", batchSize: 1, interval: time.Hour},
+		{name: "timer flush", batchSize: 100, interval: 5 * time.Millisecond},
+		{name: "retry flush", batchSize: 100, interval: time.Hour, retry: true},
+		{name: "malformed aggregate", batchSize: 1, interval: time.Hour, malformed: true},
+	} {
+		s.Run(tc.name, func() {
+			t := s.T()
+			s.retryWriteErr = errors.New("retry queue unavailable")
+			processed := make(chan struct{}, 1)
+			failed := make(chan struct{}, 1)
+			s.startConsumer(tc.batchSize, tc.interval, func(_ context.Context, models []any, _ []map[string]string) ([]bool, error) {
+				if models[0].(*batchTestModel).Value == 1 {
+					failed <- struct{}{}
+
+					return []bool{false}, errors.New("business failure")
+				}
+
+				processed <- struct{}{}
+
+				return []bool{true}, nil
+			})
+
+			if tc.malformed {
+				s.input.Publish(stream.NewMessage("not json", map[string]string{
+					stream.AttributeEncoding:  stream.EncodingJson.String(),
+					stream.AttributeAggregate: "true",
+				}))
+			} else {
+				s.publishModel(1)
+				if !tc.retry {
+					waitBatchTest(t, failed)
+				}
+			}
+
+			if tc.retry {
+				message, err := stream.MarshalJsonMessage(batchTestModel{Value: 2})
+				require.NoError(t, err)
+				s.retryInput.Publish(message)
+				select {
+				case ack := <-s.retryInput.results:
+					require.True(t, ack)
+				case <-time.After(time.Second):
+					t.Fatal("retry input did not receive success acknowledgement")
+				}
+			} else {
+				s.publishModel(2)
+			}
+
+			waitBatchTest(t, processed)
+			// The successful subsequent callback proves that the earlier failure was
+			// handled by the collection loop before shutdown starts.
+			s.cancel()
+			waitBatchTest(t, s.done)
+			require.ErrorContains(t, s.err, "1 unsuccessful acknowledged messages requiring replay")
+			require.Empty(t, s.retryMessages)
+		})
+	}
+}
+
 // TestBatchConsumerWithInterfacesRejectsInvalidSettings verifies that zero or negative batch sizes
 // and negative buffer sizes return an error and no consumer before accessing the supplied dependencies.
 func TestBatchConsumerWithInterfacesRejectsInvalidSettings(t *testing.T) {

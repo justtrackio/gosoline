@@ -214,20 +214,21 @@ func (c *BatchConsumer) runBatches(ctx context.Context) error {
 	ticker := c.clock.NewTicker(c.settings.IdleTimeout)
 	defer func() { ticker.Stop() }()
 
+	failed := 0
 	flush := func() {
 		ticker.Stop()
 		ticker = c.clock.NewTicker(c.settings.IdleTimeout)
-		c.consumeBatch(processCtx)
+		failed += c.consumeBatch(processCtx)
 	}
 
 	for {
 		select {
 		case message, ok := <-c.data:
 			if !ok {
-				return c.drainBatch(processCtx)
+				return c.drainBatch(processCtx, failed)
 			}
 
-			c.collectMessage(processCtx, message)
+			failed += c.collectMessage(processCtx, message)
 
 			if len(c.batch) >= c.batchSettings.BatchSize {
 				flush()
@@ -237,7 +238,7 @@ func (c *BatchConsumer) runBatches(ctx context.Context) error {
 		case <-ctx.Done():
 			// The lifecycle cancels this context after both inputs return. Their
 			// final admitted records are already in the channel and must be drained.
-			return c.drainBatch(processCtx)
+			return c.drainBatch(processCtx, failed)
 		}
 	}
 }
@@ -300,10 +301,9 @@ func (c *BatchConsumer) collect(ctx context.Context, message batchMessage) int {
 	return 0
 }
 
-// drainBatch processes remaining buffered work and reports primary failures requiring replay.
-func (c *BatchConsumer) drainBatch(ctx context.Context) error {
-	failed := 0
-
+// drainBatch processes remaining buffered work and reports all primary failures requiring replay,
+// including those already encountered during collection.
+func (c *BatchConsumer) drainBatch(ctx context.Context, failed int) error {
 	for message := range c.data {
 		failed += c.collectMessage(ctx, message)
 

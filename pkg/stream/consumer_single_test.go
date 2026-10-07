@@ -132,15 +132,15 @@ func (s *ConsumerTestSuite) buildConsumer() {
 		s.uuidGen,
 		s.logger,
 		s.metricWriter,
-		tracing.NewLocalTracer(),
+		s.tracer,
 		s.input,
 		s.encoder,
 		s.retryInput,
 		s.retryHandler,
 		s.settings,
 		"test",
-		nil,
-		clock.NewRealClock(),
+		s.samplingDecider,
+		s.clock,
 	)
 
 	s.consumer = stream.NewUntypedConsumerWithInterfaces(base, s.callback)
