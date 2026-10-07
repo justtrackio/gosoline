@@ -17,7 +17,7 @@ const (
 type ConsumerSettings struct {
 	Input       string        `cfg:"input" default:"consumer" validate:"required"`
 	Encoding    EncodingType  `cfg:"encoding" default:"application/json"`
-	IdleTimeout time.Duration `cfg:"idle_timeout" default:"10s"`
+	IdleTimeout time.Duration `cfg:"idle_timeout" default:"10s" validate:"gt=0"`
 	// GraceTime is the maximum time a record has to be processed once the consumer stops. It is the single
 	// authoritative processing deadline and applies to every input, both the primary and the retry one: inputs must
 	// stop fetching new messages, while messages they already fetched are processed until this shared deadline. When
@@ -25,7 +25,7 @@ type ConsumerSettings struct {
 	//
 	// Inputs do not define a processing deadline of their own. Their own grace_time bounds how long they get to
 	// acknowledge or commit what was processed, which is a window that only starts once this deadline expired.
-	GraceTime             time.Duration                 `cfg:"grace_time" default:"10s"`
+	GraceTime             time.Duration                 `cfg:"grace_time" default:"10s" validate:"gt=0"`
 	Retry                 ConsumerRetrySettings         `cfg:"retry"`
 	Healthcheck           health.HealthCheckSettings    `cfg:"healthcheck"`
 	AggregateMessageMode  string                        `cfg:"aggregate_message_mode" default:"atMostOnce" validate:"oneof=atLeastOnce atMostOnce"`
@@ -50,8 +50,10 @@ type ConsumerRetrySettings struct {
 }
 
 func GetAllConsumerNames(config cfg.Config) ([]string, error) {
-	consumerMap, err := config.GetStringMap("stream.consumer", map[string]any{})
-	if err != nil {
+	var err error
+	var consumerMap map[string]any
+
+	if consumerMap, err = config.GetStringMap("stream.consumer", map[string]any{}); err != nil {
 		return nil, fmt.Errorf("failed to get consumer settings: %w", err)
 	}
 
@@ -65,6 +67,7 @@ func ConfigurableConsumerKey(name string) string {
 func ReadConsumerSettings(config cfg.Config, name string) (ConsumerSettings, error) {
 	settings := ConsumerSettings{}
 	key := ConfigurableConsumerKey(name)
+
 	if err := config.UnmarshalKey(
 		key,
 		&settings,

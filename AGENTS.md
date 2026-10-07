@@ -66,7 +66,7 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 | `cfg/` | Configuration management, AppId, macro interpolation |
 | `log/` | Structured logging infrastructure |
 | `httpserver/` | Gin-based HTTP server, middleware, handlers |
-| `stream/` | Message streaming, consumers, producers |
+| `stream/` | Message streaming, consumers, producers, serial channel-driven batch consumers using shared retry handlers |
 | `mdl/` | Model definitions, ModelId |
 | `mdlsub/` | Model subscription patterns |
 

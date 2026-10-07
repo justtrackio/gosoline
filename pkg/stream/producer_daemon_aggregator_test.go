@@ -42,6 +42,7 @@ func (tc aggregatorTestCase) run(t *testing.T) {
 
 	newFlushes, err := agg.Flush()
 	assert.NoError(t, err)
+
 	for _, flush := range newFlushes {
 		if flush.MessageCount > 0 {
 			flushes = append(flushes, flush)
@@ -67,8 +68,10 @@ type expectedFlush struct {
 }
 
 func (f expectedFlush) encode(compression stream.CompressionType) stream.AggregateFlush {
-	body, err := json.Marshal(f.messages)
-	if err != nil {
+	var err error
+	var body []byte
+
+	if body, err = json.Marshal(f.messages); err != nil {
 		panic(err)
 	}
 
@@ -216,6 +219,7 @@ func TestProducerDaemonAggregator_CompressedSizeRestrictedLarge(t *testing.T) {
 	messages := []*stream.Message{
 		mkTestMessage(t, strings.Repeat("1", 3_000), map[string]string{}),
 	}
+
 	for i := 1; i < 3_000; i++ {
 		messages = append(messages, messages[0])
 	}
@@ -253,51 +257,16 @@ func TestProducerDaemonAggregator_CompressedSizeRestrictedUncompressible(t *test
 		messages = append(messages, message)
 	}
 
+	flushes := make([]expectedFlush, 0)
+	for i := 0; i < len(messages); i += 8 {
+		flushes = append(flushes, expectedFlush{messages: messages[i:min(i+8, len(messages))]})
+	}
+
 	aggregatorTestCase{
 		aggregationSize:    100_000,
 		aggregationMaxSize: 65536,
 		compression:        stream.CompressionGZip,
 		messages:           messages,
-		flushes: []expectedFlush{
-			{
-				messages: messages[0:8],
-			},
-			{
-				messages: messages[8:16],
-			},
-			{
-				messages: messages[16:24],
-			},
-			{
-				messages: messages[24:32],
-			},
-			{
-				messages: messages[32:40],
-			},
-			{
-				messages: messages[40:48],
-			},
-			{
-				messages: messages[48:56],
-			},
-			{
-				messages: messages[56:64],
-			},
-			{
-				messages: messages[64:72],
-			},
-			{
-				messages: messages[72:80],
-			},
-			{
-				messages: messages[80:88],
-			},
-			{
-				messages: messages[88:96],
-			},
-			{
-				messages: messages[96:],
-			},
-		},
+		flushes:            flushes,
 	}.run(t)
 }
