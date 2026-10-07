@@ -1,0 +1,18 @@
+app:
+  name: batch-consumer
+  env: dev
+stream:
+  consumer:
+    default:
+      input: records
+      batch_size: 100
+      idle_timeout: 5s
+      retry:
+        enabled: false # Enable for SQS retries with AWS configured.
+        type: sqs
+        after: 1m
+        max_attempts: 3
+  input:
+    records:
+      type: file
+      filename: records.jsonl

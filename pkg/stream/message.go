@@ -1,13 +1,13 @@
 package stream
 
 import (
-	"fmt"
-
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
-	"github.com/spf13/cast"
 )
 
 const (
+	// AttributeBodyBase64 marks a JSON envelope's body as base64-encoded. It is
+	// reserved for serialization and removed when the message is unmarshalled.
+	AttributeBodyBase64                 = "goso.body.base64"
 	AttributeSqsMessageId               = "sqsMessageId"
 	AttributeSqsReceiptHandle           = "sqsReceiptHandle"
 	AttributeSqsApproximateReceiveCount = "sqsApproximateReceiveCount"
@@ -36,24 +36,8 @@ func (m *Message) MarshalToString() (string, error) {
 }
 
 func (m *Message) UnmarshalFromBytes(data []byte) error {
-	type legacy struct {
-		Attributes map[string]any `json:"attributes"`
-		Body       string         `json:"body"`
-	}
-
-	legacyMsg := &legacy{}
-	if err := json.Unmarshal(data, legacyMsg); err != nil {
+	if err := json.Unmarshal(data, m); err != nil {
 		return err
-	}
-
-	m.Attributes = make(map[string]string)
-	m.Body = legacyMsg.Body
-
-	var err error
-	for k, v := range legacyMsg.Attributes {
-		if m.Attributes[k], err = cast.ToStringE(v); err != nil {
-			return fmt.Errorf("can not cast attribute %s=%v to string: %w", k, v, err)
-		}
 	}
 
 	return nil

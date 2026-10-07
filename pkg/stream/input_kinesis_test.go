@@ -21,7 +21,8 @@ func TestKinesisInputRun(t *testing.T) {
 
 	client.EXPECT().Run(testCtx, mock.Anything).Run(func(_ context.Context, process kinesis.RecordHandler) {
 		assert.NoError(t, process(testCtx, []byte(`{"attributes":{"type":"message"},"body":"foo"}`)))
-		assert.NoError(t, process(testCtx, []byte(`{"attributes":{"type":"message","version":0},"body":"foo"}`)))
+		assert.NoError(t, process(testCtx, []byte(`{"attributes":{"type":"message","version":"0"},"body":"foo"}`)))
+		assert.Error(t, process(testCtx, []byte(`{"attributes":{"type":"message","version":0},"body":"foo"}`)))
 		assert.Error(t, process(testCtx, []byte("not a message")))
 	}).Return(nil).Once()
 

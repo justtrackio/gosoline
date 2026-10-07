@@ -33,6 +33,29 @@ func TestReadConsumerSettings_Empty(t *testing.T) {
 	}, settings)
 }
 
+func TestReadConsumerSettings_TimeoutValidation(t *testing.T) {
+	for _, key := range []string{"idle_timeout", "grace_time"} {
+		for _, value := range []string{"0s", "-1s", "1ns"} {
+			t.Run(key+"="+value, func(t *testing.T) {
+				config := cfg.New(map[string]any{
+					"stream": map[string]any{
+						"consumer": map[string]any{
+							"defaultConsumer": map[string]any{key: value},
+						},
+					},
+				})
+
+				_, err := stream.ReadConsumerSettings(config, "defaultConsumer")
+				if value == "1ns" {
+					assert.NoError(t, err)
+				} else {
+					assert.ErrorContains(t, err, "validation failed")
+				}
+			})
+		}
+	}
+}
+
 func TestReadConsumerSettings_ReadKernelKillTimeout(t *testing.T) {
 	config := cfg.New(map[string]any{
 		"kernel": map[string]any{
