@@ -28,7 +28,7 @@ func TestShardReaderProcessesRecordsSeriallyInOrderedMode(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		lastSequenceNumber := SequenceNumber("")
-		_, err := reader.processRecords(t.Context(), t.Context(), processingTestRecords(), &lastSequenceNumber, "", func(_ context.Context, data []byte) error {
+		_, _, err := reader.processRecords(t.Context(), t.Context(), processingTestRecords(), &lastSequenceNumber, "", func(_ context.Context, data []byte) error {
 			callsMu.Lock()
 			calls = append(calls, string(data))
 			callsMu.Unlock()
@@ -66,7 +66,7 @@ func TestShardReaderProcessesRecordsConcurrentlyAndCheckpointsInOrderInUnordered
 	done := make(chan error, 1)
 	go func() {
 		lastSequenceNumber := SequenceNumber("")
-		_, err := reader.processRecords(t.Context(), t.Context(), processingTestRecords(), &lastSequenceNumber, "", func(_ context.Context, data []byte) error {
+		_, _, err := reader.processRecords(t.Context(), t.Context(), processingTestRecords(), &lastSequenceNumber, "", func(_ context.Context, data []byte) error {
 			switch string(data) {
 			case "first":
 				close(firstStarted)
@@ -95,7 +95,7 @@ func TestShardReaderDoesNotCheckpointRecordsSkippedDuringCancellation(t *testing
 	cancel()
 	lastSequenceNumber := SequenceNumber("")
 
-	processed, err := reader.processRecords(ctx, t.Context(), processingTestRecords(), &lastSequenceNumber, "", func(_ context.Context, _ []byte) error {
+	processed, _, err := reader.processRecords(ctx, t.Context(), processingTestRecords(), &lastSequenceNumber, "", func(_ context.Context, _ []byte) error {
 		t.Fatal("handler should not be called")
 
 		return nil
@@ -124,7 +124,7 @@ func TestShardReaderDrainsInFlightRecordsAndSkipsQueuedRecordsDuringShutdown(t *
 		defer close(done)
 
 		lastSequenceNumber := SequenceNumber("")
-		processed, processErr = reader.processRecords(ctx, processingCtx, []types.Record{
+		processed, _, processErr = reader.processRecords(ctx, processingCtx, []types.Record{
 			{Data: []byte("first"), SequenceNumber: aws.String("seq-1")},
 			{Data: []byte("second"), SequenceNumber: aws.String("seq-2")},
 			{Data: []byte("third"), SequenceNumber: aws.String("seq-3")},
@@ -203,7 +203,7 @@ func TestShardReaderCheckpointsRecordHandledUnderCanceledContext(t *testing.T) {
 	processingCtx, cancelProcessing := context.WithCancel(t.Context())
 
 	lastSequenceNumber := SequenceNumber("")
-	processed, err := reader.processRecords(t.Context(), processingCtx, processingTestRecords(), &lastSequenceNumber, "", func(_ context.Context, data []byte) error {
+	processed, _, err := reader.processRecords(t.Context(), processingCtx, processingTestRecords(), &lastSequenceNumber, "", func(_ context.Context, data []byte) error {
 		if string(data) == "first" {
 			cancelProcessing()
 		}
@@ -230,7 +230,7 @@ func TestShardReaderDoesNotCheckpointRecordAbandonedByCanceledHandler(t *testing
 	go func() {
 		defer close(done)
 
-		processed, processErr = reader.processRecords(t.Context(), processingCtx, processingTestRecords(), &lastSequenceNumber, "", func(ctx context.Context, data []byte) error {
+		processed, _, processErr = reader.processRecords(t.Context(), processingCtx, processingTestRecords(), &lastSequenceNumber, "", func(ctx context.Context, data []byte) error {
 			if string(data) == "first" {
 				close(firstStarted)
 				<-ctx.Done()
@@ -273,23 +273,21 @@ func testShardReaderRecoversHandlerPanic(t *testing.T, mode ProcessingMode) {
 	metricWriter.EXPECT().Write(matcher.Context, metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameFailedRecords,
-			Dimensions: metric.Dimensions{"StreamName": ""},
-			Value:      1,
-			Unit:       metric.UnitCount,
-			Kind:       metric.KindTotal,
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameFailedRecords,
-			Dimensions: metric.Dimensions{"StreamName": "", "ShardId": ""},
-			Value:      1,
-			Unit:       metric.UnitCount,
+			Namespace:  metricNamespaceCloudAwsKinesis,
+			MetricName: metricNameConsumedMessages,
+			Dimensions: metric.Dimensions{
+				dimensionStream:           "",
+				dimensionShard:            "",
+				metric.DimensionErrorType: errorTypeProcessingFailed,
+			},
+			Value: 1,
+			Unit:  metric.UnitCount,
+			Kind:  metric.KindCounter.Build(),
 		},
 	}).Once()
 
 	lastSequenceNumber := SequenceNumber("")
-	processed, err := reader.processRecords(t.Context(), t.Context(), processingTestRecords(), &lastSequenceNumber, "", func(_ context.Context, data []byte) error {
+	processed, _, err := reader.processRecords(t.Context(), t.Context(), processingTestRecords(), &lastSequenceNumber, "", func(_ context.Context, data []byte) error {
 		if string(data) == "first" {
 			panic("handler panic")
 		}

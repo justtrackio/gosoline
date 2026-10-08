@@ -96,7 +96,7 @@ func newConsumer(ctx context.Context, config cfg.Config, logger log.Logger, name
 	var retryHandler RetryHandler
 
 	consumerLogger := logger.WithChannel(fmt.Sprintf("consumer-%s", name))
-	metricWriter := metric.NewWriter(getConsumerDefaultMetrics(name)...)
+	metricWriter := metric.NewWriter(metricNamespace, getConsumerDefaultMetrics(name)...)
 
 	if _, err = cfg.GetAppIdentity(config); err != nil {
 		return nil, fmt.Errorf("can not get app identity from config: %w", err)
@@ -276,7 +276,7 @@ func (c *Consumer) processData(ctx context.Context, msg *Message) (ack bool) {
 		}
 
 		c.logger.Warn(newCtx, "retrying message with id %s", retryId)
-		c.writeMetricRetryCount(newCtx, metricNameConsumerRetryGetCount)
+		c.writeMetricRetryCount(newCtx, retryOperationGet)
 	}
 
 	if _, ok := msg.Attributes[AttributeAggregate]; ok {
@@ -376,16 +376,6 @@ func (c *Consumer) process(gracedCtx context.Context, msg *Message, hasNativeRet
 	var attributes map[string]string
 
 	if model, err = c.callback.GetModel(msg.Attributes); err != nil {
-		c.metricWriter.Write(gracedCtx, metric.Data{
-			&metric.Datum{
-				MetricName: metricNameConsumerUnknownModelError,
-				Dimensions: map[string]string{
-					"Consumer": c.name,
-				},
-				Value: 1.0,
-			},
-		})
-
 		// Check if this error is ignorable based on consumer settings
 		var ignorableErr IgnorableGetModelError
 		if errors.As(err, &ignorableErr) && ignorableErr.IsIgnorableWithSettings(c.settings.IgnoreOnGetModelError) {

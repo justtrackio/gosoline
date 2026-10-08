@@ -108,12 +108,6 @@ app_name: application
 14:10:10.243 kernel  info    cfg metric.family={app_family}                      application: application
 14:10:10.243 kernel  info    cfg metric.interval=1m0s                            application: application
 14:10:10.243 kernel  info    cfg metric.project={app_project}                    application: application
-14:10:10.243 kernel  info    cfg stream.metrics.messages_per_runner.enabled=false  application: application
-14:10:10.243 kernel  info    cfg stream.metrics.messages_per_runner.leader_election=streamMprMetrics  application: application
-14:10:10.243 kernel  info    cfg stream.metrics.messages_per_runner.max_increase_percent=200  application: application
-14:10:10.244 kernel  info    cfg stream.metrics.messages_per_runner.max_increase_period=5m0s  application: application
-14:10:10.244 kernel  info    cfg stream.metrics.messages_per_runner.period=1m0s  application: application
-14:10:10.244 kernel  info    cfg stream.metrics.messages_per_runner.target_value=0  application: application
 14:10:10.244 kernel  info    cfg fingerprint: 8df18fc41a40039f92f1f4213aee4869   application: application
 14:10:10.244 kernel  info    stage 0 up and running                              application: application
 14:10:10.244 kernel  info    stage 1024 up and running                           application: application

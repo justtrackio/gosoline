@@ -14,14 +14,35 @@ import (
 )
 
 const (
-	metricNameConsumerDuration          = "Duration"
-	metricNameConsumerError             = "Error"
-	metricNameConsumerProcessedCount    = "ProcessedCount"
-	metricNameConsumerRetryGetCount     = "RetryGetCount"
-	metricNameConsumerRetryPutCount     = "RetryPutCount"
-	metricNameConsumerUnknownModelError = "UnknownModelError"
-	metadataKeyConsumers                = "stream.consumers"
+	metricNamespace = "stream"
+
+	metricNameConsumerDuration        = "process.duration"
+	metricNameConsumerProcessedCount  = "consumed.messages"
+	metricNameConsumerRetryOperations = "retry.operations"
+
+	dimensionConsumer       = "consumer.name"
+	dimensionRetryOperation = "operation"
+
+	retryOperationGet = "get"
+	retryOperationPut = "put"
+
+	errorTypeProcessingFailed = "processing_failed"
+
+	metadataKeyConsumers = "stream.consumers"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, metricNameConsumerDuration, "duration of processing one message in a consumer callback")
+	metric.RegisterHelp(metricNamespace, metricNameConsumerProcessedCount, "messages a consumer took in from its input, by error type")
+	metric.RegisterHelp(metricNamespace, metricNameConsumerRetryOperations, "retry queue operations a consumer performed")
+	metric.RegisterHelp(metricNamespace, metricNameMessageCount, "messages a producer daemon accepted for delivery")
+	metric.RegisterHelp(metricNamespace, metricNameBatchSize, "messages a producer daemon wrote per batch")
+	metric.RegisterHelp(metricNamespace, metricNameAggregateSize, "messages a producer daemon combined into one aggregate")
+	metric.RegisterHelp(metricNamespace, metricNameIdleDuration, "time a producer daemon waited before flushing a partial batch")
+	metric.RegisterHelp(metricNamespace, metricNameRedisListInputLength, "messages a redis list input currently holds")
+	metric.RegisterHelp(metricNamespace, metricNameRedisListInputReads, "read operations a redis list input performed")
+	metric.RegisterHelp(metricNamespace, metricNameRedisListOutputWrites, "write operations a redis list output performed")
+}
 
 type ConsumerMetadata struct {
 	Name         string `json:"name"`
@@ -257,7 +278,7 @@ func (c *Consumer) retry(ctx context.Context, msg *Message) {
 	})
 
 	c.logger.Warn(ctx, "putting message with id %s into retry", retryId)
-	c.writeMetricRetryCount(ctx, metricNameConsumerRetryPutCount)
+	c.writeMetricRetryCount(ctx, retryOperationPut)
 
 	ctx, stop := exec.WithDelayedCancelContext(ctx, c.settings.Retry.GraceTime)
 	defer stop()
@@ -299,15 +320,7 @@ func (c *Consumer) handleError(ctx context.Context, err error, msg string) {
 
 	c.logger.Error(ctx, "%s: %w", msg, err)
 
-	c.metricWriter.Write(ctx, metric.Data{
-		&metric.Datum{
-			MetricName: metricNameConsumerError,
-			Dimensions: map[string]string{
-				"Consumer": c.name,
-			},
-			Value: 1.0,
-		},
-	})
+	c.metricWriter.Write(ctx, metric.Data{consumedMessagesDatum(c.name, errorTypeProcessingFailed, 1.0)})
 }
 
 func (c *Consumer) isHealthy() bool {
@@ -320,79 +333,68 @@ func (c *Consumer) writeMetricDurationAndProcessedCount(ctx context.Context, dur
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerDuration,
 			Dimensions: map[string]string{
-				"Consumer": c.name,
+				dimensionConsumer: c.name,
 			},
 			Unit:  metric.UnitMillisecondsAverage,
 			Value: float64(duration.Milliseconds()),
 		},
-		&metric.Datum{
-			MetricName: metricNameConsumerProcessedCount,
-			Dimensions: map[string]string{
-				"Consumer": c.name,
-			},
-			Value: float64(processedCount),
-		},
+		consumedMessagesDatum(c.name, metric.DimensionDefault, float64(processedCount)),
 	})
 }
 
-func (c *Consumer) writeMetricRetryCount(ctx context.Context, metricName string) {
+func (c *Consumer) writeMetricRetryCount(ctx context.Context, operation string) {
 	c.metricWriter.Write(ctx, metric.Data{
 		&metric.Datum{
-			MetricName: metricName,
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameConsumerRetryOperations,
 			Dimensions: map[string]string{
-				"Consumer": c.name,
+				dimensionConsumer:       c.name,
+				dimensionRetryOperation: operation,
 			},
 			Value: float64(1),
 		},
 	})
 }
 
+// consumedMessagesDatum counts messages a consumer took in. A message the consumer failed to process is
+// the same metric told apart by its error type, so a failure does not need a metric of its own.
+func consumedMessagesDatum(consumer string, errorType string, value float64) *metric.Datum {
+	return &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: metricNameConsumerProcessedCount,
+		Dimensions: map[string]string{
+			dimensionConsumer:         consumer,
+			metric.DimensionErrorType: errorType,
+		},
+		Value: value,
+		Unit:  metric.UnitCount,
+	}
+}
+
 func getConsumerDefaultMetrics(name string) metric.Data {
 	return metric.Data{
+		consumedMessagesDatum(name, metric.DimensionDefault, 0.0),
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameConsumerProcessedCount,
+			MetricName: metricNameConsumerRetryOperations,
 			Dimensions: map[string]string{
-				"Consumer": name,
+				dimensionConsumer:       name,
+				dimensionRetryOperation: retryOperationPut,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameConsumerError,
+			MetricName: metricNameConsumerRetryOperations,
 			Dimensions: map[string]string{
-				"Consumer": name,
+				dimensionConsumer:       name,
+				dimensionRetryOperation: retryOperationGet,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameConsumerRetryPutCount,
-			Dimensions: map[string]string{
-				"Consumer": name,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameConsumerRetryGetCount,
-			Dimensions: map[string]string{
-				"Consumer": name,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameConsumerUnknownModelError,
-			Dimensions: map[string]string{
-				"Consumer": name,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		},
 	}
 }
