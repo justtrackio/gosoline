@@ -14,6 +14,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
+const defaultRunnerName = "default"
+
 func Run(options ...Option) {
 	app := Default(options...)
 	app.Run()
@@ -43,7 +45,7 @@ func RunModule(name string, moduleFactory kernel.ModuleFactory, options ...Optio
 func RunHttpDefaultServer(definer httpserver.Definer, options ...Option) {
 	RunHttpServers(
 		map[string]httpserver.Definer{
-			"default": definer,
+			defaultRunnerName: definer,
 		},
 		options...,
 	)
@@ -66,7 +68,7 @@ func RunHttpServers(servers map[string]httpserver.Definer, options ...Option) {
 // RunConsumer runs the provided consumer as an application. You can pass additional options to customize the way it is executed.
 func RunConsumer[M any](callback stream.ConsumerCallbackFactory[M], options ...Option) {
 	RunConsumers[M](stream.ConsumerCallbackMap[M]{
-		"default": callback,
+		defaultRunnerName: callback,
 	}, options...)
 }
 
@@ -75,7 +77,7 @@ func RunConsumer[M any](callback stream.ConsumerCallbackFactory[M], options ...O
 // Prefer using RunConsumer if possible as it provided additional type safety (especially, if you are only expecting a single type as input anyway).
 func RunUntypedConsumer(callback stream.UntypedConsumerCallbackFactory, options ...Option) {
 	RunUntypedConsumers(stream.UntypedConsumerCallbackMap{
-		"default": callback,
+		defaultRunnerName: callback,
 	}, options...)
 }
 
@@ -108,7 +110,7 @@ func RunUntypedConsumers(consumers stream.UntypedConsumerCallbackMap, options ..
 
 // RunBatchConsumer runs a typed, in-memory-buffered batch consumer application.
 func RunBatchConsumer[M any](callback stream.BatchConsumerCallbackFactory[M], options ...Option) {
-	RunBatchConsumers(stream.BatchConsumerCallbackMap[M]{"default": callback}, options...)
+	RunBatchConsumers(stream.BatchConsumerCallbackMap[M]{defaultRunnerName: callback}, options...)
 }
 
 // RunBatchConsumers runs typed batch consumers accepting the same model type.
@@ -119,7 +121,7 @@ func RunBatchConsumers[M any](callbacks stream.BatchConsumerCallbackMap[M], opti
 
 // RunUntypedBatchConsumer runs an untyped, in-memory-buffered batch application.
 func RunUntypedBatchConsumer(callback stream.UntypedBatchConsumerCallbackFactory, options ...Option) {
-	RunUntypedBatchConsumers(stream.UntypedBatchConsumerCallbackMap{"default": callback}, options...)
+	RunUntypedBatchConsumers(stream.UntypedBatchConsumerCallbackMap{defaultRunnerName: callback}, options...)
 }
 
 // RunUntypedBatchConsumers runs untyped batch consumer applications.

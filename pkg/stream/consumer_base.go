@@ -167,19 +167,6 @@ func NewConsumerBaseWithInterfaces(
 	}
 }
 
-// setCallbackHooks wires optional callback hooks before the consumer runs.
-func (c *consumerBase) setCallbackHooks(callback any) {
-	c.init, c.run, c.inputsFinished = nil, nil, nil
-
-	if initializeable, ok := callback.(InitializeableCallback); ok {
-		c.init = initializeable.Init
-	}
-
-	if runnable, ok := callback.(RunnableCallback); ok {
-		c.run = runnable.Run
-	}
-}
-
 func (c *consumerBase) Run(ctx context.Context) error {
 	return c.runConsumer(ctx)
 }
@@ -411,7 +398,7 @@ func (c *consumerBase) handleError(ctx context.Context, err error, msg string) {
 		&metric.Datum{
 			MetricName: metricNameConsumerError,
 			Dimensions: map[string]string{
-				"Consumer": c.name,
+				metricDimensionConsumer: c.name,
 			},
 			Value: 1.0,
 		},
@@ -428,7 +415,7 @@ func (c *consumerBase) writeMetricDurationAndProcessedCount(ctx context.Context,
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerDuration,
 			Dimensions: map[string]string{
-				"Consumer": c.name,
+				metricDimensionConsumer: c.name,
 			},
 			Unit:  metric.UnitMillisecondsAverage,
 			Value: float64(duration.Milliseconds()),
@@ -436,7 +423,7 @@ func (c *consumerBase) writeMetricDurationAndProcessedCount(ctx context.Context,
 		&metric.Datum{
 			MetricName: metricNameConsumerProcessedCount,
 			Dimensions: map[string]string{
-				"Consumer": c.name,
+				metricDimensionConsumer: c.name,
 			},
 			Value: float64(processedCount),
 		},
@@ -448,7 +435,7 @@ func (c *consumerBase) writeMetricRetryCount(ctx context.Context, metricName str
 		&metric.Datum{
 			MetricName: metricName,
 			Dimensions: map[string]string{
-				"Consumer": c.name,
+				metricDimensionConsumer: c.name,
 			},
 			Value: float64(1),
 		},

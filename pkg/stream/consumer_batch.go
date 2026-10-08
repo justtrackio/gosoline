@@ -76,8 +76,8 @@ type BatchConsumerSettings struct {
 type batchMessage struct {
 	ctx     context.Context
 	message *Message
-	// retryMessage retains envelope context when a flattened child fails.
-	retryMessage *Message
+	// retryMessage is always populated and retains envelope context for flattened children.
+	retryMessage Message
 	result       chan bool
 }
 
@@ -116,10 +116,6 @@ func NewUntypedBatchConsumer(name string, callbackFactory UntypedBatchConsumerCa
 			return nil, fmt.Errorf("can not read batch settings for %s: %w", name, err)
 		}
 
-		if settings.IdleTimeout <= 0 || settings.GraceTime <= 0 {
-			return nil, fmt.Errorf("invalid batch consumer timeouts or retry settings for %s", name)
-		}
-
 		schemaCallback, _ := callback.(SchemaSettingsAwareCallback)
 
 		if base, err = newConsumerBase(ctx, config, logger, name, schemaCallback, settings, newConsumerBatchRetryHandler); err != nil {
@@ -134,12 +130,8 @@ func NewUntypedBatchConsumer(name string, callbackFactory UntypedBatchConsumerCa
 // shared dependencies of an unstarted consumer. The supplied consumer must not
 // subsequently be run: both instances share the same base. Its retry
 // handler must support retrying admitted primary messages independently of their
-// original transport acknowledgements. Invalid batch settings return an error.
+// original transport acknowledgements. The supplied settings must already be validated.
 func NewUntypedBatchConsumerWithInterfaces(base *consumerBase, callback UntypedBatchConsumerCallback, settings BatchConsumerSettings) (*BatchConsumer, error) {
-	if settings.BatchSize < 1 || settings.BufferSize < 0 {
-		return nil, fmt.Errorf("invalid batch consumer settings: batch size must be at least 1 and buffer size must be non-negative (batch size: %d, buffer size: %d)", settings.BatchSize, settings.BufferSize)
-	}
-
 	if settings.BufferSize == 0 {
 		settings.BufferSize = settings.BatchSize
 	}
@@ -151,7 +143,11 @@ func NewUntypedBatchConsumerWithInterfaces(base *consumerBase, callback UntypedB
 		data:          make(chan batchMessage, settings.BufferSize),
 	}
 
-	base.setCallbackHooks(callback)
+	base.init = nil
+	if initializeable, ok := callback.(InitializeableCallback); ok {
+		base.init = initializeable.Init
+	}
+
 	base.run = batch.runCallback
 	base.inputProcess = batch.enqueue
 	base.retryProcess = batch.enqueueRetry
@@ -192,9 +188,10 @@ func (c *BatchConsumer) admit(ctx context.Context, msg *Message, result chan boo
 
 	select {
 	case c.data <- batchMessage{
-		ctx:     context.WithoutCancel(ctx),
-		message: &copyMsg,
-		result:  result,
+		ctx:          context.WithoutCancel(ctx),
+		message:      &copyMsg,
+		retryMessage: copyMsg,
+		result:       result,
 	}:
 		return true
 	case <-c.drainCtx.Done():
@@ -265,7 +262,6 @@ func (c *BatchConsumer) collect(ctx context.Context, message batchMessage) int {
 	var err error
 	var childCtx context.Context
 	var body []byte
-	var retryMessage *Message
 
 	if _, aggregate := message.message.Attributes[AttributeAggregate]; !aggregate {
 		c.batch = append(c.batch, message)
@@ -300,6 +296,7 @@ func (c *BatchConsumer) collect(ctx context.Context, message batchMessage) int {
 	}
 
 	for _, child := range children {
+		retryMessage := message.retryMessage
 		if message.result == nil {
 			// Keep propagation handlers and child overrides working identically on
 			// retry. Only this child is replayed, in a fresh uncompressed JSON envelope.
@@ -316,7 +313,7 @@ func (c *BatchConsumer) collect(ctx context.Context, message batchMessage) int {
 			attributes := maps.Clone(message.message.Attributes)
 			attributes[AttributeEncoding] = EncodingJson.String()
 			delete(attributes, AttributeCompression)
-			retryMessage = &Message{Body: string(body), Attributes: attributes}
+			retryMessage = Message{Body: string(body), Attributes: attributes}
 		}
 
 		c.batch = append(c.batch, batchMessage{
@@ -368,7 +365,7 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context) (failed int) {
 	c.processingStartedAt.Put(processingID, start)
 	defer c.processingStartedAt.Remove(processingID)
 
-	stop := withBatchProcessingContexts(ctx, batch)
+	stop := c.withBatchProcessingContexts(ctx, batch)
 	defer stop()
 
 	decoded := c.decodeBatch(batch[0].ctx, batch)
@@ -422,7 +419,7 @@ type decodedBatch struct {
 
 // withBatchProcessingContexts keeps each record's values and attaches shared
 // cancellation. Its cleanup lives until the entire batch callback and retries finish.
-func withBatchProcessingContexts(ctx context.Context, batch []batchMessage) func() {
+func (c *BatchConsumer) withBatchProcessingContexts(ctx context.Context, batch []batchMessage) func() {
 	cleanup := make([]func(), 0, len(batch))
 
 	for i := range batch {
@@ -465,7 +462,7 @@ func (c *BatchConsumer) decodeBatch(ctx context.Context, batch []batchMessage) d
 
 	for _, message := range batch {
 		if model, err = c.getBatchModel(message.message.Attributes); err != nil {
-			c.metricWriter.Write(ctx, metric.Data{&metric.Datum{MetricName: metricNameConsumerUnknownModelError, Dimensions: map[string]string{"Consumer": c.name}, Value: 1}})
+			c.metricWriter.Write(ctx, metric.Data{&metric.Datum{MetricName: metricNameConsumerUnknownModelError, Dimensions: map[string]string{metricDimensionConsumer: c.name}, Value: 1}})
 
 			var ignorable IgnorableGetModelError
 			if errors.As(err, &ignorable) && ignorable.IsIgnorableWithSettings(c.settings.IgnoreOnGetModelError) {
@@ -552,12 +549,7 @@ func (c *BatchConsumer) retryBatchMessage(ctx context.Context, message batchMess
 		return false
 	}
 
-	msg := message.message
-	if message.retryMessage != nil {
-		msg = message.retryMessage
-	}
-
-	retryMessage, _ := c.buildRetryMessage(msg)
+	retryMessage, _ := c.buildRetryMessage(&message.retryMessage)
 	c.writeMetricRetryCount(ctx, metricNameConsumerRetryPutCount)
 
 	ctx, cancel := exec.WithDelayedCancelContext(ctx, c.settings.Retry.GraceTime)

@@ -19,9 +19,8 @@ import (
 func TestBinaryKafkaMessageSurvivesSqsRetry(t *testing.T) {
 	record := kgo.Record{
 		Value: []byte{0, 0, 0, 0, 0x80, 0xff, 1},
-		Key:   []byte{0xff, 0x80},
+		Key:   []byte("record-key"),
 		Headers: []kgo.RecordHeader{
-			{Key: "binary", Value: []byte{0xff, 0x80}},
 			{Key: "text", Value: []byte("valid UTF-8")},
 		},
 	}
@@ -52,7 +51,7 @@ func TestBinaryKafkaMessageSurvivesSqsRetry(t *testing.T) {
 }
 
 func TestMessageBinaryAggregateRoundTrip(t *testing.T) {
-	original := []*stream.Message{{Body: string([]byte{0xff, 0}), Attributes: map[string]string{"binary": string([]byte{0x80})}}}
+	original := []*stream.Message{{Body: string([]byte{0xff, 0}), Attributes: map[string]string{"text": "valid UTF-8"}}}
 	wire, err := json.Marshal(original)
 	require.NoError(t, err)
 	var restored []*stream.Message
@@ -60,7 +59,7 @@ func TestMessageBinaryAggregateRoundTrip(t *testing.T) {
 	require.Equal(t, original, restored)
 }
 
-func TestMessageWireCompatibility(t *testing.T) {
+func TestMessageWireFormat(t *testing.T) {
 	message := stream.Message{Body: "hello", Attributes: map[string]string{"foo": "bar"}}
 	wire, err := message.MarshalToString()
 	require.NoError(t, err)
@@ -72,9 +71,45 @@ func TestMessageWireCompatibility(t *testing.T) {
 	for _, invalid := range []string{
 		`{"attributes":{"number":42},"body":"hello"}`,
 		`{"attributes":{"bool":true},"body":"hello"}`,
-		`{"bodyBase64":"!"}`,
-		`{"attributesBase64":{"binary":"!"}}`,
+		`{"attributes":{"goso.body.base64":"true"},"body":"!"}`,
+		`{"attributes":{"goso.body.base64":"false"},"body":"hello"}`,
 	} {
 		require.Error(t, received.UnmarshalFromString(invalid))
 	}
+}
+
+func TestMessageBase64BodyAttribute(t *testing.T) {
+	for _, attributes := range []map[string]string{nil, {stream.AttributeEncoding: stream.EncodingAvro.String()}} {
+		message := stream.Message{Body: string([]byte{0xff, 0}), Attributes: attributes}
+		before := maps.Clone(attributes)
+
+		for range 2 {
+			wire, err := message.MarshalToBytes()
+			require.NoError(t, err)
+			var envelope struct {
+				Attributes map[string]string `json:"attributes"`
+				Body       string            `json:"body"`
+			}
+			require.NoError(t, json.Unmarshal(wire, &envelope))
+			require.Equal(t, "/wA=", envelope.Body)
+			require.Equal(t, "true", envelope.Attributes[stream.AttributeBodyBase64])
+			require.NotContains(t, string(wire), "bodyBase64")
+			require.Equal(t, before, message.Attributes)
+
+			var restored stream.Message
+			require.NoError(t, restored.UnmarshalFromBytes(wire))
+			require.Equal(t, message.Body, restored.Body)
+			require.NotContains(t, restored.Attributes, stream.AttributeBodyBase64)
+
+			for key, value := range attributes {
+				require.Equal(t, value, restored.Attributes[key])
+			}
+		}
+	}
+}
+
+func TestMessageRejectsReservedBase64Attribute(t *testing.T) {
+	message := stream.Message{Body: "hello", Attributes: map[string]string{stream.AttributeBodyBase64: "true"}}
+	_, err := message.MarshalToBytes()
+	require.ErrorContains(t, err, "reserved for serialization")
 }

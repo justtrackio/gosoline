@@ -50,6 +50,7 @@ type BatchConsumerTestSuite struct {
 	settings        stream.ConsumerSettings
 	batchSettings   stream.BatchConsumerSettings
 	samplingDecider smpl.Decider
+	clock           clock.FakeClock
 }
 
 // Each table-driven case gets independent inputs, channels and mock expectations.
@@ -61,6 +62,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 	t := s.T()
 	s.consumer, s.cancel, s.err, s.retryWriteErr = nil, nil, nil, nil
 	s.done = make(chan struct{})
+	s.clock = clock.NewFakeClock()
 	s.input = &batchTestInput{InMemoryInput: stream.NewInMemoryInput(&stream.InMemorySettings{Size: 20, RunnerCount: 1}), admitted: make(chan bool, 100)}
 	s.retryInput = &batchTestRetryInput{InMemoryInput: stream.NewInMemoryInput(&stream.InMemorySettings{Size: 20, RunnerCount: 1}), results: make(chan bool, 100)}
 	s.retryMessages = make(chan *stream.Message, 100)
@@ -148,6 +150,24 @@ func (s *BatchConsumerTestSuite) TestFlushesOnTimerAndOnInputCompletion() {
 
 			if interval == time.Hour {
 				s.input.Stop(t.Context())
+			} else {
+				s.clock.BlockUntilTickers(2)
+				s.clock.Advance(interval - time.Nanosecond)
+
+				select {
+				case <-processed:
+					t.Fatal("partial batch processed before its timer expired")
+				default:
+				}
+
+				s.advanceUntil(func() bool {
+					select {
+					case <-processed:
+						return true
+					default:
+						return false
+					}
+				})
 			}
 
 			waitBatchTest(t, processed)
@@ -238,11 +258,17 @@ func (s *BatchConsumerTestSuite) TestHealthTracksBusinessProcessing() {
 	})
 	s.publishModel(1)
 	waitBatchTest(t, started)
-	require.Eventually(t, func() bool {
-		healthy, err := s.consumer.IsHealthy(t.Context())
-
-		return err == nil && !healthy
-	}, time.Second, time.Millisecond)
+	healthy, err := s.consumer.IsHealthy(t.Context())
+	require.NoError(t, err)
+	require.True(t, healthy)
+	s.clock.Advance(s.settings.Healthcheck.Timeout)
+	healthy, err = s.consumer.IsHealthy(t.Context())
+	require.NoError(t, err)
+	require.True(t, healthy)
+	s.clock.Advance(time.Nanosecond)
+	healthy, err = s.consumer.IsHealthy(t.Context())
+	require.NoError(t, err)
+	require.False(t, healthy)
 	release <- struct{}{}
 	s.cancel()
 	waitBatchTest(t, s.done)
@@ -254,15 +280,28 @@ func (s *BatchConsumerTestSuite) TestHealthTracksBusinessProcessing() {
 func (s *BatchConsumerTestSuite) TestSharedShutdownDeadlineCancelsWork() {
 	t := s.T()
 	started := make(chan struct{})
+	canceled := make(chan struct{})
 	s.startConsumer(1, time.Hour, func(ctx context.Context, _ []any, _ []map[string]string) ([]bool, error) {
 		close(started)
 		<-ctx.Done()
+		close(canceled)
 
 		return []bool{false}, ctx.Err()
 	})
 	s.publishModel(1)
 	waitBatchTest(t, started)
 	s.cancel()
+	s.clock.BlockUntilTimers(1)
+	s.clock.Advance(s.settings.GraceTime - time.Nanosecond)
+
+	select {
+	case <-canceled:
+		t.Fatal("processing canceled before the shared drain deadline")
+	default:
+	}
+
+	s.clock.Advance(time.Nanosecond)
+	waitBatchTest(t, canceled)
 	waitBatchTest(t, s.done)
 	require.NoError(t, s.err)
 	require.Len(t, s.retryMessages, 1)
@@ -469,6 +508,7 @@ func (s *BatchConsumerTestSuite) TestDisaggregatesAndRetriesMalformedMessages() 
 	s.input.Publish(stream.NewMessage("not json", map[string]string{stream.AttributeEncoding: stream.EncodingJson.String()}))
 	// A valid subsequent record still makes progress alongside decoder failures.
 	s.publishModel(3)
+	s.advanceUntil(func() bool { return len(processed) > 0 })
 
 	select {
 	case value := <-processed:
@@ -768,7 +808,7 @@ func (s *BatchConsumerTestSuite) TestFailedRetryWriteBeforeDrainingRequiresRepla
 			} else {
 				s.publishModel(1)
 				if !tc.retry {
-					waitBatchTest(t, failed)
+					s.waitForBatchProcessing(failed, tc.name == "timer flush")
 				}
 			}
 
@@ -787,7 +827,7 @@ func (s *BatchConsumerTestSuite) TestFailedRetryWriteBeforeDrainingRequiresRepla
 				s.publishModel(2)
 			}
 
-			waitBatchTest(t, processed)
+			s.waitForBatchProcessing(processed, tc.name == "timer flush")
 			// The successful subsequent callback proves that the earlier failure was
 			// handled by the collection loop before shutdown starts.
 			s.cancel()
@@ -798,9 +838,9 @@ func (s *BatchConsumerTestSuite) TestFailedRetryWriteBeforeDrainingRequiresRepla
 	}
 }
 
-// TestBatchConsumerWithInterfacesRejectsInvalidSettings verifies that zero or negative batch sizes
-// and negative buffer sizes return an error and no consumer before accessing the supplied dependencies.
-func TestBatchConsumerWithInterfacesRejectsInvalidSettings(t *testing.T) {
+// TestBatchConsumerFactoryRejectsInvalidSettings verifies that config validation rejects
+// zero or negative batch sizes and negative buffer sizes before constructing dependencies.
+func TestBatchConsumerFactoryRejectsInvalidSettings(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		settings stream.BatchConsumerSettings
@@ -810,8 +850,20 @@ func TestBatchConsumerWithInterfacesRejectsInvalidSettings(t *testing.T) {
 		{name: "negative buffer size", settings: stream.BatchConsumerSettings{BatchSize: 1, BufferSize: -1}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			consumer, err := stream.NewUntypedBatchConsumerWithInterfaces(nil, nil, tc.settings)
-			require.ErrorContains(t, err, "invalid batch consumer settings")
+			config := cfg.New(map[string]any{
+				"stream": map[string]any{
+					"consumer": map[string]any{
+						"test": map[string]any{
+							"batch_size": tc.settings.BatchSize, "buffer_size": tc.settings.BufferSize,
+						},
+					},
+				},
+			})
+			factory := stream.NewUntypedBatchConsumer("test", func(context.Context, cfg.Config, log.Logger) (stream.UntypedBatchConsumerCallback, error) {
+				return &batchTestCallback{consume: successfulBatch}, nil
+			})
+			consumer, err := factory(t.Context(), config, logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)))
+			require.ErrorContains(t, err, "validation failed")
 			require.Nil(t, consumer)
 		})
 	}
@@ -886,7 +938,7 @@ func (s *BatchConsumerTestSuite) startConsumerWithCallback(size int, interval ti
 		s.settings,
 		"test",
 		s.samplingDecider,
-		clock.NewRealClock(),
+		s.clock,
 	)
 
 	batch, err := stream.NewUntypedBatchConsumerWithInterfaces(base, callback, s.batchSettings)
@@ -918,6 +970,31 @@ func (s *BatchConsumerTestSuite) publishModel(value int) {
 	case <-time.After(time.Second):
 		t.Fatal("input callback did not acknowledge buffering")
 	}
+}
+
+func (s *BatchConsumerTestSuite) waitForBatchProcessing(done <-chan struct{}, flush bool) {
+	s.T().Helper()
+	if flush {
+		s.advanceUntil(func() bool { return len(done) > 0 })
+	}
+
+	waitBatchTest(s.T(), done)
+}
+
+// advanceUntil drives flushes with virtual time while allowing the collection goroutine
+// to run. Admission precedes collection, so a tick can arrive before the record is collected.
+func (s *BatchConsumerTestSuite) advanceUntil(done func() bool) {
+	s.T().Helper()
+	s.clock.BlockUntilTickers(2)
+	require.Eventually(s.T(), func() bool {
+		if done() {
+			return true
+		}
+
+		s.clock.Advance(s.settings.IdleTimeout)
+
+		return done()
+	}, time.Second, time.Millisecond)
 }
 
 type batchTestModel struct {

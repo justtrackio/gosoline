@@ -66,7 +66,16 @@ func NewUntypedConsumer(name string, callbackFactory UntypedConsumerCallbackFact
 
 func NewUntypedConsumerWithInterfaces(base *consumerBase, callback UntypedConsumerCallback) *Consumer {
 	consumer := &Consumer{consumerBase: base, callback: callback}
-	consumer.setCallbackHooks(callback)
+	base.init, base.run, base.inputsFinished = nil, nil, nil
+
+	if initializeable, ok := callback.(InitializeableCallback); ok {
+		base.init = initializeable.Init
+	}
+
+	if runnable, ok := callback.(RunnableCallback); ok {
+		base.run = runnable.Run
+	}
+
 	consumer.inputProcess = consumer.processData
 	consumer.retryProcess = consumer.processData
 
@@ -199,7 +208,7 @@ func (c *Consumer) process(gracedCtx context.Context, msg *Message, hasNativeRet
 			&metric.Datum{
 				MetricName: metricNameConsumerUnknownModelError,
 				Dimensions: map[string]string{
-					"Consumer": c.name,
+					metricDimensionConsumer: c.name,
 				},
 				Value: 1.0,
 			},

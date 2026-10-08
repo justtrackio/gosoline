@@ -6,7 +6,7 @@
 - Powers mdlsub, metrics exporters, and application stream modules.
 
 ## Key files
-- `consumer_base.go` - shared dependencies, callback hook wiring and methods for input lifecycle, shutdown, health, tracing and metrics.
+- `consumer_base.go` - shared dependencies and methods for callback lifecycle, input lifecycle, shutdown, health, tracing and metrics.
 - `consumer.go` - callback interfaces and default metric definitions.
 - `consumer_single.go`, `consumer_batch.go` - independent single-record and batch processing built on the internal `consumerBase`.
 - `consumer*_module_factory.go`, `producer*.go` - module factories and producer logic.
@@ -125,6 +125,9 @@ concurrency across shards; in `unordered` mode records from the same shard may b
 still advance in shard order. In-memory inputs use `runner_count` to control the number of concurrent message-processing
 callbacks.
 
+Both single-record and batch consumers require strictly positive `idle_timeout` and
+`grace_time` values, enforced when unmarshalling the shared consumer settings.
+
 ### Batch consumers
 
 `NewBatchConsumer` / `NewUntypedBatchConsumer` and their multi-factories
@@ -148,6 +151,8 @@ primary admission acknowledgement does not depend on `aggregate_message_mode`.
 Retry envelopes acknowledge only if all children succeed. One aggregate may
 exceed the batch-size threshold. Preserve original propagation
 attributes for retries while decoding copies for the callback.
+Every admitted record carries an explicit retry payload; flattened primary children
+replace it with their individual aggregate envelope instead of using a nil fallback.
 
 Each record is decoded with its own input/envelope context and the shared drain
 cancellation. The first successfully decoded record supplies the batch callback's
@@ -160,6 +165,8 @@ application runners. Unit tests are in `consumer_batch_test.go`: the testify
 `BatchConsumerTestSuite` owns fresh fixtures for each test and subtest, with
 explicit consumer startup and cleanup before mock assertions. Factory and
 type-erasure tests remain standalone.
+The batch suite injects a fake clock for flushing, health and shutdown deadlines;
+real-time waits are bounded goroutine/watchdog synchronization only.
 
 Single `Consumer` and `BatchConsumer` both embed an internal `consumerBase`;
 batch factories construct the base directly rather than creating a single-record
@@ -167,9 +174,11 @@ consumer with a nil callback. Each concrete consumer owns its processing and
 acknowledgement/retry policies. The existing batch WithInterfaces constructor
 can still reuse an unstarted single consumer's base for dependency injection.
 `NewUntypedBatchConsumerWithInterfaces` returns `(*BatchConsumer, error)`;
-invalid batch or buffer sizes return a construction error.
+Batch and buffer sizes are validated through their settings tags during config
+unmarshalling. Direct WithInterfaces callers must supply validated settings.
 Consumer lifecycle uses internal `init`, `run`, and `inputsFinished` hooks directly on `consumerBase`,
-independent of single-record processing. Batch consumers wire collection and
+independent of single-record processing. Concrete consumer constructors initialize
+the final hooks directly. Batch consumers wire collection and
 optional callback background work directly, closing admission after both inputs
 finish. Schema configuration is passed separately during encoder construction;
 batch callbacks do not need a single-record adapter.
@@ -243,10 +252,11 @@ policy rather than just the primary transport's native-redelivery capability.
 
 `Message` JSON serialization uses the `attributes`/`body` representation for UTF-8
 data. Attribute values must be strings; numeric and boolean values are rejected
-rather than converted. Non-UTF-8 bodies use `bodyBase64`; non-UTF-8 attribute values use
-`attributesBase64`. Both decode back to the original bytes, including inside
-aggregates, so schema-registry Kafka payloads and binary headers survive SQS retries.
-Readers must support these additional fields before receiving binary-safe envelopes.
+rather than converted. Non-UTF-8 bodies are base64-encoded in `body` and flagged with
+the reserved `goso.body.base64: "true"` attribute, which is removed during unmarshalling.
+The payload-format `encoding` attribute is preserved. Bodies decode back to the
+original bytes, including inside aggregates, so schema-registry Kafka payloads
+survive SQS retries. Attribute keys and values are expected to be valid UTF-8 strings.
 
 ## Related packages
 - `pkg/cloud/aws/sqs`, `sns`, `kinesis` - AWS transport clients

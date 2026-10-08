@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	metricDimensionConsumer             = "Consumer"
 	metricNameConsumerDuration          = "Duration"
 	metricNameConsumerError             = "Error"
 	metricNameConsumerProcessedCount    = "ProcessedCount"
@@ -45,7 +46,7 @@ func getConsumerDefaultMetrics(name string) metric.Data {
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerProcessedCount,
 			Dimensions: map[string]string{
-				"Consumer": name,
+				metricDimensionConsumer: name,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
@@ -54,7 +55,7 @@ func getConsumerDefaultMetrics(name string) metric.Data {
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerError,
 			Dimensions: map[string]string{
-				"Consumer": name,
+				metricDimensionConsumer: name,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
@@ -63,7 +64,7 @@ func getConsumerDefaultMetrics(name string) metric.Data {
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerRetryPutCount,
 			Dimensions: map[string]string{
-				"Consumer": name,
+				metricDimensionConsumer: name,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
@@ -72,7 +73,7 @@ func getConsumerDefaultMetrics(name string) metric.Data {
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerRetryGetCount,
 			Dimensions: map[string]string{
-				"Consumer": name,
+				metricDimensionConsumer: name,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
@@ -81,7 +82,7 @@ func getConsumerDefaultMetrics(name string) metric.Data {
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerUnknownModelError,
 			Dimensions: map[string]string{
-				"Consumer": name,
+				metricDimensionConsumer: name,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,

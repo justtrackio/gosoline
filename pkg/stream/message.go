@@ -10,6 +10,9 @@ import (
 )
 
 const (
+	// AttributeBodyBase64 marks a JSON envelope's body as base64-encoded. It is
+	// reserved for serialization and removed when the message is unmarshalled.
+	AttributeBodyBase64                 = "goso.body.base64"
 	AttributeSqsMessageId               = "sqsMessageId"
 	AttributeSqsReceiptHandle           = "sqsReceiptHandle"
 	AttributeSqsApproximateReceiveCount = "sqsApproximateReceiveCount"
@@ -20,33 +23,26 @@ type Message struct {
 	Body       string            `json:"body"`
 }
 
-// MarshalJSON preserves arbitrary payload and attribute bytes across JSON-based
-// transports. UTF-8 messages retain their existing wire representation.
+// MarshalJSON preserves arbitrary payload bytes across JSON-based transports.
+// Attributes are expected to contain valid UTF-8 strings.
 func (m Message) MarshalJSON() ([]byte, error) {
+	if _, ok := m.Attributes[AttributeBodyBase64]; ok {
+		return nil, fmt.Errorf("message attribute %s is reserved for serialization", AttributeBodyBase64)
+	}
+
 	wire := wireMessage{
-		Attributes: m.Attributes,
+		Attributes: maps.Clone(m.Attributes),
 		Body:       m.Body,
 	}
 
 	// if the body is not valid utf8, we have to base64 encode
 	if !utf8.ValidString(m.Body) {
-		wire.Body = ""
-		wire.BodyBase64 = base64.StdEncoding.EncodeToString([]byte(m.Body))
-	}
-
-	for key, value := range m.Attributes {
-		if utf8.ValidString(value) {
-			continue
+		wire.Body = base64.StdEncoding.EncodeToString([]byte(m.Body))
+		if wire.Attributes == nil {
+			wire.Attributes = make(map[string]string)
 		}
 
-		if wire.AttributesBase64 == nil {
-			wire.AttributesBase64 = make(map[string]string)
-			wire.Attributes = make(map[string]string, len(m.Attributes))
-			maps.Copy(wire.Attributes, m.Attributes)
-		}
-
-		delete(wire.Attributes, key)
-		wire.AttributesBase64[key] = base64.StdEncoding.EncodeToString([]byte(value))
+		wire.Attributes[AttributeBodyBase64] = "true"
 	}
 
 	return json.Marshal(wire)
@@ -80,7 +76,6 @@ func (m *Message) MarshalToString() (string, error) {
 func (m *Message) UnmarshalFromBytes(data []byte) error {
 	var err error
 	var body []byte
-	var decoded []byte
 
 	var wire wireMessage
 	if err := json.Unmarshal(data, &wire); err != nil {
@@ -91,22 +86,20 @@ func (m *Message) UnmarshalFromBytes(data []byte) error {
 	if m.Attributes == nil {
 		m.Attributes = make(map[string]string)
 	}
+
 	m.Body = wire.Body
 
-	if wire.BodyBase64 != "" {
-		if body, err = base64.StdEncoding.DecodeString(wire.BodyBase64); err != nil {
+	if encoded, ok := m.Attributes[AttributeBodyBase64]; ok {
+		if encoded != "true" {
+			return fmt.Errorf("invalid base64 body flag %q", encoded)
+		}
+
+		if body, err = base64.StdEncoding.DecodeString(wire.Body); err != nil {
 			return fmt.Errorf("can not decode base64 message body: %w", err)
 		}
 
 		m.Body = string(body)
-	}
-
-	for key, value := range wire.AttributesBase64 {
-		if decoded, err = base64.StdEncoding.DecodeString(value); err != nil {
-			return fmt.Errorf("can not decode base64 attribute %s: %w", key, err)
-		}
-
-		m.Attributes[key] = string(decoded)
+		delete(m.Attributes, AttributeBodyBase64)
 	}
 
 	return nil
@@ -116,9 +109,5 @@ func (m *Message) UnmarshalFromString(data string) error {
 	return m.UnmarshalFromBytes([]byte(data))
 }
 
-type wireMessage struct {
-	Attributes       map[string]string `json:"attributes"`
-	Body             string            `json:"body"`
-	BodyBase64       string            `json:"bodyBase64,omitempty"`
-	AttributesBase64 map[string]string `json:"attributesBase64,omitempty"`
-}
+// wireMessage has the same fields as Message without its JSON methods.
+type wireMessage Message
