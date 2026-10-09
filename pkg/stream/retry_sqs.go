@@ -37,13 +37,14 @@ type RetryHandlerSqs struct {
 }
 
 func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, RetryHandler, error) {
+	var settings RetryHandlerSqsSettings
 	var err error
 	var input Input
 	var output Output
 
 	key := ConfigurableConsumerRetryKey(name)
-	settings := &RetryHandlerSqsSettings{}
-	if err := config.UnmarshalKey(key, settings); err != nil {
+
+	if settings, err = cfg.GetSettings[RetryHandlerSqsSettings](config, key); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal retry handler sqs settings for %s: %w", name, err)
 	}
 
@@ -91,7 +92,7 @@ func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logge
 		return nil, nil, fmt.Errorf("can not create input: %w", err)
 	}
 
-	return input, NewRetryHandlerSqsWithInterfaces(output, settings), nil
+	return input, NewRetryHandlerSqsWithInterfaces(output, &settings), nil
 }
 
 func NewRetryHandlerSqsWithInterfaces(output Output, settings *RetryHandlerSqsSettings) *RetryHandlerSqs {

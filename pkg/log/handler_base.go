@@ -30,9 +30,12 @@ func (h *handlerBase) ChannelLevel(name string) (*int, error) {
 	h.lck.Lock()
 	defer h.lck.Unlock()
 
+	var settings ChannelSetting
+	var err error
+
 	key := fmt.Sprintf("%s.channels.%s", getHandlerConfigKey(h.name), name)
-	settings := &ChannelSetting{}
-	if err := h.config.UnmarshalKey(key, settings); err != nil {
+
+	if settings, err = cfg.GetSettings[ChannelSetting](h.config, key); err != nil {
 		h.channels[name] = nil
 
 		return nil, fmt.Errorf("can not unmarshal channel settings: %w", err)

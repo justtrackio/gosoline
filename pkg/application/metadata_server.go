@@ -32,12 +32,14 @@ type MetadataServer struct {
 	config   cfg.Config
 	logger   log.Logger
 	server   *http.Server
-	settings *MetadataServerSettings
+	settings MetadataServerSettings
 }
 
 func NewMetadataServer(_ context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-	settings := &MetadataServerSettings{}
-	if err := config.UnmarshalKey("appctx.metadata.server", settings); err != nil {
+	var settings MetadataServerSettings
+	var err error
+
+	if settings, err = cfg.GetSettings[MetadataServerSettings](config, "appctx.metadata.server"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal metadata server settings: %w", err)
 	}
 

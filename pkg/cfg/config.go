@@ -793,3 +793,21 @@ func (c *config) unmarshalStruct(key string, output any, additionalDefaults []Un
 
 	return nil
 }
+
+// GetDefaults unmarshals the config defaults into a new value of type T.
+// Additional defaults can be passed to override individual keys.
+func GetDefaults[T any](c Config, additionalDefaults ...UnmarshalDefaults) (T, error) {
+	var settings T
+	err := c.UnmarshalDefaults(&settings, additionalDefaults...)
+
+	return settings, err
+}
+
+// GetSettings unmarshals the config values under the given key into a new value of type T.
+// Additional defaults can be passed to override individual keys.
+func GetSettings[T any](c Config, key string, additionalDefaults ...UnmarshalDefaults) (T, error) {
+	var settings T
+	err := c.UnmarshalKey(key, &settings, additionalDefaults...)
+
+	return settings, err
+}

@@ -37,6 +37,9 @@ type TopicNamingSettings struct {
 }
 
 func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (string, error) {
+	var namingSettings TopicNamingSettings
+	var err error
+
 	if topicSettings.GetClientName() == "" {
 		return "", fmt.Errorf("the client name shouldn't be empty")
 	}
@@ -44,8 +47,7 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("sns", topicSettings.GetClientName()))
 	defaultPatternKey := fmt.Sprintf("%s.naming.topic_pattern", aws.GetClientConfigKey("sns", "default"))
 
-	namingSettings := &TopicNamingSettings{}
-	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "topic_pattern")); err != nil {
+	if namingSettings, err = cfg.GetSettings[TopicNamingSettings](config, namingKey, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "topic_pattern")); err != nil {
 		return "", fmt.Errorf("failed to unmarshal sns naming settings for %s: %w", namingKey, err)
 	}
 

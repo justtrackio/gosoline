@@ -34,7 +34,9 @@ type mailpitCtxKey string
 func ProvideClient(ctx context.Context, config cfg.Config, _ log.Logger) (Client, error) {
 	return appctx.Provide(ctx, mailpitCtxKey("default"), func() (Client, error) {
 		var conf Config
-		if err := config.UnmarshalKey("mailpit", &conf); err != nil {
+		var err error
+
+		if conf, err = cfg.GetSettings[Config](config, "mailpit"); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal mailpit config: %w", err)
 		}
 

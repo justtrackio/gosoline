@@ -46,13 +46,14 @@ func ProvideShareManager(ctx context.Context, config cfg.Config, logger log.Logg
 }
 
 func NewShareManager(ctx context.Context, config cfg.Config, logger log.Logger) (*shareManager, error) {
+	var settings Settings
+
 	orm, err := db_repo.NewOrm(ctx, config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
 
-	settings := Settings{}
-	if err := config.UnmarshalKey("share", &settings); err != nil {
+	if settings, err = cfg.GetSettings[Settings](config, "share"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal share manager settings: %w", err)
 	}
 

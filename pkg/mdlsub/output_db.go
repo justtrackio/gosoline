@@ -82,13 +82,14 @@ type outputDbNoopLogger struct{}
 func (outputDbNoopLogger) Print(...any) {}
 
 func NewOutputDb(ctx context.Context, config cfg.Config, logger log.Logger) (*OutputDb, error) {
+	var settings outputDbOrmSettings
+
 	client, err := db.NewClient(ctx, config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: can not create db connection: %w", err)
 	}
 
-	var settings outputDbOrmSettings
-	if err := config.UnmarshalKey("db.default", &settings); err != nil {
+	if settings, err = cfg.GetSettings[outputDbOrmSettings](config, "db.default"); err != nil {
 		return nil, fmt.Errorf("can not create orm: failed to unmarshal orm settings for key %q: %w", "db.default", err)
 	}
 

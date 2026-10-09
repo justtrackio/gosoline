@@ -46,11 +46,12 @@ func New(name string, definer ServiceDefiner, middlewares ...MiddlewareFactory) 
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		var (
 			err                 error
+			settings            Settings
 			definitions         *Definitions
 			tracingInstrumentor tracing.Instrumentor
 		)
-		settings := &Settings{}
-		if err := config.UnmarshalKey(fmt.Sprintf("%s.%s", grpcServerConfigKey, name), settings); err != nil {
+
+		if settings, err = cfg.GetSettings[Settings](config, fmt.Sprintf("%s.%s", grpcServerConfigKey, name)); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal grpc server config for %s: %w", name, err)
 		}
 
@@ -72,7 +73,7 @@ func New(name string, definer ServiceDefiner, middlewares ...MiddlewareFactory) 
 			return nil, fmt.Errorf("can not create tracer: %w", err)
 		}
 
-		return NewWithInterfaces(ctx, logger, tracingInstrumentor, definitions, settings, interceptors...)
+		return NewWithInterfaces(ctx, logger, tracingInstrumentor, definitions, &settings, interceptors...)
 	}
 }
 

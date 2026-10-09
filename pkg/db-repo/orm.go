@@ -24,6 +24,7 @@ type OrmSettings struct {
 }
 
 func NewOrm(ctx context.Context, config cfg.Config, logger log.Logger, dbClientName string) (*gorm.DB, error) {
+	var settings OrmSettings
 	var err error
 
 	if dbClientName == "" {
@@ -35,9 +36,9 @@ func NewOrm(ctx context.Context, config cfg.Config, logger log.Logger, dbClientN
 		return nil, fmt.Errorf("can not create db connection : %w", err)
 	}
 
-	settings := OrmSettings{}
 	key := fmt.Sprintf("db.%s", dbClientName)
-	if err := config.UnmarshalKey(key, &settings); err != nil {
+
+	if settings, err = cfg.GetSettings[OrmSettings](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal orm settings for key %q: %w", key, err)
 	}
 

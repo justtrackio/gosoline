@@ -38,6 +38,9 @@ func GetTableName(config cfg.Config, settings *Settings) (string, error) {
 }
 
 func GetTableNamingSettings(config cfg.Config, clientName string) (*TableNamingSettings, error) {
+	var namingSettings TableNamingSettings
+	var err error
+
 	if clientName == "" {
 		clientName = "default"
 	}
@@ -46,14 +49,12 @@ func GetTableNamingSettings(config cfg.Config, clientName string) (*TableNamingS
 	defaultTablePatternKey := fmt.Sprintf("%s.naming.table_pattern", aws.GetClientConfigKey("dynamodb", "default"))
 	defaultTableDelimiterKey := fmt.Sprintf("%s.naming.table_delimiter", aws.GetClientConfigKey("dynamodb", "default"))
 
-	namingSettings := &TableNamingSettings{}
-	err := config.UnmarshalKey(namingKey, namingSettings, []cfg.UnmarshalDefaults{
+	if namingSettings, err = cfg.GetSettings[TableNamingSettings](config, namingKey, []cfg.UnmarshalDefaults{
 		cfg.UnmarshalWithDefaultsFromKey(defaultTablePatternKey, "table_pattern"),
 		cfg.UnmarshalWithDefaultsFromKey(defaultTableDelimiterKey, "table_delimiter"),
-	}...)
-	if err != nil {
+	}...); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal table naming settings: %w", err)
 	}
 
-	return namingSettings, nil
+	return &namingSettings, nil
 }

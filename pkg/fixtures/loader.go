@@ -16,7 +16,7 @@ type fixtureLoader struct {
 	logger         log.Logger
 	fixtureSets    map[string][]FixtureSet
 	postProcessors []PostProcessor
-	settings       *fixtureLoaderSettings
+	settings       fixtureLoaderSettings
 }
 
 func NewFixtureLoader(_ context.Context, config cfg.Config, logger log.Logger, fixtureSets map[string][]FixtureSet, postProcessors []PostProcessor) (FixtureLoader, error) {

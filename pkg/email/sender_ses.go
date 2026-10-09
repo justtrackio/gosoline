@@ -30,15 +30,17 @@ type sesSender struct {
 }
 
 func NewSesSender(ctx context.Context, config cfg.Config, logger log.Logger, name string) (SenderWithAttachments, error) {
+	var sesSettings SenderSesSettings
+	var emailConfig emailSettings
+	var err error
+
 	key := fmt.Sprintf("email.%s", name)
 
-	sesSettings := &SenderSesSettings{}
-	if err := config.UnmarshalKey(key, sesSettings); err != nil {
+	if sesSettings, err = cfg.GetSettings[SenderSesSettings](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal ses settings for key %q in NewSesSender: %w", key, err)
 	}
 
-	emailConfig := &emailSettings{}
-	if err := config.UnmarshalKey(key, emailConfig); err != nil {
+	if emailConfig, err = cfg.GetSettings[emailSettings](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal email settings for key %q in NewSesSender: %w", key, err)
 	}
 	if err := emailConfig.validate(); err != nil {

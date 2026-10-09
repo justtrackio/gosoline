@@ -47,6 +47,8 @@ type updaterService struct {
 }
 
 func NewUpdater(ctx context.Context, config cfg.Config, logger log.Logger) (UpdaterService, error) {
+	var settings Settings
+
 	logger = logger.WithChannel("currency_updater_service")
 
 	store, err := kvstore.ProvideConfigurableKvStore[float64](ctx, config, logger, kvStoreName)
@@ -59,8 +61,7 @@ func NewUpdater(ctx context.Context, config cfg.Config, logger log.Logger) (Upda
 		return nil, fmt.Errorf("can not create http client: %w", err)
 	}
 
-	settings := &Settings{}
-	if err := config.UnmarshalKey("currency_service", settings); err != nil {
+	if settings, err = cfg.GetSettings[Settings](config, "currency_service"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal currency updater settings: %w", err)
 	}
 
@@ -73,7 +74,7 @@ func NewUpdater(ctx context.Context, config cfg.Config, logger log.Logger) (Upda
 		return nil, fmt.Errorf("failed to initialize providers: %w", err)
 	}
 
-	return NewUpdaterWithInterfaces(logger, store, httpClient, clock.Provider, settings, providers), nil
+	return NewUpdaterWithInterfaces(logger, store, httpClient, clock.Provider, &settings, providers), nil
 }
 
 func NewUpdaterWithInterfaces(logger log.Logger, store kvstore.KvStore[float64], httpClient http.Client, clock clock.Clock, settings *Settings, providers []Provider) UpdaterService {
@@ -266,8 +267,10 @@ func initProviders(ctx context.Context, config cfg.Config, logger log.Logger, ht
 	providersConfig := make(ProvidersConfig)
 
 	for name := range providerRegistry {
-		providerSettings := ProviderSettings{}
-		if err := config.UnmarshalKey("currency_service.providers."+name, &providerSettings); err != nil {
+		var providerSettings ProviderSettings
+		var err error
+
+		if providerSettings, err = cfg.GetSettings[ProviderSettings](config, "currency_service.providers."+name); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal provider settings for %s: %w", name, err)
 		}
 

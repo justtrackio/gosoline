@@ -100,6 +100,7 @@ func getInputKeyForSubscriber(config cfg.Config, name string, subscriberSettings
 }
 
 func processSubscriberConfig(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings, modelIds []string) error {
+	var consumerSettings stream.ConsumerSettings
 	var ok bool
 	var err error
 	var consumerName string
@@ -109,8 +110,7 @@ func processSubscriberConfig(config cfg.GosoConf, name string, subscriberSetting
 
 	subscriberKey := GetSubscriberConfigKey(name)
 
-	consumerSettings := &stream.ConsumerSettings{}
-	if err = config.UnmarshalDefaults(consumerSettings); err != nil {
+	if consumerSettings, err = cfg.GetDefaults[stream.ConsumerSettings](config); err != nil {
 		return fmt.Errorf("can not unmarshal consumer settings for subscriber %s: %w", name, err)
 	}
 
@@ -125,7 +125,7 @@ func processSubscriberConfig(config cfg.GosoConf, name string, subscriberSetting
 	consumerKey := stream.ConfigurableConsumerKey(consumerName)
 
 	configOptions := []cfg.Option{
-		cfg.WithConfigSetting(consumerKey, consumerSettings, cfg.SkipExisting),
+		cfg.WithConfigSetting(consumerKey, &consumerSettings, cfg.SkipExisting),
 		cfg.WithConfigSetting(subscriberKey, subscriberSettings),
 	}
 
@@ -153,6 +153,7 @@ func processSubscriberConfig(config cfg.GosoConf, name string, subscriberSetting
 }
 
 func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings, modelIds []string) (cfg.Option, error) {
+	var inputSettings stream.SnsInputConfiguration
 	var err error
 	var inputKey string
 
@@ -172,8 +173,7 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 		consumerId = sharedName
 	}
 
-	inputSettings := &stream.SnsInputConfiguration{}
-	if err := config.UnmarshalDefaults(inputSettings); err != nil {
+	if inputSettings, err = cfg.GetDefaults[stream.SnsInputConfiguration](config); err != nil {
 		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting), nil
 	}
 
@@ -190,10 +190,11 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 		},
 	}
 
-	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting), nil
+	return cfg.WithConfigSetting(inputKey, &inputSettings, cfg.SkipExisting), nil
 }
 
 func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings, _ []string) (cfg.Option, error) {
+	var inputSettings stream.KafkaInputConfiguration
 	var err error
 	var inputKey string
 
@@ -207,8 +208,7 @@ func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, s
 		topicId = sharedName
 	}
 
-	inputSettings := &stream.KafkaInputConfiguration{}
-	if err := config.UnmarshalDefaults(inputSettings); err != nil {
+	if inputSettings, err = cfg.GetDefaults[stream.KafkaInputConfiguration](config); err != nil {
 		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting), nil
 	}
 
@@ -217,10 +217,11 @@ func kafkaSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, s
 	inputSettings.GroupId = topicId
 	inputSettings.TopicId = topicId
 
-	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting), nil
+	return cfg.WithConfigSetting(inputKey, &inputSettings, cfg.SkipExisting), nil
 }
 
 func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings, _ []string) (cfg.Option, error) {
+	var inputSettings stream.KinesisInputConfiguration
 	var err error
 	var inputKey string
 
@@ -234,8 +235,7 @@ func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string,
 		streamName = sharedName
 	}
 
-	inputSettings := &stream.KinesisInputConfiguration{}
-	if err := config.UnmarshalDefaults(inputSettings); err != nil {
+	if inputSettings, err = cfg.GetDefaults[stream.KinesisInputConfiguration](config); err != nil {
 		return cfg.WithConfigSetting(inputKey, nil, cfg.SkipExisting), nil
 	}
 
@@ -243,14 +243,16 @@ func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string,
 	inputSettings.Name = sourceModel.Name
 	inputSettings.StreamName = streamName
 
-	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting), nil
+	return cfg.WithConfigSetting(inputKey, &inputSettings, cfg.SkipExisting), nil
 }
 
 func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) (cfg.Option, error) {
+	var kvstoreSettings kvstore.ChainConfiguration
+	var err error
+
 	kvstoreKey := kvstore.GetConfigurableKey(name)
 
-	kvstoreSettings := &kvstore.ChainConfiguration{}
-	if err := config.UnmarshalDefaults(kvstoreSettings); err != nil {
+	if kvstoreSettings, err = cfg.GetDefaults[kvstore.ChainConfiguration](config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal default kvstore configuration for subscriber %q: %w", name, err)
 	}
 
@@ -263,7 +265,7 @@ func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string
 	kvstoreSettings.ModelId = modelId
 	kvstoreSettings.Elements = []string{kvstore.TypeRedis, kvstore.TypeDdb}
 
-	return cfg.WithConfigSetting(kvstoreKey, kvstoreSettings, cfg.SkipExisting), nil
+	return cfg.WithConfigSetting(kvstoreKey, &kvstoreSettings, cfg.SkipExisting), nil
 }
 
 func buildSubscriberFilterPolicy(modelIds []string) map[string][]string {
@@ -311,9 +313,12 @@ func GetSubscriberOutputConfigKey(name string) string {
 }
 
 func UnmarshalSubscriberSourceModel(config cfg.Config, name string) (SubscriberModel, error) {
+	var sourceModel SubscriberModel
+	var err error
+
 	key := fmt.Sprintf("%s.source", GetSubscriberConfigKey(name))
-	sourceModel := &SubscriberModel{}
-	if err := config.UnmarshalKey(key, sourceModel); err != nil {
+
+	if sourceModel, err = cfg.GetSettings[SubscriberModel](config, key); err != nil {
 		return SubscriberModel{}, fmt.Errorf("failed to unmarshal subscriber source model: %w", err)
 	}
 
@@ -321,5 +326,5 @@ func UnmarshalSubscriberSourceModel(config cfg.Config, name string) (SubscriberM
 		sourceModel.Name = name
 	}
 
-	return *sourceModel, nil
+	return sourceModel, nil
 }

@@ -31,7 +31,9 @@ func ProvideRepository(ctx context.Context, config cfg.Config, logger log.Logger
 
 func newRepository(ctx context.Context, config cfg.Config, logger log.Logger) (db_repo.Repository, error) {
 	var settings Settings
-	if err := config.UnmarshalKey("shares", &settings); err != nil {
+	var err error
+
+	if settings, err = cfg.GetSettings[Settings](config, "shares"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal share repository settings: %w", err)
 	}
 	tn := settings.TableName

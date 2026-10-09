@@ -48,13 +48,14 @@ type awsTracer struct {
 }
 
 func NewAwsTracer(_ context.Context, config cfg.Config, logger log.Logger) (Tracer, error) {
+	var settings XrayTracerSettings
+
 	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
 		return nil, fmt.Errorf("could not get app identity from config: %w", err)
 	}
 
-	settings := &XrayTracerSettings{}
-	if err := config.UnmarshalKey("tracing.xray", settings); err != nil {
+	if settings, err = cfg.GetSettings[XrayTracerSettings](config, "tracing.xray"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal xray tracer settings: %w", err)
 	}
 
@@ -154,7 +155,7 @@ func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (cont
 	return ctx, transaction
 }
 
-func lookupAddr(config cfg.Config, identity cfg.Identity, settings *XrayTracerSettings) (string, error) {
+func lookupAddr(config cfg.Config, identity cfg.Identity, settings XrayTracerSettings) (string, error) {
 	addressValue := settings.AddressValue
 
 	if settings.AddressType != dnsSrv {

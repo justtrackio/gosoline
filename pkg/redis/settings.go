@@ -29,17 +29,17 @@ func GetRedisConfigKey(name string) string {
 }
 
 func ReadSettings(config cfg.Config, name string) (*Settings, error) {
+	var settings Settings
 	var err error
 	key := GetRedisConfigKey(name)
 
 	// This is a hack to ensure default redis config is populated,
 	// because cfg.UnmarshalWithDefaultsFromKey does only read from already set config but not from env vars
-	if err = config.UnmarshalKey("redis.default", &Settings{}); err != nil {
+	if _, err = cfg.GetSettings[Settings](config, "redis.default"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal redis.default in ReadSettings: %w", err)
 	}
 
-	settings := &Settings{}
-	if err = config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultsFromKey("redis.default", ".")); err != nil {
+	if settings, err = cfg.GetSettings[Settings](config, key, cfg.UnmarshalWithDefaultsFromKey("redis.default", ".")); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal redis settings for key %q in ReadSettings: %w", key, err)
 	}
 
@@ -65,5 +65,5 @@ func ReadSettings(config cfg.Config, name string) (*Settings, error) {
 		return nil, fmt.Errorf("failed to read backoff settings for redis %q: %w", key, err)
 	}
 
-	return settings, nil
+	return &settings, nil
 }

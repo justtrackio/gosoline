@@ -38,6 +38,7 @@ func FixtureSetFactory(transformerFactoryMap TransformerMapTypeVersionFactories)
 	return func(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
 		var err error
 		var settings *Settings
+		var fixtureSettings FixtureSettings
 		var core SubscriberCore
 		var sets []fixtures.FixtureSet
 
@@ -46,8 +47,8 @@ func FixtureSetFactory(transformerFactoryMap TransformerMapTypeVersionFactories)
 		}
 
 		key := fmt.Sprintf("fixtures.providers.%s", group)
-		fixtureSettings := &FixtureSettings{}
-		if err := config.UnmarshalKey(key, fixtureSettings); err != nil {
+
+		if fixtureSettings, err = cfg.GetSettings[FixtureSettings](config, key); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal fixture settings for group %s: %w", group, err)
 		}
 
@@ -56,7 +57,7 @@ func FixtureSetFactory(transformerFactoryMap TransformerMapTypeVersionFactories)
 		}
 
 		for _, sub := range settings.Subscribers {
-			sets = append(sets, NewFixtureSet(logger, sub.SourceModel, core, fixtureSettings))
+			sets = append(sets, NewFixtureSet(logger, sub.SourceModel, core, &fixtureSettings))
 		}
 
 		return sets, nil

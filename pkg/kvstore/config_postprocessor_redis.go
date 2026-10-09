@@ -31,6 +31,7 @@ func RedisConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	for name, kvstore := range kvstores {
 		var elements []any
 		var kvstoreMap map[string]any
+		var configuration ChainConfiguration
 		var ok bool
 
 		if kvstoreMap, ok = kvstore.(map[string]any); !ok {
@@ -47,8 +48,7 @@ func RedisConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 
 		kvstoreKey := GetConfigurableKey(name)
 
-		configuration := ChainConfiguration{}
-		if err := config.UnmarshalKey(kvstoreKey, &configuration); err != nil {
+		if configuration, err = cfg.GetSettings[ChainConfiguration](config, kvstoreKey); err != nil {
 			return false, fmt.Errorf("failed to unmarshal kvstore redis configuration for %s: %w", name, err)
 		}
 

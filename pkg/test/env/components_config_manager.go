@@ -16,12 +16,14 @@ type AutoDetectSettings struct {
 type ComponentsConfigManager struct {
 	lck    sync.Mutex
 	config cfg.GosoConf
-	detect *AutoDetectSettings
+	detect AutoDetectSettings
 }
 
 func NewComponentsConfigManager(config cfg.GosoConf) (*ComponentsConfigManager, error) {
-	autoDetectSettings := &AutoDetectSettings{}
-	if err := config.UnmarshalKey("test.auto_detect", autoDetectSettings); err != nil {
+	var autoDetectSettings AutoDetectSettings
+	var err error
+
+	if autoDetectSettings, err = cfg.GetSettings[AutoDetectSettings](config, "test.auto_detect"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal auto detect settings: %w", err)
 	}
 

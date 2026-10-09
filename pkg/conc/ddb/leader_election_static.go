@@ -17,13 +17,16 @@ type StaticLeaderElection struct {
 }
 
 func NewStaticLeaderElection(_ context.Context, config cfg.Config, _ log.Logger, name string) (LeaderElection, error) {
+	var settings StaticLeaderElectionSettings
+	var err error
+
 	key := GetLeaderElectionConfigKey(name)
-	settings := &StaticLeaderElectionSettings{}
-	if err := config.UnmarshalKey(key, settings); err != nil {
+
+	if settings, err = cfg.GetSettings[StaticLeaderElectionSettings](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal static leader election settings: %w", err)
 	}
 
-	return NewStaticLeaderElectionWithSettings(settings)
+	return NewStaticLeaderElectionWithSettings(&settings)
 }
 
 func NewStaticLeaderElectionWithSettings(settings *StaticLeaderElectionSettings) (*StaticLeaderElection, error) {

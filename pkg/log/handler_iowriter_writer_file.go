@@ -17,8 +17,10 @@ type ioWriterFileSettings struct {
 }
 
 func ioWriterFileFactory(config cfg.Config, configKey string) (io.Writer, error) {
-	settings := &ioWriterFileSettings{}
-	if err := config.UnmarshalKey(configKey, settings); err != nil {
+	var settings ioWriterFileSettings
+	var err error
+
+	if settings, err = cfg.GetSettings[ioWriterFileSettings](config, configKey); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal ioWriterFile settings for key %q: %w", configKey, err)
 	}
 

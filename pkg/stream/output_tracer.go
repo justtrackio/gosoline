@@ -18,14 +18,15 @@ type outputTracer struct {
 var _ SchemaRegistryAwareOutput = &outputTracer{}
 
 func NewOutputTracer(ctx context.Context, config cfg.Config, logger log.Logger, base Output, name string) (*outputTracer, error) {
+	var settings BaseOutputConfiguration
+	var err error
+
 	key := ConfigurableOutputKey(name)
 
-	settings := &BaseOutputConfiguration{}
-	if err := config.UnmarshalKey(key, settings); err != nil {
+	if settings, err = cfg.GetSettings[BaseOutputConfiguration](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal output tracer settings for key %q in NewOutputTracer: %w", key, err)
 	}
 
-	var err error
 	tracer := tracing.NewLocalTracer()
 
 	if settings.Tracing.Enabled {

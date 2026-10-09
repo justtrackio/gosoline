@@ -49,12 +49,14 @@ type HttpServer struct {
 
 func New(name string, definer Definer) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		settings := &Settings{}
-		if err := config.UnmarshalKey(HttpserverSettingsKey(name), settings); err != nil {
+		var settings Settings
+		var err error
+
+		if settings, err = cfg.GetSettings[Settings](config, HttpserverSettingsKey(name)); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal httpserver settings: %w", err)
 		}
 
-		return NewWithSettings(ctx, name, definer, settings)(ctx, config, logger)
+		return NewWithSettings(ctx, name, definer, &settings)(ctx, config, logger)
 	}
 }
 

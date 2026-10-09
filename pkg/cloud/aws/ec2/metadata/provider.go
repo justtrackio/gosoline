@@ -101,13 +101,14 @@ func ProvideProvider(ctx context.Context, config cfg.Config, logger log.Logger) 
 }
 
 func newProvider(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Provider, error) {
+	var settings Settings
+
 	httpClient, err := http.ProvideHttpClient(ctx, config, logger, "metadata-provider")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http client: %w", err)
 	}
 
-	var settings Settings
-	if err := config.UnmarshalKey(fmt.Sprintf("cloud.aws.%s.ec2.metadata", name), &settings); err != nil {
+	if settings, err = cfg.GetSettings[Settings](config, fmt.Sprintf("cloud.aws.%s.ec2.metadata", name)); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal ec2 metadata settings for %s: %w", name, err)
 	}
 

@@ -153,10 +153,12 @@ func (e ExporterSettings) retryConfig() retryConfig {
 
 // ReadSettings unmarshals the shared OTEL settings from the config root.
 func ReadSettings(config cfg.Config) (*Settings, error) {
-	settings := &Settings{}
-	if err := config.UnmarshalKey(ConfigKey, settings); err != nil {
+	var settings Settings
+	var err error
+
+	if settings, err = cfg.GetSettings[Settings](config, ConfigKey); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal otel settings: %w", err)
 	}
 
-	return settings, nil
+	return &settings, nil
 }

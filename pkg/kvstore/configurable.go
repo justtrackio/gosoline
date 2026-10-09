@@ -75,10 +75,12 @@ func NewConfigurableKvStore[T any](ctx context.Context, config cfg.Config, logge
 }
 
 func newKvStoreChainFromConfig[T any](ctx context.Context, config cfg.Config, logger log.Logger, name string) (KvStore[T], error) {
+	var configuration ChainConfiguration
+	var err error
+
 	key := GetConfigurableKey(name)
 
-	configuration := ChainConfiguration{}
-	if err := config.UnmarshalKey(key, &configuration); err != nil {
+	if configuration, err = cfg.GetSettings[ChainConfiguration](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal kvstore configuration for %s: %w", name, err)
 	}
 

@@ -69,8 +69,10 @@ func NewSender(ctx context.Context, config cfg.Config, logger log.Logger, name s
 }
 
 func NewSenderWithAttachments(ctx context.Context, config cfg.Config, logger log.Logger, name string) (SenderWithAttachments, error) {
-	settings := &SenderSetting{}
-	if err := config.UnmarshalKey(fmt.Sprintf("email.%s", name), settings); err != nil {
+	var settings SenderSetting
+	var err error
+
+	if settings, err = cfg.GetSettings[SenderSetting](config, fmt.Sprintf("email.%s", name)); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal sender settings: %w", err)
 	}
 

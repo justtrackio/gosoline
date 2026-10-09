@@ -54,8 +54,10 @@ var otelTraceExporters = map[string]OtelExporterFactory{
 
 // NewOtelHttpTracer builds an OTLP/HTTP span exporter from the legacy tracing.otel.http config.
 func NewOtelHttpTracer(ctx context.Context, config cfg.Config, _ log.Logger) (sdktrace.SpanExporter, error) {
-	settings := &OtelExporterSettings{}
-	if err := config.UnmarshalKey("tracing.otel.http", settings); err != nil {
+	var settings OtelExporterSettings
+	var err error
+
+	if settings, err = cfg.GetSettings[OtelExporterSettings](config, "tracing.otel.http"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal otel http exporter settings: %w", err)
 	}
 

@@ -71,9 +71,12 @@ func NewConfigurableInput(ctx context.Context, config cfg.Config, logger log.Log
 }
 
 func newFileInputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
+	var settings FileSettings
+	var err error
+
 	key := ConfigurableInputKey(name)
-	settings := FileSettings{}
-	if err := config.UnmarshalKey(key, &settings); err != nil {
+
+	if settings, err = cfg.GetSettings[FileSettings](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal file input settings: %w", err)
 	}
 
@@ -81,13 +84,16 @@ func newFileInputFromConfig(_ context.Context, config cfg.Config, logger log.Log
 }
 
 func newInMemoryInputFromConfig(_ context.Context, config cfg.Config, _ log.Logger, name string) (Input, error) {
+	var settings InMemorySettings
+	var err error
+
 	key := ConfigurableInputKey(name)
-	settings := &InMemorySettings{}
-	if err := config.UnmarshalKey(key, settings); err != nil {
+
+	if settings, err = cfg.GetSettings[InMemorySettings](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal in-memory input settings: %w", err)
 	}
 
-	return ProvideInMemoryInput(name, settings), nil
+	return ProvideInMemoryInput(name, &settings), nil
 }
 
 type KafkaInputConfiguration struct {
@@ -96,10 +102,12 @@ type KafkaInputConfiguration struct {
 }
 
 func newKafkaInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
+	var settings KafkaInputConfiguration
+	var err error
+
 	key := ConfigurableInputKey(name)
 
-	settings := &KafkaInputConfiguration{}
-	if err := config.UnmarshalKey(key, settings); err != nil {
+	if settings, err = cfg.GetSettings[KafkaInputConfiguration](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal kafka input settings: %w", err)
 	}
 
@@ -112,10 +120,12 @@ type KinesisInputConfiguration struct {
 }
 
 func newKinesisInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
+	var settings KinesisInputConfiguration
+	var err error
+
 	key := ConfigurableInputKey(name)
 
-	settings := KinesisInputConfiguration{}
-	if err := config.UnmarshalKey(key, &settings); err != nil {
+	if settings, err = cfg.GetSettings[KinesisInputConfiguration](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal kinesis input settings: %w", err)
 	}
 	settings.Name = name
@@ -132,10 +142,12 @@ type redisInputConfiguration struct {
 }
 
 func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
+	var configuration redisInputConfiguration
+	var err error
+
 	key := ConfigurableInputKey(name)
 
-	configuration := redisInputConfiguration{}
-	if err := config.UnmarshalKey(key, &configuration); err != nil {
+	if configuration, err = cfg.GetSettings[redisInputConfiguration](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal redis input settings: %w", err)
 	}
 
@@ -174,10 +186,12 @@ type SnsInputConfiguration struct {
 }
 
 func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []SnsInputTarget, error) {
+	var configuration SnsInputConfiguration
+	var err error
+
 	key := ConfigurableInputKey(name)
 
-	configuration := &SnsInputConfiguration{}
-	if err := config.UnmarshalKey(key, configuration); err != nil {
+	if configuration, err = cfg.GetSettings[SnsInputConfiguration](config, key); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal sns input settings for key %q in readSnsInputSettings: %w", key, err)
 	}
 
@@ -247,10 +261,12 @@ type sqsInputConfiguration struct {
 }
 
 func readSqsInputSettings(config cfg.Config, name string) (*SqsInputSettings, error) {
+	var configuration sqsInputConfiguration
+	var err error
+
 	key := ConfigurableInputKey(name)
 
-	configuration := sqsInputConfiguration{}
-	if err := config.UnmarshalKey(key, &configuration); err != nil {
+	if configuration, err = cfg.GetSettings[sqsInputConfiguration](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal sqs input settings for key %q in readSqsInputSettings: %w", key, err)
 	}
 

@@ -40,11 +40,12 @@ func ProvideInstrumentor(ctx context.Context, config cfg.Config, logger log.Logg
 }
 
 func newTracer(ctx context.Context, config cfg.Config, logger log.Logger) (Tracer, error) {
+	var settings TracerSettings
 	var provider TracerProvider
 	var ok bool
+	var err error
 
-	settings := &TracerSettings{}
-	if err := config.UnmarshalKey("tracing", settings); err != nil {
+	if settings, err = cfg.GetSettings[TracerSettings](config, "tracing"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal tracer settings: %w", err)
 	}
 
@@ -60,8 +61,10 @@ func newTracer(ctx context.Context, config cfg.Config, logger log.Logger) (Trace
 }
 
 func newInstrumentor(ctx context.Context, config cfg.Config, logger log.Logger) (Instrumentor, error) {
-	settings := &TracerSettings{}
-	if err := config.UnmarshalKey("tracing", settings); err != nil {
+	var settings TracerSettings
+	var err error
+
+	if settings, err = cfg.GetSettings[TracerSettings](config, "tracing"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal tracer settings: %w", err)
 	}
 

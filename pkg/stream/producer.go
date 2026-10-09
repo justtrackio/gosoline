@@ -46,7 +46,7 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name
 		option(opts)
 	}
 
-	output, err := getOutput(ctx, config, logger, name, settings)
+	output, err := getOutput(ctx, config, logger, name, &settings)
 	if err != nil {
 		return nil, err
 	}
@@ -160,12 +160,14 @@ func ConfigurableProducerKey(name string) string {
 	return fmt.Sprintf("stream.producer.%s", name)
 }
 
-func readProducerSettings(config cfg.Config, name string) (*ProducerSettings, error) {
+func readProducerSettings(config cfg.Config, name string) (ProducerSettings, error) {
+	var s ProducerSettings
+	var err error
+
 	key := ConfigurableProducerKey(name)
 
-	s := &ProducerSettings{}
-	if err := config.UnmarshalKey(key, s); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal producer settings for key %q in readProducerSettings: %w", key, err)
+	if s, err = cfg.GetSettings[ProducerSettings](config, key); err != nil {
+		return ProducerSettings{}, fmt.Errorf("failed to unmarshal producer settings for key %q in readProducerSettings: %w", key, err)
 	}
 
 	if s.Encoding == "" {
@@ -179,8 +181,8 @@ func readProducerSettings(config cfg.Config, name string) (*ProducerSettings, er
 	return s, nil
 }
 
-func readAllProducerDaemonSettings(config cfg.Config) (map[string]*ProducerSettings, error) {
-	producerSettings := make(map[string]*ProducerSettings)
+func readAllProducerDaemonSettings(config cfg.Config) (map[string]ProducerSettings, error) {
+	producerSettings := make(map[string]ProducerSettings)
 	producerMap, err := config.GetStringMap("stream.producer", map[string]any{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get producer settings: %w", err)

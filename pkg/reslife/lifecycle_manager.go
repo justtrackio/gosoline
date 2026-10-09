@@ -35,7 +35,7 @@ type (
 type LifeCycleManager struct {
 	logger     log.Logger
 	clock      clock.Clock
-	settings   *Settings
+	settings   Settings
 	refresher  func(fac LifeCycleerFactory) (LifeCycleer, error)
 	resources  []LifeCycleer
 	created    funk.Set[string]
@@ -53,7 +53,7 @@ func NewLifeCycleManager(ctx context.Context, config cfg.Config, logger log.Logg
 	return &LifeCycleManager{
 		logger:   logger,
 		clock:    clock.Provider,
-		settings: settings,
+		settings: *settings,
 		refresher: func(fac LifeCycleerFactory) (LifeCycleer, error) {
 			return fac(ctx, config, logger)
 		},
