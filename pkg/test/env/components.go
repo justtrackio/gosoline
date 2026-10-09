@@ -71,8 +71,33 @@ type ContainerBindingSettings struct {
 }
 
 type ComponentContainerSettings struct {
-	Image ContainerImageSettings `cfg:"image"`
-	Tmpfs []TmpfsSettings        `cfg:"tmpfs"`
+	Image                ContainerImageSettings `cfg:"image"`
+	Tmpfs                []TmpfsSettings        `cfg:"tmpfs"`
+	UseExternalContainer bool                   `cfg:"use_external_container" default:"false"`
+	runnerType           string
+}
+
+func (s *ComponentContainerSettings) setRunnerType(runnerType string) {
+	s.runnerType = runnerType
+}
+
+func (s *ComponentContainerSettings) isExternal() bool {
+	return s.UseExternalContainer || s.runnerType == RunnerTypeExternal
+}
+
+func externalContainer(host string, ports PortBindings) *ContainerConfig {
+	for name, binding := range ports {
+		if binding.HostPort != 0 {
+			binding.ContainerPort = binding.HostPort
+			ports[name] = binding
+		}
+	}
+
+	return &ContainerConfig{
+		RunnerType:   RunnerTypeExternal,
+		ExternalHost: host,
+		PortBindings: ports,
+	}
 }
 
 type TmpfsSettings struct {

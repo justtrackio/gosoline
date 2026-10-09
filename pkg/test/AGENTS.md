@@ -19,6 +19,13 @@
 - `go test ./pkg/test/...` must stay green; it is cheap to run and catches regressions fast.
 - When env changes require Docker, run targeted integration suites (e.g., `go test -tags integration,fixtures ./test/...`).
 
+## External services
+- Set `test.container_manager.runner_type: external` to connect MySQL, Redis, Mailpit, WireMock, DynamoDB Local and S3 to services started by CI. Each component supports `host` and `port`; Mailpit also supports `web_port`. Omitted ports use the service's normal port. Local Docker remains the default runner.
+- MySQL gets a separate database per environment. Select separate Redis databases with `test.components.redis.<name>.db` and matching named application client databases when packages share a Redis process. Alternatively, `auto_db: true` assigns each external environment a database via a counter in reserved database 0; named application clients must inherit `redis.default.db`. Configure enough Redis databases for the job; allocation fails when exhausted. Explicit positive database numbers remain caller-managed. WireMock and Mailpit require separate endpoints or sequential suites because their reset/message APIs share server state.
+- Declare `test.components.dynamodb.default: {}` for standalone DynamoDB Local (`amazon/dynamodb-local:3.1.0`, `-inMemory -sharedDb -disableTelemetry`). It prefixes the default table naming pattern per environment and purges owned tables only. Explicit repository or named-client table naming overrides must provide their own isolation.
+- Declare `test.components.s3.default: {}` for S3 API tests backed by `motoserver/moto:5.2.3`. Configured blob buckets receive an environment-specific suffix; store prefixes and shared-bucket relationships are preserved. DynamoDB and S3 endpoints are scoped to their AWS clients, and no server-wide reset is used. Explicit custom client endpoints/bucket overrides must provide their own isolation.
+- Disable LocalStack auto-detection when using standalone AWS components. These emulators cover API integration, not AWS timing, throttling, IAM or service guarantees.
+
 ## Common matchers
 ```go
 import "github.com/justtrackio/gosoline/pkg/test/matcher"
