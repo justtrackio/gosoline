@@ -6,7 +6,10 @@
 - Powers mdlsub, metrics exporters, and application stream modules.
 
 ## Key files
-- `consumer*.go`, `producer*.go` - base logic and module factories for stream processing.
+- `consumer_base.go` - shared dependencies and methods for callback lifecycle, input lifecycle, shutdown, health, tracing and metrics.
+- `consumer.go` - callback interfaces and default metric definitions.
+- `consumer_single.go`, `consumer_batch.go` - independent single-record and batch processing built on the internal `consumerBase`.
+- `consumer*_module_factory.go`, `producer*.go` - module factories and producer logic.
 - `input_*.go`, `output_*.go` - transport-specific adapters.
 - `encoding_*.go`, `message*.go` - serialization formats and message helpers.
 - `kinsumer_*` - autoscaling components for Kinesis-based consumers.
@@ -122,6 +125,64 @@ concurrency across shards; in `unordered` mode records from the same shard may b
 still advance in shard order. In-memory inputs use `runner_count` to control the number of concurrent message-processing
 callbacks.
 
+Both single-record and batch consumers require strictly positive `idle_timeout` and
+`grace_time` values, enforced when unmarshalling the shared consumer settings.
+
+### Batch consumers
+
+`NewBatchConsumer` / `NewUntypedBatchConsumer` and their multi-factories
+provide serial, channel-driven collection using `batch_size` and `idle_timeout`.
+The bounded admission channel uses `buffer_size` (default: `batch_size`); inputs
+can retain their default single runner. The timer resets on each flush.
+
+Primary transport callbacks acknowledge buffering, before business processing.
+Callback results use existing retry handlers (`retry.type: sqs` by default).
+Batch consumers construct independent retry queues even for primary transports
+with native redelivery, because primary records have already been acknowledged.
+Retry callbacks wait for business completion; failures stay unacknowledged for
+SQS redelivery/DLQ. Retry envelopes flush promptly so a single runner can progress
+without filling a batch. No batch-specific retry scheduler or backlog is needed.
+
+Batch processing uses the shared consumer drain deadline and flushes admitted
+records when inputs finish. Failed primary work goes to the retry handler; a
+failed final retry write is logged and returns a run error. Metrics, tracing and
+health track actual batch work. Aggregate envelopes flatten into children;
+primary admission acknowledgement does not depend on `aggregate_message_mode`.
+Retry envelopes acknowledge only if all children succeed. One aggregate may
+exceed the batch-size threshold. Preserve original propagation
+attributes for retries while decoding copies for the callback.
+Every admitted record carries an explicit retry payload; flattened primary children
+replace it with their individual aggregate envelope instead of using a nil fallback.
+
+Each record is decoded with its own input/envelope context and the shared drain
+cancellation. The first successfully decoded record supplies the batch callback's
+context; configured sampling is applied to that context, respecting propagated
+decisions. Failed aggregate children are retried in individual, uncompressed JSON
+aggregate envelopes retaining the original envelope attributes and child overrides.
+
+See `examples/stream/batch-consumer` for a runnable file-input example and all
+application runners. Unit tests are in `consumer_batch_test.go`: the testify
+`BatchConsumerTestSuite` owns fresh fixtures for each test and subtest, with
+explicit consumer startup and cleanup before mock assertions. Factory and
+type-erasure tests remain standalone.
+The batch suite injects a fake clock for flushing, health and shutdown deadlines;
+real-time waits are bounded goroutine/watchdog synchronization only.
+
+Single `Consumer` and `BatchConsumer` both embed an internal `consumerBase`;
+batch factories construct the base directly rather than creating a single-record
+consumer with a nil callback. Each concrete consumer owns its processing and
+acknowledgement/retry policies. The existing batch WithInterfaces constructor
+can still reuse an unstarted single consumer's base for dependency injection.
+`NewUntypedBatchConsumerWithInterfaces` returns `(*BatchConsumer, error)`;
+Batch and buffer sizes are validated through their settings tags during config
+unmarshalling. Direct WithInterfaces callers must supply validated settings.
+Consumer lifecycle uses internal `init`, `run`, and `inputsFinished` hooks directly on `consumerBase`,
+independent of single-record processing. Concrete consumer constructors initialize
+the final hooks directly. Batch consumers wire collection and
+optional callback background work directly, closing admission after both inputs
+finish. Schema configuration is passed separately during encoder construction;
+batch callbacks do not need a single-record adapter.
+
 ### Delayed consumption
 
 Kafka and Kinesis inputs can hold records back until they reached a minimum age via
@@ -184,6 +245,18 @@ processing before deleting any of its messages.
 Consumers decode a copy of the message attributes so context decoders can remove propagation attributes from the
 callback's view while the original message retains them for retries and redelivery. Preserve this separation for both
 single messages and aggregates.
+
+Model selection, nil-model and decoding failures follow the same retry policy as
+callback failures. Aggregate panic recovery uses the effective aggregate retry
+policy rather than just the primary transport's native-redelivery capability.
+
+`Message` JSON serialization uses the `attributes`/`body` representation for UTF-8
+data. Attribute values must be strings; numeric and boolean values are rejected
+rather than converted. Non-UTF-8 bodies are base64-encoded in `body` and flagged with
+the reserved `goso.body.base64: "true"` attribute, which is removed during unmarshalling.
+The payload-format `encoding` attribute is preserved. Bodies decode back to the
+original bytes, including inside aggregates, so schema-registry Kafka payloads
+survive SQS retries. Attribute keys and values are expected to be valid UTF-8 strings.
 
 ## Related packages
 - `pkg/cloud/aws/sqs`, `sns`, `kinesis` - AWS transport clients
