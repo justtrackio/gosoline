@@ -32,14 +32,17 @@ type EndpointNamingSettings struct {
 }
 
 func GetEndpointName(config cfg.Config, endpointSettings EndpointNameSettingsAware) (string, error) {
+	var namingSettings EndpointNamingSettings
+	var err error
+
 	if endpointSettings.GetClientName() == "" {
 		return "", fmt.Errorf("the client name shouldn't be empty")
 	}
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("sagemakerruntime", endpointSettings.GetClientName()))
 	defaultPatternKey := fmt.Sprintf("%s.naming.endpoint_pattern", aws.GetClientConfigKey("sagemakerruntime", "default"))
-	namingSettings := &EndpointNamingSettings{}
-	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "endpoint_pattern")); err != nil {
+
+	if namingSettings, err = cfg.GetSettings[EndpointNamingSettings](config, namingKey, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "endpoint_pattern")); err != nil {
 		return "", fmt.Errorf("failed to unmarshal sagemakerruntime naming settings for %s: %w", namingKey, err)
 	}
 

@@ -35,14 +35,15 @@ func AddHandlerFactory(typ string, factory HandlerFactory) {
 // NewHandlersFromConfig creates a slice of log handlers based on the provided configuration.
 // It parses the "log.handlers" section of the config and instantiates the corresponding handlers.
 func NewHandlersFromConfig(config cfg.Config) ([]Handler, error) {
-	settings := &LoggerSettings{}
-	if err := config.UnmarshalKey("log", settings); err != nil {
+	var settings LoggerSettings
+	var err error
+
+	if settings, err = cfg.GetSettings[LoggerSettings](config, "log"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal logger settings: %w", err)
 	}
 
 	var i int
 	var ok bool
-	var err error
 	var handlerFactory HandlerFactory
 	handlers := make([]Handler, len(settings.Handlers))
 

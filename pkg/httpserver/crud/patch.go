@@ -24,8 +24,10 @@ type patchHandler struct {
 }
 
 func NewPatchHandler(config cfg.Config, logger log.Logger, transformer PatchHandler) (gin.HandlerFunc, error) {
-	settings := Settings{}
-	if err := config.UnmarshalKey(SettingsConfigKey, &settings); err != nil {
+	var settings Settings
+	var err error
+
+	if settings, err = cfg.GetSettings[Settings](config, SettingsConfigKey); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal patch handler settings: %w", err)
 	}
 	uh := patchHandler{

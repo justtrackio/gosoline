@@ -28,8 +28,9 @@ func (f *streamOutputFactory) Detect(config cfg.Config, manager *ComponentsConfi
 	}
 
 	for outputName := range outputs {
-		settings := &streamOutputSettings{}
-		if err := config.UnmarshalDefaults(settings); err != nil {
+		var settings streamOutputSettings
+
+		if settings, err = cfg.GetDefaults[streamOutputSettings](config); err != nil {
 			return fmt.Errorf("could not unmarshal defaults for output %s: %w", outputName, err)
 		}
 
@@ -42,7 +43,7 @@ func (f *streamOutputFactory) Detect(config cfg.Config, manager *ComponentsConfi
 		settings.Type = componentStreamOutput
 		settings.InMemoryOverride = inMemoryOverride
 
-		if err := manager.Add(settings); err != nil {
+		if err := manager.Add(&settings); err != nil {
 			return fmt.Errorf("could not add output %s: %w", outputName, err)
 		}
 	}

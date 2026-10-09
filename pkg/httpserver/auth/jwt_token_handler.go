@@ -47,13 +47,16 @@ func (c *JwtClaims) SetRegisteredClaims(registeredClaims jwt.RegisteredClaims) {
 }
 
 func NewJwtTokenHandler(config cfg.Config, name string) (JwtTokenHandler, error) {
+	var settings JwtTokenHandlerSettings
+	var err error
+
 	key := fmt.Sprintf("httpserver.%s.auth.jwt", name)
-	settings := &JwtTokenHandlerSettings{}
-	if err := config.UnmarshalKey(key, settings); err != nil {
+
+	if settings, err = cfg.GetSettings[JwtTokenHandlerSettings](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal jwt token handler settings: %w", err)
 	}
 
-	return NewJwtTokenHandlerWithInterfaces(*settings), nil
+	return NewJwtTokenHandlerWithInterfaces(settings), nil
 }
 
 func NewJwtTokenHandlerWithInterfaces(settings JwtTokenHandlerSettings) JwtTokenHandler {

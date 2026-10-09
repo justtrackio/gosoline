@@ -34,8 +34,9 @@ func (f *streamInputFactory) Detect(config cfg.Config, manager *ComponentsConfig
 	}
 
 	for inputName := range inputs {
-		settings := &streamInputSettings{}
-		if err := config.UnmarshalDefaults(settings); err != nil {
+		var settings streamInputSettings
+
+		if settings, err = cfg.GetDefaults[streamInputSettings](config); err != nil {
 			return fmt.Errorf("could not unmarshal defaults for input %s: %w", inputName, err)
 		}
 
@@ -48,7 +49,7 @@ func (f *streamInputFactory) Detect(config cfg.Config, manager *ComponentsConfig
 		settings.Type = componentStreamInput
 		settings.InMemoryOverride = inMemoryOverride
 
-		if err := manager.Add(settings); err != nil {
+		if err := manager.Add(&settings); err != nil {
 			return fmt.Errorf("could not add input %s: %w", inputName, err)
 		}
 	}

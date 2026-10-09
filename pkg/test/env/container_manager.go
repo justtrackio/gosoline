@@ -37,17 +37,17 @@ type containerManager struct {
 	runnerFactory     func(typ string) (ContainerRunner, error)
 	runnersMu         sync.Mutex
 	runners           map[string]ContainerRunner
-	settings          *ContainerManagerSettings
+	settings          ContainerManagerSettings
 	shutdownCallbacks map[string]func() error
 	testName          string
 }
 
 func NewContainerManager(config cfg.Config, logger log.Logger, testName string) (ContainerManager, error) {
+	var settings ContainerManagerSettings
 	var err error
 	runners := map[string]ContainerRunner{}
 
-	settings := &ContainerManagerSettings{}
-	if err = config.UnmarshalKey("test.container_manager", settings); err != nil {
+	if settings, err = cfg.GetSettings[ContainerManagerSettings](config, "test.container_manager"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal container manager settings: %w", err)
 	}
 
@@ -59,7 +59,7 @@ func NewContainerManager(config cfg.Config, logger log.Logger, testName string) 
 			return nil, fmt.Errorf("there is no container runner factory for type %s", typ)
 		}
 
-		if runner, err = containerRunnerFactories[typ](config, logger, settings); err != nil {
+		if runner, err = containerRunnerFactories[typ](config, logger, &settings); err != nil {
 			return nil, fmt.Errorf("can not create container runner for type %s: %w", typ, err)
 		}
 

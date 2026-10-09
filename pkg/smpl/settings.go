@@ -11,17 +11,21 @@ type Settings struct {
 }
 
 func UnmarshalSettings(config cfg.Config) (*Settings, error) {
-	settings := &Settings{}
-	if err := config.UnmarshalKey("sampling", settings); err != nil {
+	var settings Settings
+	var err error
+
+	if settings, err = cfg.GetSettings[Settings](config, "sampling"); err != nil {
 		return nil, err
 	}
 
-	return settings, nil
+	return &settings, nil
 }
 
 func IsEnabled(config cfg.Config) (bool, error) {
-	settings := &Settings{}
-	if err := config.UnmarshalKey("sampling", settings); err != nil {
+	var settings Settings
+	var err error
+
+	if settings, err = cfg.GetSettings[Settings](config, "sampling"); err != nil {
 		return false, err
 	}
 

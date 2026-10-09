@@ -43,16 +43,18 @@ type SettingsTimeout struct {
 }
 
 func ReadSettings(config cfg.Config, name string) (*Settings, error) {
+	var settings Settings
+	var err error
+
 	key := fmt.Sprintf("db.%s", name)
 
 	if !config.IsSet(key) {
 		return nil, fmt.Errorf("there is no db connection with name %q configured", name)
 	}
 
-	settings := &Settings{}
-	if err := config.UnmarshalKey(key, settings); err != nil {
+	if settings, err = cfg.GetSettings[Settings](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal db settings for %s: %w", name, err)
 	}
 
-	return settings, nil
+	return &settings, nil
 }

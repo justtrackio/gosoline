@@ -51,13 +51,16 @@ func ReadBackoffSettings(config cfg.Config, paths ...string) (BackoffSettings, e
 		additionalDefaults = append(additionalDefaults, cfg.UnmarshalWithDefaultsFromKey(key, "."))
 	}
 
+	var settings BackoffSettings
+	var err error
+
 	key := fmt.Sprintf("%s.backoff", paths[0])
-	settings := &BackoffSettings{}
-	if err := config.UnmarshalKey(key, settings, additionalDefaults...); err != nil {
+
+	if settings, err = cfg.GetSettings[BackoffSettings](config, key, additionalDefaults...); err != nil {
 		return BackoffSettings{}, fmt.Errorf("failed to unmarshal backoff settings for key %s: %w", key, err)
 	}
 
-	return *settings, nil
+	return settings, nil
 }
 
 var predefined = map[string]BackoffSettings{

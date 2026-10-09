@@ -30,7 +30,9 @@ func ProvideChainClient(ctx context.Context, config cfg.Config, logger log.Logge
 
 func newChainClient(ctx context.Context, config cfg.Config, logger log.Logger) (*ChainClient, error) {
 	var chainConfig ProviderChainConfig
-	if err := config.UnmarshalKey(configKey, &chainConfig); err != nil {
+	var err error
+
+	if chainConfig, err = cfg.GetSettings[ProviderChainConfig](config, configKey); err != nil {
 		return nil, fmt.Errorf("could not unmarshal provider-chain-config: %w", err)
 	}
 

@@ -729,6 +729,9 @@ func GetClientConfigKey(name string) string {
 }
 
 func UnmarshalClientSettings(config cfg.Config, name string) (Settings, error) {
+	var settings Settings
+	var err error
+
 	if name == "" {
 		name = "default"
 	}
@@ -736,8 +739,7 @@ func UnmarshalClientSettings(config cfg.Config, name string) (Settings, error) {
 	clientsKey := GetClientConfigKey(name)
 	defaultClientKey := GetClientConfigKey("default")
 
-	var settings Settings
-	if err := config.UnmarshalKey(clientsKey, &settings, cfg.UnmarshalWithDefaultsFromKey(defaultClientKey, ".")); err != nil {
+	if settings, err = cfg.GetSettings[Settings](config, clientsKey, cfg.UnmarshalWithDefaultsFromKey(defaultClientKey, ".")); err != nil {
 		return Settings{}, fmt.Errorf("failed to unmarshal client settings for key '%s': %w", clientsKey, err)
 	}
 

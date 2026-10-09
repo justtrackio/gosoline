@@ -21,16 +21,17 @@ func producerDaemonConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 	}
 
 	for name, settings := range producerDaemonSettings {
-		outputKey := ConfigurableOutputKey(settings.Output)
-		outputSettings := &BaseOutputConfiguration{}
+		var outputSettings BaseOutputConfiguration
 
-		if err := config.UnmarshalKey(outputKey, outputSettings); err != nil {
+		outputKey := ConfigurableOutputKey(settings.Output)
+
+		if outputSettings, err = cfg.GetSettings[BaseOutputConfiguration](config, outputKey); err != nil {
 			return false, fmt.Errorf("failed to unmarshal output settings for key %q in producerDaemonConfigPostprocessor: %w", outputKey, err)
 		}
 		outputSettings.Tracing.Enabled = false
 
 		configOptions := []cfg.Option{
-			cfg.WithConfigSetting(outputKey, outputSettings),
+			cfg.WithConfigSetting(outputKey, &outputSettings),
 		}
 
 		if err := config.Option(configOptions...); err != nil {

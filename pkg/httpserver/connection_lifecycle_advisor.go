@@ -53,9 +53,12 @@ func ProvideConnectionLifeCycleAdvisor(ctx context.Context, config cfg.Config, _
 }
 
 func NewConnectionLifeCycleAdvisor(config cfg.Config, serverName string) (ConnectionLifeCycleAdvisor, error) {
-	settings := ConnectionLifeCycleAdvisorSettings{}
+	var settings ConnectionLifeCycleAdvisorSettings
+	var err error
+
 	key := HttpserverSettingsKey(serverName) + ".connection_lifecycle"
-	if err := config.UnmarshalKey(key, &settings); err != nil {
+
+	if settings, err = cfg.GetSettings[ConnectionLifeCycleAdvisorSettings](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal connection lifecycle advisor settings: %w", err)
 	}
 

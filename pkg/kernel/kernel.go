@@ -443,8 +443,10 @@ func (k *kernel) waitAllStagesDone() conc.SignalOnce {
 }
 
 func readSettings(config cfg.Config) (Settings, error) {
-	settings := Settings{}
-	if err := config.UnmarshalKey("kernel", &settings); err != nil {
+	var settings Settings
+	var err error
+
+	if settings, err = cfg.GetSettings[Settings](config, "kernel"); err != nil {
 		return Settings{}, fmt.Errorf("failed to unmarshal kernel settings: %w", err)
 	}
 

@@ -65,12 +65,14 @@ func ConfigurableConsumerKey(name string) string {
 }
 
 func ReadConsumerSettings(config cfg.Config, name string) (ConsumerSettings, error) {
-	settings := ConsumerSettings{}
+	var settings ConsumerSettings
+	var err error
+
 	key := ConfigurableConsumerKey(name)
 
-	if err := config.UnmarshalKey(
+	if settings, err = cfg.GetSettings[ConsumerSettings](
+		config,
 		key,
-		&settings,
 		cfg.UnmarshalWithDefaultForKey("encoding", defaultMessageBodyEncoding),
 		// use the kernels kill timeout as the default time we allow after a cancel of the context for writing retry messages.
 		// if we are processing a message and get a SIGTERM at that moment, writing the message to the retry queue will

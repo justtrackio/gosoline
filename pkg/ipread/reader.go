@@ -45,7 +45,7 @@ func newReader(ctx context.Context, config cfg.Config, logger log.Logger, name s
 
 	var ok bool
 	var err error
-	var settings *ReaderSettings
+	var settings ReaderSettings
 	var factory ProviderFactory
 	var provider Provider
 

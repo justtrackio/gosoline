@@ -24,9 +24,12 @@ type BatchRunnerChannels struct {
 }
 
 func NewBatchRunnerChannels(config cfg.Config, name string) (*BatchRunnerChannels, error) {
-	settings := &BatchRunnerSettings{}
+	var settings BatchRunnerSettings
+	var err error
+
 	configKey := getConfigKey(name)
-	if err := config.UnmarshalKey(configKey, settings); err != nil {
+
+	if settings, err = cfg.GetSettings[BatchRunnerSettings](config, configKey); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal batch runner settings: %w", err)
 	}
 

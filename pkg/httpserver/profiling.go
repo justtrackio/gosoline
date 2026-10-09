@@ -22,8 +22,10 @@ type Profiling struct {
 }
 
 func ProfilingModuleFactory(_ context.Context, config cfg.Config, _ log.Logger) (map[string]kernel.ModuleFactory, error) {
-	settings := &ProfilingSettings{}
-	if err := config.UnmarshalKey("profiling", settings); err != nil {
+	var settings ProfilingSettings
+	var err error
+
+	if settings, err = cfg.GetSettings[ProfilingSettings](config, "profiling"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal profiling settings: %w", err)
 	}
 
@@ -36,7 +38,7 @@ func ProfilingModuleFactory(_ context.Context, config cfg.Config, _ log.Logger) 
 			gin.SetMode(gin.ReleaseMode)
 			router := gin.New()
 
-			profiling := NewProfilingWithInterfaces(logger, router, settings)
+			profiling := NewProfilingWithInterfaces(logger, router, &settings)
 
 			return profiling, nil
 		},

@@ -68,8 +68,10 @@ type containerRunnerRemote struct {
 }
 
 func NewContainerRunnerRemote(config cfg.Config, logger log.Logger, managerSettings *ContainerManagerSettings) (ContainerRunner, error) {
-	runnerSettings := &ContainerRunnerRemoteSettings{}
-	if err := config.UnmarshalKey("test.container_manager.runner.remote", runnerSettings); err != nil {
+	var runnerSettings ContainerRunnerRemoteSettings
+	var err error
+
+	if runnerSettings, err = cfg.GetSettings[ContainerRunnerRemoteSettings](config, "test.container_manager.runner.remote"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal container runner settings: %w", err)
 	}
 
@@ -99,7 +101,7 @@ func NewContainerRunnerRemote(config cfg.Config, logger log.Logger, managerSetti
 		logger:          logger,
 		client:          client,
 		managerSettings: managerSettings,
-		runnerSettings:  runnerSettings,
+		runnerSettings:  &runnerSettings,
 		testId:          uuid.New().NewV4(),
 	}, nil
 }

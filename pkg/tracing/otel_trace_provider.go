@@ -46,8 +46,10 @@ func ProvideOtelTraceProvider(ctx context.Context, config cfg.Config, logger log
 }
 
 func newOtelTraceProvider(ctx context.Context, config cfg.Config, logger log.Logger) (trace.TracerProvider, error) {
-	settings := &OtelSettings{}
-	if err := config.UnmarshalKey("tracing.otel", settings); err != nil {
+	var settings OtelSettings
+	var err error
+
+	if settings, err = cfg.GetSettings[OtelSettings](config, "tracing.otel"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal otel tracing settings: %w", err)
 	}
 

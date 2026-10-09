@@ -38,22 +38,23 @@ type maxmindProvider struct {
 	reader   *geoip2.Reader
 	loader   databaseLoader
 	name     string
-	settings *MaxmindSettings
+	settings MaxmindSettings
 }
 
 func NewMaxmindProvider(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Provider, error) {
+	var settings MaxmindSettings
+	var loader databaseLoader
+	var err error
+
 	logger = logger.WithFields(map[string]any{
 		"provider_name": name,
 	})
 
 	key := fmt.Sprintf("ipread.%s", name)
-	settings := &MaxmindSettings{}
-	if err := config.UnmarshalKey(key, settings); err != nil {
+
+	if settings, err = cfg.GetSettings[MaxmindSettings](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal maxmind settings for %s: %w", name, err)
 	}
-
-	var err error
-	var loader databaseLoader
 
 	if loader, err = getDatabaseLoader(ctx, config, logger, settings); err != nil {
 		return nil, fmt.Errorf("can not get database loader: %w", err)
@@ -153,7 +154,7 @@ func (p *maxmindProvider) Close() error {
 	return nil
 }
 
-func getDatabaseLoader(ctx context.Context, config cfg.Config, logger log.Logger, settings *MaxmindSettings) (databaseLoader, error) {
+func getDatabaseLoader(ctx context.Context, config cfg.Config, logger log.Logger, settings MaxmindSettings) (databaseLoader, error) {
 	var err error
 	var url *urlPkg.URL
 
@@ -171,7 +172,7 @@ func getDatabaseLoader(ctx context.Context, config cfg.Config, logger log.Logger
 	}
 }
 
-func readDatabaseLoaderLocal(settings *MaxmindSettings) (databaseLoader, error) {
+func readDatabaseLoaderLocal(settings MaxmindSettings) (databaseLoader, error) {
 	return func(ctx context.Context) (io.ReadCloser, int64, error) {
 		var err error
 		var file io.ReadCloser
@@ -189,7 +190,7 @@ func readDatabaseLoaderLocal(settings *MaxmindSettings) (databaseLoader, error) 
 	}, nil
 }
 
-func readDatabaseLoaderS3(ctx context.Context, config cfg.Config, logger log.Logger, settings *MaxmindSettings) (databaseLoader, error) {
+func readDatabaseLoaderS3(ctx context.Context, config cfg.Config, logger log.Logger, settings MaxmindSettings) (databaseLoader, error) {
 	var err error
 	var client *s3.Client
 

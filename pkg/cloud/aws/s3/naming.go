@@ -37,6 +37,9 @@ type BucketNamingSettings struct {
 }
 
 func GetBucketName(config cfg.Config, settings BucketNameSettingsAware) (string, error) {
+	var namingSettings BucketNamingSettings
+	var err error
+
 	if settings.GetClientName() == "" {
 		return "", fmt.Errorf("the client name shouldn't be empty")
 	}
@@ -44,8 +47,7 @@ func GetBucketName(config cfg.Config, settings BucketNameSettingsAware) (string,
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("s3", settings.GetClientName()))
 	defaultPatternKey := fmt.Sprintf("%s.naming.bucket_pattern", aws.GetClientConfigKey("s3", "default"))
 
-	namingSettings := &BucketNamingSettings{}
-	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "bucket_pattern")); err != nil {
+	if namingSettings, err = cfg.GetSettings[BucketNamingSettings](config, namingKey, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "bucket_pattern")); err != nil {
 		return "", fmt.Errorf("failed to unmarshal s3 naming settings for %s: %w", namingKey, err)
 	}
 

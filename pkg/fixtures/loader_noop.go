@@ -12,7 +12,7 @@ import (
 
 type noopFixtureLoader struct {
 	logger   log.Logger
-	settings *fixtureLoaderSettings
+	settings fixtureLoaderSettings
 }
 
 func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger, fixtureSets map[string][]FixtureSet, postProcessors []PostProcessor) (FixtureLoader, error) {

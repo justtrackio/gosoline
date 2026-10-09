@@ -19,8 +19,10 @@ func NormalizeKafkaName(name string) string {
 }
 
 func BuildFullTopicName(config cfg.Config, identity cfg.Identity, topicId string) (string, error) {
-	namingSettings := &KafkaNamingSettings{}
-	if err := config.UnmarshalKey("kafka.naming", namingSettings); err != nil {
+	var namingSettings KafkaNamingSettings
+	var err error
+
+	if namingSettings, err = cfg.GetSettings[KafkaNamingSettings](config, "kafka.naming"); err != nil {
 		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' to build kafka topic name: %w", err)
 	}
 
@@ -39,13 +41,14 @@ func BuildFullTopicName(config cfg.Config, identity cfg.Identity, topicId string
 }
 
 func BuildFullConsumerGroupId(config cfg.Config, groupId string) (string, error) {
+	var namingSettings KafkaNamingSettings
+
 	identity, err := cfg.GetAppIdentity(config)
 	if err != nil {
 		return "", fmt.Errorf("failed to get app identity from config: %w", err)
 	}
 
-	namingSettings := &KafkaNamingSettings{}
-	if err := config.UnmarshalKey("kafka.naming", namingSettings); err != nil {
+	if namingSettings, err = cfg.GetSettings[KafkaNamingSettings](config, "kafka.naming"); err != nil {
 		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' to build kakfa consumer group id: %w", err)
 	}
 

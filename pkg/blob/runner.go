@@ -56,13 +56,16 @@ type batchRunner struct {
 	channels *BatchRunnerChannels
 	client   gosoS3.Client
 	metric   metric.Writer
-	settings *BatchRunnerSettings
+	settings BatchRunnerSettings
 }
 
 func NewBatchRunner(ctx context.Context, config cfg.Config, logger log.Logger, name string) (BatchRunner, error) {
-	settings := &BatchRunnerSettings{}
+	var settings BatchRunnerSettings
+	var err error
+
 	configKey := getConfigKey(name)
-	if err := config.UnmarshalKey(configKey, settings); err != nil {
+
+	if settings, err = cfg.GetSettings[BatchRunnerSettings](config, configKey); err != nil {
 		return nil, err
 	}
 

@@ -33,14 +33,16 @@ type probabilisticStrategy struct {
 // It guarantees a configurable number of sampled=true decisions per interval (when invoked),
 // plus an additional configurable percentage probability for subsequent calls in that interval.
 func DecideByProbabilistic(ctx context.Context, config cfg.Config) (Strategy, error) {
-	settings := &ProbabilisticSettings{}
-	if err := config.UnmarshalKey("sampling.settings.probabilistic", settings); err != nil {
+	var settings ProbabilisticSettings
+	var err error
+
+	if settings, err = cfg.GetSettings[ProbabilisticSettings](config, "sampling.settings.probabilistic"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal settings.probabilistic: %w", err)
 	}
 
 	s := &probabilisticStrategy{
 		clock:       clock.NewRealClock(),
-		settings:    settings,
+		settings:    &settings,
 		randFloat64: rand.Float64,
 	}
 

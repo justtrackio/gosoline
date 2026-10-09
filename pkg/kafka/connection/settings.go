@@ -24,13 +24,16 @@ type Settings struct {
 }
 
 func ParseSettings(config cfg.Config, name string) (*Settings, error) {
-	settings := &Settings{}
+	var settings Settings
+	var err error
+
 	key := fmt.Sprintf("kafka.connection.%s", name)
-	if err := config.UnmarshalKey(key, settings); err != nil {
+
+	if settings, err = cfg.GetSettings[Settings](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal kafka connection settings for key %q in ParseSettings: %w", key, err)
 	}
 
-	return settings, nil
+	return &settings, nil
 }
 
 func BuildConnectionOptions(config cfg.Config, connectionName string) ([]kgo.Opt, error) {

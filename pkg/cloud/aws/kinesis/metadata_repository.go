@@ -117,7 +117,7 @@ func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Lo
 	var err error
 	var repo ddb.Repository
 	var tableName string
-	var namingSettings *KinsumerNamingSettings
+	var namingSettings KinsumerNamingSettings
 	var namespace string
 
 	if tableName, err = GetMetadataTableName(config, settings); err != nil {

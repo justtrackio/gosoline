@@ -28,8 +28,10 @@ type auditLogger struct {
 }
 
 func NewAuditLogger(config cfg.Config, logger log.Logger) (AuditLogger, error) {
-	settings := auditSettings{}
-	if err := config.UnmarshalKey("guard.audit", &settings); err != nil {
+	var settings auditSettings
+	var err error
+
+	if settings, err = cfg.GetSettings[auditSettings](config, "guard.audit"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal guard audit settings: %w", err)
 	}
 

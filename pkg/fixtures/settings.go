@@ -11,10 +11,12 @@ type fixtureLoaderSettings struct {
 	Groups  []string `cfg:"groups" default:"default"`
 }
 
-func unmarshalFixtureLoaderSettings(config cfg.Config) (*fixtureLoaderSettings, error) {
-	settings := &fixtureLoaderSettings{}
-	if err := config.UnmarshalKey("fixtures", settings); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal fixture loader settings: %w", err)
+func unmarshalFixtureLoaderSettings(config cfg.Config) (fixtureLoaderSettings, error) {
+	var settings fixtureLoaderSettings
+	var err error
+
+	if settings, err = cfg.GetSettings[fixtureLoaderSettings](config, "fixtures"); err != nil {
+		return fixtureLoaderSettings{}, fmt.Errorf("failed to unmarshal fixture loader settings: %w", err)
 	}
 
 	return settings, nil

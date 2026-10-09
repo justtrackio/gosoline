@@ -19,13 +19,15 @@ type SettingsCycle struct {
 }
 
 func ReadSettings(config cfg.Config) (*Settings, error) {
-	settings := &Settings{}
-	if err := config.UnmarshalKey("resource_lifecycles", settings, []cfg.UnmarshalDefaults{
+	var settings Settings
+	var err error
+
+	if settings, err = cfg.GetSettings[Settings](config, "resource_lifecycles", []cfg.UnmarshalDefaults{
 		cfg.UnmarshalWithDefaultForKey("init.enabled", true),
 		cfg.UnmarshalWithDefaultForKey("register.enabled", true),
 	}...); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal resource_lifecycles in ReadSettings: %w", err)
 	}
 
-	return settings, nil
+	return &settings, nil
 }

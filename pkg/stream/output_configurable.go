@@ -87,9 +87,12 @@ func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Lo
 }
 
 func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
+	var settings FileOutputSettings
+	var err error
+
 	key := ConfigurableOutputKey(name)
-	settings := &FileOutputSettings{}
-	if err := config.UnmarshalKey(key, settings); err != nil {
+
+	if settings, err = cfg.GetSettings[FileOutputSettings](config, key); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal file output settings for key %q in newFileOutputFromConfig: %w", key, err)
 	}
 
@@ -97,7 +100,7 @@ func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Lo
 		settings.Filename = fmt.Sprintf("stream-output-%s", name)
 	}
 
-	return NewFileOutput(config, logger, settings), DefaultOutputCapabilities, nil
+	return NewFileOutput(config, logger, &settings), DefaultOutputCapabilities, nil
 }
 
 type InMemoryOutputConfiguration struct {
@@ -127,9 +130,12 @@ type KafkaOutputConfiguration struct {
 }
 
 func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
+	var configuration KafkaOutputConfiguration
+	var err error
+
 	key := ConfigurableOutputKey(name)
-	configuration := &KafkaOutputConfiguration{}
-	if err := config.UnmarshalKey(key, configuration); err != nil {
+
+	if configuration, err = cfg.GetSettings[KafkaOutputConfiguration](config, key); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal kafka output settings for key %q in newKafkaOutputFromConfig: %w", key, err)
 	}
 
@@ -200,9 +206,12 @@ type KinesisOutputConfiguration struct {
 }
 
 func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
+	var configuration KinesisOutputConfiguration
+	var err error
+
 	key := ConfigurableOutputKey(name)
-	configuration := &KinesisOutputConfiguration{}
-	if err := config.UnmarshalKey(key, configuration); err != nil {
+
+	if configuration, err = cfg.GetSettings[KinesisOutputConfiguration](config, key); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal kinesis output settings for key %q in newKinesisOutputFromConfig: %w", key, err)
 	}
 
@@ -238,10 +247,12 @@ type redisListOutputConfiguration struct {
 }
 
 func newRedisListOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
+	var configuration redisListOutputConfiguration
+	var err error
+
 	key := ConfigurableOutputKey(name)
 
-	configuration := redisListOutputConfiguration{}
-	if err := config.UnmarshalKey(key, &configuration); err != nil {
+	if configuration, err = cfg.GetSettings[redisListOutputConfiguration](config, key); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal redis list output settings for key %q in newRedisListOutputFromConfig: %w", key, err)
 	}
 
@@ -266,9 +277,12 @@ type SnsOutputConfiguration struct {
 }
 
 func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
+	var configuration SnsOutputConfiguration
+	var err error
+
 	key := ConfigurableOutputKey(name)
-	configuration := SnsOutputConfiguration{}
-	if err := config.UnmarshalKey(key, &configuration); err != nil {
+
+	if configuration, err = cfg.GetSettings[SnsOutputConfiguration](config, key); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal sns output settings for key %q in newSnsOutputFromConfig: %w", key, err)
 	}
 
@@ -309,9 +323,12 @@ type SqsOutputConfiguration struct {
 }
 
 func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
+	var configuration SqsOutputConfiguration
+	var err error
+
 	key := ConfigurableOutputKey(name)
-	configuration := SqsOutputConfiguration{}
-	if err := config.UnmarshalKey(key, &configuration); err != nil {
+
+	if configuration, err = cfg.GetSettings[SqsOutputConfiguration](config, key); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal sqs output settings for key %q in newSqsOutputFromConfig: %w", key, err)
 	}
 

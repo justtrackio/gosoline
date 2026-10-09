@@ -41,11 +41,13 @@ type containerRunnerLocal struct {
 }
 
 func NewContainerRunnerLocal(config cfg.Config, logger log.Logger, managerSettings *ContainerManagerSettings) (ContainerRunner, error) {
+	var runnerSettings ContainerRunnerLocalSettings
+	var err error
+
 	id := uuid.New().NewV4()
 	logger = logger.WithChannel("container-runner-local")
 
-	runnerSettings := &ContainerRunnerLocalSettings{}
-	if err := config.UnmarshalKey("test.container_manager.runner.local", runnerSettings); err != nil {
+	if runnerSettings, err = cfg.GetSettings[ContainerRunnerLocalSettings](config, "test.container_manager.runner.local"); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal container runner settings: %w", err)
 	}
 
@@ -67,7 +69,7 @@ func NewContainerRunnerLocal(config cfg.Config, logger log.Logger, managerSettin
 		resources:       make(map[string]*dockertest.Resource),
 		resourcesLck:    sync.Mutex{},
 		managerSettings: managerSettings,
-		runnerSettings:  runnerSettings,
+		runnerSettings:  &runnerSettings,
 	}, nil
 }
 

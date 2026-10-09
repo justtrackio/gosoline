@@ -61,7 +61,9 @@ type Settings struct {
 
 func NewScheduler[T any](config cfg.Config, batchRunner BatchRunner[T], name string) (Scheduler[T], error) {
 	var settings Settings
-	if err := config.UnmarshalKey(fmt.Sprintf("scheduler.%s", name), &settings); err != nil {
+	var err error
+
+	if settings, err = cfg.GetSettings[Settings](config, fmt.Sprintf("scheduler.%s", name)); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal scheduler settings for %s: %w", name, err)
 	}
 

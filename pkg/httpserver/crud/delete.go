@@ -20,8 +20,10 @@ type deleteHandler struct {
 }
 
 func NewDeleteHandler(config cfg.Config, logger log.Logger, transformer BaseHandler) (gin.HandlerFunc, error) {
-	settings := Settings{}
-	if err := config.UnmarshalKey(SettingsConfigKey, &settings); err != nil {
+	var settings Settings
+	var err error
+
+	if settings, err = cfg.GetSettings[Settings](config, SettingsConfigKey); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal delete handler settings: %w", err)
 	}
 	dh := deleteHandler{

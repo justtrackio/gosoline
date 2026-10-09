@@ -99,7 +99,7 @@ func NewUntypedBatchConsumer(name string, callbackFactory UntypedBatchConsumerCa
 		}
 
 		var batchSettings BatchConsumerSettings
-		if err := config.UnmarshalKey(ConfigurableConsumerKey(name), &batchSettings); err != nil {
+		if batchSettings, err = cfg.GetSettings[BatchConsumerSettings](config, ConfigurableConsumerKey(name)); err != nil {
 			return nil, fmt.Errorf("can not read batch settings for %s: %w", name, err)
 		}
 

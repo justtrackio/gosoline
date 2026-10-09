@@ -45,15 +45,17 @@ func NewSmtpSender(config cfg.Config, name string) (SenderWithAttachments, error
 }
 
 func newSmtpSenderFromConfig(config cfg.Config, name string, dial smtpClientFactory, uuid uuid.Uuid, clock clock.Clock) (SenderWithAttachments, error) {
+	var smtpSettings SenderSmtpSettings
+	var emailConfig emailSettings
+	var err error
+
 	key := fmt.Sprintf("email.%s", name)
 
-	smtpSettings := &SenderSmtpSettings{}
-	if err := config.UnmarshalKey(key, smtpSettings); err != nil {
+	if smtpSettings, err = cfg.GetSettings[SenderSmtpSettings](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal smtp settings for key %q in NewSmtpSender: %w", key, err)
 	}
 
-	emailConfig := &emailSettings{}
-	if err := config.UnmarshalKey(key, emailConfig); err != nil {
+	if emailConfig, err = cfg.GetSettings[emailSettings](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal email settings for key %q in NewSmtpSender: %w", key, err)
 	}
 	if err := emailConfig.validate(); err != nil {

@@ -12,12 +12,12 @@ type NamingSettings struct {
 }
 
 func resolveAppId(config cfg.Config) (string, error) {
+	var namingSettings NamingSettings
 	var err error
 	var identity cfg.Identity
 	var appId string
 
-	namingSettings := &NamingSettings{}
-	if err := config.UnmarshalKey("tracing.naming", namingSettings); err != nil {
+	if namingSettings, err = cfg.GetSettings[NamingSettings](config, "tracing.naming"); err != nil {
 		return "", fmt.Errorf("failed to unmarshal tracing naming settings: %w", err)
 	}
 

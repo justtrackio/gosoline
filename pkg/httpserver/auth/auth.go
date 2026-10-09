@@ -43,9 +43,12 @@ func GetSubject(ctx context.Context) *Subject {
 }
 
 func OnlyConfiguredAuthenticators(config cfg.Config, name string, authenticators map[string]Authenticator) (map[string]Authenticator, error) {
+	var settings Settings
+	var err error
+
 	key := fmt.Sprintf("httpserver.%s.auth", name)
-	settings := &Settings{}
-	if err := config.UnmarshalKey(key, settings); err != nil {
+
+	if settings, err = cfg.GetSettings[Settings](config, key); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal auth settings: %w", err)
 	}
 	if len(settings.AllowedAuthenticators) == 0 {

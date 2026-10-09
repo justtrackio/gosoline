@@ -24,7 +24,7 @@ type KinsumerNamingSettings struct {
 
 func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream, error) {
 	var err error
-	var namingSettings *KinsumerNamingSettings
+	var namingSettings KinsumerNamingSettings
 
 	if namingSettings, err = readNamingSettings(config, settings); err != nil {
 		return "", fmt.Errorf("failed to read naming settings: %w", err)
@@ -47,7 +47,7 @@ func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream,
 
 func GetMetadataTableName(config cfg.Config, settings StreamNameSettingsAware) (string, error) {
 	var err error
-	var namingSettings *KinsumerNamingSettings
+	var namingSettings KinsumerNamingSettings
 
 	if namingSettings, err = readNamingSettings(config, settings); err != nil {
 		return "", fmt.Errorf("failed to read naming settings: %w", err)
@@ -66,9 +66,12 @@ func GetMetadataTableName(config cfg.Config, settings StreamNameSettingsAware) (
 	return name, nil
 }
 
-func readNamingSettings(config cfg.Config, settings StreamNameSettingsAware) (*KinsumerNamingSettings, error) {
+func readNamingSettings(config cfg.Config, settings StreamNameSettingsAware) (KinsumerNamingSettings, error) {
+	var namingSettings KinsumerNamingSettings
+	var err error
+
 	if settings.GetClientName() == "" {
-		return nil, fmt.Errorf("the client name shouldn't be empty")
+		return KinsumerNamingSettings{}, fmt.Errorf("the client name shouldn't be empty")
 	}
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("kinesis", settings.GetClientName()))
@@ -83,9 +86,8 @@ func readNamingSettings(config cfg.Config, settings StreamNameSettingsAware) (*K
 		cfg.UnmarshalWithDefaultsFromKey(fmt.Sprintf("%s.metadata_namespace_delimiter", defaultNamingKey), "metadata_namespace_delimiter"),
 	}
 
-	namingSettings := &KinsumerNamingSettings{}
-	if err := config.UnmarshalKey(namingKey, namingSettings, defaults...); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal kinesis naming settings for %s: %w", namingKey, err)
+	if namingSettings, err = cfg.GetSettings[KinsumerNamingSettings](config, namingKey, defaults...); err != nil {
+		return KinsumerNamingSettings{}, fmt.Errorf("failed to unmarshal kinesis naming settings for %s: %w", namingKey, err)
 	}
 
 	return namingSettings, nil
