@@ -14,11 +14,16 @@ import (
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/metric"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	uuidMocks "github.com/justtrackio/gosoline/pkg/uuid/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
 func TestRecordWriterPutRecords(t *testing.T) {
@@ -119,4 +124,187 @@ func TestRecordWriterPutRecords(t *testing.T) {
 
 	err := writer.PutRecords(t.Context(), batch)
 	assert.NoError(t, err)
+}
+
+func TestRecordWriterPutRecordsExportsMetricSemantics(t *testing.T) {
+	const streamName = "streamName"
+
+	reason := "ProvisionedThroughputExceededException"
+	record := func(id string) *gosoKinesis.Record {
+		return &gosoKinesis.Record{
+			Data:         []byte(id),
+			PartitionKey: aws.String("partition-" + id),
+		}
+	}
+	requestRecord := func(id string) types.PutRecordsRequestEntry {
+		return types.PutRecordsRequestEntry{
+			Data:         []byte(id),
+			PartitionKey: aws.String("partition-" + id),
+		}
+	}
+	failedResult := types.PutRecordsResultEntry{ErrorCode: aws.String(reason)}
+
+	type attempt struct {
+		records []types.PutRecordsRequestEntry
+		results []types.PutRecordsResultEntry
+	}
+	tests := []struct {
+		name               string
+		records            []*gosoKinesis.Record
+		attempts           []attempt
+		expectedSuccess    float64
+		expectedFailed     float64
+		expectedReason     string
+		expectedBatchCount uint64
+		expectedBatchSum   float64
+		expectedBatchMean  float64
+	}{
+		{
+			name:    "mixed results with retry failures",
+			records: []*gosoKinesis.Record{record("1"), record("2"), record("3")},
+			attempts: []attempt{
+				{
+					records: []types.PutRecordsRequestEntry{requestRecord("1"), requestRecord("2"), requestRecord("3")},
+					results: []types.PutRecordsResultEntry{{}, failedResult, {}},
+				},
+				{
+					records: []types.PutRecordsRequestEntry{requestRecord("2")},
+					results: []types.PutRecordsResultEntry{failedResult},
+				},
+				{
+					records: []types.PutRecordsRequestEntry{requestRecord("2")},
+					results: []types.PutRecordsResultEntry{{}},
+				},
+			},
+			expectedSuccess:    3,
+			expectedFailed:     2,
+			expectedReason:     "1 ProvisionedThroughputExceededException errors",
+			expectedBatchCount: 3,
+			expectedBatchSum:   5,
+			expectedBatchMean:  5.0 / 3.0,
+		},
+		{
+			name:    "failure-only first attempt",
+			records: []*gosoKinesis.Record{record("1"), record("2")},
+			attempts: []attempt{
+				{
+					records: []types.PutRecordsRequestEntry{requestRecord("1"), requestRecord("2")},
+					results: []types.PutRecordsResultEntry{failedResult, failedResult},
+				},
+				{
+					records: []types.PutRecordsRequestEntry{requestRecord("1"), requestRecord("2")},
+					results: []types.PutRecordsResultEntry{{}, {}},
+				},
+			},
+			expectedSuccess:    2,
+			expectedFailed:     2,
+			expectedReason:     "2 ProvisionedThroughputExceededException errors",
+			expectedBatchCount: 2,
+			expectedBatchSum:   4,
+			expectedBatchMean:  2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+			t.Cleanup(func() {
+				require.NoError(t, provider.Shutdown(t.Context()))
+			})
+
+			metricWriter := metric.NewOtelWriterWithInterfaces(logger, provider.Meter("record-writer-test"))
+			testClock := clock.NewFakeClock(clock.WithNonBlockingSleep)
+
+			uuidGen := uuidMocks.NewUuid(t)
+			uuidGen.EXPECT().NewV4().Return("write-request-id").Once()
+			uuidGen.EXPECT().NewV4().Return("batch-id").Once()
+
+			kinesisClient := gosoKinesisMocks.NewClient(t)
+			for _, attempt := range tt.attempts {
+				kinesisClient.EXPECT().PutRecords(matcher.Context, &kinesis.PutRecordsInput{
+					Records:    attempt.records,
+					StreamName: aws.String(streamName),
+				}).Return(&kinesis.PutRecordsOutput{Records: attempt.results}, nil).Once()
+			}
+
+			writer := gosoKinesis.NewRecordWriterWithInterfaces(logger, metricWriter, testClock, uuidGen, kinesisClient, &gosoKinesis.RecordWriterSettings{
+				StreamName: streamName,
+				Backoff: exec.BackoffSettings{
+					InitialInterval: time.Millisecond,
+					MaxInterval:     time.Millisecond,
+				},
+			}, streamName)
+
+			require.NoError(t, writer.PutRecords(t.Context(), tt.records))
+
+			var exported metricdata.ResourceMetrics
+			require.NoError(t, reader.Collect(t.Context(), &exported))
+			require.Len(t, exported.ScopeMetrics, 1)
+
+			metricsByName := make(map[string]metricdata.Metrics, len(exported.ScopeMetrics[0].Metrics))
+			for _, exportedMetric := range exported.ScopeMetrics[0].Metrics {
+				metricsByName[exportedMetric.Name] = exportedMetric
+			}
+
+			require.Len(t, metricsByName, 2)
+			sentMessages, ok := metricsByName["gosoline.cloud.aws.kinesis.sent.messages"]
+			require.True(t, ok)
+			assert.Equal(t, "{message}", sentMessages.Unit)
+			sentCounter, ok := sentMessages.Data.(metricdata.Sum[float64])
+			require.True(t, ok)
+			assert.Equal(t, metricdata.CumulativeTemporality, sentCounter.Temporality)
+			assert.True(t, sentCounter.IsMonotonic)
+			require.Len(t, sentCounter.DataPoints, 2)
+
+			var successfulRecords, failedRecords float64
+			var successPointSeen, failurePointSeen bool
+			for _, point := range sentCounter.DataPoints {
+				attributes := recordWriterMetricAttributes(point.Attributes)
+				assert.Equal(t, streamName, attributes["stream.name"])
+
+				if errorType, hasErrorType := attributes[metric.DimensionErrorType]; hasErrorType {
+					assert.Equal(t, tt.expectedReason, errorType)
+					assert.Equal(t, map[string]string{
+						"stream.name":             streamName,
+						metric.DimensionErrorType: tt.expectedReason,
+					}, attributes)
+					failedRecords = point.Value
+					failurePointSeen = true
+
+					continue
+				}
+
+				assert.Equal(t, map[string]string{"stream.name": streamName}, attributes)
+				successfulRecords = point.Value
+				successPointSeen = true
+			}
+			require.True(t, successPointSeen)
+			require.True(t, failurePointSeen)
+			assert.Equal(t, tt.expectedSuccess, successfulRecords)
+			assert.Equal(t, tt.expectedFailed, failedRecords)
+
+			batchRecords, ok := metricsByName["gosoline.cloud.aws.kinesis.batch.records"]
+			require.True(t, ok)
+			assert.Equal(t, "{record}", batchRecords.Unit)
+			batchHistogram, ok := batchRecords.Data.(metricdata.Histogram[float64])
+			require.True(t, ok)
+			require.Len(t, batchHistogram.DataPoints, 1)
+			batchPoint := batchHistogram.DataPoints[0]
+			assert.Equal(t, map[string]string{"stream.name": streamName}, recordWriterMetricAttributes(batchPoint.Attributes))
+			assert.Equal(t, tt.expectedBatchCount, batchPoint.Count)
+			assert.Equal(t, tt.expectedBatchSum, batchPoint.Sum)
+			assert.InDelta(t, tt.expectedBatchMean, batchPoint.Sum/float64(batchPoint.Count), 1e-9)
+		})
+	}
+}
+
+func recordWriterMetricAttributes(attributes attribute.Set) map[string]string {
+	values := make(map[string]string, attributes.Len())
+	for _, value := range attributes.ToSlice() {
+		values[string(value.Key)] = value.Value.AsString()
+	}
+
+	return values
 }

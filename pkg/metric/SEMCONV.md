@@ -28,7 +28,8 @@ The rules live in `AGENTS.md` under "Naming grammar" and are summarised here:
 3. Current amount: `<thing>.count`, on a gauge.
 4. Elapsed time: `<operation>.duration`, on a histogram, in milliseconds.
 5. Bytes: `<thing>.size`. Items per batch: `<thing>.<plural-noun>`.
-6. A failure is not its own metric: `error.type` on the operation metric, `{{default}}` on success.
+6. Failure is an `error.type` attribute on the operation metric; `{{default}}` normally marks success,
+   except for explicitly documented all-processed totals.
 7. Components lowercase, words joined by `_`, hierarchy by `.`.
 8. An attribute key never repeats its metric's namespace.
 
@@ -40,7 +41,7 @@ namespace prefix.
 
 | Key | Meaning | Semconv equivalent |
 |---|---|---|
-| `error.type` | what failed; `{{default}}` when nothing did | `error.type`, used verbatim |
+| `error.type` | what failed; `{{default}}` usually means success except for documented all-processed totals | `error.type`, used verbatim |
 | `broker.address` | Kafka broker the client talked to | none (`server.address` is close) |
 | `client.name` | Kafka client name | none |
 | `client.type` | `consumer` or `producer` | none |
@@ -135,7 +136,7 @@ Broker-level metrics from the franz-go hooks. All carry `client.type`, `client.n
 | `sent.messages` | count | counter | `stream.name`, `error.type` | `messaging.client.sent.messages` |
 | `process.duration` | ms | histogram | `stream.name`, `partition.id` | `messaging.process.duration` |
 | `reads` | count | counter | `stream.name`, `partition.id` | none |
-| `lag` | ms | gauge | `stream.name`, `partition.id` | `messaging.kafka.consumer.group.lag` in spirit |
+| `lag` | ms | histogram | `stream.name`, `partition.id` | `messaging.kafka.consumer.group.lag` in spirit |
 | `acquire.duration` | s | histogram | `stream.name`, `partition.id` | none |
 | `sleep.duration` | ms | histogram | `stream.name`, `partition.id` | none |
 | `wait.duration` | ms | histogram | `stream.name`, `partition.id` | none |
@@ -145,6 +146,18 @@ Broker-level metrics from the franz-go hooks. All carry `client.type`, `client.n
 
 `sent.messages` carries the reason Kinesis gave as its `error.type`, not a Go type, because the API
 reports a per-record error code rather than an error value.
+
+RecordWriter explicitly emits `sent.messages` as a counter in this namespace for both successful
+and failed records, including failure-only attempts. `batch.records` is a histogram of each
+write attempt's batch size, including retries; it is not a Kinsumer read-batch metric.
+
+`consumed.messages` is an exception to the usual success meaning of `error.type="{{default}}"`: for Kinesis,
+that series is the full batch total emitted when processing completes, including failed records. Each failed
+record is also emitted immediately as `error.type="processing_failed"`. Those failure points overlap the
+default total; do not sum them with it or subtract them to infer successes.
+
+`lag` retains millisecond samples and `UnitMillisecondsMaximum` aggregation for CloudWatch, while its
+`KindHistogram` instrument exposes the cumulative maximum to OpenTelemetry for each stream-and-shard series.
 
 ### `kvstore` — `pkg/kvstore`
 
@@ -203,13 +216,13 @@ before the outcome is known, so counting there could not carry `outcome`. Attemp
 Prometheus and OTEL are unaffected — both scale durations to seconds — but a CloudWatch consumer sees
 `Seconds`.
 
-**`error.type` names the action that failed, never a Go error type.** A folded metric's failed share
-carries a stable, bounded-cardinality marker naming what failed — `send_failed`, `connect_failed`,
-`request_failed`, `request_canceled`, `operation_failed`, `notify_failed`, `apply_failed`,
-`processing_failed` — not the Go error's type (which would carry unbounded cardinality) or its message.
-The successful share carries `{{default}}`. This holds for every folded metric: the kafka
-consumer/producer, the kafka broker-connect hook, `cloud.aws.kinesis.consumed.messages`, the `stream`,
-`db.repo`, `ddb`, `mdlsub` and `http.client` metrics.
+**`error.type` names the action that failed, never a Go error type.** A folded metric's failed share carries
+a stable, bounded-cardinality marker naming what failed — `send_failed`, `connect_failed`, `request_failed`,
+`request_canceled`, `operation_failed`, `notify_failed`, `apply_failed`, `processing_failed` — not the Go
+error's type (which would carry unbounded cardinality) or its message. The successful share usually carries
+`{{default}}`. `stream.consumed.messages` and `cloud.aws.kinesis.consumed.messages` are exceptions: their
+`{{default}}` series is the total of all processed records, while `processing_failed` is a per-record subset
+that overlaps that total. Never sum or subtract those series to derive a success-only count.
 
 ## Changing a metric
 

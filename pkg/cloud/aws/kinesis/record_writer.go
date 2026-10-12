@@ -26,6 +26,11 @@ const (
 	metricNamePutRecordsBatchSize = "batch.records"
 )
 
+func init() {
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNamePutRecords, "records sent to a Kinesis stream per PutRecords attempt, by Kinesis error reason")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNamePutRecordsBatchSize, "records included in one PutRecords request attempt")
+}
+
 type Record struct {
 	Data            []byte
 	PartitionKey    *string
@@ -266,12 +271,17 @@ func (w *recordWriter) writeMetrics(ctx context.Context, records int, failed int
 			MetricName: metricNamePutRecords,
 			Dimensions: sentMessagesDimensions(w.fullStreamName, metric.DimensionDefault),
 			Value:      float64(records - failed),
+			Unit:       metric.UnitCount,
+			Kind:       metric.KindCounter.Build(),
 		},
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
+			Namespace:  metricNamespaceCloudAwsKinesis,
 			MetricName: metricNamePutRecordsBatchSize,
 			Dimensions: dimensions,
 			Value:      float64(records),
+			Unit:       metric.UnitCountAverage,
+			Kind:       metric.KindHistogram.Build(),
 		},
 	}
 
@@ -282,6 +292,8 @@ func (w *recordWriter) writeMetrics(ctx context.Context, records int, failed int
 			MetricName: metricNamePutRecords,
 			Dimensions: sentMessagesDimensions(w.fullStreamName, reason),
 			Value:      float64(failed),
+			Unit:       metric.UnitCount,
+			Kind:       metric.KindCounter.Build(),
 		})
 	}
 
@@ -309,6 +321,7 @@ func getRecordWriterDefaultMetrics(streamName string) metric.Data {
 		},
 		{
 			Priority:   metric.PriorityHigh,
+			Namespace:  metricNamespaceCloudAwsKinesis,
 			MetricName: metricNamePutRecordsBatchSize,
 			Dimensions: map[string]string{
 				dimensionStream: streamName,

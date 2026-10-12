@@ -51,7 +51,9 @@ name with `gosoline.` so nothing gosoline exports can be mistaken for the conven
    bare `duration`.
 5. Bytes are `<thing>.size`. Items per batch are `<thing>.<plural-noun>`, never `.size`.
 6. A failure is not its own metric: put `error.type` on the metric recording the operation, with
-   `{{default}}` when it succeeded.
+   `{{default}}` for success - except for explicitly documented all-processed totals (`stream.consumed.messages`
+   and `cloud.aws.kinesis.consumed.messages`), where failures are an overlapping `processing_failed` subset.
+   Consumers MUST NOT add the failure series to or subtract it from those totals.
 7. Components are lowercase, words inside a component joined by an underscore, hierarchy by a dot.
 8. An attribute key never repeats its metric's namespace. `error.type` is the one key taken verbatim
    from a semantic convention; every other key is gosoline's own and carries no prefix.

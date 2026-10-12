@@ -39,7 +39,7 @@ const (
 )
 
 func init() {
-	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameConsumedMessages, "records a kinesis shard reader took in, by error type")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameConsumedMessages, "records a kinesis shard reader processed; the {{default}} error.type series is the batch total and processing_failed is an overlapping per-record subset")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameReadCount, "GetRecords calls a kinesis shard reader performed")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, "age of the last record a kinesis shard reader processed")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameAcquireShardDuration, "time a kinesis shard reader waited to acquire a shard")
@@ -413,9 +413,9 @@ func (s *shardReader) getAndProcessRecords(
 	millisecondsBehindChan <- float64(millisecondsBehind)
 
 	processStart := s.clock.Now()
-	var processedSize, failedSize int
+	var processedSize int
 
-	if processedSize, failedSize, err = s.processRecords(ctx, processingCtx, records, lastSequenceNumber, *iterator, handler); err != nil {
+	if processedSize, err = s.processRecords(ctx, processingCtx, records, lastSequenceNumber, *iterator, handler); err != nil {
 		return 0, err
 	} else if processedSize == len(records) {
 		// only advance the iterator if we processed the whole batch - if we don't do it like this, we could get
@@ -426,8 +426,8 @@ func (s *shardReader) getAndProcessRecords(
 
 	processDuration := s.clock.Since(processStart)
 	s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameProcessDuration, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
-	// The failed share was already counted per record in logHandlerError; the rest succeeded.
-	s.writeConsumedMessages(ctx, metric.DimensionDefault, float64(processedSize-failedSize))
+	// The {{default}} series is the batch total, including failures counted per record above.
+	s.writeConsumedMessages(ctx, metric.DimensionDefault, float64(processedSize))
 
 	s.logger.WithChannel("kinsumer-read").WithFields(log.Fields{
 		"count":       processedSize,
@@ -468,15 +468,15 @@ func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (r
 	return records, nextIterator, mdl.EmptyIfNil(output.MillisBehindLatest), nil
 }
 
-func (s *shardReader) processRecords(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, nextIterator ShardIterator, handler RecordHandler) (processed int, failed int, err error) {
+func (s *shardReader) processRecords(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, nextIterator ShardIterator, handler RecordHandler) (processed int, err error) {
 	// if our batch is empty, just write the next iterator to the checkpoint
 	if len(records) == 0 {
 		err := s.getCheckpoint().Advance(*lastSequenceNumber, nextIterator)
 		if err != nil {
-			return 0, 0, fmt.Errorf("failed to advance checkpoint: %w", err)
+			return 0, fmt.Errorf("failed to advance checkpoint: %w", err)
 		}
 
-		return 0, 0, nil
+		return 0, nil
 	}
 
 	switch s.settings.ProcessingMode {
@@ -485,13 +485,12 @@ func (s *shardReader) processRecords(ctx context.Context, processingCtx context.
 	case ProcessingModeOrdered:
 		return s.processRecordsOrdered(ctx, processingCtx, records, lastSequenceNumber, handler)
 	default:
-		return 0, 0, fmt.Errorf("unknown processing mode %s", s.settings.ProcessingMode)
+		return 0, fmt.Errorf("unknown processing mode %s", s.settings.ProcessingMode)
 	}
 }
 
-func (s *shardReader) processRecordsOrdered(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, handler RecordHandler) (processed int, failed int, err error) {
+func (s *shardReader) processRecordsOrdered(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, handler RecordHandler) (processed int, err error) {
 	processedSize := 0
-	failedSize := 0
 
 	for _, record := range records {
 		s.delayConsume(ctx, record)
@@ -499,15 +498,14 @@ func (s *shardReader) processRecordsOrdered(ctx context.Context, processingCtx c
 		// if context was canceled in the meantime, stop processing
 		select {
 		case <-ctx.Done():
-			return processedSize, failedSize, nil
+			return processedSize, nil
 		default:
 		}
 
 		if err := s.handleWithRecovery(processingCtx, record, handler); errors.Is(err, errMessageProcessorStopped) {
-			return processedSize, failedSize, nil
+			return processedSize, nil
 		} else if err != nil {
 			s.logHandlerError(ctx, record, err)
-			failedSize++
 		}
 
 		// mark us as healthy as we managed to pass a record to downstream and are still making progress
@@ -519,7 +517,7 @@ func (s *shardReader) processRecordsOrdered(ctx context.Context, processingCtx c
 		// stream expire (which is at least a day away if we are keeping up with the stream)).
 		err := s.getCheckpoint().Advance(*lastSequenceNumber, "")
 		if err != nil {
-			return processedSize, failedSize, fmt.Errorf("failed to advance checkpoint: %w", err)
+			return processedSize, fmt.Errorf("failed to advance checkpoint: %w", err)
 		}
 
 		processedSize++
@@ -527,15 +525,15 @@ func (s *shardReader) processRecordsOrdered(ctx context.Context, processingCtx c
 		// if context was canceled in the meantime, stop processing
 		select {
 		case <-ctx.Done():
-			return processedSize, failedSize, nil
+			return processedSize, nil
 		default:
 		}
 	}
 
-	return processedSize, failedSize, nil
+	return processedSize, nil
 }
 
-func (s *shardReader) processRecordsUnordered(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, handler RecordHandler) (processed int, failed int, err error) {
+func (s *shardReader) processRecordsUnordered(ctx context.Context, processingCtx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, handler RecordHandler) (processed int, err error) {
 	results := make([]error, len(records))
 	jobs := make(chan int, len(records))
 	for i := range records {
@@ -573,7 +571,7 @@ func (s *shardReader) processRecordsUnordered(ctx context.Context, processingCtx
 
 	// Workers only return nil, so an error here is a panic recovered by the coffin.
 	if err := cfn.Wait(); err != nil {
-		return 0, 0, fmt.Errorf("unexpected error during record processing: %w", err)
+		return 0, fmt.Errorf("unexpected error during record processing: %w", err)
 	}
 
 	return s.checkpointProcessedRecords(ctx, records, results, lastSequenceNumber)
@@ -600,9 +598,8 @@ func (s *shardReader) handleWithRecovery(ctx context.Context, record types.Recor
 	return err
 }
 
-func (s *shardReader) checkpointProcessedRecords(ctx context.Context, records []types.Record, results []error, lastSequenceNumber *SequenceNumber) (processed int, failed int, err error) {
+func (s *shardReader) checkpointProcessedRecords(ctx context.Context, records []types.Record, results []error, lastSequenceNumber *SequenceNumber) (processed int, err error) {
 	processedSize := 0
-	failedSize := 0
 	for i, err := range results {
 		if errors.Is(err, errMessageProcessorStopped) {
 			break
@@ -610,22 +607,21 @@ func (s *shardReader) checkpointProcessedRecords(ctx context.Context, records []
 
 		if err != nil {
 			s.logHandlerError(ctx, records[i], err)
-			failedSize++
 		}
 
 		*lastSequenceNumber = SequenceNumber(mdl.EmptyIfNil(records[i].SequenceNumber))
 		if err := s.getCheckpoint().Advance(*lastSequenceNumber, ""); err != nil {
-			return processedSize, failedSize, fmt.Errorf("failed to advance checkpoint: %w", err)
+			return processedSize, fmt.Errorf("failed to advance checkpoint: %w", err)
 		}
 
 		processedSize++
 	}
 
-	return processedSize, failedSize, nil
+	return processedSize, nil
 }
 
-// logHandlerError logs a failed record and counts it on consumed.messages under the action that failed. The failed
-// share of consumed.messages is this metric's only record of failures; there is no separate error counter.
+// logHandlerError logs a failed record and counts it as a subset of the consumed.messages batch total; it is not an
+// exclusive outcome series.
 func (s *shardReader) logHandlerError(ctx context.Context, record types.Record, err error) {
 	// Kinesis can not selectively retry a record without replaying its successors, so stream retry owns retries.
 	s.logger.Error(ctx, "failed to handle record %s: %w", mdl.EmptyIfNil(record.SequenceNumber), err)
@@ -706,12 +702,12 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 	defer ticker.Stop()
 
 	currentMillisecondsBehind := 0.0
-	s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindGauge.Build())
+	s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindHistogram.Build())
 
 	for {
 		select {
 		case <-ticker.Chan():
-			s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindGauge.Build())
+			s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindHistogram.Build())
 		case newMillisecondsBehind, ok := <-millisecondsBehindChan:
 			if !ok {
 				// the producer stopped, so we also need to stop
@@ -719,7 +715,7 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 			}
 
 			currentMillisecondsBehind = newMillisecondsBehind
-			s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindGauge.Build())
+			s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindHistogram.Build())
 		}
 	}
 }
@@ -741,9 +737,8 @@ func (s *shardReader) writeMetric(ctx context.Context, namespace string, metricN
 	})
 }
 
-// writeConsumedMessages counts records this shard reader took in, split by outcome: the succeeded share
-// carries the default error.type, a failed record its handler's error type. The failed share of
-// consumed.messages is the only record of failures; there is no separate error counter.
+// writeConsumedMessages records one consumed.messages value. The {{default}} error.type series is the batch total;
+// processing_failed records form a per-record subset that overlaps it, not an exclusive outcome.
 func (s *shardReader) writeConsumedMessages(ctx context.Context, errorType string, value float64) {
 	s.metricWriter.Write(ctx, metric.Data{
 		{
