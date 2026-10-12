@@ -214,6 +214,8 @@ version, rather than a version increment per edit inside it. There is still no d
 | Deleted and consolidated | `db.repo.model_event.notify.errors` | Use `db.repo.model_event.notifications` for both outcomes; the former error-only metric is not emitted. |
 | Added outcome coverage | A cancelled HTTP client request | `http.client.request.duration` is emitted with `error.type="request_canceled"` before the original cancellation error is returned. |
 | Deleted aggregate series | HTTP server-only, Kafka topic-only, and Kinesis stream-only aggregate data | Query or aggregate the retained detailed series in the backend rather than searching for a framework-emitted `KindTotal` datum. |
+| Instrument type restored | `cloud.aws.kinesis.lag` | OTEL now retains the per-stream-and-shard cumulative histogram maximum; millisecond observations and CloudWatch maximum aggregation of current samples remain unchanged. |
+| Instrument metadata restored | RecordWriter `cloud.aws.kinesis.sent.messages` and `cloud.aws.kinesis.batch.records` | Successful and failed sends use explicit counter/count metadata in the canonical namespace, including failure-only attempts. Batch sizes remain per-attempt histograms, including retries; record counts and retry behavior are unchanged. |
 | Dimension value changed | An unknown model on a stream consumer | `stream.errors` no longer carries `error.type="unknown_model"`, and the failure is no longer counted twice on the single-message consumer. Both consumers now count it once, through the shared error path, with `error.type="processing_failed"`. |
 | Help text added | Every metric in the inventory above | Each metric is exported with a description of what it counts instead of `unit: <unit>`. Emitting packages register it through `metric.RegisterHelp`; `Kind.WithHelp` still overrides it per datum. |
 | Renamed | **Your own** metrics written through `metric.NewWriter("")`, on CloudWatch | A namespace-less leaf is now PascalCased exactly like a namespaced one, so `my.custom.metric` exports as `MyCustomMetric` and `my-metric-name` as `My-metric-name`. This hits application-authored metrics, not only gosoline's: re-key every CloudWatch dashboard and alarm built on one. See "Metrics authored outside gosoline" below for the Prometheus and OTEL effect. |
@@ -221,15 +223,16 @@ version, rather than a version increment per edit inside it. There is still no d
 #### Failures and outcomes are attributes, not metrics
 
 Twelve metrics were folded into the metric recording the operation, so a failure or an alternative
-outcome is a series on that metric rather than a metric of its own. Attempts are the sum over the
-attribute; failures are the non-`{{default}}` `error.type`.
+outcome is a series on that metric rather than a metric of its own. For metrics with exclusive
+outcomes, attempts are the sum over attribute values; the stream and Kinesis consumed-message totals
+are exceptions whose failure series overlap their all-processed default series.
 
 | Removed | Now query | Attribute that tells them apart |
 |---|---|---|
 | `stream.errors` | `stream.consumed.messages` | `error.type` |
 | `kafka.producer.send.errors` | `kafka.producer.sent.messages` | `error.type` |
 | `cloud.aws.kinesis.send.errors` | `cloud.aws.kinesis.sent.messages` | `error.type`, carrying the reason Kinesis reported |
-| `cloud.aws.kinesis.consume.errors` | `cloud.aws.kinesis.consumed.messages` | `error.type` |
+| `cloud.aws.kinesis.consume.errors` | `cloud.aws.kinesis.consumed.messages` | `error.type`; `{{default}}` is the all-processed batch total and `processing_failed` is an overlapping per-record subset |
 | `kvstore.hits` | `kvstore.reads` | `hit` (`true` / `false`) |
 | `limit.releases`, `limit.throttles`, `limit.errors` | `limit.takes` | `outcome` (`allowed` / `throttled` / `error`) plus `error.type` |
 | `mdlsub.consumed.events`, `mdlsub.skipped.events`, `mdlsub.consume.errors` | `mdlsub.events` | `outcome` (`applied` / `skipped`) plus `error.type` |
@@ -245,11 +248,18 @@ than a Go error type, because that pipeline reports a record failure as a boolea
 not available where the metric is written. The kafka consumer also gained `sleep.duration` (time spent
 honouring a configured consume delay) and lost `wait.duration` in that rewrite.
 
+`cloud.aws.kinesis.consumed.messages` emits its `error.type="{{default}}"` batch total when the batch
+completes, including every processed failure. Each failed record is also emitted immediately with
+`error.type="processing_failed"`; those points overlap the total and must not be added to it or
+subtracted to infer successful records.
+
 Across every folded metric, `error.type` names the **action that failed** — `send_failed`,
 `connect_failed`, `request_failed`, `request_canceled`, `operation_failed`, `notify_failed`,
 `apply_failed`, `processing_failed` — never the Go error type (whose cardinality is unbounded). The
-successful share carries `{{default}}`. Re-key any dashboard or alert that filtered on a Go type string
-such as `*fmt.wrapError`.
+`{{default}}` value normally identifies success; `stream.consumed.messages` and
+`cloud.aws.kinesis.consumed.messages` instead use it for their all-processed totals, with
+`processing_failed` as an overlapping subset. Do not sum or subtract those series to derive success.
+Re-key any dashboard or alert that filtered on a Go type string such as `*fmt.wrapError`.
 
 The full specification, including every metric's attributes and the semantic-convention metric it
 derives from, is `pkg/metric/SEMCONV.md`.

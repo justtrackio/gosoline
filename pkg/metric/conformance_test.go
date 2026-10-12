@@ -63,7 +63,7 @@ var authoredNames = []authoredName{
 	{"cloud.aws.kinesis", "sent.messages", UnitCount, kindCounter},
 	{"cloud.aws.kinesis", "process.duration", UnitMilliseconds, kindHistogram},
 	{"cloud.aws.kinesis", "reads", UnitCount, kindCounter},
-	{"cloud.aws.kinesis", "lag", UnitMilliseconds, kindGauge},
+	{"cloud.aws.kinesis", "lag", UnitMilliseconds, kindHistogram},
 	{"cloud.aws.kinesis", "acquire.duration", UnitSeconds, kindHistogram},
 	{"cloud.aws.kinesis", "sleep.duration", UnitMilliseconds, kindHistogram},
 	{"cloud.aws.kinesis", "wait.duration", UnitMilliseconds, kindHistogram},
