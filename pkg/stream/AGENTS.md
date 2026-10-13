@@ -252,11 +252,26 @@ policy rather than just the primary transport's native-redelivery capability.
 
 `Message` JSON serialization uses the `attributes`/`body` representation.
 Attribute values must be strings; numeric and boolean values are rejected
-rather than converted. Bodies are serialized directly as JSON strings, without
-base64 encoding or special handling of the `goso.body.base64` attribute.
-All attributes, including the payload-format `encoding` attribute, are preserved.
-Bodies, attribute keys and attribute values are expected to be valid UTF-8 strings;
-arbitrary binary bodies are not guaranteed to survive JSON serialization or SQS retries.
+rather than converted. This is a reader-only transition release: `Message.Body`
+remains a string and all writers retain the legacy JSON string body without adding
+a marker. The custom `UnmarshalJSON` accepts both legacy bodies and future base64
+bodies marked with the reserved `goso.body.base64: "true"` attribute. It decodes
+marked bodies and removes the marker, preserving payload-format and propagation
+attributes. Malformed base64 and invalid marker values are rejected. Direct JSON
+decoding, aggregate children and retry readers all use this dual-format reader.
+Unmarked strings are never heuristically decoded, even if they look like base64.
+Kafka, `WritableMessage`, raw-message writes and batching sizes are unchanged.
+Legacy JSON writers still require valid UTF-8 bodies, attribute keys and values;
+decoding a binary base64 body does not make legacy forwarding/retries binary-safe.
+
+Roll out this release to every consumer and retry worker before changing writers.
+The next release can change `Body` to `[]byte` and write marked base64 envelopes.
+After that switch, rollback only to this dual-format transition release. Keep
+legacy reading until queued messages, delayed retries, retained Kinesis records
+and replayable DLQs have drained or expired. Removing the marker requires another
+reader-first rollout: readers must interpret unmarked bodies as base64 before
+writers stop marking them. Existing compression/protobuf base64 layers are
+independent of envelope encoding and remain unchanged during this migration.
 
 ## Related packages
 - `pkg/cloud/aws/sqs`, `sns`, `kinesis` - AWS transport clients
