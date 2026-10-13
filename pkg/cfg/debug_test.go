@@ -104,6 +104,7 @@ func TestDebugConfigFingerprintUsesRedactedValues(t *testing.T) {
 					}
 				}
 				t.Fatal("missing config fingerprint")
+
 				return ""
 			}
 
@@ -114,7 +115,7 @@ func TestDebugConfigFingerprintUsesRedactedValues(t *testing.T) {
 	}
 }
 
-func captureDebugConfig(t *testing.T, config cfg.Config) (string, []string) {
+func captureDebugConfig(t *testing.T, config cfg.Config) (outputText string, messages []string) {
 	t.Helper()
 
 	var output bytes.Buffer
@@ -123,7 +124,7 @@ func captureDebugConfig(t *testing.T, config cfg.Config) (string, []string) {
 	require.NoError(t, cfg.DebugConfig(t.Context(), config, logger))
 
 	lines := strings.Split(strings.TrimSpace(output.String()), "\n")
-	messages := make([]string, len(lines))
+	messages = make([]string, len(lines))
 	for i, line := range lines {
 		var entry struct {
 			Message string `json:"message"`
