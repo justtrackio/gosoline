@@ -82,7 +82,7 @@ func (f fixedWindowDdb) Increment(ctx context.Context, prefix string) (incr *int
 			ddb.AttributeNotExists(attrTtl),
 			ddb.Lt(attrTtl, now().Unix()))).
 		Set(attrVal, 1).
-		SetIfNotExist(attrTtl, now().Add(f.window).Unix()).
+		Set(attrTtl, now().Add(f.window).Unix()).
 		ReturnAllNew()
 
 	resp, err := f.repo.UpdateItem(ctx, reset, item)
