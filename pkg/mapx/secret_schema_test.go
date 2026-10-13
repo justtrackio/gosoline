@@ -90,3 +90,49 @@ func TestSecretSchemaRootSequencesAndBareBracketMapKeys(t *testing.T) {
 	require.True(t, maps.SecretSchema(true).IsSecret("[0][1].opaque"))
 	require.False(t, maps.SecretSchema(true).IsSecret("[0].public"))
 }
+
+func TestConcreteSecretSchemaHandlesInterfaceCyclesAndSubtrees(t *testing.T) {
+	type recursive struct {
+		Opaque string `cfg:"opaque,secret"`
+		Next   any    `cfg:"next"`
+	}
+	value := &recursive{Opaque: "synthetic-original"}
+	value.Next = value
+	input := map[string]any{"client": value}
+	ms, err := mapx.NewStruct(&input, &mapx.StructSettings{FieldTag: "cfg"})
+	require.NoError(t, err)
+	schema := ms.SecretSchema(false)
+	require.True(t, schema.IsSecret("client.opaque"))
+	require.True(t, schema.IsSecret("client.next.opaque"))
+	require.True(t, schema.At("client").IsSecret("opaque"))
+	require.True(t, schema.At("client.opaque").IsSecret(""))
+	require.True(t, schema.At("client.next.opaque").IsSecret(""))
+	var rooted mapx.SecretSchema
+	rooted.Register("rows[0]", schema)
+	require.True(t, rooted.At("rows[0].client.opaque").IsSecret(""))
+	require.False(t, rooted.IsSecret("rows[1].client.opaque"))
+	rooted.Merge(ms.SecretSchema(false))
+	require.True(t, rooted.At("rows[0].client.opaque").IsSecret(""))
+	require.Same(t, value, value.Next)
+	require.Equal(t, "synthetic-original", value.Opaque)
+}
+
+func TestSecretSchemaAtCombinesNestedRegistrationsWithTypeLayers(t *testing.T) {
+	type envelope struct {
+		Child any `cfg:"child"`
+	}
+	type credential struct {
+		Opaque string `cfg:"opaque,secret"`
+	}
+	var parent envelope
+	var child credential
+	parentStruct, err := mapx.NewStruct(&parent, &mapx.StructSettings{FieldTag: "cfg"})
+	require.NoError(t, err)
+	childStruct, err := mapx.NewStruct(&child, &mapx.StructSettings{FieldTag: "cfg"})
+	require.NoError(t, err)
+	var schema mapx.SecretSchema
+	schema.Register("root", parentStruct.SecretSchema(false))
+	schema.Register("root.child", childStruct.SecretSchema(false))
+	require.True(t, schema.IsSecret("root.child.opaque"))
+	require.True(t, schema.At("root.child.opaque").IsSecret(""))
+}

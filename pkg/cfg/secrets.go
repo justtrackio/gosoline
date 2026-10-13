@@ -1,10 +1,6 @@
 package cfg
 
-import (
-	"reflect"
-
-	"github.com/justtrackio/gosoline/pkg/mapx"
-)
+import "github.com/justtrackio/gosoline/pkg/mapx"
 
 func (c *config) IsSecret(selector string) bool {
 	c.secretMu.RLock()
@@ -14,14 +10,8 @@ func (c *config) IsSecret(selector string) bool {
 }
 
 func (c *config) registerSecrets(key string, value any, forWrite bool) {
-	t := reflect.TypeOf(value)
-	if t == nil {
-		return
-	}
-	if t.Kind() != reflect.Pointer {
-		value = reflect.New(t).Interface()
-	}
-	ms, err := mapx.NewStruct(value, &mapx.StructSettings{FieldTag: "cfg"})
+	// Preserve concrete values inside interface containers for schema inspection.
+	ms, err := mapx.NewStruct(&value, &mapx.StructSettings{FieldTag: "cfg"})
 	if err != nil {
 		return
 	}

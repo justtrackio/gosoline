@@ -1372,8 +1372,7 @@ func (_c *GosoConf_UnmarshalKey_Call) RunAndReturn(run func(string, interface{},
 func NewGosoConf(t interface {
 	mock.TestingT
 	Cleanup(func())
-},
-) *GosoConf {
+}) *GosoConf {
 	mock := &GosoConf{}
 	mock.Mock.Test(t)
 

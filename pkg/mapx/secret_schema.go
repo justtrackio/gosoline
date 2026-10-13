@@ -1,6 +1,7 @@
 package mapx
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -14,13 +15,28 @@ type SecretSchema struct {
 	Element          *SecretSchema
 	mapElements      bool
 	sequenceElements bool
+	typed            *SecretSchema
+	concrete         *SecretSchema
+	indexes          map[int]*SecretSchema
 }
 
-// SecretSchema builds type metadata, including nil pointers and empty containers.
+// SecretSchema builds tag metadata from static types and concrete interface
+// values, including nil pointers and empty containers. Concrete annotations
+// remain scoped to their map key or sequence index.
 // forWrite selects Write's prefix mapping; Read preserves the tagged subtree.
 func (s *Struct) SecretSchema(forWrite bool) *SecretSchema {
+	active := make(map[secretValueVisit]bool)
+	value, mapping := secretRootValue(reflect.ValueOf(s.target), active)
+
+	return &SecretSchema{
+		typed:    s.secretTypeSchema(value.Type(), forWrite),
+		concrete: s.secretValue(value, forWrite, mapping, active, make(map[secretValueType]*SecretSchema)),
+	}
+}
+
+func (s *Struct) secretTypeSchema(t reflect.Type, forWrite bool) *SecretSchema {
 	occurrences := make(map[*SecretSchema]*SecretSchema)
-	root := s.secretType(reflect.TypeOf(s.target), make(map[reflect.Type]*SecretSchema), occurrences, forWrite)
+	root := s.secretType(t, make(map[reflect.Type]*SecretSchema), occurrences, forWrite)
 	// Recursive container types may not have their element assigned when a
 	// tagged occurrence is discovered. Resolve occurrences after the type graph.
 	for occurrence, source := range occurrences {
@@ -170,26 +186,42 @@ func (s *SecretSchema) merge(other *SecretSchema, seen map[[2]*SecretSchema]bool
 		s.Fields = make(map[string]*SecretSchema)
 	}
 	for key, child := range other.Fields {
-		if s.Fields[key] == nil {
-			if cloned := copies[child]; cloned != nil {
-				s.Fields[key] = cloned
-
-				continue
-			}
-			s.Fields[key] = &SecretSchema{}
-		}
-		s.Fields[key].merge(child, seen, copies)
+		current := s.Fields[key]
+		mergeSecretChild(&current, child, seen, copies)
+		s.Fields[key] = current
 	}
-	if other.Element != nil {
-		if s.Element == nil {
-			if cloned := copies[other.Element]; cloned != nil {
-				s.Element = cloned
+	s.mergeSecretIndexes(other, seen, copies)
+	mergeSecretChild(&s.Element, other.Element, seen, copies)
+	mergeSecretChild(&s.typed, other.typed, seen, copies)
+	mergeSecretChild(&s.concrete, other.concrete, seen, copies)
+}
 
-				return
-			}
-			s.Element = &SecretSchema{}
+func mergeSecretChild(target **SecretSchema, source *SecretSchema, seen map[[2]*SecretSchema]bool, copies map[*SecretSchema]*SecretSchema) {
+	if source == nil {
+		return
+	}
+	if *target == nil {
+		if cloned := copies[source]; cloned != nil {
+			*target = cloned
+
+			return
 		}
-		s.Element.merge(other.Element, seen, copies)
+		*target = &SecretSchema{}
+	}
+	(*target).merge(source, seen, copies)
+}
+
+func (s *SecretSchema) mergeSecretIndexes(other *SecretSchema, seen map[[2]*SecretSchema]bool, copies map[*SecretSchema]*SecretSchema) {
+	if len(other.indexes) == 0 {
+		return
+	}
+	if s.indexes == nil {
+		s.indexes = make(map[int]*SecretSchema)
+	}
+	for index, child := range other.indexes {
+		current := s.indexes[index]
+		mergeSecretChild(&current, child, seen, copies)
+		s.indexes[index] = current
 	}
 }
 
@@ -199,10 +231,13 @@ func (s *SecretSchema) Register(selector string, other *SecretSchema) {
 	for _, part := range secretSelector(selector) {
 		if part.index {
 			node.sequenceElements = true
-			if node.Element == nil {
-				node.Element = &SecretSchema{}
+			if node.indexes == nil {
+				node.indexes = make(map[int]*SecretSchema)
 			}
-			node = node.Element
+			if node.indexes[part.number] == nil {
+				node.indexes[part.number] = &SecretSchema{}
+			}
+			node = node.indexes[part.number]
 
 			continue
 		}
@@ -219,37 +254,55 @@ func (s *SecretSchema) Register(selector string, other *SecretSchema) {
 
 // At returns the schema at a selector, including secrecy inherited from parents.
 func (s *SecretSchema) At(selector string) *SecretSchema {
-	node, secret := s.lookup(selector)
-	if node == nil {
-		return &SecretSchema{Secret: secret}
-	}
-
-	return &SecretSchema{Secret: secret, Fields: node.Fields, Element: node.Element, mapElements: node.mapElements, sequenceElements: node.sequenceElements}
+	return s.atParts(secretSelector(selector))
 }
 
-func (s *SecretSchema) lookup(selector string) (*SecretSchema, bool) {
-	node := s
-	secret := node.Secret
-	for _, part := range secretSelector(selector) {
-		if part.index {
-			if !node.sequenceElements {
-				return nil, secret
-			}
-			node = node.Element
-		} else {
-			child := node.Fields[part.key]
-			if child == nil && node.mapElements {
-				child = node.Element
-			}
-			node = child
-		}
-		if node == nil {
-			return nil, secret
-		}
-		secret = secret || node.Secret
-	}
+func (s *SecretSchema) atParts(parts []secretPart) *SecretSchema {
+	result := &SecretSchema{Secret: s.Secret}
+	if len(parts) == 0 {
+		result.Merge(s)
 
-	return node, secret
+		return result
+	}
+	s.mergeAtChild(result, parts[0], parts[1:])
+	mergeAtLayer(&result.typed, s.typed, parts)
+	mergeAtLayer(&result.concrete, s.concrete, parts)
+
+	return result
+}
+
+func mergeAtLayer(target **SecretSchema, source *SecretSchema, parts []secretPart) {
+	if source == nil {
+		return
+	}
+	subtree := source.atParts(parts)
+	if *target == nil {
+		*target = subtree
+	} else {
+		(*target).Merge(subtree)
+	}
+}
+
+func (s *SecretSchema) mergeAtChild(result *SecretSchema, part secretPart, tail []secretPart) {
+	if part.index {
+		if !s.sequenceElements {
+			return
+		}
+		if s.Element != nil {
+			result.Merge(s.Element.atParts(tail))
+		}
+		if child := s.indexes[part.number]; child != nil {
+			result.Merge(child.atParts(tail))
+		}
+
+		return
+	}
+	if child := s.Fields[part.key]; child != nil {
+		result.Merge(child.atParts(tail))
+	}
+	if s.mapElements && s.Element != nil {
+		result.Merge(s.Element.atParts(tail))
+	}
 }
 
 // IsSecret includes annotations on every ancestor of the selector. Consecutive
@@ -266,16 +319,19 @@ func (s *SecretSchema) isSecret(parts []secretPart) bool {
 	if s.Secret {
 		return true
 	}
+	if s.typed.isSecret(parts) || s.concrete.isSecret(parts) {
+		return true
+	}
 	if len(parts) == 0 {
 		return false
 	}
 	part := parts[0]
 	if part.index {
 		if s.sequenceElements {
-			return s.Element.isSecret(parts[1:])
+			return s.Element.isSecret(parts[1:]) || s.indexes[part.number].isSecret(parts[1:])
 		}
 
-		return part.root && s.literalMapSecret(parts)
+		return part.root && s.literalMapSecret("", parts)
 	}
 	child := s.Fields[part.key]
 	if child == nil && s.mapElements {
@@ -285,13 +341,14 @@ func (s *SecretSchema) isSecret(parts []secretPart) bool {
 		return true
 	}
 
-	return s.literalMapSecret(parts[1:])
+	return s.literalMapSecret(part.key, parts[1:])
 }
 
-func (s *SecretSchema) literalMapSecret(parts []secretPart) bool {
+func (s *SecretSchema) literalMapSecret(key string, parts []secretPart) bool {
 	if s.mapElements {
 		for i := 0; i < len(parts) && parts[i].index; i++ {
-			if s.Element.isSecret(parts[i+1:]) {
+			key += parts[i].key
+			if s.Fields[key].isSecret(parts[i+1:]) || s.Element.isSecret(parts[i+1:]) {
 				return true
 			}
 		}
@@ -301,9 +358,10 @@ func (s *SecretSchema) literalMapSecret(parts []secretPart) bool {
 }
 
 type secretPart struct {
-	key   string
-	index bool
-	root  bool
+	key    string
+	index  bool
+	root   bool
+	number int
 }
 
 func secretSelector(selector string) []secretPart {
@@ -318,7 +376,7 @@ func secretSelector(selector string) []secretPart {
 			parts = append(parts, secretPart{key: key})
 		}
 		if index >= 0 {
-			parts = append(parts, secretPart{index: true})
+			parts = append(parts, secretPart{index: true, number: index})
 		}
 	}
 
@@ -333,23 +391,327 @@ func secretClassificationSelector(selector string) []secretPart {
 	var parts []secretPart
 	for segmentIndex, segment := range SplitUnescapedDotN(selector, -1) {
 		key := segment
-		indexes := 0
+		var indexes []secretPart
 		for {
 			// Prefixing permits getIndex to parse a root sequence index too.
 			index, prefix := getIndex("_" + key)
 			if index < 0 {
 				break
 			}
+			indexes = append(indexes, secretPart{index: true, number: index, key: key[len(prefix)-1:]})
 			key = prefix[1:]
-			indexes++
 		}
-		if key != "" || indexes == 0 || segmentIndex > 0 {
+		if key != "" || len(indexes) == 0 || segmentIndex > 0 {
 			parts = append(parts, secretPart{key: key})
 		}
-		for i := range indexes {
-			parts = append(parts, secretPart{index: true, root: segmentIndex == 0 && key == "" && i == 0})
+		for i := len(indexes) - 1; i >= 0; i-- {
+			part := indexes[i]
+			part.root = segmentIndex == 0 && key == "" && i == len(indexes)-1
+			parts = append(parts, part)
 		}
 	}
 
 	return parts
+}
+
+type secretValueVisit struct {
+	kind    reflect.Kind
+	pointer uintptr
+}
+
+func secretRootValue(value reflect.Value, active map[secretValueVisit]bool) (reflect.Value, secretValueMapping) {
+	// Remove Struct's argument box, but retain the caller's storage carrier
+	// when deciding whether map keys are literal or Merge selectors.
+	if value.Kind() == reflect.Pointer && !value.IsNil() && value.Type().Elem().Kind() == reflect.Interface {
+		value = value.Elem()
+		if !value.IsNil() {
+			value = value.Elem()
+		}
+	}
+	mapping := secretValueMappingFor(value.Type())
+	value = secretRootCarrier(value, active)
+	// Root structs are normalized by Struct.Read, including boxed structs.
+	if resolved := secretValueMappingFor(value.Type()); resolved.readStructs {
+		mapping = resolved
+	}
+
+	return value, mapping
+}
+
+func secretRootCarrier(value reflect.Value, active map[secretValueVisit]bool) reflect.Value {
+	for {
+		switch value.Kind() {
+		case reflect.Interface:
+			if value.IsNil() {
+				return value
+			}
+			value = value.Elem()
+		case reflect.Pointer:
+			if value.IsNil() || value.Type().Elem().Kind() != reflect.Interface {
+				return value
+			}
+			visit := secretValueVisit{kind: value.Kind(), pointer: value.Pointer()}
+			if active[visit] {
+				return value
+			}
+			active[visit] = true
+			value = value.Elem()
+		default:
+			return value
+		}
+	}
+}
+
+type secretValueMapping struct {
+	mapSelectors bool
+	readStructs  bool
+}
+
+type secretValueType struct {
+	typeOf   reflect.Type
+	forWrite bool
+}
+
+func secretValueMappingFor(t reflect.Type) secretValueMapping {
+	pointers := 0
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+		pointers++
+	}
+	readStructs := t.Kind() == reflect.Struct && pointers <= 1
+
+	return secretValueMapping{
+		mapSelectors: readStructs || (pointers == 0 && t == reflect.TypeOf(map[string]any{})),
+		readStructs:  readStructs,
+	}
+}
+
+func (s *Struct) secretValue(value reflect.Value, forWrite bool, mapping secretValueMapping, active map[secretValueVisit]bool, types map[secretValueType]*SecretSchema) *SecretSchema {
+	switch value.Kind() {
+	case reflect.Interface:
+		if value.IsNil() {
+			return nil
+		}
+		actual := value.Elem()
+		t := actual.Type()
+		for t.Kind() == reflect.Pointer {
+			t = t.Elem()
+		}
+		switch t.Kind() {
+		case reflect.Interface:
+			// Pointer/interface carriers retain opaque storage semantics. Resolve
+			// their payload through the same cycle-guarded value traversal.
+			return s.secretValue(actual, forWrite, secretValueMapping{}, active, types)
+		case reflect.Struct, reflect.Map, reflect.Slice, reflect.Array:
+			// Interface-held structs/pointers are opaque leaves unless Struct.Read
+			// explicitly normalizes this container's concrete struct elements.
+			if actual.Kind() == reflect.Pointer || (actual.Kind() == reflect.Struct && !mapping.readStructs) {
+				mapping = secretValueMapping{}
+			}
+			key := secretValueType{typeOf: actual.Type(), forWrite: forWrite && mapping.readStructs}
+			if types[key] == nil {
+				types[key] = s.secretTypeSchema(actual.Type(), key.forWrite)
+			}
+
+			return &SecretSchema{typed: types[key], concrete: s.secretValue(actual, forWrite, mapping, active, types)}
+		default:
+			return nil
+		}
+	case reflect.Pointer:
+		if value.IsNil() {
+			return nil
+		}
+		visit := secretValueVisit{value.Kind(), value.Pointer()}
+		if active[visit] {
+			return nil
+		}
+		active[visit] = true
+		defer delete(active, visit)
+
+		return s.secretValue(value.Elem(), forWrite, mapping, active, types)
+	case reflect.Map:
+		return s.secretMapValue(value, forWrite, mapping, active, types)
+	case reflect.Slice, reflect.Array:
+		return s.secretSliceValue(value, forWrite, mapping, active, types)
+	case reflect.Struct:
+		return s.secretStructValue(value, forWrite, mapping, active, types)
+	default:
+		return nil
+	}
+}
+
+func (s *Struct) secretMapValue(value reflect.Value, forWrite bool, mapping secretValueMapping, active map[secretValueVisit]bool, types map[secretValueType]*SecretSchema) *SecretSchema {
+	visit := secretValueVisit{value.Kind(), uintptr(value.UnsafePointer())}
+	if active[visit] {
+		return nil
+	}
+	active[visit] = true
+	defer delete(active, visit)
+	var node *SecretSchema
+	iter := value.MapRange()
+	childMapping := mapping
+	if value.Type() == reflect.TypeOf(map[string]any{}) {
+		childMapping.readStructs = false
+	}
+	for iter.Next() {
+		child := s.secretValue(iter.Value(), forWrite, childMapping, active, types)
+		if child == nil {
+			continue
+		}
+		if node == nil {
+			node = &SecretSchema{mapElements: true, Fields: make(map[string]*SecretSchema)}
+		}
+		key := fmt.Sprint(iter.Key().Interface())
+		if mapping.mapSelectors {
+			node.attachConcrete(key, child)
+		} else {
+			key = strings.Join(SplitUnescapedDotN(key, -1), "\\.")
+			node.attachConcreteField(key, child)
+		}
+	}
+
+	return node
+}
+
+func (s *Struct) secretSliceValue(value reflect.Value, forWrite bool, mapping secretValueMapping, active map[secretValueVisit]bool, types map[secretValueType]*SecretSchema) *SecretSchema {
+	if value.Kind() == reflect.Slice {
+		visit := secretValueVisit{value.Kind(), value.Pointer()}
+		if active[visit] {
+			return nil
+		}
+		active[visit] = true
+		defer delete(active, visit)
+	}
+	var node *SecretSchema
+	for i := range value.Len() {
+		childMapping := mapping
+		if value.Index(i).Kind() == reflect.Interface {
+			childMapping.readStructs = false
+		}
+		child := s.secretValue(value.Index(i), forWrite, childMapping, active, types)
+		if child == nil {
+			continue
+		}
+		if node == nil {
+			node = &SecretSchema{sequenceElements: true, indexes: make(map[int]*SecretSchema)}
+		}
+		node.indexes[i] = child
+	}
+
+	return node
+}
+
+func (s *Struct) secretStructValue(value reflect.Value, forWrite bool, mapping secretValueMapping, active map[secretValueVisit]bool, types map[secretValueType]*SecretSchema) *SecretSchema {
+	if value.Type() == reflect.TypeOf(time.Time{}) {
+		return nil
+	}
+	var node *SecretSchema
+	for i := range value.NumField() {
+		field := value.Type().Field(i)
+		if field.PkgPath != "" {
+			continue
+		}
+		tag, ok := s.readTag(field.Tag, field.Name)
+		if !field.Anonymous && (!ok || tag.Secret) {
+			continue
+		}
+		childMapping := mapping
+		if !mapping.readStructs {
+			childMapping.mapSelectors = false
+		}
+		if field.Type.Kind() == reflect.Interface {
+			childMapping.readStructs = false
+		}
+		child := s.secretValue(value.Field(i), forWrite, childMapping, active, types)
+		if child == nil {
+			continue
+		}
+		if node == nil {
+			node = &SecretSchema{Fields: make(map[string]*SecretSchema)}
+		}
+		if field.Anonymous {
+			node.Merge(child)
+
+			continue
+		}
+		s.attachConcreteStructField(node, field.Type, tag, child, forWrite)
+	}
+
+	return node
+}
+
+func (s *Struct) attachConcreteStructField(node *SecretSchema, t reflect.Type, tag *StructTag, child *SecretSchema, forWrite bool) {
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	if forWrite && tag.Prefix != "" && t.Kind() == reflect.Struct && t != reflect.TypeOf(time.Time{}) {
+		for key, sub := range child.Fields {
+			node.attachConcrete(tag.Prefix+key, sub)
+		}
+	} else {
+		node.attachConcrete(tag.Name, child)
+	}
+}
+
+func (s *SecretSchema) attachConcrete(selector string, child *SecretSchema) {
+	parts := secretSelector(selector)
+	if len(parts) == 0 {
+		s.Merge(child)
+
+		return
+	}
+	node := s
+	for _, part := range parts[:len(parts)-1] {
+		node = node.concreteChild(part)
+	}
+	last := parts[len(parts)-1]
+	if last.index {
+		node.sequenceElements = true
+		if node.indexes == nil {
+			node.indexes = make(map[int]*SecretSchema)
+		}
+		combined := &SecretSchema{}
+		combined.Merge(node.indexes[last.number])
+		combined.Merge(child)
+		node.indexes[last.number] = combined
+	} else {
+		node.attachConcreteField(last.key, child)
+	}
+}
+
+func (s *SecretSchema) concreteChild(part secretPart) *SecretSchema {
+	if part.index {
+		s.sequenceElements = true
+		if s.indexes == nil {
+			s.indexes = make(map[int]*SecretSchema)
+		}
+		if s.indexes[part.number] == nil {
+			s.indexes[part.number] = &SecretSchema{}
+		}
+
+		return s.indexes[part.number]
+	}
+	if s.Fields == nil {
+		s.Fields = make(map[string]*SecretSchema)
+	}
+	if s.Fields[part.key] == nil {
+		s.Fields[part.key] = &SecretSchema{}
+	}
+
+	return s.Fields[part.key]
+}
+
+func (s *SecretSchema) attachConcreteField(key string, child *SecretSchema) {
+	if s.Fields == nil {
+		s.Fields = make(map[string]*SecretSchema)
+	}
+	if s.Fields[key] == nil {
+		s.Fields[key] = child
+
+		return
+	}
+	combined := &SecretSchema{}
+	combined.Merge(s.Fields[key])
+	combined.Merge(child)
+	s.Fields[key] = combined
 }

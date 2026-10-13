@@ -1313,8 +1313,7 @@ func (_c *Config_UnmarshalKey_Call) RunAndReturn(run func(string, interface{}, .
 func NewConfig(t interface {
 	mock.TestingT
 	Cleanup(func())
-},
-) *Config {
+}) *Config {
 	mock := &Config{}
 	mock.Mock.Test(t)
 

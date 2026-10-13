@@ -254,3 +254,180 @@ func TestDebugConfigProtectsBareBracketDynamicMapKeys(t *testing.T) {
 	require.Equal(t, "synthetic-bare-bracket", clients["[0]"].Opaque)
 	require.Equal(t, "synthetic-bare-bracket-slice", groups["[0]"][0].Opaque)
 }
+
+func TestDebugConfigProtectsConcreteTaggedValuesInUntypedMaps(t *testing.T) {
+	type wrapper struct {
+		Value any `cfg:"value"`
+	}
+	for _, test := range []struct {
+		name     string
+		value    any
+		path     string
+		selector string
+	}{
+		{"struct", debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}, "client.opaque", "client.opaque"},
+		{"pointer", &debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}, "client.opaque", "client.opaque"},
+		{"list", []any{debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}}, "client.0.opaque", "client[0].opaque"},
+		{"typed_wrapper", wrapper{Value: debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}}, "client.value.opaque", "client.value.opaque"},
+		{"typed_wrapper_map", wrapper{Value: map[string]any{"tenant.key[0]": debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}}}, "client.value.tenant.key[0].opaque", `client.value.tenant\.key[0].opaque`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
+			require.NoError(t, config.Option(cfg.WithConfigMap(map[string]any{"client": test.value})))
+			output, messages := captureDebugConfig(t, config)
+			require.NotContains(t, output, "synthetic-concrete-secret")
+			require.Contains(t, messages, "cfg "+test.path+"=[REDACTED]")
+			require.Contains(t, output, "public-concrete")
+			require.True(t, config.IsSecret(test.selector))
+			stored, err := config.Get("client")
+			require.NoError(t, err)
+			require.Equal(t, test.value, stored)
+		})
+	}
+}
+
+func TestConcreteSecretAnnotationsStayScopedToMapKeysAndIndexes(t *testing.T) {
+	type publicCredentials struct {
+		Opaque string `cfg:"opaque"`
+	}
+	type nativeMap map[string]any
+	native := nativeMap{
+		"tenant.with.dot[0]": debugCredentials{Opaque: "synthetic-native-private", AccessKeyID: "public-native"},
+		"tenant.with.dot[1]": publicCredentials{Opaque: "visible-native-sibling"},
+	}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
+	require.NoError(t, config.Option(cfg.WithConfigMap(map[string]any{
+		"clients": map[string]any{
+			"private":  debugCredentials{Opaque: "synthetic-key-private", AccessKeyID: "public-key"},
+			"public":   publicCredentials{Opaque: "visible-key-sibling"},
+			"changing": publicCredentials{Opaque: "visible-before-change"},
+		},
+		"rows": []any{
+			debugCredentials{Opaque: "synthetic-index-private", AccessKeyID: "public-index"},
+			publicCredentials{Opaque: "visible-index-sibling"},
+		},
+		"empty": map[string]debugCredentials{},
+	}), cfg.WithConfigSetting("native", native)))
+	require.NoError(t, config.Option(cfg.WithConfigMap(map[string]any{
+		"clients": map[string]any{"changing": debugCredentials{Opaque: "synthetic-updated-private", AccessKeyID: "public-updated"}},
+	})))
+	require.True(t, config.IsSecret("clients.changing.opaque"))
+	require.True(t, config.IsSecret("clients.private.opaque"))
+	require.False(t, config.IsSecret("clients.public.opaque"))
+	require.True(t, config.IsSecret("rows[0].opaque"))
+	require.False(t, config.IsSecret("rows[1].opaque"))
+	require.True(t, config.IsSecret("empty.future.opaque"))
+	require.False(t, config.IsSecret("empty.future.access_key_id"))
+	require.True(t, config.IsSecret(`native.tenant\.with\.dot[0].opaque`))
+	require.False(t, config.IsSecret(`native.tenant\.with\.dot[1].opaque`))
+	native["future"] = publicCredentials{Opaque: "visible-future"}
+	output, messages := captureDebugConfig(t, config)
+	for _, secret := range []string{"synthetic-key-private", "synthetic-index-private", "synthetic-native-private", "synthetic-updated-private"} {
+		require.NotContains(t, output, secret)
+	}
+	require.Contains(t, messages, "cfg clients.public.opaque=visible-key-sibling")
+	require.Contains(t, messages, "cfg rows.1.opaque=visible-index-sibling")
+	require.Contains(t, messages, "cfg native.tenant.with.dot[1].opaque=visible-native-sibling")
+	require.Contains(t, messages, "cfg native.future.opaque=visible-future")
+	require.Equal(t, "synthetic-native-private", native["tenant.with.dot[0]"].(debugCredentials).Opaque)
+}
+
+func TestDebugConfigProtectsConcreteTaggedValuesInInitialMaps(t *testing.T) {
+	settings := map[string]any{
+		"client":            debugCredentials{Opaque: "synthetic-initial-secret", AccessKeyID: "public-initial"},
+		"literal.client[0]": debugCredentials{Opaque: "synthetic-initial-literal-secret", AccessKeyID: "public-initial-literal"},
+	}
+	for _, test := range []struct {
+		name   string
+		config cfg.Config
+	}{
+		{"New", cfg.New(settings)},
+		{"NewWithInterfaces", cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), settings)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			output, messages := captureDebugConfig(t, test.config)
+			require.NotContains(t, output, "synthetic-initial-secret")
+			require.Contains(t, messages, "cfg client.opaque=[REDACTED]")
+			require.Contains(t, messages, "cfg client.access_key_id=public-initial")
+			require.True(t, test.config.IsSecret("client.opaque"))
+			require.NotContains(t, output, "synthetic-initial-literal-secret")
+			require.Contains(t, messages, "cfg literal.client[0].opaque=[REDACTED]")
+			require.Contains(t, messages, "cfg literal.client[0].access_key_id=public-initial-literal")
+			require.True(t, test.config.IsSecret(`literal\.client[0].opaque`))
+			require.Equal(t, settings["literal.client[0]"], test.config.AllSettings()["literal.client[0]"])
+			stored, err := test.config.Get("client")
+			require.NoError(t, err)
+			require.Equal(t, settings["client"], stored)
+		})
+	}
+}
+
+func TestDebugConfigProtectsConcreteDefaultSourceSubschema(t *testing.T) {
+	type output struct {
+		Client any `cfg:"client"`
+	}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
+		"shared_value": "synthetic-concrete-default-private",
+	})
+	destination := output{Client: debugCredentials{}}
+	require.NoError(t, config.UnmarshalDefaults(&destination,
+		cfg.UnmarshalWithDefaultsFromKey("shared_value", "client.opaque")))
+	raw, err := config.GetString("shared_value")
+	require.NoError(t, err)
+	require.Equal(t, "synthetic-concrete-default-private", raw)
+	logged, messages := captureDebugConfig(t, config)
+	require.NotContains(t, logged, "synthetic-concrete-default-private")
+	require.Contains(t, messages, "cfg shared_value=[REDACTED]")
+	require.False(t, config.IsSecret("client.opaque"))
+	require.NotContains(t, config.AllSettings(), "client")
+}
+
+func TestDebugConfigKeepsPublicSiblingOfRootedConcreteIndex(t *testing.T) {
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
+		"rows": []any{
+			map[string]any{},
+			map[string]any{"client": map[string]any{"opaque": "visible-rooted-index-sibling"}},
+		},
+	})
+	require.NoError(t, config.Option(cfg.WithConfigSetting("rows[0]", map[string]any{
+		"client": debugCredentials{Opaque: "synthetic-rooted-index-private"},
+	})))
+	logged, messages := captureDebugConfig(t, config)
+	require.NotContains(t, logged, "synthetic-rooted-index-private")
+	require.Contains(t, messages, "cfg rows.0.client.opaque=[REDACTED]")
+	require.Contains(t, messages, "cfg rows.1.client.opaque=visible-rooted-index-sibling")
+	require.False(t, config.IsSecret("rows[1].client.opaque"))
+	require.Equal(t, "visible-rooted-index-sibling", config.AllSettings()["rows"].([]any)[1].(map[string]any)["client"].(map[string]any)["opaque"])
+}
+
+func TestDebugConfigProtectsBoxedConcreteMaps(t *testing.T) {
+	for _, initial := range []bool{false, true} {
+		t.Run(fmt.Sprintf("initial=%t", initial), func(t *testing.T) {
+			var boxed any
+			boxed = map[string]any{
+				"literal.client": debugCredentials{Opaque: "synthetic-boxed-private", AccessKeyID: "visible-boxed-public"},
+			}
+			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
+			if initial {
+				config = cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{"boxed": &boxed})
+			} else {
+				require.NoError(t, config.Option(cfg.WithConfigSetting("boxed", &boxed)))
+			}
+			var future any = map[string]debugCredentials(nil)
+			require.NoError(t, config.Option(cfg.WithConfigSetting("typed", &future)))
+			future = map[string]debugCredentials{
+				"future.client": {Opaque: "synthetic-boxed-future-private", AccessKeyID: "visible-boxed-future-public"},
+			}
+			logged, messages := captureDebugConfig(t, config)
+			require.NotContains(t, logged, "synthetic-boxed-private")
+			require.Contains(t, messages, "cfg boxed.literal.client.opaque=[REDACTED]")
+			require.Contains(t, messages, "cfg boxed.literal.client.access_key_id=visible-boxed-public")
+			require.NotContains(t, logged, "synthetic-boxed-future-private")
+			require.Contains(t, messages, "cfg typed.future.client.opaque=[REDACTED]")
+			require.Contains(t, messages, "cfg typed.future.client.access_key_id=visible-boxed-future-public")
+			require.True(t, config.IsSecret(`boxed.literal\.client.opaque`))
+			require.Same(t, &boxed, config.AllSettings()["boxed"])
+			require.Equal(t, "synthetic-boxed-private", boxed.(map[string]any)["literal.client"].(debugCredentials).Opaque)
+		})
+	}
+}

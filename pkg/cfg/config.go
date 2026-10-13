@@ -47,8 +47,12 @@ type Config interface {
 	// MapX cannot interpret the suffix as a sequence index. Sequence selectors
 	// retain their ordinary bracket-index semantics, with consecutive indexes
 	// following the declared dimensions of nested sequences.
-	// Register tagged types through rooted merges or UnmarshalKey before debug
-	// logging. Raw getters do not infer secrecy from names or values.
+	// Initial maps, rooted merges, and UnmarshalKey register tagged types and
+	// concrete tagged values held in interface containers before debug logging.
+	// Interface-container annotations stay scoped to their actual key or index;
+	// declared element types also cover future entries in typed containers.
+	// Getters and AllSettings retain original values without redaction, and do
+	// not infer secrecy from names or values. Annotate before calling DebugConfig.
 	IsSecret(selector string) bool
 	HasPrefix(prefix string) bool
 	UnmarshalDefaults(val any, additionalDefaults ...UnmarshalDefaults) error
@@ -86,8 +90,14 @@ func NewWithInterfaces(envProvider EnvProvider, msis ...map[string]any) GosoConf
 	cfg := &config{
 		envProvider: envProvider,
 		sanitizers:  make([]Sanitizer, 0),
-		settings:    mapx.NewMapX(msis...),
 	}
+
+	// Initial maps preserve literal keys rather than using Merge's selectors.
+	// Register their concrete tagged values before publishing stored settings.
+	for _, settings := range msis {
+		cfg.registerSecrets(".", &settings, false)
+	}
+	cfg.settings = mapx.NewMapX(msis...)
 
 	return cfg
 }
