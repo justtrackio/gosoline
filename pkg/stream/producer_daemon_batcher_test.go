@@ -6,6 +6,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type batcherTestCase struct {
@@ -38,10 +39,10 @@ func (tc batcherTestCase) run(t *testing.T) {
 		batches = append(batches, batch)
 	}
 
-	assert.Len(t, batches, len(tc.batches))
+	require.Len(t, batches, len(tc.batches))
 	for i, batch := range batches {
 		expectedBatch := tc.batches[i]
-		assert.Len(t, batch, len(expectedBatch))
+		require.Len(t, batch, len(expectedBatch))
 		batchLen := 0
 
 		for j, msg := range batch {
@@ -130,7 +131,7 @@ func TestProducerDaemonBatcher_SizeLimited(t *testing.T) {
 
 	batcherTestCase{
 		batchMaxSize:  10,
-		batchMaxBytes: 122,
+		batchMaxBytes: 172,
 		messages:      messages,
 		batches: [][]stream.WritableMessage{
 			{

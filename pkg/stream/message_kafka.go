@@ -27,7 +27,7 @@ func KafkaToGosoMessage(record kgo.Record) *Message {
 		attributes[AttributeKafkaKey] = string(record.Key)
 	}
 
-	return &Message{Body: string(record.Value), Attributes: attributes}
+	return &Message{Body: record.Value, Attributes: attributes}
 }
 
 func NewKafkaMessage(message WritableMessage) (*kgo.Record, error) {
@@ -39,7 +39,7 @@ func NewKafkaMessage(message WritableMessage) (*kgo.Record, error) {
 	// otherwise, it's a *Message
 	switch m := message.(type) {
 	case *Message:
-		body = []byte(m.Body)
+		body = m.Body
 		attributes = m.Attributes
 	case rawJsonMessage:
 		body = m.body

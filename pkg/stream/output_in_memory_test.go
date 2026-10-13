@@ -30,7 +30,7 @@ func (s *InMemoryOutputTestSuite) TestWrite() {
 	written, ok := s.output.Get(0)
 
 	s.True(ok, "it should be possible to get 1 message")
-	s.Equal("content", written.Body, "the body of the message should match")
+	s.Equal([]byte("content"), written.Body, "the body of the message should match")
 }
 
 func TestInMemoryOutputTestSuite(t *testing.T) {

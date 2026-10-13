@@ -32,7 +32,7 @@ func TestSqsInput_Run(t *testing.T) {
 				ReceiptHandle: aws.String("receipt-handle"),
 			},
 			assertions: func(t *testing.T, msg *stream.Message) {
-				assert.Equal(t, "foobar", msg.Body)
+				assert.Equal(t, []byte("foobar"), msg.Body)
 			},
 		},
 		{
@@ -46,7 +46,7 @@ func TestSqsInput_Run(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, msg *stream.Message) {
-				assert.Equal(t, "foobar", msg.Body)
+				assert.Equal(t, []byte("foobar"), msg.Body)
 				assert.Equal(t, "test-message-id", msg.Attributes[stream.AttributeSqsMessageId])
 				assert.Equal(t, "test-receipt-handle", msg.Attributes[stream.AttributeSqsReceiptHandle])
 				assert.Equal(t, "2", msg.Attributes[stream.AttributeSqsApproximateReceiveCount])
@@ -60,7 +60,7 @@ func TestSqsInput_Run(t *testing.T) {
 				ReceiptHandle: aws.String("test-receipt-handle"),
 			},
 			assertions: func(t *testing.T, msg *stream.Message) {
-				assert.Equal(t, "foobar", msg.Body)
+				assert.Equal(t, []byte("foobar"), msg.Body)
 				assert.Equal(t, "test-message-id", msg.Attributes[stream.AttributeSqsMessageId])
 				assert.Equal(t, "test-receipt-handle", msg.Attributes[stream.AttributeSqsReceiptHandle])
 				// ApproximateReceiveCount should not be present when not provided by SQS
@@ -192,7 +192,7 @@ func TestSqsInput_Run_InvalidMetadata(t *testing.T) {
 
 			processed := make([]string, 0, 1)
 			err := input.Run(ctx, func(_ context.Context, msg *stream.Message) bool {
-				processed = append(processed, msg.Body)
+				processed = append(processed, string(msg.Body))
 				input.Stop(ctx)
 
 				return true
@@ -237,7 +237,7 @@ func TestSqsInput_Run_ContinuesAfterDeleteMessageFailure(t *testing.T) {
 
 	processed := make([]string, 0, len(messages))
 	err := input.Run(ctx, func(_ context.Context, msg *stream.Message) bool {
-		processed = append(processed, msg.Body)
+		processed = append(processed, string(msg.Body))
 		if len(processed) == len(messages) {
 			input.Stop(ctx)
 		}
@@ -280,12 +280,12 @@ func TestSqsInput_Run_BatchAcknowledgement(t *testing.T) {
 
 	processed := make([]string, 0, len(messages))
 	err := input.Run(ctx, func(_ context.Context, msg *stream.Message) bool {
-		processed = append(processed, msg.Body)
+		processed = append(processed, string(msg.Body))
 		if len(processed) == len(messages) {
 			input.Stop(ctx)
 		}
 
-		return msg.Body == "first"
+		return string(msg.Body) == "first"
 	})
 
 	assert.NoError(t, err)

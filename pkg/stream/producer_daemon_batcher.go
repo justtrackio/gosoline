@@ -72,7 +72,7 @@ func NewProducerDaemonBatcherWithoutJsonEncoding(settings ProducerDaemonSettings
 }
 
 func (b *producerDaemonBatcher) Append(msg *Message) ([]WritableMessage, error) {
-	body := []byte(msg.Body)
+	body := msg.Body
 
 	if b.withJsonEncoding {
 		encodedMessage, err := json.Marshal(msg)

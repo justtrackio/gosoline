@@ -42,6 +42,6 @@ func CreateModelMsg(raw *Message) (*ModelMsg, error) {
 		CrudType: crudType,
 		Version:  version,
 		ModelId:  modelId,
-		Body:     raw.Body,
+		Body:     string(raw.Body),
 	}, nil
 }

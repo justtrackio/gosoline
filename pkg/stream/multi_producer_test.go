@@ -101,7 +101,7 @@ func newMessage() any {
 		Attributes: map[string]string{
 			stream.AttributeEncoding: stream.EncodingJson.String(),
 		},
-		Body: `{"id":3,"name":"foobar"}`,
+		Body: []byte(`{"id":3,"name":"foobar"}`),
 	}
 }
 

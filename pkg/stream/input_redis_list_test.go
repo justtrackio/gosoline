@@ -127,7 +127,7 @@ func TestRedisListInput_RunProcessesMessagePoppedDuringStop(t *testing.T) {
 	}))
 
 	msg := <-processed
-	assert.Equal(t, "popped", msg.Body)
+	assert.Equal(t, []byte("popped"), msg.Body)
 }
 
 func setupRedisListInput(t *testing.T, runnerCount int) (stream.Input, *redisMocks.Client) {

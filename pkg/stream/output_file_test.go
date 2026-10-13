@@ -34,7 +34,7 @@ func TestOutputFile_ConcurrentWrite(t *testing.T) {
 			defer waitGroup.Done()
 			err := output.WriteOne(t.Context(), &stream.Message{
 				Attributes: nil,
-				Body:       fmt.Sprintf("%d", i),
+				Body:       []byte(fmt.Sprintf("%d", i)),
 			})
 			assert.NoError(t, err)
 		}(i)

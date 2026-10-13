@@ -157,7 +157,7 @@ func (s *MessageEncoderSuite) TestEncode() {
 			}
 
 			s.NoError(err)
-			s.Equal(tt.expectedBody, msg.Body)
+			s.Equal([]byte(tt.expectedBody), msg.Body)
 			s.Len(msg.Attributes, len(tt.expectedAttributes))
 
 			for k, v := range tt.expectedAttributes {
@@ -190,7 +190,7 @@ func (s *MessageEncoderSuite) TestDecode() {
 					stream.AttributeCompression: "missing",
 					stream.AttributeEncoding:    stream.EncodingJson.String(),
 				},
-				Body: `H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAAAA//8BAAD//1D9sdI8AAAA`,
+				Body: []byte(`H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAAAA//8BAAD//1D9sdI8AAAA`),
 			},
 			actualOutput:   &encodingTestStruct{},
 			expectedError:  "there is no decompressor for compression 'missing'",
@@ -201,7 +201,7 @@ func (s *MessageEncoderSuite) TestDecode() {
 				Attributes: map[string]string{
 					stream.AttributeEncoding: "missing",
 				},
-				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
+				Body: []byte(`{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`),
 			},
 			actualOutput:   &encodingTestStruct{},
 			expectedError:  "can not decode message body: there is no message body decoder available for encoding 'missing'",
@@ -215,7 +215,7 @@ func (s *MessageEncoderSuite) TestDecode() {
 				Attributes: map[string]string{
 					stream.AttributeEncoding: stream.EncodingJson.String(),
 				},
-				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
+				Body: []byte(`{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`),
 			},
 			actualOutput:   &encodingTestStruct{},
 			expectedError:  "can not apply encoding handler on message: encode handler decode error",
@@ -228,7 +228,7 @@ func (s *MessageEncoderSuite) TestDecode() {
 					"attribute1":             "5",
 					"attribute2":             "test",
 				},
-				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
+				Body: []byte(`{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`),
 			},
 			actualOutput: &encodingTestStruct{},
 			expectedAttributes: map[string]string{
@@ -244,7 +244,7 @@ func (s *MessageEncoderSuite) TestDecode() {
 					stream.AttributeCompression: stream.CompressionGZip.String(),
 					stream.AttributeEncoding:    stream.EncodingJson.String(),
 				},
-				Body: `H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAAAA//8BAAD//1D9sdI8AAAA`,
+				Body: []byte(`H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAAAA//8BAAD//1D9sdI8AAAA`),
 			},
 			actualOutput: &encodingTestStruct{},
 			expectedAttributes: map[string]string{
@@ -260,7 +260,7 @@ func (s *MessageEncoderSuite) TestDecode() {
 					"attribute1":             "5",
 					"attribute2":             "test",
 				},
-				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
+				Body: []byte(`{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`),
 			},
 			actualOutput: &map[string]any{},
 			expectedAttributes: map[string]string{
@@ -280,7 +280,7 @@ func (s *MessageEncoderSuite) TestDecode() {
 					"attribute1": "5",
 					"attribute2": "test",
 				},
-				Body: "externally decoded data",
+				Body: []byte("externally decoded data"),
 			},
 			actualOutput:    &encodingTestStruct{},
 			externalEncoder: externalMessageBodyEncoder{},

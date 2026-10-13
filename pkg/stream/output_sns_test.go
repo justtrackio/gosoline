@@ -1,6 +1,7 @@
 package stream_test
 
 import (
+	"encoding/base64"
 	"fmt"
 	"testing"
 
@@ -33,7 +34,7 @@ func Test_snsOutput_WriteOne(t *testing.T) {
 		//nolint:gocritic // we intentionally avoid %q to prevent double quoting in JSON
 		topic.EXPECT().Publish(
 			t.Context(),
-			fmt.Sprintf(`{"attributes":{"encoding":"application/json"},"body":"%s"}`, m.Body),
+			fmt.Sprintf(`{"attributes":{"encoding":"application/json","goso.body.base64":"true"},"body":"%s"}`, base64.StdEncoding.EncodeToString(m.Body)),
 			m.Attributes,
 		).Return(nil).Once()
 	}

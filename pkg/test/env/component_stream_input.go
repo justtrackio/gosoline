@@ -41,7 +41,7 @@ func (s *StreamInputComponent) Publish(body any, attributes map[string]string) {
 
 	message := &stream.Message{
 		Attributes: attributes,
-		Body:       string(bytes),
+		Body:       bytes,
 	}
 
 	s.input.Publish(message)

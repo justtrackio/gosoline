@@ -138,17 +138,17 @@ func (s *ProducerDaemonTestSuite) TestWriteBatch() {
 	s.SetupDaemon(log.PriorityInfo, 2, 1, time.Hour)
 
 	messages := []stream.WritableMessage{
-		&stream.Message{Body: "1"},
-		&stream.Message{Body: "2"},
-		&stream.Message{Body: "3"},
+		&stream.Message{Body: []byte("1")},
+		&stream.Message{Body: []byte("2")},
+		&stream.Message{Body: []byte("3")},
 	}
 
 	expected1 := []stream.WritableMessage{
-		&stream.Message{Body: "1"},
-		&stream.Message{Body: "2"},
+		&stream.Message{Body: []byte("1")},
+		&stream.Message{Body: []byte("2")},
 	}
 	expected2 := []stream.WritableMessage{
-		&stream.Message{Body: "3"},
+		&stream.Message{Body: []byte("3")},
 	}
 	s.expectMessage(expected1)
 	s.expectMessage(expected2)
@@ -165,16 +165,16 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnClose() {
 	s.SetupDaemon(log.PriorityInfo, 3, 1, time.Hour)
 
 	messages := []stream.WritableMessage{
-		&stream.Message{Body: "1"},
-		&stream.Message{Body: "2"},
+		&stream.Message{Body: []byte("1")},
+		&stream.Message{Body: []byte("2")},
 	}
 
 	err := s.daemon.Write(s.T().Context(), messages)
 	s.NoError(err, "there should be no error on write")
 
 	expected1 := []stream.WritableMessage{
-		&stream.Message{Body: "1"},
-		&stream.Message{Body: "2"},
+		&stream.Message{Body: []byte("1")},
+		&stream.Message{Body: []byte("2")},
 	}
 	s.expectMessage(expected1)
 
@@ -187,16 +187,16 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnTick() {
 	s.SetupDaemon(log.PriorityInfo, 3, 1, time.Hour)
 
 	messages := []stream.WritableMessage{
-		&stream.Message{Body: "1"},
-		&stream.Message{Body: "2"},
+		&stream.Message{Body: []byte("1")},
+		&stream.Message{Body: []byte("2")},
 	}
 
 	err := s.daemon.Write(s.T().Context(), messages)
 	s.NoError(err, "there should be no error on write")
 
 	expected1 := []stream.WritableMessage{
-		&stream.Message{Body: "1"},
-		&stream.Message{Body: "2"},
+		&stream.Message{Body: []byte("1")},
+		&stream.Message{Body: []byte("2")},
 	}
 	s.expectMessage(expected1)
 
@@ -211,14 +211,14 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnTickAfterWrite() {
 	s.SetupDaemon(log.PriorityInfo, 2, 1, time.Hour)
 
 	messages := []stream.WritableMessage{
-		&stream.Message{Body: "1"},
-		&stream.Message{Body: "2"},
-		&stream.Message{Body: "3"},
+		&stream.Message{Body: []byte("1")},
+		&stream.Message{Body: []byte("2")},
+		&stream.Message{Body: []byte("3")},
 	}
 
 	expected1 := []stream.WritableMessage{
-		&stream.Message{Body: "1"},
-		&stream.Message{Body: "2"},
+		&stream.Message{Body: []byte("1")},
+		&stream.Message{Body: []byte("2")},
 	}
 	s.expectMessage(expected1)
 
@@ -226,7 +226,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnTickAfterWrite() {
 	s.NoError(err, "there should be no error on write")
 
 	expected2 := []stream.WritableMessage{
-		&stream.Message{Body: "3"},
+		&stream.Message{Body: []byte("3")},
 	}
 	s.expectMessage(expected2)
 
@@ -241,9 +241,9 @@ func (s *ProducerDaemonTestSuite) TestWriteAggregate() {
 	s.SetupDaemon(log.PriorityInfo, 2, 3, time.Hour)
 
 	messages := []stream.WritableMessage{
-		&stream.Message{Body: "1"},
-		&stream.Message{Body: "2"},
-		&stream.Message{Body: "3"},
+		&stream.Message{Body: []byte("1")},
+		&stream.Message{Body: []byte("2")},
+		&stream.Message{Body: []byte("3")},
 	}
 
 	aggregateMessage, err := stream.MarshalJsonMessage(messages, map[string]string{
@@ -267,8 +267,8 @@ func (s *ProducerDaemonTestSuite) TestWriteAfterClose() {
 	s.SetupDaemon(log.PriorityWarn, 1, 2, time.Hour)
 
 	messages := []stream.WritableMessage{
-		&stream.Message{Body: "1"},
-		&stream.Message{Body: "2"},
+		&stream.Message{Body: []byte("1")},
+		&stream.Message{Body: []byte("2")},
 	}
 
 	err := s.stop()

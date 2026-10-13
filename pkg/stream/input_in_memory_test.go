@@ -41,7 +41,7 @@ func (s *InMemoryInputTestSuite) TestRun() {
 	s.input.Stop(ctx)
 
 	s.NoError(cfn.Wait())
-	s.Equal("content", processedMsg.Body, "message body should contain content")
+	s.Equal([]byte("content"), processedMsg.Body, "message body should contain content")
 }
 
 func (s *InMemoryInputTestSuite) TestRunConcurrently() {
