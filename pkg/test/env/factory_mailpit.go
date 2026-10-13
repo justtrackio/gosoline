@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	componentFactories[componentMailpit] = &mailpitFactory{}
+	registerComponentFactory(componentMailpit, &mailpitFactory{})
 }
 
 const componentMailpit = "mailpit"

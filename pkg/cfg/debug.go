@@ -14,10 +14,11 @@ import (
 
 // DebugConfig logs settings and a fingerprint of exactly the redacted entries.
 // Native configs retain rooted cfg:",secret" annotations for this logging-only
-// projection; current retained structs also enforce their current tags. Secret
-// parents hide their contents, including keys. Getters, AllSettings and decoded
-// values are unchanged. Unknown Config implementations and unsupported public
-// values fail before any logging; raw getters do not register annotations.
+// projection; current retained structs also enforce their current tags. Imported
+// SDK owners use RegisterConfigDebugType to protect settings even before decoding.
+// Secret parents hide their contents, including keys. Getters, AllSettings and
+// decoded values are unchanged. Unknown Config implementations and unsupported
+// public values fail before any logging; raw getters do not register annotations.
 func DebugConfig(ctx context.Context, config Config, logger Logger) error {
 	metadata, ok := config.(interface {
 		loggingSecrets(map[string]any) (map[string]bool, error)

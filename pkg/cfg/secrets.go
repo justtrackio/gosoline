@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/mapx"
@@ -19,6 +20,35 @@ type logProjection struct {
 	write  bool
 	secret bool
 	err    error
+}
+
+var configDebugTypes struct {
+	sync.RWMutex
+	projections []logProjection
+}
+
+// RegisterConfigDebugType registers a rooted configuration type for DebugConfig
+// to redact its cfg:",secret" fields, including settings that were never decoded.
+// Registration supplies logging metadata only; it does not load or validate
+// settings. SDK owners register their types when imported, so types from packages
+// not imported by the application are not automatically available.
+// Named collections support literal keys and selector-normalized namespaces.
+// Logging fails before emitting settings if a subtree admits both a model and
+// a nested named model with secret fields, rather than guessing ownership.
+// Repeated registrations of the same key and type are ignored, as are nil types.
+func RegisterConfigDebugType(key string, typ reflect.Type) {
+	if typ == nil {
+		return
+	}
+	key = strings.Trim(key, ".")
+	configDebugTypes.Lock()
+	defer configDebugTypes.Unlock()
+	for _, projection := range configDebugTypes.projections {
+		if projection.key == key && projection.typ == typ {
+			return
+		}
+	}
+	configDebugTypes.projections = append(configDebugTypes.projections, logProjection{key: key, typ: typ, write: true})
 }
 
 func (c *config) registerSecrets(key string, value any, forWrite bool) {
@@ -175,6 +205,9 @@ func (c *config) loggingSecrets(settings map[string]any) (map[string]bool, error
 	c.secretMu.RLock()
 	roots := append([]logProjection(nil), c.logProjections...)
 	c.secretMu.RUnlock()
+	configDebugTypes.RLock()
+	roots = append(roots, configDebugTypes.projections...)
+	configDebugTypes.RUnlock()
 	sort.SliceStable(roots, func(i, j int) bool { return len(roots[i].key) < len(roots[j].key) })
 	secrets := make(map[string]bool)
 	for _, root := range roots {
@@ -350,12 +383,180 @@ func projectLogMap(typ reflect.Type, value reflect.Value, path string, write boo
 	}
 	iter := value.MapRange()
 	for iter.Next() {
-		if err := projectLoggingSecrets(typ.Elem(), iter.Value(), debugJoin(path, loggingKey(iter.Key().String())), write, secrets, active); err != nil {
+		if err := projectLogCollectionMember(typ, iter.Value(), debugJoin(path, loggingKey(iter.Key().String())), write, secrets, active); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func projectLogCollectionMember(typ reflect.Type, value reflect.Value, path string, write bool, secrets map[string]bool, active map[debugVisit]bool) error {
+	childType := typ.Elem()
+	modelType := childType
+	for modelType.Kind() == reflect.Pointer {
+		modelType = modelType.Elem()
+	}
+	current := loggingIndirect(value, make(map[uintptr]bool))
+	if modelType.Kind() != reflect.Struct || !current.IsValid() || current.Kind() != reflect.Map || current.Type().Key().Kind() != reflect.String {
+		return projectLoggingSecrets(childType, value, path, write, secrets, active)
+	}
+	// Merges expand selector names into maps. Descend only through maps with
+	// no model fields; actual public fields also establish a model boundary.
+	if !loggingModelBoundary(modelType, current, write, active) {
+		return projectLoggingSecrets(typ, value, path, write, secrets, active)
+	}
+	if err := projectLoggingSecrets(childType, value, path, write, secrets, active); err != nil {
+		return err
+	}
+	// A model-field segment can also occur in an accepted selector-based name.
+	// Never guess between that namespace and a current model's raw metadata.
+	if loggingNestedModelSecrets(modelType, current, path, write, false, secrets, active) {
+		return fmt.Errorf("ambiguous config logging collection at %s (type %v)", path, modelType)
+	}
+
+	return nil
+}
+
+func loggingNestedModelSecrets(typ reflect.Type, value reflect.Value, path string, write, probe bool, secrets map[string]bool, active map[debugVisit]bool) bool {
+	if loggingMasked(secrets, path) {
+		return false
+	}
+	value = loggingIndirect(value, make(map[uintptr]bool))
+	if !value.IsValid() || value.Kind() != reflect.Map || value.Type().Key().Kind() != reflect.String {
+		return false
+	}
+	visit := loggingVisit(value)
+	if active[visit] {
+		return true
+	}
+	active[visit] = true
+	defer delete(active, visit)
+	if probe && loggingModelBoundary(typ, value, write, active) {
+		// Reuse current masks and inspect only potential model boundaries.
+		before := len(secrets)
+		err := projectLoggingSecrets(typ, value, path, write, secrets, active)
+		if len(secrets) != before {
+			return true
+		}
+		if err != nil {
+			// Scalar-only public metadata can resemble model field names
+			// without accepting the model. Structured rejected candidates
+			// or present direct annotations remain ambiguous and fail safely.
+			return loggingRejectedModelAmbiguous(typ, value, path, write, secrets, active)
+		}
+	}
+	iter := value.MapRange()
+	for iter.Next() {
+		if loggingNestedModelSecrets(typ, iter.Value(), debugJoin(path, loggingKey(iter.Key().String())), write, true, secrets, active) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func loggingRejectedModelAmbiguous(typ reflect.Type, value reflect.Value, path string, write bool, secrets map[string]bool, active map[debugVisit]bool) bool {
+	if loggingDirectModelSecret(typ, value, write, active) {
+		return true
+	}
+	iter := value.MapRange()
+	for iter.Next() {
+		if loggingMasked(secrets, debugJoin(path, loggingKey(iter.Key().String()))) {
+			continue
+		}
+		child := loggingIndirect(iter.Value(), make(map[uintptr]bool))
+		if child.IsValid() && (child.Kind() == reflect.Map || child.Kind() == reflect.Struct || child.Kind() == reflect.Slice || child.Kind() == reflect.Array) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func loggingDirectModelSecret(typ reflect.Type, value reflect.Value, write bool, active map[debugVisit]bool) bool {
+	for typ.Kind() == reflect.Pointer {
+		typ = typ.Elem()
+	}
+	visit := debugVisit{kind: reflect.Struct, typ: typ}
+	if typ.Kind() != reflect.Struct || active[visit] {
+		return false
+	}
+	active[visit] = true
+	defer delete(active, visit)
+	for i := range typ.NumField() {
+		field := typ.Field(i)
+		if field.PkgPath != "" {
+			continue
+		}
+		if field.Anonymous {
+			if loggingDirectModelSecret(field.Type, value, write, active) {
+				return true
+			}
+
+			continue
+		}
+		tag, ok := mapx.ReadStructTag(field.Tag, "cfg")
+		if ok && tag.Secret && (loggingSelect(value, tag.Name).IsValid() || loggingModelPrefix(value, tag, write)) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func loggingModelBoundary(typ reflect.Type, value reflect.Value, write bool, active map[debugVisit]bool) bool {
+	for typ.Kind() == reflect.Pointer {
+		typ = typ.Elem()
+	}
+	if typ.Kind() != reflect.Struct {
+		return false
+	}
+	visit := debugVisit{typ: typ}
+	if active[visit] {
+		return false
+	}
+	active[visit] = true
+	defer delete(active, visit)
+	for i := range typ.NumField() {
+		field := typ.Field(i)
+		if field.PkgPath != "" {
+			continue
+		}
+		if field.Anonymous {
+			if loggingModelBoundary(field.Type, value, write, active) {
+				return true
+			}
+
+			continue
+		}
+		tag, ok := mapx.ReadStructTag(field.Tag, "cfg")
+		if !ok {
+			continue
+		}
+		if loggingSelect(value, tag.Name).IsValid() {
+			return true
+		}
+		if loggingModelPrefix(value, tag, write) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func loggingModelPrefix(value reflect.Value, tag *mapx.StructTag, write bool) bool {
+	if !write || tag.Prefix == "" {
+		return false
+	}
+	iter := value.MapRange()
+	for iter.Next() {
+		if strings.HasPrefix(iter.Key().String(), tag.Prefix) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func projectLogSequence(typ reflect.Type, value reflect.Value, path string, write bool, secrets map[string]bool, active map[debugVisit]bool) error {

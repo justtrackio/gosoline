@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
@@ -24,6 +25,10 @@ var (
 	alreadyExists   = regexp.MustCompile(`API error \(409\): removal of container (\w+) is already in progress`)
 	noSuchContainer = regexp.MustCompile(`No such container: (\w+)`)
 )
+
+func init() {
+	cfg.RegisterConfigDebugType("test.container_manager.runner.local", reflect.TypeFor[ContainerRunnerLocalSettings]())
+}
 
 type ContainerRunnerLocalSettings struct {
 	Endpoint string       `cfg:"endpoint"`

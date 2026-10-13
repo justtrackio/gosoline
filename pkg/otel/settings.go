@@ -7,6 +7,7 @@ package otel
 import (
 	"fmt"
 	"net"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -26,6 +27,10 @@ const (
 type Settings struct {
 	Resource ResourceSettings `cfg:"resource"`
 	Exporter ExporterSettings `cfg:"exporter"`
+}
+
+func init() {
+	cfg.RegisterConfigDebugType(ConfigKey, reflect.TypeFor[Settings]())
 }
 
 // ResourceSettings configures the OTEL resource attributes derived from the app identity.

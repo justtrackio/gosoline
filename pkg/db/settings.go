@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -40,6 +41,10 @@ type SettingsTimeout struct {
 	ReadTimeout  time.Duration `cfg:"readTimeout"  default:"0"` // I/O read timeout. The value must be a decimal number with a unit suffix ("ms", "s", "m", "h"), such as "30s", "0.5m" or "1m30s".
 	WriteTimeout time.Duration `cfg:"writeTimeout" default:"0"` // I/O write timeout. The value must be a decimal number with a unit suffix ("ms", "s", "m", "h"), such as "30s", "0.5m" or "1m30s".
 	Timeout      time.Duration `cfg:"timeout"      default:"0"` // Timeout for establishing connections, aka dial timeout. The value must be a decimal number with a unit suffix ("ms", "s", "m", "h"), such as "30s", "0.5m" or "1m30s".
+}
+
+func init() {
+	cfg.RegisterConfigDebugType("db", reflect.TypeFor[map[string]Settings]())
 }
 
 func ReadSettings(config cfg.Config, name string) (*Settings, error) {

@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	componentFactories[ComponentLocalstack] = new(localstackFactory)
+	registerComponentFactory(ComponentLocalstack, new(localstackFactory))
 }
 
 const (

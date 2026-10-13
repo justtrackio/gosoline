@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	componentFactories[componentWiremock] = new(wiremockFactory)
+	registerComponentFactory(componentWiremock, new(wiremockFactory))
 }
 
 const componentWiremock = "wiremock"

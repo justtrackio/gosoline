@@ -1,10 +1,21 @@
 package cfg_test
 
 import (
+	"encoding/json"
 	"fmt"
+	"reflect"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	_ "github.com/justtrackio/gosoline/pkg/cloud/aws"
+	_ "github.com/justtrackio/gosoline/pkg/currency"
+	_ "github.com/justtrackio/gosoline/pkg/db"
+	_ "github.com/justtrackio/gosoline/pkg/httpserver/auth"
+	_ "github.com/justtrackio/gosoline/pkg/kafka/connection"
+	_ "github.com/justtrackio/gosoline/pkg/otel"
+	_ "github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/require"
 )
 
@@ -541,5 +552,262 @@ func TestDebugConfigDoesNotExposeEncodedCompositeSliceSettings(t *testing.T) {
 	err := cfg.DebugConfig(t.Context(), config, logger)
 	require.ErrorContains(t, err, "clients")
 	require.NotContains(t, err.Error(), "synthetic-encoded-private")
+	require.Empty(t, logger.messages)
+}
+
+func TestDebugConfigProtectsUnusedSDKSettings(t *testing.T) {
+	// Importing owners supplies the metadata: no owner client, provider,
+	// postprocessor, or settings reader decodes these settings before logging.
+	for _, source := range []string{"map", "json", "yaml"} {
+		t.Run(source, func(t *testing.T) {
+			fingerprint := func(private, public string) string {
+				credentials := func() map[string]any {
+					return map[string]any{"access_key_id": public, "secret_access_key": private, "session_token": private}
+				}
+				client := func() map[string]any {
+					return map[string]any{"credentials": credentials(), "region": public}
+				}
+				image := func() map[string]any {
+					return map[string]any{"repository": public, "auth": map[string]any{"username": public, "password": private}}
+				}
+				values := map[string]any{
+					"db": map[string]any{
+						"archive":         map[string]any{"uri": map[string]any{"password": private, "host": public}},
+						"report":          map[string]any{"uri": map[string]any{"password": private, "database": public}},
+						"tenant.with.dot": map[string]any{"uri": map[string]any{"password": private, "user": public}},
+					},
+					"kafka": map[string]any{"connection": map[string]any{"unused": map[string]any{"password": private, "username": public}}},
+					"cloud": map[string]any{"aws": map[string]any{
+						"defaults": map[string]any{"credentials": credentials(), "clients": map[string]any{"default": client(), "unused": client()}},
+						"s3":       map[string]any{"clients": map[string]any{"default": client(), "unused": client()}, "public": public},
+					}},
+					"api_auth_basic_users": []any{map[string]any{"username": private, "password": private}},
+					"api_auth_keys":        []any{private},
+					"httpserver":           map[string]any{"unused": map[string]any{"auth": map[string]any{"jwt": map[string]any{"signingSecret": private, "issuer": public}}}},
+					"currency_service":     map[string]any{"providers": map[string]any{"unused": map[string]any{"api_key": private, "enabled": true}}},
+					"otel":                 map[string]any{"exporter": map[string]any{"headers": map[string]any{private: private}, "host": public}},
+					"test": map[string]any{
+						"defaults":          map[string]any{"images": map[string]any{"mysql": image(), "unused": image()}},
+						"container_manager": map[string]any{"runner": map[string]any{"local": map[string]any{"auth": map[string]any{"username": public, "password": private}}}},
+						"components": map[string]any{"mysql": map[string]any{"unused": map[string]any{
+							"credentials": map[string]any{"user_password": private, "root_password": private},
+							"image":       image(),
+						}}},
+					},
+					"unowned": map[string]any{"password": public},
+				}
+				config := unusedSDKDebugConfig(t, source, values)
+				originalSettings := config.AllSettings()
+				output, messages := captureDebugConfig(t, config)
+				require.NotContains(t, output, private)
+				for _, path := range []string{
+					"db.archive.uri.password", "db.report.uri.password", "db.tenant.with.dot.uri.password",
+					"kafka.connection.unused.password",
+					"cloud.aws.defaults.credentials.secret_access_key", "cloud.aws.defaults.credentials.session_token",
+					"cloud.aws.defaults.clients.default.credentials.secret_access_key", "cloud.aws.defaults.clients.unused.credentials.session_token",
+					"cloud.aws.s3.clients.default.credentials.secret_access_key", "cloud.aws.s3.clients.unused.credentials.session_token",
+					"api_auth_basic_users", "api_auth_keys", "httpserver.unused.auth.jwt.signingSecret",
+					"currency_service.providers.unused.api_key", "otel.exporter.headers",
+					"test.defaults.images.mysql.auth.password", "test.defaults.images.unused.auth.password",
+					"test.container_manager.runner.local.auth.password",
+					"test.components.mysql.unused.credentials.user_password", "test.components.mysql.unused.credentials.root_password",
+					"test.components.mysql.unused.image.auth.password",
+				} {
+					require.Contains(t, messages, "cfg "+path+"=[REDACTED]")
+				}
+				for _, path := range []string{
+					"db.archive.uri.host", "db.report.uri.database", "kafka.connection.unused.username",
+					"cloud.aws.defaults.credentials.access_key_id", "cloud.aws.s3.clients.unused.region",
+					"cloud.aws.s3.public", "httpserver.unused.auth.jwt.issuer", "otel.exporter.host",
+					"test.defaults.images.mysql.repository", "test.components.mysql.unused.image.auth.username", "unowned.password",
+				} {
+					require.Contains(t, messages, "cfg "+path+"="+public)
+				}
+				require.Contains(t, messages, "cfg currency_service.providers.unused.enabled=true")
+				storedSettings := config.AllSettings()
+				for root := range values {
+					require.Equal(t, originalSettings[root], storedSettings[root], root)
+				}
+				require.Equal(t, private, values["db"].(map[string]any)["archive"].(map[string]any)["uri"].(map[string]any)["password"])
+				stored, err := config.GetString("db.archive.uri.password")
+				require.NoError(t, err)
+				require.Equal(t, private, stored)
+
+				return debugConfigFingerprint(t, messages)
+			}
+			baseline := fingerprint("synthetic-unused-before", "visible-unused")
+			require.Equal(t, baseline, fingerprint("synthetic-unused-after", "visible-unused"))
+			require.NotEqual(t, baseline, fingerprint("synthetic-unused-before", "visible-changed"))
+		})
+	}
+}
+
+func unusedSDKDebugConfig(t *testing.T, source string, values map[string]any) cfg.Config {
+	t.Helper()
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
+	if source == "map" {
+		require.NoError(t, config.Option(cfg.WithConfigMap(values)))
+	} else {
+		// JSON is also valid YAML and exercises the YAML source decoder.
+		data, err := json.Marshal(values)
+		require.NoError(t, err)
+		require.NoError(t, config.Option(cfg.WithConfigBytes(data, source)))
+	}
+
+	return config
+}
+
+func debugConfigFingerprint(t *testing.T, messages []string) string {
+	t.Helper()
+	for _, message := range messages {
+		if strings.HasPrefix(message, "cfg fingerprint: ") {
+			return message
+		}
+	}
+	t.Fatal("missing fingerprint")
+
+	return ""
+}
+
+func TestRegisterConfigDebugTypeAppliesToExistingConfig(t *testing.T) {
+	root := "owner_debug_registration"
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
+		root: map[string]any{"unused": map[string]any{"opaque": "synthetic-owner-private", "access_key_id": "visible-owner"}},
+	})
+	// The unique root and stable type make repeat/full-suite runs independent
+	// without resetting or mutating registrations owned by imported packages.
+	typ := reflect.TypeFor[map[string]debugCredentials]()
+	cfg.RegisterConfigDebugType(root, nil)
+	cfg.RegisterConfigDebugType(root, typ)
+	var workers sync.WaitGroup
+	for range 8 {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for range 8 {
+				cfg.RegisterConfigDebugType("."+root+".", typ)
+			}
+		}()
+	}
+	logger := &debugCountingLogger{}
+	require.NoError(t, cfg.DebugConfig(t.Context(), config, logger))
+	messages := logger.messages
+	require.NotContains(t, strings.Join(messages, "\n"), "synthetic-owner-private")
+	require.Contains(t, messages, "cfg "+root+".unused.opaque=[REDACTED]")
+	require.Contains(t, messages, "cfg "+root+".unused.access_key_id=visible-owner")
+	workers.Wait()
+	repeated := &debugCountingLogger{}
+	require.NoError(t, cfg.DebugConfig(t.Context(), config, repeated))
+	require.Equal(t, messages, repeated.messages)
+}
+
+func TestDebugConfigUnusedSDKUnsupportedShapeFailsBeforeLogging(t *testing.T) {
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
+		"db": map[string]any{"archive": map[string]any{"uri": "synthetic-encoded-credentials"}},
+	})
+	// Metadata does not reject source loading or perform operational decoding.
+	stored, err := config.GetString("db.archive.uri")
+	require.NoError(t, err)
+	require.Equal(t, "synthetic-encoded-credentials", stored)
+	logger := &debugCountingLogger{}
+	err = cfg.DebugConfig(t.Context(), config, logger)
+	require.ErrorContains(t, err, "db.archive.uri")
+	require.NotContains(t, err.Error(), "synthetic-encoded-credentials")
+	require.Empty(t, logger.messages)
+}
+
+func TestDebugConfigProtectsUnusedLiteralDatabaseNames(t *testing.T) {
+	fingerprint := func(private string) string {
+		// A raw constructor map retains literal dots; source merges interpret
+		// unescaped dots as selectors rather than collection member names.
+		values := map[string]any{"db": map[string]any{
+			"tenant.with.dot": map[string]any{"uri": map[string]any{"password": private, "host": "visible-literal-host"}},
+		}}
+		config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), values)
+		output, messages := captureDebugConfig(t, config)
+		require.NotContains(t, output, private)
+		require.Contains(t, messages, "cfg db.tenant.with.dot.uri.password=[REDACTED]")
+		require.Contains(t, messages, "cfg db.tenant.with.dot.uri.host=visible-literal-host")
+		require.Equal(t, values["db"], config.AllSettings()["db"])
+
+		return debugConfigFingerprint(t, messages)
+	}
+	require.Equal(t, fingerprint("synthetic-literal-before"), fingerprint("synthetic-literal-after"))
+}
+
+func TestDebugConfigRejectsAmbiguousUnusedDatabaseNamesBeforeLogging(t *testing.T) {
+	config := unusedSDKDebugConfig(t, "map", map[string]any{
+		"db": map[string]any{"tenant.uri.dot": map[string]any{
+			"uri": map[string]any{"password": "synthetic-ambiguous-password", "host": "visible-ambiguous-host"},
+		}},
+	})
+	logger := &debugCountingLogger{}
+	err := cfg.DebugConfig(t.Context(), config, logger)
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "synthetic-ambiguous-password")
+	require.Empty(t, logger.messages)
+}
+
+func TestDebugConfigCollectionStopsAtPublicModelFields(t *testing.T) {
+	config := unusedSDKDebugConfig(t, "map", map[string]any{
+		"db": map[string]any{"archive": map[string]any{
+			"uri":        map[string]any{"password": "synthetic-boundary-password", "host": "visible-boundary-host"},
+			"parameters": map[string]any{"driver": "visible-public-driver", "uri": "visible-public-uri"},
+			"metadata":   map[string]any{"password": "visible-unowned-password"},
+		}},
+	})
+	output, messages := captureDebugConfig(t, config)
+	require.NotContains(t, output, "synthetic-boundary-password")
+	require.Contains(t, messages, "cfg db.archive.uri.password=[REDACTED]")
+	require.Contains(t, messages, "cfg db.archive.uri.host=visible-boundary-host")
+	require.Contains(t, messages, "cfg db.archive.parameters.driver=visible-public-driver")
+	require.Contains(t, messages, "cfg db.archive.parameters.uri=visible-public-uri")
+	require.Contains(t, messages, "cfg db.archive.metadata.password=visible-unowned-password")
+}
+
+func TestDebugConfigCollectionDoesNotInspectMaskedContainers(t *testing.T) {
+	type settings struct {
+		Opaque any    `cfg:"opaque,secret"`
+		Public string `cfg:"public"`
+	}
+	type cyclicSecret struct {
+		Next  *cyclicSecret
+		Value string
+	}
+	cyclic := &cyclicSecret{Value: "synthetic-masked-cycle"}
+	cyclic.Next = cyclic
+	root := "owner_debug_masked_containers"
+	cfg.RegisterConfigDebugType(root, reflect.TypeFor[map[string]settings]())
+	for _, secret := range []any{
+		map[debugFormattingKey]string{{}: "synthetic-masked-unsupported"},
+		cyclic,
+	} {
+		config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
+			root: map[string]any{"unused": map[string]any{"opaque": secret, "public": "visible-masked-sibling"}},
+		})
+		output, messages := captureDebugConfig(t, config)
+		require.NotContains(t, output, "synthetic-masked")
+		require.Contains(t, messages, "cfg "+root+".unused.opaque=[REDACTED]")
+		require.Contains(t, messages, "cfg "+root+".unused.public=visible-masked-sibling")
+		require.Same(t, cyclic, cyclic.Next)
+	}
+}
+
+func TestDebugConfigRejectedNestedDatabaseCandidateFailsClosed(t *testing.T) {
+	config := unusedSDKDebugConfig(t, "map", map[string]any{
+		"db": map[string]any{"tenant.uri.dot": map[string]any{
+			// Migrations precedes Uri in the original SDK model. Its invalid
+			// public shape must not let probing stop before the secret tag.
+			"migrations": "visible-rejected-public-shape",
+			"uri":        map[string]any{"password": "synthetic-rejected-candidate", "host": "visible-rejected-host"},
+		}},
+	})
+	stored, err := config.GetString("db.tenant.uri.dot.uri.password")
+	require.NoError(t, err)
+	require.Equal(t, "synthetic-rejected-candidate", stored)
+	logger := &debugCountingLogger{}
+	err = cfg.DebugConfig(t.Context(), config, logger)
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "synthetic-rejected-candidate")
 	require.Empty(t, logger.messages)
 }

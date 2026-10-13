@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	componentFactories[componentMySql] = new(mysqlFactory)
+	registerComponentFactory(componentMySql, new(mysqlFactory))
 }
 
 const componentMySql = "mysql"

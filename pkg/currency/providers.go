@@ -2,8 +2,10 @@ package currency
 
 import (
 	"context"
+	"reflect"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/http"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -13,6 +15,10 @@ type ProviderSettings struct {
 	// Providers with lower values will be used first. The order of the providers with the same priority is non-deterministic.
 	Priority uint `cfg:"priority"`
 	Enabled  bool `cfg:"enabled"`
+}
+
+func init() {
+	cfg.RegisterConfigDebugType("currency_service.providers", reflect.TypeFor[map[string]ProviderSettings]())
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Provider

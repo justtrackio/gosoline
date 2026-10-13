@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	componentFactories[componentRedis] = new(redisFactory)
+	registerComponentFactory(componentRedis, new(redisFactory))
 }
 
 const componentRedis = "redis"
