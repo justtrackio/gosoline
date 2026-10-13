@@ -92,10 +92,10 @@ func NewWithInterfaces(envProvider EnvProvider, msis ...map[string]any) GosoConf
 		sanitizers:  make([]Sanitizer, 0),
 	}
 
-	// Initial maps preserve literal keys rather than using Merge's selectors.
-	// Register their concrete tagged values before publishing stored settings.
-	for _, settings := range msis {
-		cfg.registerSecrets(".", &settings, false)
+	// The first initial map preserves literal keys rather than Merge's selectors.
+	// Later maps are not stored, so their tags must not affect debug output.
+	if len(msis) > 0 {
+		cfg.registerSecrets(".", &msis[0], false)
 	}
 	cfg.settings = mapx.NewMapX(msis...)
 

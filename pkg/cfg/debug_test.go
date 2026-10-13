@@ -140,3 +140,21 @@ func captureDebugConfig(t *testing.T, config cfg.Config) (outputText string, mes
 
 	return output.String(), messages
 }
+
+func TestDebugConfigIgnoresUnusedConstructorMaps(t *testing.T) {
+	stored := map[string]any{
+		"client": map[string]any{"opaque": "visible-public-value", "access_key_id": "visible-public-id"},
+	}
+	ignored := map[string]any{
+		"client": debugCredentials{Opaque: "synthetic-ignored-secret", AccessKeyID: "ignored-public-id"},
+	}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), stored, ignored)
+	output, messages := captureDebugConfig(t, config)
+	require.Contains(t, messages, "cfg client.opaque=visible-public-value")
+	require.Contains(t, messages, "cfg client.access_key_id=visible-public-id")
+	require.NotContains(t, output, "synthetic-ignored-secret")
+	require.False(t, config.IsSecret("client.opaque"))
+	require.Equal(t, stored["client"], config.AllSettings()["client"])
+	_, baselineMessages := captureDebugConfig(t, cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), stored))
+	require.Equal(t, baselineMessages, messages)
+}

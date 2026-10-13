@@ -1067,16 +1067,25 @@ func (s *Struct) trySlice(value any) ([]any, error) {
 const optionPrefixKey = "prefix="
 
 func (s *Struct) readTag(sourceTag reflect.StructTag, fieldName string) (*StructTag, bool) {
-	var ok bool
-	var val string
-
-	if val, ok = sourceTag.Lookup(s.settings.FieldTag); !ok {
+	tag, ok := ReadStructTag(sourceTag, s.settings.FieldTag)
+	if !ok {
 		// If no tag and DefaultToFieldName is enabled, use field name as tag name
 		if s.settings.DefaultToFieldName && fieldName != "" {
 			return &StructTag{Name: fieldName}, true
 		}
 
-		return nil, ok
+		return nil, false
+	}
+
+	return tag, true
+}
+
+// ReadStructTag reads a named struct tag using MapX's mapping and option syntax.
+// It does not apply DefaultToFieldName when the tag is absent.
+func ReadStructTag(sourceTag reflect.StructTag, tagName string) (*StructTag, bool) {
+	val, ok := sourceTag.Lookup(tagName)
+	if !ok {
+		return nil, false
 	}
 
 	parts := strings.Split(val, ",")

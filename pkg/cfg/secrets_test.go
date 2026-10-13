@@ -403,8 +403,7 @@ func TestDebugConfigKeepsPublicSiblingOfRootedConcreteIndex(t *testing.T) {
 func TestDebugConfigProtectsBoxedConcreteMaps(t *testing.T) {
 	for _, initial := range []bool{false, true} {
 		t.Run(fmt.Sprintf("initial=%t", initial), func(t *testing.T) {
-			var boxed any
-			boxed = map[string]any{
+			var boxed any = map[string]any{
 				"literal.client": debugCredentials{Opaque: "synthetic-boxed-private", AccessKeyID: "visible-boxed-public"},
 			}
 			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
@@ -430,4 +429,82 @@ func TestDebugConfigProtectsBoxedConcreteMaps(t *testing.T) {
 			require.Equal(t, "synthetic-boxed-private", boxed.(map[string]any)["literal.client"].(debugCredentials).Opaque)
 		})
 	}
+}
+
+func TestDebugConfigRetainedInterfaceUsesCurrentSecretTags(t *testing.T) {
+	var value any
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{"client": &value})
+	// Initialize the logger's public defaults before comparing fingerprints.
+	captureDebugConfig(t, config)
+	value = debugCredentials{Opaque: "synthetic-late-secret", AccessKeyID: "visible-late-id"}
+
+	output, messages := captureDebugConfig(t, config)
+	require.NotContains(t, output, "synthetic-late-secret")
+	require.Contains(t, messages, "cfg client.opaque=[REDACTED]")
+	require.Contains(t, messages, "cfg client.access_key_id=visible-late-id")
+	original, err := config.Get("client")
+	require.NoError(t, err)
+	require.Same(t, &value, original)
+	require.Equal(t, "synthetic-late-secret", value.(debugCredentials).Opaque)
+
+	value = debugCredentials{Opaque: "synthetic-replacement-secret", AccessKeyID: "visible-late-id"}
+	replacementOutput, replacementMessages := captureDebugConfig(t, config)
+	require.NotContains(t, replacementOutput, "synthetic-replacement-secret")
+	require.Equal(t, messages[len(messages)-1], replacementMessages[len(replacementMessages)-1])
+}
+
+func TestDebugConfigRetainedInterfaceMasksCurrentSecretContainers(t *testing.T) {
+	type containers struct {
+		Map    map[string]string `cfg:"opaque_map, SeCrEt ,NoDecode"`
+		Slice  []string          `cfg:"opaque_slice,secret"`
+		Public string            `cfg:"public"`
+	}
+	var value any
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{"client": &value})
+	// Initialize the logger's public defaults before comparing fingerprints.
+	captureDebugConfig(t, config)
+	value = containers{
+		Map:    map[string]string{"synthetic-private-key": "synthetic-map-secret"},
+		Slice:  []string{"synthetic-slice-secret"},
+		Public: "visible-container-id",
+	}
+
+	output, messages := captureDebugConfig(t, config)
+	require.NotContains(t, output, "synthetic-")
+	require.Contains(t, messages, "cfg client.opaque_map=[REDACTED]")
+	require.Contains(t, messages, "cfg client.opaque_slice=[REDACTED]")
+	require.Contains(t, messages, "cfg client.public=visible-container-id")
+	require.Equal(t, "synthetic-map-secret", value.(containers).Map["synthetic-private-key"])
+	require.Equal(t, []string{"synthetic-slice-secret"}, value.(containers).Slice)
+
+	value = containers{
+		Map:    map[string]string{"synthetic-new-private-key": "synthetic-new-map-secret"},
+		Slice:  []string{"synthetic-new-slice-secret", "synthetic-extra-secret"},
+		Public: "visible-container-id",
+	}
+	_, replacementMessages := captureDebugConfig(t, config)
+	require.Equal(t, messages[len(messages)-1], replacementMessages[len(replacementMessages)-1])
+}
+
+func TestDebugConfigRetainedInterfacePreservesAnonymousMapping(t *testing.T) {
+	type Credentials struct {
+		Opaque string `cfg:" opaque , SeCrEt "`
+		Public string `cfg:"public"`
+	}
+	type settings struct {
+		Credentials `cfg:"ignored,secret"`
+		Untagged    string
+	}
+	var value any
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{"client": &value})
+	value = settings{
+		Credentials: Credentials{Opaque: "synthetic-embedded-secret", Public: "visible-embedded-id"},
+		Untagged:    "synthetic-untagged-value",
+	}
+
+	output, messages := captureDebugConfig(t, config)
+	require.NotContains(t, output, "synthetic-")
+	require.NotContains(t, output, "ignored")
+	require.Contains(t, messages, "cfg client.opaque=[REDACTED]")
+	require.Contains(t, messages, "cfg client.public=visible-embedded-id")
 }

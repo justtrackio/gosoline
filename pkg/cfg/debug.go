@@ -13,8 +13,9 @@ import (
 )
 
 // DebugConfig logs flattened settings and a fingerprint of the same redacted
-// entries. Annotate secret fields with cfg:"name,secret" and register their
-// types through rooted merges or UnmarshalKey before calling DebugConfig.
+// entries. Annotate secret fields with cfg:"name,secret". Tags on current struct
+// values are checked during traversal; register types through rooted merges or
+// UnmarshalKey to also protect settings stored without their annotated structs.
 // Secret parents hide their entire contents, including map keys. Raw getters
 // do not register annotations. Redaction changes neither storage nor decoded
 // values; other consumers of AllSettings still receive the original values.
@@ -155,7 +156,6 @@ func debugFlattenStruct(config Config, value reflect.Value, path, selector strin
 		if field.PkgPath != "" {
 			continue
 		}
-		name, ok := field.Tag.Lookup("cfg")
 		if field.Anonymous {
 			if err := debugFlatten(config, value.Field(i), path, selector, entries, active); err != nil {
 				return err
@@ -163,11 +163,18 @@ func debugFlattenStruct(config Config, value reflect.Value, path, selector strin
 
 			continue
 		}
+		tag, ok := mapx.ReadStructTag(field.Tag, "cfg")
 		if !ok {
 			continue
 		}
-		name = strings.TrimSpace(strings.Split(name, ",")[0])
-		if err := debugFlatten(config, value.Field(i), debugJoin(path, name), debugJoin(selector, name), entries, active); err != nil {
+		fieldPath := debugJoin(path, tag.Name)
+		fieldSelector := debugJoin(selector, tag.Name)
+		if tag.Secret {
+			entries[fieldSelector] = debugEntry{fieldPath, "[REDACTED]"}
+
+			continue
+		}
+		if err := debugFlatten(config, value.Field(i), fieldPath, fieldSelector, entries, active); err != nil {
 			return err
 		}
 	}
