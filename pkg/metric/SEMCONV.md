@@ -92,6 +92,16 @@ the instrument).
 | `reads` | count | counter | `list.name` | none |
 | `writes` | count | counter | `list.name` | none |
 
+Single and batch consumers use the same instruments and attributes. `process.duration` records one
+observation per processing invocation: one message for a single consumer, the whole batch for a batch
+consumer. It is not a per-message duration when emitted by a batch consumer.
+
+The default `consumed.messages` series remains the all-processed total, including callback failures; a
+batch contributes its record count, not one. `error.type="processing_failed"` is an overlapping
+record-based failure series, including false or missing acknowledgements, not an extra batch count.
+Ignored model errors and canceled processing do not emit that failure series. `retry.operations` counts
+retry operations with `operation="get"` or `operation="put"`, not the number of records in a retry.
+
 ### `kafka.consumer` — `pkg/kafka/consumer`
 
 | Metric | Unit | Type | Attributes | Derived from |
