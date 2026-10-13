@@ -23,6 +23,9 @@ const (
 
 type LookupEnv func(key string) (string, bool)
 
+// Config exposes original configuration values. Secret annotations affect only
+// DebugConfig logging, not getters, defaults, storage or decoded outputs.
+//
 //go:generate go run github.com/vektra/mockery/v2 --name Config
 type Config interface {
 	AllKeys() []string
@@ -41,19 +44,6 @@ type Config interface {
 	GetTime(key string, optionalDefault ...time.Time) (time.Time, error)
 	FormatString(pattern string, args ...map[string]string) (string, error)
 	IsSet(string) bool
-	// IsSecret reports whether a selector or one of its ancestors is annotated
-	// with cfg:",secret". Selectors use MapX's case-sensitive path syntax.
-	// Dynamic map keys with bracket suffixes retain their type annotations when
-	// MapX cannot interpret the suffix as a sequence index. Sequence selectors
-	// retain their ordinary bracket-index semantics, with consecutive indexes
-	// following the declared dimensions of nested sequences.
-	// Initial maps, rooted merges, and UnmarshalKey register tagged types and
-	// concrete tagged values held in interface containers before debug logging.
-	// Interface-container annotations stay scoped to their actual key or index;
-	// declared element types also cover future entries in typed containers.
-	// Getters and AllSettings retain original values without redaction, and do
-	// not infer secrecy from names or values. Annotate before calling DebugConfig.
-	IsSecret(selector string) bool
 	HasPrefix(prefix string) bool
 	UnmarshalDefaults(val any, additionalDefaults ...UnmarshalDefaults) error
 	UnmarshalKey(key string, val any, additionalDefaults ...UnmarshalDefaults) error
@@ -72,7 +62,7 @@ type config struct {
 	envKeyPrefix   string
 	envKeyReplacer *strings.Replacer
 	secretMu       sync.RWMutex
-	secretSchema   mapx.SecretSchema
+	logProjections []logProjection
 }
 
 var (
@@ -346,7 +336,7 @@ func (c *config) UnmarshalDefaults(output any, additionalDefaults ...UnmarshalDe
 
 	defaultsConfig := Config(c)
 	if len(additionalDefaults) > 0 {
-		defaultsConfig = c.defaultsContext(ms)
+		defaultsConfig = c.defaultsContext(output)
 	}
 	for _, def := range additionalDefaults {
 		if err := def(defaultsConfig, finalSettings); err != nil {
@@ -765,7 +755,7 @@ func (c *config) unmarshalStruct(key string, output any, additionalDefaults []Un
 
 	defaultsConfig := Config(c)
 	if len(additionalDefaults) > 0 {
-		defaultsConfig = c.defaultsContext(ms)
+		defaultsConfig = c.defaultsContext(output)
 	}
 	for _, def := range additionalDefaults {
 		if err := def(defaultsConfig, finalSettings); err != nil {

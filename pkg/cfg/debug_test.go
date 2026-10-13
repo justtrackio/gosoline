@@ -2,6 +2,7 @@ package cfg_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -29,9 +30,6 @@ func TestDebugConfigUsesOnlySecretAnnotations(t *testing.T) {
 	require.Contains(t, messages, "cfg provider.opaque=[REDACTED]")
 	require.Contains(t, messages, "cfg provider.access_key_id=public-key")
 	require.Contains(t, messages, "cfg credentials_cache.expiry_window=visible-cache")
-	require.True(t, config.IsSecret("provider.opaque"))
-	require.False(t, config.IsSecret("provider.access_key_id"))
-	require.False(t, config.IsSecret("credentials_cache.expiry_window"))
 	value, err := config.GetString("provider.opaque")
 	require.NoError(t, err)
 	require.Equal(t, "synthetic-private", value)
@@ -44,9 +42,6 @@ func TestDebugConfigTypedDynamicContainers(t *testing.T) {
 	type namedClients map[string]debugCredentials
 	clients := namedClients{"first": {Opaque: "synthetic-first", AccessKeyID: "public-first"}}
 	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
-	var schema namedClients
-	// Empty typed containers establish the schema for future dynamic entries.
-	require.NoError(t, config.Option(cfg.WithConfigSetting("clients", schema)))
 	clients["later.with.dot"] = debugCredentials{Opaque: "synthetic-later", AccessKeyID: "public-later"}
 	require.NoError(t, config.Option(cfg.WithConfigSetting("clients", clients)))
 	list := make([]debugCredentials, 12)
@@ -60,7 +55,6 @@ func TestDebugConfigTypedDynamicContainers(t *testing.T) {
 	for i := range list {
 		require.Contains(t, messages, fmt.Sprintf("cfg list.%d.opaque=[REDACTED]", i))
 		require.Contains(t, messages, fmt.Sprintf("cfg list.%d.access_key_id=public-%d", i, i))
-		require.True(t, config.IsSecret(fmt.Sprintf("list[%d].opaque", i)))
 	}
 	require.Equal(t, "synthetic-later", clients["later.with.dot"].Opaque)
 	require.Equal(t, "synthetic-11", list[11].Opaque)
@@ -80,7 +74,6 @@ func TestDebugConfigMasksWholeContainerAndFingerprint(t *testing.T) {
 		require.NotContains(t, output, secret)
 		require.NotContains(t, output, "synthetic-private-map-key")
 		require.Contains(t, messages, "cfg provider.opaque=[REDACTED]")
-		require.True(t, config.IsSecret("provider.opaque.anything"))
 		for _, message := range messages {
 			if strings.HasPrefix(message, "cfg fingerprint: ") {
 				return message
@@ -109,15 +102,10 @@ func TestDebugConfigDefaultsSourceAndEnvironmentAnnotations(t *testing.T) {
 	var decoded settings
 	require.NoError(t, config.UnmarshalKey("provider", &decoded, cfg.UnmarshalWithDefaultsFromKey("shared", "credentials")))
 	require.Equal(t, "synthetic-env", decoded.Credentials.Opaque)
-	require.True(t, config.IsSecret("shared.opaque"))
-	require.False(t, config.IsSecret("shared.access_key_id"))
 	output, messages := captureDebugConfig(t, config)
 	require.NotContains(t, output, "synthetic-")
 	require.Contains(t, messages, "cfg shared.access_key_id=source-public")
 	require.Contains(t, messages, "cfg provider.default_opaque=[REDACTED]")
-	outputOnly := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
-	require.NoError(t, outputOnly.UnmarshalDefaults(&decoded))
-	require.False(t, outputOnly.IsSecret("credentials.opaque"))
 }
 
 func captureDebugConfig(t *testing.T, config cfg.Config) (outputText string, messages []string) {
@@ -153,8 +141,91 @@ func TestDebugConfigIgnoresUnusedConstructorMaps(t *testing.T) {
 	require.Contains(t, messages, "cfg client.opaque=visible-public-value")
 	require.Contains(t, messages, "cfg client.access_key_id=visible-public-id")
 	require.NotContains(t, output, "synthetic-ignored-secret")
-	require.False(t, config.IsSecret("client.opaque"))
 	require.Equal(t, stored["client"], config.AllSettings()["client"])
 	_, baselineMessages := captureDebugConfig(t, cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), stored))
 	require.Equal(t, baselineMessages, messages)
+}
+
+type debugCountingLogger struct {
+	messages []string
+}
+
+func (l *debugCountingLogger) Info(_ context.Context, format string, args ...any) {
+	l.messages = append(l.messages, fmt.Sprintf(format, args...))
+}
+
+func (l *debugCountingLogger) Error(_ context.Context, _ string, _ ...any) {}
+
+type debugFormattingString string
+
+func (debugFormattingString) String() string {
+	panic("configuration logging must not call user formatting")
+}
+
+type debugFormattingKey struct{}
+
+func (debugFormattingKey) String() string {
+	panic("configuration logging must not format unsupported keys")
+}
+
+type debugUnknownConfig struct{ cfg.Config }
+
+func (debugUnknownConfig) AllSettings() map[string]any {
+	panic("unknown config must be rejected before reading values")
+}
+
+func TestDebugConfigRejectsUnsupportedPublicValuesBeforeLogging(t *testing.T) {
+	cyclic := map[string]any{}
+	cyclic["self"] = cyclic
+	var boxed any = cyclic
+	for _, test := range []struct {
+		name     string
+		value    any
+		typeName string
+	}{
+		{"channel", make(chan string), "chan"},
+		{"function", func() {}, "func"},
+		{"map_key", map[debugFormattingKey]string{{}: "synthetic-private"}, "debugFormattingKey"},
+		{"cycle", &boxed, "map"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
+				"invalid": test.value, "public": "visible-before-invalid",
+			})
+			logger := &debugCountingLogger{}
+			err := cfg.DebugConfig(t.Context(), config, logger)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "invalid")
+			require.Contains(t, err.Error(), test.typeName)
+			require.NotContains(t, err.Error(), "synthetic-private")
+			require.Empty(t, logger.messages)
+		})
+	}
+}
+
+func TestDebugConfigMasksUnsupportedSecretBeforeInspectingIt(t *testing.T) {
+	type settings struct {
+		Hidden   any                   `cfg:"hidden,secret"`
+		Public   debugFormattingString `cfg:"public"`
+		Duration time.Duration         `cfg:"duration"`
+	}
+	cyclic := map[string]any{}
+	cyclic["synthetic-private-key"] = cyclic
+	var value any = settings{Hidden: cyclic, Public: "visible-scalar", Duration: time.Second}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{"client": &value})
+	output, messages := captureDebugConfig(t, config)
+	require.NotContains(t, output, "synthetic-private-key")
+	require.Contains(t, messages, "cfg client.hidden=[REDACTED]")
+	require.Contains(t, messages, "cfg client.public=visible-scalar")
+	require.Contains(t, messages, "cfg client.duration=1s")
+	require.Equal(t, cyclic, value.(settings).Hidden)
+}
+
+func TestDebugConfigRejectsUnknownConfigBeforeReadingOrLogging(t *testing.T) {
+	logger := &debugCountingLogger{}
+	err := cfg.DebugConfig(t.Context(), debugUnknownConfig{
+		Config: cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider()),
+	}, logger)
+	require.ErrorContains(t, err, "safe logging metadata")
+	require.Empty(t, logger.messages)
 }

@@ -1093,52 +1093,6 @@ func (_c *GosoConf_HasPrefix_Call) RunAndReturn(run func(string) bool) *GosoConf
 	return _c
 }
 
-// IsSecret provides a mock function with given fields: selector
-func (_m *GosoConf) IsSecret(selector string) bool {
-	ret := _m.Called(selector)
-
-	if len(ret) == 0 {
-		panic("no return value specified for IsSecret")
-	}
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(string) bool); ok {
-		r0 = rf(selector)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	return r0
-}
-
-// GosoConf_IsSecret_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsSecret'
-type GosoConf_IsSecret_Call struct {
-	*mock.Call
-}
-
-// IsSecret is a helper method to define mock.On call
-//   - selector string
-func (_e *GosoConf_Expecter) IsSecret(selector interface{}) *GosoConf_IsSecret_Call {
-	return &GosoConf_IsSecret_Call{Call: _e.mock.On("IsSecret", selector)}
-}
-
-func (_c *GosoConf_IsSecret_Call) Run(run func(selector string)) *GosoConf_IsSecret_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
-	})
-	return _c
-}
-
-func (_c *GosoConf_IsSecret_Call) Return(_a0 bool) *GosoConf_IsSecret_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *GosoConf_IsSecret_Call) RunAndReturn(run func(string) bool) *GosoConf_IsSecret_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // IsSet provides a mock function with given fields: _a0
 func (_m *GosoConf) IsSet(_a0 string) bool {
 	ret := _m.Called(_a0)

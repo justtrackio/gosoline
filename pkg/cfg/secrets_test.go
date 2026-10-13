@@ -2,32 +2,14 @@ package cfg_test
 
 import (
 	"fmt"
-	"sync"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSecretSchemaRootedEmptyContainersAndDecodeFailure(t *testing.T) {
-	type row struct {
-		Value  string `cfg:"value,secret"`
-		Public string `cfg:"public"`
-	}
-	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
-		"rows":   []any{},
-		"groups": map[string]any{},
-	})
-	var rows []row
-	require.NoError(t, config.UnmarshalKey("rows", &rows))
-	var groups map[string]*row
-	require.NoError(t, config.UnmarshalKey("groups", &groups))
-	require.True(t, config.IsSecret("rows[11].value"))
-	require.False(t, config.IsSecret("rows.11.value"))
-	require.False(t, config.IsSecret("rows[11].public"))
-	require.True(t, config.IsSecret(`groups.tenant\.literal.value`))
-	require.False(t, config.IsSecret("groups[0].value"))
-	require.False(t, config.IsSecret("other.value"))
+func TestDebugConfigProtectsFailedDecode(t *testing.T) {
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
 	var invalid struct {
 		Opaque int `cfg:"opaque,secret"`
 	}
@@ -37,7 +19,7 @@ func TestSecretSchemaRootedEmptyContainersAndDecodeFailure(t *testing.T) {
 	require.NotContains(t, output, "synthetic-not-an-int")
 }
 
-func TestSecretSchemaSelectorBoundariesAndPrefixOptions(t *testing.T) {
+func TestDebugConfigPrefixOptions(t *testing.T) {
 	type Embedded struct {
 		Embedded string `cfg:"embedded,secret"`
 	}
@@ -55,55 +37,17 @@ func TestSecretSchemaSelectorBoundariesAndPrefixOptions(t *testing.T) {
 	})
 	var decoded settings
 	require.NoError(t, config.UnmarshalKey("provider", &decoded))
-	require.True(t, config.IsSecret("provider.SDK_Opaque"))
-	require.False(t, config.IsSecret("provider.sdk_opaque"))
-	require.False(t, config.IsSecret("provider.SDK_public"))
-	require.True(t, config.IsSecret(`provider.literal\.opaque`))
-	require.False(t, config.IsSecret("provider.literal.opaque"))
-	require.True(t, config.IsSecret("provider.embedded"))
 	output, messages := captureDebugConfig(t, config)
 	require.NotContains(t, output, "synthetic-")
 	require.Contains(t, messages, "cfg provider.SDK_public=visible-prefix")
 	require.Contains(t, messages, "cfg provider.literal.opaque=visible-nested")
 }
 
-func TestSecretSchemaRecursiveTypesAndConcurrentRegistration(t *testing.T) {
-	type node struct {
-		Value    string           `cfg:"value,secret"`
-		Children map[string]*node `cfg:"children"`
-	}
-	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
-	var output map[string]*node
-	require.Error(t, config.UnmarshalKey("tree", &output))
-	require.True(t, config.IsSecret("tree.first.children.second.children.third.value"))
-	var wg sync.WaitGroup
-	errors := make(chan error, 20)
-	for i := range 20 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			var nodes map[string]*node
-			errors <- config.UnmarshalKey(fmt.Sprintf("empty%d", i), &nodes)
-			_ = config.IsSecret("tree.first.children.second.value")
-		}()
-	}
-	wg.Wait()
-	close(errors)
-	for err := range errors {
-		require.Error(t, err)
-	}
-	require.True(t, config.IsSecret("empty19.future.value"))
-}
-
-func TestSecretSchemaFullDefaultsMappingAndInstanceIsolation(t *testing.T) {
+func TestDebugConfigFullDefaultsSourceMapping(t *testing.T) {
 	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{"shared": map[string]any{"opaque": "synthetic-shared", "access_key_id": "public-shared"}})
 	var decoded debugCredentials
 	require.NoError(t, config.UnmarshalDefaults(&decoded, cfg.UnmarshalWithDefaultsFromKey("shared", ".")))
 	require.Equal(t, "synthetic-shared", decoded.Opaque)
-	require.True(t, config.IsSecret("shared.opaque"))
-	require.False(t, config.IsSecret("opaque"))
-	other := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
-	require.False(t, other.IsSecret("shared.opaque"))
 	output, _ := captureDebugConfig(t, config)
 	require.NotContains(t, output, "synthetic-shared")
 	require.Contains(t, output, "public-shared")
@@ -119,7 +63,6 @@ func TestDebugConfigNestedTypedMapsSlicesAndLiteralDotBoundary(t *testing.T) {
 	require.NotContains(t, output, "synthetic-nested")
 	require.Contains(t, messages, "cfg nested.tenant.with.dot.0.opaque=[REDACTED]")
 	require.Contains(t, messages, "cfg nested.tenant.with.dot.0.access_key_id=public-nested")
-	require.True(t, config.IsSecret(`nested.tenant\.with\.dot[0].opaque`))
 	require.Equal(t, "synthetic-nested", native["tenant.with.dot"][0].Opaque)
 
 	type collision struct {
@@ -131,7 +74,6 @@ func TestDebugConfigNestedTypedMapsSlicesAndLiteralDotBoundary(t *testing.T) {
 	require.NotContains(t, output, "synthetic-collision")
 	require.Contains(t, messages, "cfg collision.literal.opaque=[REDACTED]")
 	require.Contains(t, output, "public-literal")
-	require.False(t, config.IsSecret(`collision.literal\.opaque`))
 }
 
 func TestRootUnmarshalRegistersTagsWithoutDuplicatingSettings(t *testing.T) {
@@ -146,7 +88,6 @@ func TestRootUnmarshalRegistersTagsWithoutDuplicatingSettings(t *testing.T) {
 			var decoded settings
 			require.NoError(t, config.UnmarshalKey(root, &decoded))
 			require.Equal(t, "synthetic-env-root", decoded.Opaque)
-			require.True(t, config.IsSecret("api_auth_keys"))
 			require.NotContains(t, config.AllSettings(), "")
 			require.Equal(t, "visible-root", config.AllSettings()["public"])
 			value, err := config.GetString("public")
@@ -175,7 +116,6 @@ func TestIndexedTagRetainsOtherElementsSecretAnnotations(t *testing.T) {
 		Rows:  []row{{Token: "synthetic-first"}, {Token: "synthetic-second"}},
 		First: publicRow{Token: "visible-first"},
 	})))
-	require.True(t, config.IsSecret("provider.rows[1].token"))
 	output, messages := captureDebugConfig(t, config)
 	require.NotContains(t, output, "synthetic-second")
 	require.Contains(t, messages, "cfg provider.rows.1.token=[REDACTED]")
@@ -217,14 +157,10 @@ func TestDebugConfigProtectsBracketContainingDynamicMapKeys(t *testing.T) {
 	require.Contains(t, messages, "cfg deep_groups.tenant[0].0.0.access_key_id=public-bracket-deep")
 	require.Contains(t, messages, "cfg matrix.0.0.opaque=[REDACTED]")
 	require.Contains(t, messages, "cfg matrix.0.0.access_key_id=public-matrix")
-	require.True(t, config.IsSecret("matrix[0][0].opaque"))
-	require.False(t, config.IsSecret("matrix[0][0].access_key_id"))
 	require.Contains(t, messages, "cfg deeper_groups.tenant[0][1].0.0.0.opaque=[REDACTED]")
 	require.Contains(t, messages, "cfg deeper_groups.tenant[0][1].0.0.0.access_key_id=public-bracket-deeper")
 	require.Contains(t, messages, "cfg cube.0.0.0.opaque=[REDACTED]")
 	require.Contains(t, messages, "cfg cube.0.0.0.access_key_id=public-cube")
-	require.True(t, config.IsSecret("cube[0][0][0].opaque"))
-	require.False(t, config.IsSecret("cube[0][0][0].access_key_id"))
 	require.Equal(t, "synthetic-bracket", clients["tenant[0]"].Opaque)
 	require.Equal(t, "synthetic-bracket-slice", groups["tenant[0]"][0].Opaque)
 	require.Equal(t, "synthetic-bracket-deep", deepGroups["tenant[0]"][0][0].Opaque)
@@ -260,16 +196,15 @@ func TestDebugConfigProtectsConcreteTaggedValuesInUntypedMaps(t *testing.T) {
 		Value any `cfg:"value"`
 	}
 	for _, test := range []struct {
-		name     string
-		value    any
-		path     string
-		selector string
+		name  string
+		value any
+		path  string
 	}{
-		{"struct", debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}, "client.opaque", "client.opaque"},
-		{"pointer", &debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}, "client.opaque", "client.opaque"},
-		{"list", []any{debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}}, "client.0.opaque", "client[0].opaque"},
-		{"typed_wrapper", wrapper{Value: debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}}, "client.value.opaque", "client.value.opaque"},
-		{"typed_wrapper_map", wrapper{Value: map[string]any{"tenant.key[0]": debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}}}, "client.value.tenant.key[0].opaque", `client.value.tenant\.key[0].opaque`},
+		{"struct", debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}, "client.opaque"},
+		{"pointer", &debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}, "client.opaque"},
+		{"list", []any{debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}}, "client.0.opaque"},
+		{"typed_wrapper", wrapper{Value: debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}}, "client.value.opaque"},
+		{"typed_wrapper_map", wrapper{Value: map[string]any{"tenant.key[0]": debugCredentials{Opaque: "synthetic-concrete-secret", AccessKeyID: "public-concrete"}}}, "client.value.tenant.key[0].opaque"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
@@ -278,7 +213,6 @@ func TestDebugConfigProtectsConcreteTaggedValuesInUntypedMaps(t *testing.T) {
 			require.NotContains(t, output, "synthetic-concrete-secret")
 			require.Contains(t, messages, "cfg "+test.path+"=[REDACTED]")
 			require.Contains(t, output, "public-concrete")
-			require.True(t, config.IsSecret(test.selector))
 			stored, err := config.Get("client")
 			require.NoError(t, err)
 			require.Equal(t, test.value, stored)
@@ -311,15 +245,6 @@ func TestConcreteSecretAnnotationsStayScopedToMapKeysAndIndexes(t *testing.T) {
 	require.NoError(t, config.Option(cfg.WithConfigMap(map[string]any{
 		"clients": map[string]any{"changing": debugCredentials{Opaque: "synthetic-updated-private", AccessKeyID: "public-updated"}},
 	})))
-	require.True(t, config.IsSecret("clients.changing.opaque"))
-	require.True(t, config.IsSecret("clients.private.opaque"))
-	require.False(t, config.IsSecret("clients.public.opaque"))
-	require.True(t, config.IsSecret("rows[0].opaque"))
-	require.False(t, config.IsSecret("rows[1].opaque"))
-	require.True(t, config.IsSecret("empty.future.opaque"))
-	require.False(t, config.IsSecret("empty.future.access_key_id"))
-	require.True(t, config.IsSecret(`native.tenant\.with\.dot[0].opaque`))
-	require.False(t, config.IsSecret(`native.tenant\.with\.dot[1].opaque`))
 	native["future"] = publicCredentials{Opaque: "visible-future"}
 	output, messages := captureDebugConfig(t, config)
 	for _, secret := range []string{"synthetic-key-private", "synthetic-index-private", "synthetic-native-private", "synthetic-updated-private"} {
@@ -349,11 +274,9 @@ func TestDebugConfigProtectsConcreteTaggedValuesInInitialMaps(t *testing.T) {
 			require.NotContains(t, output, "synthetic-initial-secret")
 			require.Contains(t, messages, "cfg client.opaque=[REDACTED]")
 			require.Contains(t, messages, "cfg client.access_key_id=public-initial")
-			require.True(t, test.config.IsSecret("client.opaque"))
 			require.NotContains(t, output, "synthetic-initial-literal-secret")
 			require.Contains(t, messages, "cfg literal.client[0].opaque=[REDACTED]")
 			require.Contains(t, messages, "cfg literal.client[0].access_key_id=public-initial-literal")
-			require.True(t, test.config.IsSecret(`literal\.client[0].opaque`))
 			require.Equal(t, settings["literal.client[0]"], test.config.AllSettings()["literal.client[0]"])
 			stored, err := test.config.Get("client")
 			require.NoError(t, err)
@@ -378,7 +301,6 @@ func TestDebugConfigProtectsConcreteDefaultSourceSubschema(t *testing.T) {
 	logged, messages := captureDebugConfig(t, config)
 	require.NotContains(t, logged, "synthetic-concrete-default-private")
 	require.Contains(t, messages, "cfg shared_value=[REDACTED]")
-	require.False(t, config.IsSecret("client.opaque"))
 	require.NotContains(t, config.AllSettings(), "client")
 }
 
@@ -396,7 +318,6 @@ func TestDebugConfigKeepsPublicSiblingOfRootedConcreteIndex(t *testing.T) {
 	require.NotContains(t, logged, "synthetic-rooted-index-private")
 	require.Contains(t, messages, "cfg rows.0.client.opaque=[REDACTED]")
 	require.Contains(t, messages, "cfg rows.1.client.opaque=visible-rooted-index-sibling")
-	require.False(t, config.IsSecret("rows[1].client.opaque"))
 	require.Equal(t, "visible-rooted-index-sibling", config.AllSettings()["rows"].([]any)[1].(map[string]any)["client"].(map[string]any)["opaque"])
 }
 
@@ -424,7 +345,6 @@ func TestDebugConfigProtectsBoxedConcreteMaps(t *testing.T) {
 			require.NotContains(t, logged, "synthetic-boxed-future-private")
 			require.Contains(t, messages, "cfg typed.future.client.opaque=[REDACTED]")
 			require.Contains(t, messages, "cfg typed.future.client.access_key_id=visible-boxed-future-public")
-			require.True(t, config.IsSecret(`boxed.literal\.client.opaque`))
 			require.Same(t, &boxed, config.AllSettings()["boxed"])
 			require.Equal(t, "synthetic-boxed-private", boxed.(map[string]any)["literal.client"].(debugCredentials).Opaque)
 		})
@@ -507,4 +427,119 @@ func TestDebugConfigRetainedInterfacePreservesAnonymousMapping(t *testing.T) {
 	require.NotContains(t, output, "ignored")
 	require.Contains(t, messages, "cfg client.opaque=[REDACTED]")
 	require.Contains(t, messages, "cfg client.public=visible-embedded-id")
+}
+
+func TestDebugConfigDefaultsSourceMasksWholeSecretContainer(t *testing.T) {
+	type settings struct {
+		Hidden map[string]string `cfg:"hidden,secret"`
+		Public string            `cfg:"public"`
+	}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
+		"shared": map[string]any{"synthetic-private-key": "synthetic-private-value"},
+	})
+	var output settings
+	require.NoError(t, config.UnmarshalKey("provider", &output,
+		cfg.UnmarshalWithDefaultsFromKey("shared", "hidden")))
+	logged, messages := captureDebugConfig(t, config)
+	require.NotContains(t, logged, "synthetic-")
+	require.Contains(t, messages, "cfg shared=[REDACTED]")
+	require.Contains(t, messages, "cfg provider.hidden=[REDACTED]")
+	require.Equal(t, "synthetic-private-value", output.Hidden["synthetic-private-key"])
+}
+
+func TestDebugConfigKeepsNormalizedConcreteAnnotations(t *testing.T) {
+	type clients map[string]any
+	type settings struct {
+		Clients clients `cfg:"clients"`
+	}
+	type publicCredentials struct {
+		Opaque string `cfg:"opaque"`
+	}
+	original := settings{Clients: clients{
+		"private": debugCredentials{Opaque: "synthetic-normalized-private", AccessKeyID: "visible-normalized-id"},
+		"public":  publicCredentials{Opaque: "visible-normalized-sibling"},
+	}}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
+	require.NoError(t, config.Option(cfg.WithConfigSetting("provider", &original)))
+	// The stored normalized values are independent of the original model. Its
+	// later mutation must not erase annotations for those stored old values.
+	original.Clients["private"] = publicCredentials{Opaque: "visible-new-model"}
+	logged, messages := captureDebugConfig(t, config)
+	require.NotContains(t, logged, "synthetic-normalized-private")
+	require.Contains(t, messages, "cfg provider.clients.private.opaque=[REDACTED]")
+	require.Contains(t, messages, "cfg provider.clients.private.access_key_id=visible-normalized-id")
+	require.Contains(t, messages, "cfg provider.clients.public.opaque=visible-normalized-sibling")
+}
+
+func TestDebugConfigRejectsUnsupportedDefaultProjection(t *testing.T) {
+	type settings struct {
+		Client any `cfg:"client"`
+	}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
+		"shared": "synthetic-unprojectable",
+	})
+	var output settings
+	require.NoError(t, config.UnmarshalDefaults(&output,
+		cfg.UnmarshalWithDefaultsFromKey("shared", "client.opaque")))
+	logger := &debugCountingLogger{}
+	err := cfg.DebugConfig(t.Context(), config, logger)
+	require.ErrorContains(t, err, "client.opaque")
+	require.NotContains(t, err.Error(), "synthetic-unprojectable")
+	require.Empty(t, logger.messages)
+}
+
+func TestDebugConfigDefaultsForAbsentDestinationFieldDoNotAffectLoading(t *testing.T) {
+	type settings struct {
+		Name string `cfg:"name"`
+	}
+	for _, present := range []bool{false, true} {
+		t.Run(fmt.Sprintf("source_present=%t", present), func(t *testing.T) {
+			values := map[string]any{"component": map[string]any{"name": "visible-component"}}
+			if present {
+				values["shared"] = map[string]any{"repository": "visible-image"}
+			}
+			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), values)
+			var output settings
+			require.NoError(t, config.UnmarshalKey("component", &output,
+				cfg.UnmarshalWithDefaultsFromKey("shared", "image")))
+			require.Equal(t, "visible-component", output.Name)
+			logged, _ := captureDebugConfig(t, config)
+			require.Contains(t, logged, "visible-component")
+			if present {
+				require.Contains(t, logged, "visible-image")
+				stored, err := config.GetString("component.image.repository")
+				require.NoError(t, err)
+				require.Equal(t, "visible-image", stored)
+			}
+		})
+	}
+}
+
+func TestDebugConfigPreservesPublicRawScalarSliceSettings(t *testing.T) {
+	type settings struct {
+		Names []string `cfg:"names"`
+	}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
+		"provider": map[string]any{"names": "visible-first,visible-second"},
+	})
+	var output settings
+	require.NoError(t, config.UnmarshalKey("provider", &output))
+	require.Equal(t, []string{"visible-first", "visible-second"}, output.Names)
+	logged, messages := captureDebugConfig(t, config)
+	require.Contains(t, messages, "cfg provider.names=visible-first,visible-second")
+	require.Contains(t, logged, "visible-first")
+}
+
+func TestDebugConfigDoesNotExposeEncodedCompositeSliceSettings(t *testing.T) {
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
+		"clients": "synthetic-encoded-private",
+	})
+	var output []debugCredentials
+	// Registration precedes decoding, including a failed decode of raw input.
+	require.Error(t, config.UnmarshalKey("clients", &output))
+	logger := &debugCountingLogger{}
+	err := cfg.DebugConfig(t.Context(), config, logger)
+	require.ErrorContains(t, err, "clients")
+	require.NotContains(t, err.Error(), "synthetic-encoded-private")
+	require.Empty(t, logger.messages)
 }

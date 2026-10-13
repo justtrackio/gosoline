@@ -12,16 +12,26 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mapx"
 )
 
-// DebugConfig logs flattened settings and a fingerprint of the same redacted
-// entries. Annotate secret fields with cfg:"name,secret". Tags on current struct
-// values are checked during traversal; register types through rooted merges or
-// UnmarshalKey to also protect settings stored without their annotated structs.
-// Secret parents hide their entire contents, including map keys. Raw getters
-// do not register annotations. Redaction changes neither storage nor decoded
-// values; other consumers of AllSettings still receive the original values.
+// DebugConfig logs settings and a fingerprint of exactly the redacted entries.
+// Native configs retain rooted cfg:",secret" annotations for this logging-only
+// projection; current retained structs also enforce their current tags. Secret
+// parents hide their contents, including keys. Getters, AllSettings and decoded
+// values are unchanged. Unknown Config implementations and unsupported public
+// values fail before any logging; raw getters do not register annotations.
 func DebugConfig(ctx context.Context, config Config, logger Logger) error {
+	metadata, ok := config.(interface {
+		loggingSecrets(map[string]any) (map[string]bool, error)
+	})
+	if !ok {
+		return fmt.Errorf("config %T does not provide safe logging metadata", config)
+	}
+	settings := config.AllSettings()
+	secrets, err := metadata.loggingSecrets(settings)
+	if err != nil {
+		return err
+	}
 	entries := make(map[string]debugEntry)
-	if err := debugFlatten(config, reflect.ValueOf(config.AllSettings()), "", "", entries, make(map[debugVisit]bool)); err != nil {
+	if err := debugFlatten(secrets, reflect.ValueOf(settings), "", "", entries, make(map[debugVisit]bool)); err != nil {
 		return err
 	}
 	keys := make([]string, 0, len(entries))
@@ -51,6 +61,7 @@ type (
 	debugVisit struct {
 		kind    reflect.Kind
 		pointer uintptr
+		typ     reflect.Type
 	}
 	debugEntry struct {
 		path  string
@@ -58,8 +69,8 @@ type (
 	}
 )
 
-func debugFlatten(config Config, value reflect.Value, path, selector string, entries map[string]debugEntry, active map[debugVisit]bool) error {
-	if config.IsSecret(selector) {
+func debugFlatten(secrets map[string]bool, value reflect.Value, path, selector string, entries map[string]debugEntry, active map[debugVisit]bool) error {
+	if secrets[selector] {
 		entries[selector] = debugEntry{path, "[REDACTED]"}
 
 		return nil
@@ -70,56 +81,62 @@ func debugFlatten(config Config, value reflect.Value, path, selector string, ent
 		return nil
 	}
 
-	return debugFlattenValue(config, value, path, selector, entries, active)
+	return debugFlattenValue(secrets, value, path, selector, entries, active)
 }
 
-func debugFlattenValue(config Config, value reflect.Value, path, selector string, entries map[string]debugEntry, active map[debugVisit]bool) error {
+func debugFlattenValue(secrets map[string]bool, value reflect.Value, path, selector string, entries map[string]debugEntry, active map[debugVisit]bool) error {
 	switch value.Kind() {
 	case reflect.Interface, reflect.Pointer:
-		return debugFlattenPointer(config, value, path, selector, entries, active)
+		return debugFlattenPointer(secrets, value, path, selector, entries, active)
 	case reflect.Map:
-		return debugFlattenMap(config, value, path, selector, entries, active)
+		return debugFlattenMap(secrets, value, path, selector, entries, active)
 	case reflect.Slice, reflect.Array:
-		return debugFlattenSlice(config, value, path, selector, entries, active)
+		return debugFlattenSequence(secrets, value, path, selector, entries, active)
 	case reflect.Struct:
-		return debugFlattenStruct(config, value, path, selector, entries, active)
+		return debugFlattenStruct(secrets, value, path, selector, entries, active)
 	default:
-		entries[selector] = debugEntry{path, value.Interface()}
+		scalar, err := debugScalar(value, path)
+		if err != nil {
+			return err
+		}
+		entries[selector] = debugEntry{path, scalar}
 
 		return nil
 	}
 }
 
-func debugFlattenPointer(config Config, value reflect.Value, path, selector string, entries map[string]debugEntry, active map[debugVisit]bool) error {
+func debugFlattenPointer(secrets map[string]bool, value reflect.Value, path, selector string, entries map[string]debugEntry, active map[debugVisit]bool) error {
 	if value.IsNil() {
 		entries[selector] = debugEntry{path, nil}
 
 		return nil
 	}
-	if value.Kind() == reflect.Pointer {
-		visit := debugVisit{value.Kind(), value.Pointer()}
+	visit := loggingVisit(value)
+	if visit.pointer != 0 {
 		if active[visit] {
-			return fmt.Errorf("can not flatten cyclic config settings")
+			return fmt.Errorf("cyclic config settings at %s (type %v)", path, value.Type())
 		}
 		active[visit] = true
 		defer delete(active, visit)
 	}
 
-	return debugFlattenValue(config, value.Elem(), path, selector, entries, active)
+	return debugFlattenValue(secrets, value.Elem(), path, selector, entries, active)
 }
 
-func debugFlattenMap(config Config, value reflect.Value, path, selector string, entries map[string]debugEntry, active map[debugVisit]bool) error {
-	visit := debugVisit{value.Kind(), uintptr(value.UnsafePointer())}
+func debugFlattenMap(secrets map[string]bool, value reflect.Value, path, selector string, entries map[string]debugEntry, active map[debugVisit]bool) error {
+	if value.Type().Key().Kind() != reflect.String {
+		return fmt.Errorf("unsupported config map at %s (type %v)", path, value.Type())
+	}
+	visit := loggingVisit(value)
 	if active[visit] {
-		return fmt.Errorf("can not flatten cyclic config settings")
+		return fmt.Errorf("cyclic config settings at %s (type %v)", path, value.Type())
 	}
 	active[visit] = true
 	defer delete(active, visit)
 	iter := value.MapRange()
 	for iter.Next() {
-		key := fmt.Sprint(iter.Key().Interface())
-		escapedKey := strings.Join(mapx.SplitUnescapedDotN(key, -1), "\\.")
-		if err := debugFlatten(config, iter.Value(), debugJoin(path, key), debugJoin(selector, escapedKey), entries, active); err != nil {
+		key := iter.Key().String()
+		if err := debugFlatten(secrets, iter.Value(), debugJoin(path, key), debugJoin(selector, loggingKey(key)), entries, active); err != nil {
 			return err
 		}
 	}
@@ -127,17 +144,17 @@ func debugFlattenMap(config Config, value reflect.Value, path, selector string, 
 	return nil
 }
 
-func debugFlattenSlice(config Config, value reflect.Value, path, selector string, entries map[string]debugEntry, active map[debugVisit]bool) error {
+func debugFlattenSequence(secrets map[string]bool, value reflect.Value, path, selector string, entries map[string]debugEntry, active map[debugVisit]bool) error {
 	if value.Kind() == reflect.Slice {
-		visit := debugVisit{value.Kind(), value.Pointer()}
+		visit := loggingVisit(value)
 		if active[visit] {
-			return fmt.Errorf("can not flatten cyclic config settings")
+			return fmt.Errorf("cyclic config settings at %s (type %v)", path, value.Type())
 		}
 		active[visit] = true
 		defer delete(active, visit)
 	}
 	for i := range value.Len() {
-		if err := debugFlatten(config, value.Index(i), debugJoin(path, fmt.Sprint(i)), fmt.Sprintf("%s[%d]", selector, i), entries, active); err != nil {
+		if err := debugFlatten(secrets, value.Index(i), debugJoin(path, fmt.Sprint(i)), fmt.Sprintf("%s[%d]", selector, i), entries, active); err != nil {
 			return err
 		}
 	}
@@ -145,7 +162,30 @@ func debugFlattenSlice(config Config, value reflect.Value, path, selector string
 	return nil
 }
 
-func debugFlattenStruct(config Config, value reflect.Value, path, selector string, entries map[string]debugEntry, active map[debugVisit]bool) error {
+func debugScalar(value reflect.Value, path string) (any, error) {
+	switch value.Kind() {
+	case reflect.Bool:
+		return value.Bool(), nil
+	case reflect.String:
+		return value.String(), nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if value.Type() == reflect.TypeOf(time.Duration(0)) {
+			return time.Duration(value.Int()), nil
+		}
+
+		return value.Int(), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return value.Uint(), nil
+	case reflect.Float32:
+		return float32(value.Float()), nil
+	case reflect.Float64:
+		return value.Float(), nil
+	default:
+		return nil, fmt.Errorf("unsupported config value at %s (type %v)", path, value.Type())
+	}
+}
+
+func debugFlattenStruct(secrets map[string]bool, value reflect.Value, path, selector string, entries map[string]debugEntry, active map[debugVisit]bool) error {
 	if value.Type() == reflect.TypeOf(time.Time{}) {
 		entries[selector] = debugEntry{path, value.Interface()}
 
@@ -157,7 +197,7 @@ func debugFlattenStruct(config Config, value reflect.Value, path, selector strin
 			continue
 		}
 		if field.Anonymous {
-			if err := debugFlatten(config, value.Field(i), path, selector, entries, active); err != nil {
+			if err := debugFlatten(secrets, value.Field(i), path, selector, entries, active); err != nil {
 				return err
 			}
 
@@ -168,13 +208,13 @@ func debugFlattenStruct(config Config, value reflect.Value, path, selector strin
 			continue
 		}
 		fieldPath := debugJoin(path, tag.Name)
-		fieldSelector := debugJoin(selector, tag.Name)
+		fieldSelector := debugJoin(selector, loggingKey(tag.Name))
 		if tag.Secret {
 			entries[fieldSelector] = debugEntry{fieldPath, "[REDACTED]"}
 
 			continue
 		}
-		if err := debugFlatten(config, value.Field(i), fieldPath, fieldSelector, entries, active); err != nil {
+		if err := debugFlatten(secrets, value.Field(i), fieldPath, fieldSelector, entries, active); err != nil {
 			return err
 		}
 	}
@@ -188,4 +228,8 @@ func debugJoin(parent, key string) string {
 	}
 
 	return parent + "." + key
+}
+
+func loggingKey(key string) string {
+	return strings.Join(mapx.SplitUnescapedDotN(key, -1), "\\.")
 }

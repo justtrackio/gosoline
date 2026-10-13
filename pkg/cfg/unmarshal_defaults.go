@@ -11,7 +11,7 @@ type UnmarshalDefaults func(config Config, finalSettings *mapx.MapX) error
 func UnmarshalWithDefaultsFromKey(sourceKey string, targetKey string) UnmarshalDefaults {
 	return func(config Config, finalSettings *mapx.MapX) error {
 		if context, ok := config.(*defaultsConfig); ok {
-			context.owner.registerSecretSchema(sourceKey, context.schema.At(targetKey))
+			context.registerSource(sourceKey, targetKey)
 		}
 		if !config.IsSet(sourceKey) {
 			return nil

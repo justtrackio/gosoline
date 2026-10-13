@@ -1093,52 +1093,6 @@ func (_c *Config_HasPrefix_Call) RunAndReturn(run func(string) bool) *Config_Has
 	return _c
 }
 
-// IsSecret provides a mock function with given fields: selector
-func (_m *Config) IsSecret(selector string) bool {
-	ret := _m.Called(selector)
-
-	if len(ret) == 0 {
-		panic("no return value specified for IsSecret")
-	}
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(string) bool); ok {
-		r0 = rf(selector)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	return r0
-}
-
-// Config_IsSecret_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsSecret'
-type Config_IsSecret_Call struct {
-	*mock.Call
-}
-
-// IsSecret is a helper method to define mock.On call
-//   - selector string
-func (_e *Config_Expecter) IsSecret(selector interface{}) *Config_IsSecret_Call {
-	return &Config_IsSecret_Call{Call: _e.mock.On("IsSecret", selector)}
-}
-
-func (_c *Config_IsSecret_Call) Run(run func(selector string)) *Config_IsSecret_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
-	})
-	return _c
-}
-
-func (_c *Config_IsSecret_Call) Return(_a0 bool) *Config_IsSecret_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *Config_IsSecret_Call) RunAndReturn(run func(string) bool) *Config_IsSecret_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // IsSet provides a mock function with given fields: _a0
 func (_m *Config) IsSet(_a0 string) bool {
 	ret := _m.Called(_a0)
