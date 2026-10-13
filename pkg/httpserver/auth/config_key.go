@@ -63,16 +63,16 @@ func NewConfigKeyAuthenticator(config cfg.Config, logger log.Logger, provider Ap
 		return nil, fmt.Errorf("api key setting api_auth_keys is missing")
 	}
 
-	settings := configKeySettings{}
-	if err := config.UnmarshalKey(".", &settings); err != nil {
+	entries, err := config.GetStringSlice("api_auth_keys")
+	if err != nil {
 		return nil, fmt.Errorf("could not get api keys from config: %w", err)
 	}
 
-	for index, key := range settings.Keys {
-		settings.Keys[index] = strings.TrimSpace(key)
+	for index, key := range entries {
+		entries[index] = strings.TrimSpace(key)
 	}
 
-	keys := funk.Filter(settings.Keys, func(key string) bool {
+	keys := funk.Filter(entries, func(key string) bool {
 		return key != ""
 	})
 

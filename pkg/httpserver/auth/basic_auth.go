@@ -68,14 +68,14 @@ func NewBasicAuthAuthenticator(config cfg.Config, logger log.Logger) (Authentica
 		return nil, fmt.Errorf("basic auth users setting api_auth_basic_users is missing")
 	}
 
-	settings := basicAuthSettings{}
-	if err := config.UnmarshalKey(".", &settings); err != nil {
+	entries, err := config.GetStringSlice("api_auth_basic_users")
+	if err != nil {
 		return nil, fmt.Errorf("can not get basic auth users: %w", err)
 	}
 
 	users := make(map[string]string)
 
-	for index, user := range settings.Users {
+	for index, user := range entries {
 		user = strings.TrimSpace(user)
 
 		if user == "" {

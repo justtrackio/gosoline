@@ -98,13 +98,13 @@ func TestConfigKeyConfiguredCredentials(t *testing.T) {
 		", synthetic-api-key ",
 	} {
 		t.Run(fmt.Sprintf("%T", entries), func(t *testing.T) {
-			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
-				"api_auth_keys": entries,
-				"public":        "visible",
-			})
+			settings := authConfigUnrelatedSettings()
+			settings["api_auth_keys"] = entries
+			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), settings)
 			logger, ginCtx := getHeaderKeyMocks("synthetic-api-key")
 			authenticator, err := auth.NewConfigKeyAuthenticator(config, logger, auth.ProvideValueFromHeader(auth.HeaderApiKey))
 			require.NoError(t, err)
+			requireAuthConfigPreservesUnrelatedSettings(t, config, "api_auth_keys")
 			valid, err := authenticator.IsValid(ginCtx)
 			require.NoError(t, err)
 			require.True(t, valid)
@@ -157,6 +157,9 @@ func TestConfigKeyEnvironmentCredentials(t *testing.T) {
 		{},
 		{"api_auth_keys": []string{"old-key"}},
 	} {
+		for key, value := range authConfigUnrelatedSettings() {
+			settings[key] = value
+		}
 		env := cfg.NewMemoryEnvProvider()
 		require.NoError(t, env.SetEnv("API_AUTH_KEYS", "synthetic-env-key"))
 		config := cfg.NewWithInterfaces(env, settings)
@@ -164,6 +167,7 @@ func TestConfigKeyEnvironmentCredentials(t *testing.T) {
 		logger, ginCtx := getHeaderKeyMocks("synthetic-env-key")
 		authenticator, err := auth.NewConfigKeyAuthenticator(config, logger, auth.ProvideValueFromHeader(auth.HeaderApiKey))
 		require.NoError(t, err)
+		requireAuthConfigPreservesUnrelatedSettings(t, config, "api_auth_keys")
 		valid, err := authenticator.IsValid(ginCtx)
 		require.NoError(t, err)
 		require.True(t, valid)

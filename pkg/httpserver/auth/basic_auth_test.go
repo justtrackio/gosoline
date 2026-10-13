@@ -101,6 +101,28 @@ func captureAuthConfigDebug(t *testing.T, config cfg.Config) string {
 	return output.String()
 }
 
+func authConfigUnrelatedSettings() map[string]any {
+	return map[string]any{
+		"public": "visible",
+		"x[0]":   "literal-bracket",
+		"x":      []string{"sequence-value"},
+		"a.b":    "literal-dot",
+		"a":      map[string]any{"b": "nested-value"},
+	}
+}
+
+func requireAuthConfigPreservesUnrelatedSettings(t *testing.T, config cfg.Config, credentialKey string) {
+	t.Helper()
+
+	settings := make(map[string]any)
+	for key, value := range config.AllSettings() {
+		if key != credentialKey {
+			settings[key] = value
+		}
+	}
+	require.Equal(t, authConfigUnrelatedSettings(), settings)
+}
+
 func TestBasicAuthConfiguredCredentials(t *testing.T) {
 	for _, entries := range []any{
 		[]string{"", " alice:old ", " alice:synthetic-password:with-colon "},
@@ -108,13 +130,13 @@ func TestBasicAuthConfiguredCredentials(t *testing.T) {
 		", alice:old , alice:synthetic-password:with-colon ",
 	} {
 		t.Run(fmt.Sprintf("%T", entries), func(t *testing.T) {
-			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
-				"api_auth_basic_users": entries,
-				"public":               "visible",
-			})
+			settings := authConfigUnrelatedSettings()
+			settings["api_auth_basic_users"] = entries
+			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), settings)
 			logger, ginCtx := getBasicAuthMocks("alice", "synthetic-password:with-colon")
 			authenticator, err := auth.NewBasicAuthAuthenticator(config, logger)
 			require.NoError(t, err)
+			requireAuthConfigPreservesUnrelatedSettings(t, config, "api_auth_basic_users")
 			valid, err := authenticator.IsValid(ginCtx)
 			require.NoError(t, err)
 			require.True(t, valid)
@@ -177,6 +199,9 @@ func TestBasicAuthEnvironmentCredentials(t *testing.T) {
 		{},
 		{"api_auth_basic_users": []string{"alice:old-password"}},
 	} {
+		for key, value := range authConfigUnrelatedSettings() {
+			settings[key] = value
+		}
 		env := cfg.NewMemoryEnvProvider()
 		require.NoError(t, env.SetEnv("API_AUTH_BASIC_USERS", "alice:synthetic-env-password"))
 		config := cfg.NewWithInterfaces(env, settings)
@@ -184,6 +209,7 @@ func TestBasicAuthEnvironmentCredentials(t *testing.T) {
 		logger, ginCtx := getBasicAuthMocks("alice", "synthetic-env-password")
 		authenticator, err := auth.NewBasicAuthAuthenticator(config, logger)
 		require.NoError(t, err)
+		requireAuthConfigPreservesUnrelatedSettings(t, config, "api_auth_basic_users")
 		valid, err := authenticator.IsValid(ginCtx)
 		require.NoError(t, err)
 		require.True(t, valid)
