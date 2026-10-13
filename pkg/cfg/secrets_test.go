@@ -811,3 +811,173 @@ func TestDebugConfigRejectedNestedDatabaseCandidateFailsClosed(t *testing.T) {
 	require.NotContains(t, err.Error(), "synthetic-rejected-candidate")
 	require.Empty(t, logger.messages)
 }
+
+func TestDebugConfigUnusedOwnerNamespacesKeepPublicLeaves(t *testing.T) {
+	for _, source := range []string{"map", "json", "yaml"} {
+		t.Run(source, func(t *testing.T) {
+			config := unusedSDKDebugConfig(t, source, map[string]any{
+				"cloud": map[string]any{"aws": map[string]any{"defaults": map[string]any{
+					"region":      "visible-shared-region",
+					"credentials": map[string]any{"access_key_id": "visible-shared-access", "secret_access_key": "synthetic-shared-only"},
+				}}},
+				"httpserver": map[string]any{"api": map[string]any{"port": 8080}},
+			})
+			output, messages := captureDebugConfig(t, config)
+			require.NotContains(t, output, "synthetic-shared-only")
+			require.Contains(t, messages, "cfg cloud.aws.defaults.region=visible-shared-region")
+			require.Contains(t, messages, "cfg cloud.aws.defaults.credentials.access_key_id=visible-shared-access")
+			require.Contains(t, messages, "cfg cloud.aws.defaults.credentials.secret_access_key=[REDACTED]")
+			require.Contains(t, messages, "cfg httpserver.api.port=8080")
+			require.NotEmpty(t, debugConfigFingerprint(t, messages))
+		})
+	}
+}
+
+func TestDebugConfigLiteralBracketsDoNotOverwriteIndexes(t *testing.T) {
+	values := map[string]any{
+		"x[0]":  "visible-literal-brackets",
+		"x":     []any{"visible-sequence-index"},
+		`x\[0]`: "visible-backslash-brackets",
+	}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), values)
+	logger := &debugCountingLogger{}
+	require.NoError(t, cfg.DebugConfig(t.Context(), config, logger))
+	require.Contains(t, logger.messages, "cfg x[0]=visible-literal-brackets")
+	require.Contains(t, logger.messages, "cfg x.0=visible-sequence-index")
+	require.Contains(t, logger.messages, `cfg x\[0]=visible-backslash-brackets`)
+	require.Equal(t, values, config.AllSettings())
+	for range 8 {
+		repeated := &debugCountingLogger{}
+		require.NoError(t, cfg.DebugConfig(t.Context(), config, repeated))
+		require.Equal(t, logger.messages, repeated.messages)
+	}
+}
+
+func TestDebugConfigBracketMasksStayScopedToLiteralKeys(t *testing.T) {
+	type publicCredentials struct {
+		Opaque string `cfg:"opaque"`
+	}
+	type settings struct {
+		Clients map[string]any `cfg:"clients"`
+	}
+	for _, source := range []string{"retained", "retained_interface"} {
+		t.Run(source, func(t *testing.T) {
+			fingerprint := func(private, public string) string {
+				native := &settings{Clients: map[string]any{
+					"x[0]":  &debugCredentials{Opaque: private, AccessKeyID: "visible-private-sibling"},
+					"x":     []any{&publicCredentials{Opaque: public}},
+					`x\[0]`: &publicCredentials{Opaque: "visible-backslash-sibling"},
+				}}
+				var carrier any = native
+				if source == "retained_interface" {
+					boxed := carrier
+					carrier = &boxed
+				}
+				config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{"provider": carrier})
+				output, messages := captureDebugConfig(t, config)
+				require.NotContains(t, output, private)
+				require.Contains(t, messages, "cfg provider.clients.x[0].opaque=[REDACTED]")
+				require.Contains(t, messages, "cfg provider.clients.x[0].access_key_id=visible-private-sibling")
+				require.Contains(t, messages, "cfg provider.clients.x.0.opaque="+public)
+				require.Contains(t, messages, `cfg provider.clients.x\[0].opaque=visible-backslash-sibling`)
+				require.Equal(t, private, native.Clients["x[0]"].(*debugCredentials).Opaque)
+				require.Equal(t, public, native.Clients["x"].([]any)[0].(*publicCredentials).Opaque)
+
+				return debugConfigFingerprint(t, messages)
+			}
+			baseline := fingerprint("synthetic-literal-bracket-before", "visible-index-before")
+			require.Equal(t, baseline, fingerprint("synthetic-literal-bracket-after", "visible-index-before"))
+			require.NotEqual(t, baseline, fingerprint("synthetic-literal-bracket-before", "visible-index-after"))
+		})
+	}
+}
+
+func TestDebugConfigProjectedIndexMasksDoNotHideLiteralBracketKeys(t *testing.T) {
+	type settings struct {
+		Rows []debugCredentials `cfg:"rows"`
+	}
+	root := "owner_debug_bracket_projection"
+	cfg.RegisterConfigDebugType(root, reflect.TypeFor[settings]())
+	fingerprint := func(private string) string {
+		values := map[string]any{root: map[string]any{
+			"rows":    []any{map[string]any{"opaque": private, "access_key_id": "visible-projected-sibling"}},
+			"rows[0]": map[string]any{"opaque": "visible-literal-opaque"},
+		}}
+		config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), values)
+		output, messages := captureDebugConfig(t, config)
+		require.NotContains(t, output, private)
+		require.Contains(t, messages, "cfg "+root+".rows.0.opaque=[REDACTED]")
+		require.Contains(t, messages, "cfg "+root+".rows.0.access_key_id=visible-projected-sibling")
+		require.Contains(t, messages, "cfg "+root+".rows[0].opaque=visible-literal-opaque")
+		require.Equal(t, values[root], config.AllSettings()[root])
+
+		return debugConfigFingerprint(t, messages)
+	}
+	require.Equal(t, fingerprint("synthetic-projected-before"), fingerprint("synthetic-projected-after"))
+}
+
+func TestDebugConfigNormalizedSelectorKeysKeepConcreteAnnotations(t *testing.T) {
+	for _, entry := range []struct {
+		name     string
+		key      string
+		selector string
+		display  string
+		grouped  bool
+	}{
+		{name: "bracket_member", key: "x[0]", selector: "clients.x[0]", display: "clients.x.0"},
+		{name: "dotted_member", key: "tenant.one", selector: "clients.tenant.one", display: "clients.tenant.one"},
+		{name: "dotted_field", key: "private", selector: "clients.group.private", display: "clients.group.private", grouped: true},
+	} {
+		t.Run(entry.name, func(t *testing.T) {
+			fingerprint := func(private, public string) string {
+				return normalizedSelectorDebugFingerprint(t, entry.key, entry.selector, entry.display, entry.grouped, private, public)
+			}
+			baseline := fingerprint("synthetic-normalized-selector-before", "visible-normalized-selector")
+			require.Equal(t, baseline, fingerprint("synthetic-normalized-selector-after", "visible-normalized-selector"))
+			require.NotEqual(t, baseline, fingerprint("synthetic-normalized-selector-before", "visible-normalized-selector-changed"))
+		})
+	}
+}
+
+func normalizedSelectorDebugFingerprint(t *testing.T, key, selector, display string, grouped bool, private, public string) string {
+	t.Helper()
+	type clients map[string]any
+	type settings struct {
+		Clients clients `cfg:"clients"`
+	}
+	type groupedSettings struct {
+		Clients clients `cfg:"clients.group"`
+	}
+	type publicCredentials struct {
+		Opaque string `cfg:"opaque"`
+	}
+	native := clients{
+		key:      debugCredentials{Opaque: private, AccessKeyID: public},
+		"public": publicCredentials{Opaque: "visible-normalized-public-sibling"},
+	}
+	var carrier any = &settings{Clients: native}
+	publicPath := "provider.clients.public.opaque"
+	if grouped {
+		carrier = &groupedSettings{Clients: native}
+		publicPath = "provider.clients.group.public.opaque"
+	}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
+	require.NoError(t, config.Option(cfg.WithConfigSetting("provider", carrier)))
+	original := config.AllSettings()["provider"]
+	require.Equal(t, private, native[key].(debugCredentials).Opaque)
+	// Concrete models were normalized into independent settings. Replacing the
+	// retained source model must not erase the stored old value's annotations.
+	native[key] = publicCredentials{Opaque: "visible-replaced-source-model"}
+	output, messages := captureDebugConfig(t, config)
+	require.NotContains(t, output, private)
+	require.Contains(t, messages, "cfg provider."+display+".opaque=[REDACTED]")
+	require.Contains(t, messages, "cfg provider."+display+".access_key_id="+public)
+	require.Contains(t, messages, "cfg "+publicPath+"=visible-normalized-public-sibling")
+	require.Equal(t, original, config.AllSettings()["provider"])
+	stored, err := config.GetString("provider." + selector + ".opaque")
+	require.NoError(t, err)
+	require.Equal(t, private, stored)
+	require.Equal(t, publicCredentials{Opaque: "visible-replaced-source-model"}, native[key])
+
+	return debugConfigFingerprint(t, messages)
+}

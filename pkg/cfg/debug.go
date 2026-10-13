@@ -231,6 +231,23 @@ func debugJoin(parent, key string) string {
 	return parent + "." + key
 }
 
+var loggingKeyEscaper = strings.NewReplacer("\\", "\\\\", ".", "\\.", "[", "\\[", "]", "\\]")
+
+// loggingKey quotes a literal key only for private logging identities. Display
+// paths and the public MapX selector grammar remain unchanged.
 func loggingKey(key string) string {
-	return strings.Join(mapx.SplitUnescapedDotN(key, -1), "\\.")
+	return loggingKeyEscaper.Replace(key)
+}
+
+func loggingSelectorPath(selector string) string {
+	path := ""
+	for _, segment := range mapx.SplitUnescapedDotN(strings.Trim(selector, "."), -1) {
+		name, indexes := segment, ""
+		if index := strings.IndexByte(segment, '['); index >= 0 {
+			name, indexes = segment[:index], segment[index:]
+		}
+		path = debugJoin(path, loggingKey(name)+indexes)
+	}
+
+	return path
 }

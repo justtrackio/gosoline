@@ -15,11 +15,12 @@ import (
 // logProjection retains only the annotated shape of a rooted registration.
 // It is applied to present settings when logging, not queried as a schema.
 type logProjection struct {
-	key    string
-	typ    reflect.Type
-	write  bool
-	secret bool
-	err    error
+	key         string
+	typ         reflect.Type
+	write       bool
+	privatePath bool
+	secret      bool
+	err         error
 }
 
 var configDebugTypes struct {
@@ -57,7 +58,7 @@ func (c *config) registerSecrets(key string, value any, forWrite bool) {
 	// Only struct reads normalize annotated nested container elements. Ordinary
 	// map/value merges retain their structs and are handled live by DebugConfig.
 	if v.IsValid() && v.Kind() == reflect.Struct {
-		c.captureLogTypes(strings.Trim(key, "."), v, forWrite, make(map[debugVisit]bool))
+		c.captureLogTypes(loggingSelectorPath(key), v, forWrite, make(map[debugVisit]bool))
 	}
 }
 
@@ -124,7 +125,7 @@ func (c *config) captureLogStruct(path string, value reflect.Value, write bool, 
 		if !ok || tag.Secret {
 			continue
 		}
-		c.captureLogTypes(debugJoin(path, tag.Name), value.Field(i), write, active)
+		c.captureLogTypes(debugJoin(path, loggingSelectorPath(tag.Name)), value.Field(i), write, active)
 	}
 }
 
@@ -134,7 +135,13 @@ func (c *config) captureLogMap(path string, value reflect.Value, write bool, act
 	}
 	iter := value.MapRange()
 	for iter.Next() {
-		c.captureLogElement(debugJoin(path, iter.Key().String()), iter.Value(), write, active)
+		key := loggingKey(iter.Key().String())
+		if !write {
+			// Struct.Read builds selector paths from map keys, unlike raw
+			// retained maps and existing source data used in write mode.
+			key = loggingSelectorPath(iter.Key().String())
+		}
+		c.captureLogElement(debugJoin(path, key), iter.Value(), write, active)
 	}
 }
 
@@ -142,7 +149,7 @@ func (c *config) captureLogElement(path string, value reflect.Value, write bool,
 	for value.Kind() == reflect.Interface && !value.IsNil() {
 		value = value.Elem()
 	}
-	c.registerLogProjection(logProjection{key: path, typ: value.Type(), write: write})
+	c.registerLogProjection(logProjection{key: path, typ: value.Type(), write: write, privatePath: true})
 	c.captureLogTypes(path, value, write, active)
 }
 
@@ -185,7 +192,7 @@ func (c *defaultsConfig) registerSource(source, target string) {
 
 			return
 		}
-		c.owner.captureLogTypes(strings.Trim(source, "."), value, true, make(map[debugVisit]bool))
+		c.owner.captureLogTypes(loggingSelectorPath(source), value, true, make(map[debugVisit]bool))
 	}
 	c.owner.registerLogProjection(logProjection{key: strings.Trim(source, "."), typ: typ, write: true, secret: secret})
 }
@@ -211,12 +218,20 @@ func (c *config) loggingSecrets(settings map[string]any) (map[string]bool, error
 	sort.SliceStable(roots, func(i, j int) bool { return len(roots[i].key) < len(roots[j].key) })
 	secrets := make(map[string]bool)
 	for _, root := range roots {
-		if loggingMasked(secrets, root.key) {
+		path := root.key
+		if !root.privatePath {
+			path = loggingSelectorPath(root.key)
+		}
+		if loggingMasked(secrets, path) {
 			continue
 		}
 		value := reflect.ValueOf(settings)
 		if root.key != "" {
-			value = loggingSelect(value, root.key)
+			if root.privatePath {
+				value = loggingSelectPath(value, root.key)
+			} else {
+				value = loggingSelect(value, root.key)
+			}
 		}
 		if !value.IsValid() {
 			continue
@@ -225,11 +240,11 @@ func (c *config) loggingSecrets(settings map[string]any) (map[string]bool, error
 			return nil, root.err
 		}
 		if root.secret {
-			secrets[root.key] = true
+			secrets[path] = true
 
 			continue
 		}
-		if err := projectLoggingSecrets(root.typ, value, root.key, root.write, secrets, make(map[debugVisit]bool)); err != nil {
+		if err := projectLoggingSecrets(root.typ, value, path, root.write, secrets, make(map[debugVisit]bool)); err != nil {
 			return nil, err
 		}
 	}
@@ -318,7 +333,7 @@ func projectLogStruct(typ reflect.Type, value reflect.Value, path string, write 
 		if !ok {
 			continue
 		}
-		if err := projectLogChild(field.Type, loggingSelect(value, tag.Name), debugJoin(path, tag.Name), write, tag.Secret, secrets, active); err != nil {
+		if err := projectLogChild(field.Type, loggingSelect(value, tag.Name), debugJoin(path, loggingSelectorPath(tag.Name)), write, tag.Secret, secrets, active); err != nil {
 			return err
 		}
 		if err := projectLogPrefix(field.Type, value, path, write, tag, secrets, active); err != nil {
@@ -404,7 +419,7 @@ func projectLogCollectionMember(typ reflect.Type, value reflect.Value, path stri
 	// Merges expand selector names into maps. Descend only through maps with
 	// no model fields; actual public fields also establish a model boundary.
 	if !loggingModelBoundary(modelType, current, write, active) {
-		return projectLoggingSecrets(typ, value, path, write, secrets, active)
+		return projectLogNamespace(typ, current, path, write, secrets, active)
 	}
 	if err := projectLoggingSecrets(childType, value, path, write, secrets, active); err != nil {
 		return err
@@ -413,6 +428,29 @@ func projectLogCollectionMember(typ reflect.Type, value reflect.Value, path stri
 	// Never guess between that namespace and a current model's raw metadata.
 	if loggingNestedModelSecrets(modelType, current, path, write, false, secrets, active) {
 		return fmt.Errorf("ambiguous config logging collection at %s (type %v)", path, modelType)
+	}
+
+	return nil
+}
+
+func projectLogNamespace(typ reflect.Type, value reflect.Value, path string, write bool, secrets map[string]bool, active map[debugVisit]bool) error {
+	visit := loggingVisit(value)
+	if active[visit] {
+		return fmt.Errorf("cyclic config logging namespace at %s (type %v)", path, value.Type())
+	}
+	active[visit] = true
+	defer delete(active, visit)
+	iter := value.MapRange()
+	for iter.Next() {
+		child := loggingIndirect(iter.Value(), make(map[uintptr]bool))
+		// No model boundary owns namespace scalars. The normal logging
+		// traversal keeps them public and rejects unsupported public values.
+		if !child.IsValid() || child.Kind() != reflect.Map {
+			continue
+		}
+		if err := projectLogCollectionMember(typ, iter.Value(), debugJoin(path, loggingKey(iter.Key().String())), write, secrets, active); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -622,6 +660,40 @@ func loggingSelect(value reflect.Value, selector string) reflect.Value {
 	}
 
 	return value
+}
+
+// Captured literal-map paths use private quoting, never public selectors.
+func loggingSelectPath(value reflect.Value, path string) reflect.Value {
+	seen := make(map[uintptr]bool)
+	for _, segment := range mapx.SplitUnescapedDotN(path, -1) {
+		value = loggingIndirect(value, seen)
+		if !value.IsValid() || value.Kind() != reflect.Map || value.Type().Key().Kind() != reflect.String {
+			return reflect.Value{}
+		}
+		name, indexes := loggingPathSegment(segment)
+		value = loggingIndexes(loggingMapValue(value, name), indexes, seen)
+	}
+
+	return value
+}
+
+func loggingPathSegment(segment string) (name, indexes string) {
+	var key strings.Builder
+	for i := 0; i < len(segment); i++ {
+		switch segment[i] {
+		case '\\':
+			if i+1 < len(segment) {
+				i++
+			}
+			key.WriteByte(segment[i])
+		case '[':
+			return key.String(), segment[i:]
+		default:
+			key.WriteByte(segment[i])
+		}
+	}
+
+	return key.String(), ""
 }
 
 func loggingIndirect(value reflect.Value, seen map[uintptr]bool) reflect.Value {
