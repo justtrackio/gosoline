@@ -763,10 +763,7 @@ func (c *config) unmarshalStruct(key string, output any, additionalDefaults []Un
 		}
 	}
 
-	root := strings.Trim(key, ".") == ""
-	if root {
-		finalSettings.Merge(".", c.settings)
-	} else if c.settings.Has(key) {
+	if c.settings.Has(key) {
 		if settings, err = c.settings.Get(key).Map(); err != nil {
 			return fmt.Errorf("can not get settings for key: %s: %w", key, err)
 		}
@@ -775,9 +772,6 @@ func (c *config) unmarshalStruct(key string, output any, additionalDefaults []Un
 	}
 
 	environmentKey := c.resolveEnvKey(c.envKeyPrefix, key)
-	if root {
-		environmentKey = c.resolveEnvKey("", c.envKeyPrefix)
-	}
 	environmentKeySettings, err := c.readEnvironmentFromStructKeys(environmentKey, ms.Keys())
 	if err != nil {
 		return fmt.Errorf("can not read environment key settings for key %s: %w", key, err)
@@ -791,11 +785,7 @@ func (c *config) unmarshalStruct(key string, output any, additionalDefaults []Un
 	finalSettings.Merge(".", environmentKeySettings)
 	finalSettings.Merge(".", environmentValueSettings)
 
-	if root {
-		c.settings.Merge(".", finalSettings)
-	} else {
-		c.settings.Set(key, finalSettings)
-	}
+	c.settings.Set(key, finalSettings)
 
 	if err = ms.Write(finalSettings); err != nil {
 		return fmt.Errorf("error unmarshalling key: %s: %w", key, err)

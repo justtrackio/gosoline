@@ -87,30 +87,6 @@ func TestDebugConfigNestedTypedMapsSlicesAndLiteralDotBoundary(t *testing.T) {
 	require.Contains(t, output, "public-literal")
 }
 
-func TestRootUnmarshalRegistersTagsWithoutDuplicatingSettings(t *testing.T) {
-	for _, root := range []string{"", "."} {
-		t.Run(root, func(t *testing.T) {
-			type settings struct {
-				Opaque string `cfg:"api_auth_keys,secret"`
-			}
-			env := cfg.NewMemoryEnvProvider(map[string]string{"APP_API_AUTH_KEYS": "synthetic-env-root"})
-			config := cfg.NewWithInterfaces(env, map[string]any{"api_auth_keys": "synthetic-stored-root", "public": "visible-root"})
-			require.NoError(t, config.Option(cfg.WithEnvKeyPrefix("app"), cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer)))
-			var decoded settings
-			require.NoError(t, config.UnmarshalKey(root, &decoded))
-			require.Equal(t, "synthetic-env-root", decoded.Opaque)
-			require.NotContains(t, config.AllSettings(), "")
-			require.Equal(t, "visible-root", config.AllSettings()["public"])
-			value, err := config.GetString("public")
-			require.NoError(t, err)
-			require.Equal(t, "visible-root", value)
-			output, messages := captureDebugConfig(t, config)
-			require.NotContains(t, output, "synthetic-")
-			require.Contains(t, messages, "cfg api_auth_keys=[REDACTED]")
-		})
-	}
-}
-
 func TestIndexedTagRetainsOtherElementsSecretAnnotations(t *testing.T) {
 	type row struct {
 		Token string `cfg:"token,secret"`
