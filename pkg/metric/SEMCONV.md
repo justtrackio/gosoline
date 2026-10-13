@@ -42,10 +42,10 @@ namespace prefix.
 | Key | Meaning | Semconv equivalent |
 |---|---|---|
 | `error.type` | what failed; `{{default}}` usually means success except for documented all-processed totals | `error.type`, used verbatim |
-| `broker.address` | Kafka broker the client talked to | none (`server.address` is close) |
+| `broker.address` | Kafka broker address, used on broker-connect and throttle metrics | none (`server.address` is close) |
 | `client.name` | Kafka client name | none |
 | `client.type` | `consumer` or `producer` | none |
-| `connection.state` | `used` or `idle` | derived from `db.client.connection.state` |
+| `connection.state` | database connection-pool state: `used` or `idle` | derived from `db.client.connection.state` |
 | `consumer.name` | stream consumer name | none |
 | `hit` | whether a key-value read was served from the store's own data | none |
 | `level` | log level a record was written at | none |
@@ -124,7 +124,9 @@ retry operations with `operation="get"` or `operation="put"`, not the number of 
 
 ### `kafka` — `pkg/kafka`
 
-Broker-level metrics from the franz-go hooks. All carry `client.type`, `client.name`, `broker.address`.
+Broker-connect and throttle metrics from the franz-go hooks carry `client.type`, `client.name`, and
+`broker.address`; broker-connect metrics also carry `error.type`. Produce/fetch batch hooks instead
+carry `client.type`, `client.name`, `topic.name`, and `partition.id`, not `broker.address`.
 
 | Metric | Unit | Type |
 |---|---|---|
@@ -183,10 +185,15 @@ default total; do not sum them with it or subtract them to infer successes.
 | Metric | Unit | Type | Attributes | Derived from |
 |---|---|---|---|---|
 | `db.client.connection.count` | count | gauge | `connection.state` | `db.client.connection.count` |
-| `db.client.connections` | count | counter | `connection.state` | none |
+| `db.client.connections` | count | counter | none | none |
 | `db.repo.operation.duration` | ms | histogram | `operation.name`, `model.id`, `error.type` | `db.client.operation.duration` |
 | `db.repo.model_event.notifications` | count | counter | `model.id`, `error.type` | none |
 | `ddb.operation.duration` | ms | histogram | `operation.name`, `model.id`, `error.type` | `db.client.operation.duration` |
+
+`db.client.connections` increments once for each database driver `Open` attempt and has no attributes;
+it is not a live pool-connection count. `db.client.connection.count` is a periodic gauge that reports
+the pool's current `used` and `idle` connection counts as separate series keyed by `connection.state`
+(derived from `db.client.connection.state`).
 
 ### `mdlsub` — `pkg/mdlsub`
 
