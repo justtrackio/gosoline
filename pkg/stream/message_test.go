@@ -19,7 +19,7 @@ import (
 
 func TestKafkaMessageSurvivesSqsRetry(t *testing.T) {
 	record := kgo.Record{
-		Value: []byte("message value"),
+		Value: []byte{0, 0xff, 0xfe, 'a'},
 		Key:   []byte("record-key"),
 		Headers: []kgo.RecordHeader{
 			{Key: "text", Value: []byte("valid UTF-8")},
@@ -52,7 +52,7 @@ func TestKafkaMessageSurvivesSqsRetry(t *testing.T) {
 }
 
 func TestMessageAggregateRoundTrip(t *testing.T) {
-	original := []*stream.Message{{Body: "hello\x00世界", Attributes: map[string]string{"text": "valid UTF-8"}}}
+	original := []*stream.Message{{Body: []byte("hello\x00世界\xff"), Attributes: map[string]string{"text": "valid UTF-8"}}}
 	wire, err := json.Marshal(original)
 	require.NoError(t, err)
 	var restored []*stream.Message
@@ -61,21 +61,26 @@ func TestMessageAggregateRoundTrip(t *testing.T) {
 }
 
 func TestMessageWireFormat(t *testing.T) {
-	message := stream.Message{Body: "hello", Attributes: map[string]string{"foo": "bar"}}
+	message := stream.Message{Body: []byte("hello"), Attributes: map[string]string{"foo": "bar"}}
 	wire, err := message.MarshalToString()
 	require.NoError(t, err)
-	require.JSONEq(t, `{"attributes":{"foo":"bar"},"body":"hello"}`, wire)
+	require.JSONEq(t, `{"attributes":{"foo":"bar","goso.body.base64":"true"},"body":"aGVsbG8="}`, wire)
 
-	// A pre-transition reader sees the same body and attributes on the wire.
-	type legacyMessage struct {
+	// The preceding transition release reads a string and decodes it only when
+	// the migration marker is present. Keep that wire contract for rolling deploys.
+	type transitionMessage struct {
 		Attributes map[string]string `json:"attributes"`
 		Body       string            `json:"body"`
 	}
 
-	var legacy legacyMessage
-	require.NoError(t, json.Unmarshal([]byte(wire), &legacy))
-	require.Equal(t, message.Body, legacy.Body)
-	require.Equal(t, message.Attributes, legacy.Attributes)
+	var transition transitionMessage
+	require.NoError(t, json.Unmarshal([]byte(wire), &transition))
+	require.Equal(t, "true", transition.Attributes[stream.AttributeBodyBase64])
+	decoded, err := base64.StdEncoding.DecodeString(transition.Body)
+	require.NoError(t, err)
+	require.Equal(t, message.Body, decoded)
+	delete(transition.Attributes, stream.AttributeBodyBase64)
+	require.Equal(t, message.Attributes, transition.Attributes)
 	var received stream.Message
 	require.NoError(t, received.UnmarshalFromString(wire))
 	require.Equal(t, message, received)
@@ -96,7 +101,7 @@ func TestMessageWireFormat(t *testing.T) {
 
 func TestMessageBodyRoundTrip(t *testing.T) {
 	for _, attributes := range []map[string]string{nil, {stream.AttributeEncoding: stream.EncodingAvro.String()}} {
-		message := stream.Message{Body: "hello\x00世界", Attributes: attributes}
+		message := stream.Message{Body: []byte("hello\x00世界\xff\xfe"), Attributes: attributes}
 		before := maps.Clone(attributes)
 
 		for range 2 {
@@ -104,12 +109,18 @@ func TestMessageBodyRoundTrip(t *testing.T) {
 			require.NoError(t, err)
 			var envelope stream.Message
 			require.NoError(t, json.Unmarshal(wire, &envelope))
-			require.Equal(t, message, envelope)
+			require.Equal(t, message.Body, envelope.Body)
+			require.Equal(t, len(attributes), len(envelope.Attributes))
+
+			for key, value := range attributes {
+				require.Equal(t, value, envelope.Attributes[key])
+			}
+
 			require.Equal(t, before, message.Attributes)
 
 			var restored stream.Message
 			require.NoError(t, restored.UnmarshalFromBytes(wire))
-			require.Equal(t, message, restored)
+			require.Equal(t, envelope, restored)
 		}
 	}
 }
@@ -117,13 +128,14 @@ func TestMessageBodyRoundTrip(t *testing.T) {
 func TestMessageReservesBase64Attribute(t *testing.T) {
 	var restored stream.Message
 	require.NoError(t, restored.UnmarshalFromString(`{"attributes":{"goso.body.base64":"true","encoding":"application/json"},"body":"aGVsbG8="}`))
-	require.Equal(t, "hello", restored.Body)
+	require.Equal(t, []byte("hello"), restored.Body)
 	require.NotContains(t, restored.Attributes, stream.AttributeBodyBase64)
 
-	// Forwarding/retrying a decoded message still writes the legacy format.
+	// Forwarding/retrying a decoded message keeps the marked base64 format.
 	wire, err := restored.MarshalToString()
 	require.NoError(t, err)
-	require.JSONEq(t, `{"attributes":{"encoding":"application/json"},"body":"hello"}`, wire)
+	require.JSONEq(t, `{"attributes":{"encoding":"application/json","goso.body.base64":"true"},"body":"aGVsbG8="}`, wire)
+	require.NotContains(t, restored.Attributes, stream.AttributeBodyBase64)
 }
 
 func TestMessageLegacyBodies(t *testing.T) {
@@ -133,7 +145,7 @@ func TestMessageLegacyBodies(t *testing.T) {
 			require.NoError(t, err)
 			var message stream.Message
 			require.NoError(t, message.UnmarshalFromBytes(wire))
-			require.Equal(t, body, message.Body)
+			require.Equal(t, []byte(body), message.Body)
 			require.Equal(t, "application/json", message.Attributes[stream.AttributeEncoding])
 		})
 	}
@@ -148,7 +160,7 @@ func TestMessageReadsBase64Bodies(t *testing.T) {
 		require.NoError(t, err)
 		var received stream.Message
 		require.NoError(t, received.UnmarshalFromBytes(wire))
-		require.Equal(t, string(body), received.Body)
+		require.Equal(t, body, received.Body)
 		require.Equal(t, map[string]string{"encoding": "application/avro"}, received.Attributes)
 	}
 }
@@ -156,8 +168,8 @@ func TestMessageReadsBase64Bodies(t *testing.T) {
 func TestMessageMixedAggregateFormats(t *testing.T) {
 	var messages []*stream.Message
 	require.NoError(t, json.Unmarshal([]byte(`[{"attributes":{},"body":"aGVsbG8="},{"attributes":{"goso.body.base64":"true"},"body":"AP8="}]`), &messages))
-	require.Equal(t, "aGVsbG8=", messages[0].Body)
-	require.Equal(t, string([]byte{0, 0xff}), messages[1].Body)
+	require.Equal(t, []byte("aGVsbG8="), messages[0].Body)
+	require.Equal(t, []byte{0, 0xff}, messages[1].Body)
 	require.NotContains(t, messages[1].Attributes, stream.AttributeBodyBase64)
 }
 
@@ -172,11 +184,9 @@ func TestMessageEncodingSurvivesEnvelopeMigration(t *testing.T) {
 			message, err := encoder.Encode(t.Context(), model)
 			require.NoError(t, err)
 
-			legacy, err := message.MarshalToBytes()
+			legacy, err := json.Marshal(map[string]any{"attributes": message.Attributes, "body": string(message.Body)})
 			require.NoError(t, err)
-			attributes := maps.Clone(message.Attributes)
-			attributes[stream.AttributeBodyBase64] = "true"
-			marked, err := json.Marshal(map[string]any{"attributes": attributes, "body": base64.StdEncoding.EncodeToString([]byte(message.Body))})
+			marked, err := message.MarshalToBytes()
 			require.NoError(t, err)
 
 			for _, wire := range [][]byte{legacy, marked} {
@@ -193,14 +203,28 @@ func TestMessageEncodingSurvivesEnvelopeMigration(t *testing.T) {
 }
 
 func TestMessageUnmarshalPreservesExistingFields(t *testing.T) {
-	message := stream.Message{Body: "hello", Attributes: map[string]string{"foo": "bar"}}
-	for _, wire := range []string{`{}`, `null`, `{"body":null}`} {
+	message := stream.Message{Body: []byte("hello"), Attributes: map[string]string{"foo": "bar"}}
+	for _, wire := range []string{`{}`, `null`} {
 		require.NoError(t, message.UnmarshalFromString(wire))
-		require.Equal(t, "hello", message.Body)
+		require.Equal(t, []byte("hello"), message.Body)
 		require.Equal(t, map[string]string{"foo": "bar"}, message.Attributes)
 	}
 
 	require.Error(t, message.UnmarshalFromString(`{"attributes":{"goso.body.base64":"true"},"body":"invalid!"}`))
-	require.Equal(t, "hello", message.Body)
+	require.Equal(t, []byte("hello"), message.Body)
 	require.Equal(t, map[string]string{"foo": "bar"}, message.Attributes)
+
+	require.NoError(t, message.UnmarshalFromString(`{"body":null}`))
+	require.Nil(t, message.Body)
+}
+
+func TestMessageNilAndEmptyBodies(t *testing.T) {
+	for _, body := range [][]byte{nil, {}} {
+		message := stream.Message{Body: body, Attributes: map[string]string{}}
+		wire, err := message.MarshalToBytes()
+		require.NoError(t, err)
+		var restored stream.Message
+		require.NoError(t, restored.UnmarshalFromBytes(wire))
+		require.Equal(t, message, restored)
+	}
 }

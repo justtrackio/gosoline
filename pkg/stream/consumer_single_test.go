@@ -298,7 +298,7 @@ func (s *ConsumerTestSuite) TestAggregatePanicUsesEffectiveRetryPolicy() {
 	}).Twice()
 	s.uuidGen.EXPECT().NewV4().Return("panic-retry").Once()
 	s.retryHandler.EXPECT().Put(matcher.Context, mock.MatchedBy(func(msg *stream.Message) bool {
-		return msg.Body == `"bar"` && msg.Attributes[stream.AttributeRetryId] == "panic-retry"
+		return string(msg.Body) == `"bar"` && msg.Attributes[stream.AttributeRetryId] == "panic-retry"
 	})).Return(nil).Once()
 	s.NoError(s.consumer.Run(s.kernelCtx))
 }
@@ -867,7 +867,7 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 			stream.AttributeRetry:    "true",
 			stream.AttributeRetryId:  "75828fe1-4c7d-4a21-99e5-03d63876ed23",
 		},
-		Body: `"bar"`,
+		Body: []byte(`"bar"`),
 	}
 
 	s.uuidGen.EXPECT().NewV4().Return("75828fe1-4c7d-4a21-99e5-03d63876ed23").Once()

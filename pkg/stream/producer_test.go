@@ -42,7 +42,7 @@ func (s *ProducerTestSuite) TestProducer_WriteOne() {
 		Attributes: map[string]string{
 			stream.AttributeEncoding: stream.EncodingJson.String(),
 		},
-		Body: `{"id":3,"name":"foobar"}`,
+		Body: []byte(`{"id":3,"name":"foobar"}`),
 	}
 
 	s.output.EXPECT().WriteOne(s.ctx, expectedMsg).Return(nil)
@@ -68,13 +68,13 @@ func (s *ProducerTestSuite) TestProducer_Write() {
 			Attributes: map[string]string{
 				stream.AttributeEncoding: stream.EncodingJson.String(),
 			},
-			Body: `{"id":3,"name":"foobar"}`,
+			Body: []byte(`{"id":3,"name":"foobar"}`),
 		},
 		&stream.Message{
 			Attributes: map[string]string{
 				stream.AttributeEncoding: stream.EncodingJson.String(),
 			},
-			Body: `{"id":5,"name":"foobaz"}`,
+			Body: []byte(`{"id":5,"name":"foobaz"}`),
 		},
 	}
 

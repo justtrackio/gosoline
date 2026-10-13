@@ -50,7 +50,7 @@ func TestNewMessage(t *testing.T) {
 			"attribute1": "2",
 			"attribute2": "value",
 		},
-		Body: `{"foo": "bar"}`,
+		Body: []byte(`{"foo": "bar"}`),
 	}
 
 	assert.Equal(t, expectedMsg, msg)
@@ -68,7 +68,7 @@ func TestNewJsonMessage(t *testing.T) {
 			"attribute2":             "value",
 			stream.AttributeEncoding: stream.EncodingJson.String(),
 		},
-		Body: `{"foo": "bar"}`,
+		Body: []byte(`{"foo": "bar"}`),
 	}
 
 	assert.Equal(t, expectedMsg, msg)
@@ -86,7 +86,7 @@ func TestNewProtobufMessage(t *testing.T) {
 			"attribute2":             "value",
 			stream.AttributeEncoding: stream.EncodingProtobuf.String(),
 		},
-		Body: string([]byte{10, 3, 102, 111, 111, 16, 42}),
+		Body: []byte{10, 3, 102, 111, 111, 16, 42},
 	}
 
 	assert.Equal(t, expectedMsg, msg)
@@ -107,7 +107,7 @@ func TestMarshalJsonMessage(t *testing.T) {
 			"attribute2":             "value",
 			stream.AttributeEncoding: stream.EncodingJson.String(),
 		},
-		Body: `{"first_field":"foo","second_field":42}`,
+		Body: []byte(`{"first_field":"foo","second_field":42}`),
 	}
 
 	assert.NoError(t, err)
@@ -129,7 +129,7 @@ func TestMarshalProtobufMessage(t *testing.T) {
 			"attribute2":             "value",
 			stream.AttributeEncoding: stream.EncodingProtobuf.String(),
 		},
-		Body: "CgNmb28QKg==",
+		Body: []byte("CgNmb28QKg=="),
 	}
 
 	assert.NoError(t, err)

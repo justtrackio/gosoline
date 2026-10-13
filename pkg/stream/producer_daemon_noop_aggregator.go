@@ -19,7 +19,7 @@ func (a *producerDaemonNoopAggregator) Write(_ context.Context, msg *Message) ([
 		{
 			Attributes:   msg.Attributes,
 			MessageCount: 1,
-			Body:         msg.Body,
+			Body:         string(msg.Body),
 		},
 	}, nil
 }

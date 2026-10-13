@@ -42,7 +42,7 @@ func (s *OutputKinesisTestSuite) TestRawMessageSuccess() {
 func (s *OutputKinesisTestSuite) TestStreamMessageSuccess() {
 	expectedRecords := []*kinesis.Record{
 		{
-			Data:         []byte(`{"attributes":{"encoding":"application/json","gosoline.kinesis.partitionKey":"bfe5dfdc-0af2-44e5-863d-2c4860cc46d8"},"body":"body"}`),
+			Data:         []byte(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","gosoline.kinesis.partitionKey":"bfe5dfdc-0af2-44e5-863d-2c4860cc46d8"},"body":"Ym9keQ=="}`),
 			PartitionKey: aws.String("bfe5dfdc-0af2-44e5-863d-2c4860cc46d8"),
 		},
 	}

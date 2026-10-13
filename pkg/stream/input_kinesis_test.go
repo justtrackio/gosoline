@@ -39,14 +39,14 @@ func TestKinesisInputRun(t *testing.T) {
 			Attributes: map[string]string{
 				"type": "message",
 			},
-			Body: "foo",
+			Body: []byte("foo"),
 		},
 		{
 			Attributes: map[string]string{
 				"type":    "message",
 				"version": "0",
 			},
-			Body: "foo",
+			Body: []byte("foo"),
 		},
 	}, msgs)
 }

@@ -100,7 +100,7 @@ func (o *InMemoryOutput) Write(_ context.Context, batch []WritableMessage) error
 			continue
 		}
 
-		body, err := msg.MarshalToString()
+		body, err := msg.MarshalToBytes()
 		if err != nil {
 			return err
 		}
@@ -123,7 +123,7 @@ func (o *InMemoryOutput) ContainsBody(body string) bool {
 	defer o.lck.Unlock()
 
 	for _, msg := range o.messages {
-		if msg.Body == body {
+		if string(msg.Body) == body {
 			return true
 		}
 	}

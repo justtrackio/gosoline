@@ -36,7 +36,7 @@ func GetCompressionAttribute(attributes map[string]string) *CompressionType {
 func NewMessage(body string, attributes ...map[string]string) *Message {
 	msg := &Message{
 		Attributes: map[string]string{},
-		Body:       body,
+		Body:       []byte(body),
 	}
 
 	for _, attrs := range attributes {

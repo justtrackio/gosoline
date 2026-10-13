@@ -26,8 +26,8 @@ func Test_GosoMessageSerialization(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.JSONEq(t, string(serialized), `{
-		"attributes": {"HeaderKey":"HeaderValue", "KafkaKey":"MessageKey"},
-		"body": "MessageValue"
+		"attributes": {"HeaderKey":"HeaderValue", "KafkaKey":"MessageKey", "goso.body.base64":"true"},
+		"body": "TWVzc2FnZVZhbHVl"
 	}`)
 }
 
@@ -59,7 +59,7 @@ func Test_NewKafkaMessage(t *testing.T) {
 	body := `{"MessageContent": "Content"}`
 
 	gMessage := &stream.Message{
-		Body:       body,
+		Body:       []byte(body),
 		Attributes: attributes,
 	}
 
@@ -95,13 +95,13 @@ func Test_NewKafkaMessage(t *testing.T) {
 
 func Test_NewKafkaMessages(t *testing.T) {
 	gMessage1 := &stream.Message{
-		Body: `{"MessageContent": "Content1"}`,
+		Body: []byte(`{"MessageContent": "Content1"}`),
 		Attributes: map[string]string{
 			"Attr11": "11",
 		},
 	}
 	gMessage2 := &stream.Message{
-		Body: `{"MessageContent": "Content2"}`,
+		Body: []byte(`{"MessageContent": "Content2"}`),
 		Attributes: map[string]string{
 			"Attr11": "12",
 		},

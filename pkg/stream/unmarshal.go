@@ -30,7 +30,7 @@ func MessageUnmarshaller(data *string) (*Message, error) {
 
 func RawUnmarshaller(data *string) (*Message, error) {
 	return &Message{
-		Body: *data,
+		Body: []byte(*data),
 	}, nil
 }
 

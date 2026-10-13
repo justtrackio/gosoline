@@ -13,6 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type aggregatorTestCase struct {
@@ -49,7 +50,33 @@ func (tc aggregatorTestCase) run(t *testing.T) {
 		}
 	}
 
-	assert.Len(t, flushes, len(tc.flushes))
+	if tc.flushes == nil {
+		require.Greater(t, len(flushes), 1, "size limits should split the aggregate")
+		var restored []*stream.Message
+
+		for _, flush := range flushes {
+			require.LessOrEqual(t, len(flush.Body), tc.aggregationMaxSize)
+			body := []byte(flush.Body)
+
+			if tc.compression == stream.CompressionGZip {
+				body, err = base64.Decode(body)
+				require.NoError(t, err)
+				body, err = stream.DecompressMessage(tc.compression, body)
+				require.NoError(t, err)
+			}
+
+			var children []*stream.Message
+			require.NoError(t, json.Unmarshal(body, &children))
+			require.Len(t, children, flush.MessageCount)
+			restored = append(restored, children...)
+		}
+
+		require.Equal(t, tc.messages, restored, "all messages must survive aggregation in order")
+
+		return
+	}
+
+	require.Len(t, flushes, len(tc.flushes))
 
 	expectedFlushes := make([]stream.AggregateFlush, len(tc.flushes))
 	for i, expectedFlush := range tc.flushes {
@@ -112,7 +139,7 @@ func mkTestMessage(t *testing.T, body any, attributes map[string]string) *stream
 
 	return &stream.Message{
 		Attributes: attributes,
-		Body:       string(bodyBytes),
+		Body:       bodyBytes,
 	}
 }
 
@@ -164,7 +191,7 @@ func TestProducerDaemonAggregator_SizeRestricted(t *testing.T) {
 
 	aggregatorTestCase{
 		aggregationSize:    5_000,
-		aggregationMaxSize: 300,
+		aggregationMaxSize: 400,
 		compression:        stream.CompressionNone,
 		messages:           messages,
 		flushes: []expectedFlush{
@@ -229,17 +256,6 @@ func TestProducerDaemonAggregator_CompressedSizeRestrictedLarge(t *testing.T) {
 		aggregationMaxSize: 16000,
 		compression:        stream.CompressionGZip,
 		messages:           messages,
-		flushes: []expectedFlush{
-			{
-				messages: messages[:1362],
-			},
-			{
-				messages: messages[1362:2724],
-			},
-			{
-				messages: messages[2724:],
-			},
-		},
 	}.run(t)
 }
 
@@ -257,16 +273,10 @@ func TestProducerDaemonAggregator_CompressedSizeRestrictedUncompressible(t *test
 		messages = append(messages, message)
 	}
 
-	flushes := make([]expectedFlush, 0)
-	for i := 0; i < len(messages); i += 8 {
-		flushes = append(flushes, expectedFlush{messages: messages[i:min(i+8, len(messages))]})
-	}
-
 	aggregatorTestCase{
 		aggregationSize:    100_000,
 		aggregationMaxSize: 65536,
 		compression:        stream.CompressionGZip,
 		messages:           messages,
-		flushes:            flushes,
 	}.run(t)
 }

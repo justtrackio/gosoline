@@ -19,19 +19,34 @@ const (
 
 type Message struct {
 	Attributes map[string]string `json:"attributes"`
-	Body       string            `json:"body"`
+	Body       []byte            `json:"body"`
+}
+
+// MarshalJSON writes a base64 body and a temporary migration marker. The marker
+// belongs to the JSON envelope only; the message's attributes are not modified.
+func (m Message) MarshalJSON() ([]byte, error) {
+	attributes := maps.Clone(m.Attributes)
+	if attributes == nil {
+		attributes = make(map[string]string)
+	}
+
+	attributes[AttributeBodyBase64] = "true"
+
+	// The distinct type has no MarshalJSON method, preventing recursive calls.
+	type envelope Message
+
+	return json.Marshal(envelope{Attributes: attributes, Body: m.Body})
 }
 
 // UnmarshalJSON accepts marked base64 bodies and legacy plain string bodies.
-// Writers retain the legacy format during this reader-only transition release.
 func (m *Message) UnmarshalJSON(data []byte) error {
-	type jsonEnvelope Message
+	type jsonEnvelope struct {
+		Attributes map[string]string `json:"attributes"`
+		Body       json.RawMessage   `json:"body"`
+	}
 
-	// Seed the envelope to retain the usual JSON behavior for absent/null fields
-	// when unmarshalling into an existing message. Decode attributes separately so
-	// stripping the migration marker cannot mutate the original map on an error.
-	envelope := jsonEnvelope(*m)
-	envelope.Attributes = maps.Clone(m.Attributes)
+	// Decode a copy so malformed envelopes cannot mutate the original attributes.
+	envelope := jsonEnvelope{Attributes: maps.Clone(m.Attributes)}
 
 	if err := json.Unmarshal(data, &envelope); err != nil {
 		return err
@@ -42,22 +57,43 @@ func (m *Message) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("invalid %s marker: %q", AttributeBodyBase64, marker)
 	}
 
-	if marked {
-		var body []byte
+	body := m.Body
+	if len(envelope.Body) > 0 {
 		var err error
-
-		if body, err = base64.StdEncoding.DecodeString(envelope.Body); err != nil {
-			return fmt.Errorf("could not decode base64 message body: %w", err)
+		if body, err = m.unmarshalBody(envelope.Body, marked); err != nil {
+			return err
 		}
-
-		envelope.Body = string(body)
 	}
 
 	delete(envelope.Attributes, AttributeBodyBase64)
 	m.Attributes = envelope.Attributes
-	m.Body = envelope.Body
+	m.Body = body
 
 	return nil
+}
+
+func (m *Message) unmarshalBody(data json.RawMessage, marked bool) ([]byte, error) {
+	var encodedBody *string
+	if err := json.Unmarshal(data, &encodedBody); err != nil {
+		return nil, err
+	}
+
+	if encodedBody == nil {
+		return nil, nil
+	}
+
+	if !marked {
+		return []byte(*encodedBody), nil
+	}
+
+	var body []byte
+	var err error
+
+	if body, err = base64.StdEncoding.DecodeString(*encodedBody); err != nil {
+		return nil, fmt.Errorf("could not decode base64 message body: %w", err)
+	}
+
+	return body, nil
 }
 
 func (m *Message) GetAttributes() map[string]string {
@@ -69,8 +105,10 @@ func (m *Message) MarshalToBytes() ([]byte, error) {
 }
 
 func (m *Message) MarshalToString() (string, error) {
-	bytes, err := json.Marshal(*m)
-	if err != nil {
+	var bytes []byte
+	var err error
+
+	if bytes, err = json.Marshal(*m); err != nil {
 		return "", err
 	}
 

@@ -313,7 +313,7 @@ func (c *BatchConsumer) collect(ctx context.Context, message batchMessage) int {
 			attributes := maps.Clone(message.message.Attributes)
 			attributes[AttributeEncoding] = EncodingJson.String()
 			delete(attributes, AttributeCompression)
-			retryMessage = Message{Body: string(body), Attributes: attributes}
+			retryMessage = Message{Body: body, Attributes: attributes}
 		}
 
 		c.batch = append(c.batch, batchMessage{

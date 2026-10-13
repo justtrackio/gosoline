@@ -24,7 +24,7 @@ func TestFileInput_Run(t *testing.T) {
 
 	var messages []string
 	err := input.Run(t.Context(), func(_ context.Context, msg *Message) bool {
-		messages = append(messages, msg.Body)
+		messages = append(messages, string(msg.Body))
 
 		return true
 	})
@@ -73,7 +73,7 @@ invalid
 
 	var messages []string
 	err := input.Run(t.Context(), func(_ context.Context, msg *Message) bool {
-		messages = append(messages, msg.Body)
+		messages = append(messages, string(msg.Body))
 
 		return true
 	})

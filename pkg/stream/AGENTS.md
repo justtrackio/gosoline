@@ -252,26 +252,32 @@ policy rather than just the primary transport's native-redelivery capability.
 
 `Message` JSON serialization uses the `attributes`/`body` representation.
 Attribute values must be strings; numeric and boolean values are rejected
-rather than converted. This is a reader-only transition release: `Message.Body`
-remains a string and all writers retain the legacy JSON string body without adding
-a marker. The custom `UnmarshalJSON` accepts both legacy bodies and future base64
-bodies marked with the reserved `goso.body.base64: "true"` attribute. It decodes
-marked bodies and removes the marker, preserving payload-format and propagation
-attributes. Malformed base64 and invalid marker values are rejected. Direct JSON
-decoding, aggregate children and retry readers all use this dual-format reader.
-Unmarked strings are never heuristically decoded, even if they look like base64.
-Kafka, `WritableMessage`, raw-message writes and batching sizes are unchanged.
-Legacy JSON writers still require valid UTF-8 bodies, attribute keys and values;
-decoding a binary base64 body does not make legacy forwarding/retries binary-safe.
+rather than converted. `Message.Body` is a byte slice. Custom `MarshalJSON` writes
+base64 bodies and adds the reserved `goso.body.base64: "true"` attribute to a copy
+of the attributes. The in-memory message is not mutated. Custom `UnmarshalJSON`
+accepts marked base64 bodies and legacy unmarked string bodies, removing the marker
+while preserving payload-format and propagation attributes. Malformed base64 and
+invalid marker values are rejected. Unmarked bodies are never heuristically
+decoded, even if they look like base64. Nil attributes may round-trip as an empty
+map; nil and empty byte bodies retain their distinction. Attribute keys and values
+must remain valid UTF-8, but binary bodies survive JSON serialization and retries.
+Direct JSON calls, aggregate children and daemon batching all use this envelope.
+Batching accounts for the actual larger serialized size. Kafka writes body bytes
+directly without envelope base64 encoding. `WritableMessage` and raw-message writes
+retain their existing semantics. String-based construction helpers remain available
+and convert their bodies to bytes; direct `Message` literals must supply byte slices.
 
-Roll out this release to every consumer and retry worker before changing writers.
-The next release can change `Body` to `[]byte` and write marked base64 envelopes.
-After that switch, rollback only to this dual-format transition release. Keep
-legacy reading until queued messages, delayed retries, retained Kinesis records
-and replayable DLQs have drained or expired. Removing the marker requires another
-reader-first rollout: readers must interpret unmarked bodies as base64 before
-writers stop marking them. Existing compression/protobuf base64 layers are
-independent of envelope encoding and remain unchanged during this migration.
+Deploy the preceding reader-only transition release to every consumer and retry
+worker before deploying these writers. Afterwards rollback only to dual-format
+reader releases, never to the pre-transition release. Transition-release writers
+still forward/retry bodies as JSON strings: enable arbitrary binary envelope
+payloads only after all forwarding and retry writers have upgraded to this release.
+Base64 adds roughly one third to body size plus the marker; check transport limits.
+Retain legacy reading until queued messages, delayed retries, retained Kinesis
+records and replayable DLQs have drained or expired. Removing the marker requires
+another reader-first rollout: readers must interpret unmarked bodies as base64
+before writers stop marking them. Existing compression/protobuf base64 layers
+remain independent of envelope encoding and unchanged during this migration.
 
 ## Related packages
 - `pkg/cloud/aws/sqs`, `sns`, `kinesis` - AWS transport clients

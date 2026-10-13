@@ -85,7 +85,7 @@ func (e *messageEncoder) Encode(ctx context.Context, data any, attributeSets ...
 
 	msg := &Message{
 		Attributes: attributes,
-		Body:       string(body),
+		Body:       body,
 	}
 
 	return msg, nil
@@ -146,7 +146,7 @@ func (e *messageEncoder) Decode(ctx context.Context, msg *Message, out any) (con
 	var body []byte
 
 	attributes := msg.Attributes
-	body = []byte(msg.Body)
+	body = msg.Body
 
 	if body, err = e.decompressBody(attributes, body); err != nil {
 		return ctx, attributes, err

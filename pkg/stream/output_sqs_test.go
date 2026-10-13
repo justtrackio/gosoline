@@ -28,7 +28,7 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 				Foo: "bar",
 			},
 			expectedSqsMessage: sqs.Message{
-				Body: mdl.Box(`{"attributes":{"encoding":"application/json"},"body":"{\"Foo\":\"bar\"}"}`),
+				Body: mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true"},"body":"eyJGb28iOiJiYXIifQ=="}`),
 			},
 		},
 		"with_delay": {
@@ -40,7 +40,7 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 			},
 			expectedSqsMessage: sqs.Message{
 				DelaySeconds: 45,
-				Body:         mdl.Box(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":"45"},"body":"{\"Foo\":\"bar\"}"}`),
+				Body:         mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsDelaySeconds":"45"},"body":"eyJGb28iOiJiYXIifQ=="}`),
 			},
 		},
 		"with_group_id": {
@@ -52,7 +52,7 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 			},
 			expectedSqsMessage: sqs.Message{
 				MessageGroupId: mdl.Box("foo"),
-				Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo"},"body":"{\"Foo\":\"bar\"}"}`),
+				Body:           mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsMessageGroupId":"foo"},"body":"eyJGb28iOiJiYXIifQ=="}`),
 			},
 		},
 		"with_deduplication_id": {
@@ -64,7 +64,7 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 			},
 			expectedSqsMessage: sqs.Message{
 				MessageDeduplicationId: mdl.Box("bar"),
-				Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageDeduplicationId":"bar"},"body":"{\"Foo\":\"bar\"}"}`),
+				Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsMessageDeduplicationId":"bar"},"body":"eyJGb28iOiJiYXIifQ=="}`),
 			},
 		},
 		"with_all": {
@@ -80,7 +80,7 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 				DelaySeconds:           45,
 				MessageGroupId:         mdl.Box("foo"),
 				MessageDeduplicationId: mdl.Box("bar"),
-				Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":"45","sqsMessageDeduplicationId":"bar","sqsMessageGroupId":"foo"},"body":"{\"Foo\":\"bar\"}"}`),
+				Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsDelaySeconds":"45","sqsMessageDeduplicationId":"bar","sqsMessageGroupId":"foo"},"body":"eyJGb28iOiJiYXIifQ=="}`),
 			},
 		},
 	}
@@ -114,7 +114,7 @@ func TestSqsOutput_Write(t *testing.T) {
 		1000)
 	largeExpectedSqsMessage := funk.Repeat(&sqs.Message{
 		MessageGroupId: mdl.Box("foo"),
-		Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo"},"body":"{\"Foo\":\"bar\"}"}`),
+		Body:           mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsMessageGroupId":"foo"},"body":"eyJGb28iOiJiYXIifQ=="}`),
 	}, 1000)
 
 	tests := map[string]struct {
@@ -131,7 +131,7 @@ func TestSqsOutput_Write(t *testing.T) {
 			},
 			expectedSqsMessage: []*sqs.Message{
 				{
-					Body: mdl.Box(`{"attributes":{"encoding":"application/json"},"body":"{\"Foo\":\"bar\"}"}`),
+					Body: mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true"},"body":"eyJGb28iOiJiYXIifQ=="}`),
 				},
 			},
 		},
@@ -183,59 +183,59 @@ func TestSqsOutput_Write(t *testing.T) {
 			expectedSqsMessage: []*sqs.Message{
 				{
 					DelaySeconds: 45,
-					Body:         mdl.Box(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":"45"},"body":"{\"Foo\":\"bar\"}"}`),
+					Body:         mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsDelaySeconds":"45"},"body":"eyJGb28iOiJiYXIifQ=="}`),
 				},
 				{
 					MessageGroupId: mdl.Box("foo"),
-					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo"},"body":"{\"Foo\":\"bar\"}"}`),
+					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsMessageGroupId":"foo"},"body":"eyJGb28iOiJiYXIifQ=="}`),
 				},
 				{
 					MessageGroupId: mdl.Box("foo1"),
-					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo1"},"body":"{\"Foo\":\"bar1\"}"}`),
+					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsMessageGroupId":"foo1"},"body":"eyJGb28iOiJiYXIxIn0="}`),
 				},
 				{
 					MessageGroupId: mdl.Box("foo2"),
-					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo2"},"body":"{\"Foo\":\"bar2\"}"}`),
+					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsMessageGroupId":"foo2"},"body":"eyJGb28iOiJiYXIyIn0="}`),
 				},
 				{
 					MessageGroupId: mdl.Box("foo3"),
-					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo3"},"body":"{\"Foo\":\"bar3\"}"}`),
+					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsMessageGroupId":"foo3"},"body":"eyJGb28iOiJiYXIzIn0="}`),
 				},
 				{
 					MessageGroupId: mdl.Box("foo4"),
-					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo4"},"body":"{\"Foo\":\"bar4\"}"}`),
+					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsMessageGroupId":"foo4"},"body":"eyJGb28iOiJiYXI0In0="}`),
 				},
 				{
 					MessageGroupId: mdl.Box("bar"),
-					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"bar"},"body":"{\"Foo\":\"bar\"}"}`),
+					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsMessageGroupId":"bar"},"body":"eyJGb28iOiJiYXIifQ=="}`),
 				},
 				{
 					MessageDeduplicationId: mdl.Box("bar"),
-					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageDeduplicationId":"bar"},"body":"{\"Foo\":\"bar\"}"}`),
+					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsMessageDeduplicationId":"bar"},"body":"eyJGb28iOiJiYXIifQ=="}`),
 				},
 				{
 					DelaySeconds:           45,
 					MessageGroupId:         mdl.Box("foo1"),
 					MessageDeduplicationId: mdl.Box("bar1"),
-					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":"45","sqsMessageDeduplicationId":"bar1","sqsMessageGroupId":"foo1"},"body":"{\"Foo\":\"multipleAttributes1\"}"}`),
+					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsDelaySeconds":"45","sqsMessageDeduplicationId":"bar1","sqsMessageGroupId":"foo1"},"body":"eyJGb28iOiJtdWx0aXBsZUF0dHJpYnV0ZXMxIn0="}`),
 				},
 				{
 					DelaySeconds:           46,
 					MessageGroupId:         mdl.Box("foo2"),
 					MessageDeduplicationId: mdl.Box("bar2"),
-					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":"46","sqsMessageDeduplicationId":"bar2","sqsMessageGroupId":"foo2"},"body":"{\"Foo\":\"multipleAttributes2\"}"}`),
+					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsDelaySeconds":"46","sqsMessageDeduplicationId":"bar2","sqsMessageGroupId":"foo2"},"body":"eyJGb28iOiJtdWx0aXBsZUF0dHJpYnV0ZXMyIn0="}`),
 				},
 				{
 					DelaySeconds:           47,
 					MessageGroupId:         mdl.Box("foo3"),
 					MessageDeduplicationId: mdl.Box("bar3"),
-					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":"47","sqsMessageDeduplicationId":"bar3","sqsMessageGroupId":"foo3"},"body":"{\"Foo\":\"multipleAttributes3\"}"}`),
+					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsDelaySeconds":"47","sqsMessageDeduplicationId":"bar3","sqsMessageGroupId":"foo3"},"body":"eyJGb28iOiJtdWx0aXBsZUF0dHJpYnV0ZXMzIn0="}`),
 				},
 				{
 					DelaySeconds:           48,
 					MessageGroupId:         mdl.Box("foo4"),
 					MessageDeduplicationId: mdl.Box("bar4"),
-					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":"48","sqsMessageDeduplicationId":"bar4","sqsMessageGroupId":"foo4"},"body":"{\"Foo\":\"multipleAttributes4\"}"}`),
+					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","goso.body.base64":"true","sqsDelaySeconds":"48","sqsMessageDeduplicationId":"bar4","sqsMessageGroupId":"foo4"},"body":"eyJGb28iOiJtdWx0aXBsZUF0dHJpYnV0ZXM0In0="}`),
 				},
 			},
 		},
