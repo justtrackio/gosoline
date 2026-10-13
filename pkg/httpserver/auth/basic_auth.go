@@ -16,13 +16,16 @@ const (
 	ByBasicAuth = "basicAuth"
 
 	headerBasicAuth = "Authorization"
-	configBasicAuth = "api_auth_basic_users"
 	AttributeUser   = "user"
 )
 
 type basicAuthAuthenticator struct {
 	logger log.Logger
 	users  map[string]string
+}
+
+type basicAuthSettings struct {
+	Users []string `cfg:"api_auth_basic_users,secret"`
 }
 
 func NewBasicAuthHandler(config cfg.Config, logger log.Logger) (gin.HandlerFunc, error) {
@@ -56,21 +59,27 @@ func NewBasicAuthHandler(config cfg.Config, logger log.Logger) (gin.HandlerFunc,
 }
 
 func NewBasicAuthAuthenticator(config cfg.Config, logger log.Logger) (Authenticator, error) {
-	userEntries, err := config.GetStringSlice(configBasicAuth)
-	if err != nil {
+	if !config.IsSet("api_auth_basic_users") {
+		return nil, fmt.Errorf("basic auth users setting api_auth_basic_users is missing")
+	}
+
+	settings := basicAuthSettings{}
+	if err := config.UnmarshalKey(".", &settings); err != nil {
 		return nil, fmt.Errorf("can not get basic auth users: %w", err)
 	}
 
 	users := make(map[string]string)
 
-	for _, user := range userEntries {
+	for index, user := range settings.Users {
+		user = strings.TrimSpace(user)
+
 		if user == "" {
 			continue
 		}
 
 		split := strings.SplitN(user, ":", 2)
 		if len(split) != 2 {
-			return nil, fmt.Errorf("invalid basic auth credentials: %s", user)
+			return nil, fmt.Errorf("invalid basic auth credentials at api_auth_basic_users[%d]: missing colon separator", index)
 		}
 
 		users[split[0]] = split[1]

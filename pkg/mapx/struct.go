@@ -27,6 +27,7 @@ type StructTag struct {
 	NoCast   bool
 	NoDecode bool
 	Prefix   string
+	Secret   bool
 }
 
 func (k StructKey) String() string {
@@ -1099,6 +1100,8 @@ func (s *Struct) readTag(sourceTag reflect.StructTag, fieldName string) (*Struct
 			tag.NoCast = true
 		case optLower == optionNoDecode:
 			tag.NoDecode = true
+		case optLower == "secret":
+			tag.Secret = true
 		case strings.HasPrefix(optLower, optionPrefixKey):
 			// Extract prefix value, preserving its original case
 			tag.Prefix = opt[len(optionPrefixKey):]

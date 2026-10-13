@@ -1,0 +1,92 @@
+package mapx_test
+
+import (
+	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/mapx"
+	"github.com/stretchr/testify/require"
+)
+
+func TestSecretOptionPreservesMappingAndValues(t *testing.T) {
+	type child struct {
+		Value  string `cfg:"Value,secret,nodecode,nocast"`
+		Public string `cfg:"public"`
+	}
+	type settings struct {
+		Child *child `cfg:"child,prefix=SDK_"`
+	}
+	var output settings
+	ms, err := mapx.NewStruct(&output, &mapx.StructSettings{FieldTag: "cfg"})
+	require.NoError(t, err)
+	writeSchema := ms.SecretSchema(true)
+	require.True(t, writeSchema.IsSecret("SDK_Value"))
+	require.False(t, writeSchema.IsSecret("SDK_public"))
+	require.False(t, writeSchema.IsSecret("child.Value"))
+	readSchema := ms.SecretSchema(false)
+	require.True(t, readSchema.IsSecret("child.Value"))
+	require.False(t, readSchema.IsSecret("SDK_Value"))
+	require.NoError(t, ms.Write(mapx.NewMapX(map[string]any{"SDK_Value": "synthetic-original", "SDK_public": "public"})))
+	require.Equal(t, "synthetic-original", output.Child.Value)
+	values, err := ms.Read()
+	require.NoError(t, err)
+	require.Equal(t, "synthetic-original", values.Get("child.Value").Data())
+}
+
+func TestSecretSchemaNilPointersArraysAndRecursiveMerges(t *testing.T) {
+	type row struct {
+		Opaque  string `cfg:"opaque,secret"`
+		Visible string `cfg:"visible"`
+	}
+	type recursive struct {
+		Next *recursive `cfg:"next"`
+		Rows [12]*row   `cfg:"rows"`
+	}
+	var value *recursive
+	ms, err := mapx.NewStruct(value, &mapx.StructSettings{FieldTag: "cfg"})
+	require.NoError(t, err)
+	var schema mapx.SecretSchema
+	schema.Register("root", ms.SecretSchema(true))
+	schema.Register("root", ms.SecretSchema(true))
+	require.True(t, schema.IsSecret("root.next.next.rows[11].opaque"))
+	require.False(t, schema.IsSecret("root.next.next.rows[11].visible"))
+	require.False(t, schema.IsSecret("root.next.next.rows.11.opaque"))
+}
+
+func TestSecretSchemaRegistrationsOwnIndependentBranches(t *testing.T) {
+	type child struct {
+		Value string `cfg:"value"`
+	}
+	type root struct {
+		A child `cfg:"a"`
+		B child `cfg:"b"`
+	}
+	ms, err := mapx.NewStruct(&root{}, &mapx.StructSettings{FieldTag: "cfg"})
+	require.NoError(t, err)
+	derived := ms.SecretSchema(true)
+	var schema mapx.SecretSchema
+	schema.Register("source", derived)
+	schema.Register("destination", derived)
+	schema.Register("source.a.value", &mapx.SecretSchema{Secret: true})
+	require.True(t, schema.IsSecret("source.a.value"))
+	require.False(t, schema.IsSecret("source.b.value"))
+	require.False(t, schema.IsSecret("destination.a.value"))
+	require.False(t, derived.IsSecret("a.value"))
+}
+
+func TestSecretSchemaRootSequencesAndBareBracketMapKeys(t *testing.T) {
+	type row struct {
+		Opaque string `cfg:"opaque,secret"`
+		Public string `cfg:"public"`
+	}
+	var rows [][]row
+	sequences, err := mapx.NewStruct(&rows, &mapx.StructSettings{FieldTag: "cfg"})
+	require.NoError(t, err)
+	require.True(t, sequences.SecretSchema(true).IsSecret("[0][1].opaque"))
+	require.False(t, sequences.SecretSchema(true).IsSecret("[0][1].public"))
+	var groups map[string]row
+	maps, err := mapx.NewStruct(&groups, &mapx.StructSettings{FieldTag: "cfg"})
+	require.NoError(t, err)
+	require.True(t, maps.SecretSchema(true).IsSecret("[0].opaque"))
+	require.True(t, maps.SecretSchema(true).IsSecret("[0][1].opaque"))
+	require.False(t, maps.SecretSchema(true).IsSecret("[0].public"))
+}

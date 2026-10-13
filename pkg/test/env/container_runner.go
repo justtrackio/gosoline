@@ -103,7 +103,7 @@ func (c *Container) getInternalAddress(bindingName string) string {
 
 type authSettings struct {
 	Username      string `cfg:"username"       default:""`
-	Password      string `cfg:"password"       default:""`
+	Password      string `cfg:"password,secret" default:""`
 	Email         string `cfg:"email"          default:""`
 	ServerAddress string `cfg:"server_address" default:""`
 }

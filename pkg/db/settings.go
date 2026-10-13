@@ -28,7 +28,7 @@ type SettingsUri struct {
 	Host     string `cfg:"host"     default:"localhost" validation:"required"`
 	Port     int    `cfg:"port"     default:"3306"      validation:"required"`
 	User     string `cfg:"user"                         validation:"required"`
-	Password string `cfg:"password"                     validation:"required"`
+	Password string `cfg:"password,secret"              validation:"required"`
 	Database string `cfg:"database"                     validation:"required"`
 }
 

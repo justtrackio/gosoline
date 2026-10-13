@@ -7,10 +7,12 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/httpserver/auth"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func getHeaderKeyMocks(idToken string) (log.Logger, *gin.Context) {
@@ -87,4 +89,85 @@ func TestAuthKeyInQueryParam_Authenticate_ValidKey(t *testing.T) {
 	_, err := a.IsValid(ginCtx)
 
 	assert.Equal(t, nil, err)
+}
+
+func TestConfigKeyConfiguredCredentials(t *testing.T) {
+	for _, entries := range []any{
+		[]string{"", " synthetic-api-key "},
+		[]any{"", " synthetic-api-key "},
+		", synthetic-api-key ",
+	} {
+		t.Run(fmt.Sprintf("%T", entries), func(t *testing.T) {
+			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
+				"api_auth_keys": entries,
+				"public":        "visible",
+			})
+			logger, ginCtx := getHeaderKeyMocks("synthetic-api-key")
+			authenticator, err := auth.NewConfigKeyAuthenticator(config, logger, auth.ProvideValueFromHeader(auth.HeaderApiKey))
+			require.NoError(t, err)
+			valid, err := authenticator.IsValid(ginCtx)
+			require.NoError(t, err)
+			require.True(t, valid)
+			subject := auth.GetSubject(ginCtx.Request.Context())
+			require.Equal(t, "synthetic-api-key", subject.Attributes[auth.AttributeApiKey])
+			require.Equal(t, auth.ByApiKey, subject.AuthenticatedBy)
+			require.True(t, subject.Anonymous)
+
+			output := captureAuthConfigDebug(t, config)
+			require.NotContains(t, output, "synthetic-api-key")
+			require.Contains(t, output, "visible")
+			stored, err := config.GetStringSlice("api_auth_keys")
+			require.NoError(t, err)
+			require.Equal(t, []string{"", "synthetic-api-key"}, stored)
+		})
+	}
+}
+
+func TestConfigKeyMissingAndEmptyConfiguration(t *testing.T) {
+	logger, ginCtx := getHeaderKeyMocks("synthetic-api-key")
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{})
+	_, err := auth.NewConfigKeyAuthenticator(config, logger, auth.ProvideValueFromHeader(auth.HeaderApiKey))
+	require.Error(t, err)
+
+	for _, entries := range [][]string{{}, {"", " "}} {
+		config = cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{"api_auth_keys": entries})
+		authenticator, err := auth.NewConfigKeyAuthenticator(config, logger, auth.ProvideValueFromHeader(auth.HeaderApiKey))
+		require.NoError(t, err)
+		valid, err := authenticator.IsValid(ginCtx)
+		require.Error(t, err)
+		require.False(t, valid)
+	}
+}
+
+func TestConfigKeyConfiguredLiteralCredentials(t *testing.T) {
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
+		"api_auth_keys": []string{"!nodecode {literal}"},
+		"literal":       "must-not-replace",
+	})
+	logger, ginCtx := getHeaderKeyMocks("{literal}")
+	authenticator, err := auth.NewConfigKeyAuthenticator(config, logger, auth.ProvideValueFromHeader(auth.HeaderApiKey))
+	require.NoError(t, err)
+	valid, err := authenticator.IsValid(ginCtx)
+	require.NoError(t, err)
+	require.True(t, valid)
+}
+
+func TestConfigKeyEnvironmentCredentials(t *testing.T) {
+	for _, settings := range []map[string]any{
+		{},
+		{"api_auth_keys": []string{"old-key"}},
+	} {
+		env := cfg.NewMemoryEnvProvider()
+		require.NoError(t, env.SetEnv("API_AUTH_KEYS", "synthetic-env-key"))
+		config := cfg.NewWithInterfaces(env, settings)
+		require.NoError(t, config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer)))
+		logger, ginCtx := getHeaderKeyMocks("synthetic-env-key")
+		authenticator, err := auth.NewConfigKeyAuthenticator(config, logger, auth.ProvideValueFromHeader(auth.HeaderApiKey))
+		require.NoError(t, err)
+		valid, err := authenticator.IsValid(ginCtx)
+		require.NoError(t, err)
+		require.True(t, valid)
+		require.NotContains(t, captureAuthConfigDebug(t, config), "synthetic-env-key")
+		require.NotContains(t, config.AllSettings(), "")
+	}
 }

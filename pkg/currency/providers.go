@@ -9,7 +9,7 @@ import (
 )
 
 type ProviderSettings struct {
-	ApiKey string `cfg:"api_key"`
+	ApiKey string `cfg:"api_key,secret"`
 	// Providers with lower values will be used first. The order of the providers with the same priority is non-deterministic.
 	Priority uint `cfg:"priority"`
 	Enabled  bool `cfg:"enabled"`

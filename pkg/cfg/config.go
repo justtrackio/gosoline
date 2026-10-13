@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -40,6 +41,15 @@ type Config interface {
 	GetTime(key string, optionalDefault ...time.Time) (time.Time, error)
 	FormatString(pattern string, args ...map[string]string) (string, error)
 	IsSet(string) bool
+	// IsSecret reports whether a selector or one of its ancestors is annotated
+	// with cfg:",secret". Selectors use MapX's case-sensitive path syntax.
+	// Dynamic map keys with bracket suffixes retain their type annotations when
+	// MapX cannot interpret the suffix as a sequence index. Sequence selectors
+	// retain their ordinary bracket-index semantics, with consecutive indexes
+	// following the declared dimensions of nested sequences.
+	// Register tagged types through rooted merges or UnmarshalKey before debug
+	// logging. Raw getters do not infer secrecy from names or values.
+	IsSecret(selector string) bool
 	HasPrefix(prefix string) bool
 	UnmarshalDefaults(val any, additionalDefaults ...UnmarshalDefaults) error
 	UnmarshalKey(key string, val any, additionalDefaults ...UnmarshalDefaults) error
@@ -57,6 +67,8 @@ type config struct {
 	settings       *mapx.MapX
 	envKeyPrefix   string
 	envKeyReplacer *strings.Replacer
+	secretMu       sync.RWMutex
+	secretSchema   mapx.SecretSchema
 }
 
 var (
@@ -322,8 +334,12 @@ func (c *config) UnmarshalDefaults(output any, additionalDefaults ...UnmarshalDe
 	finalSettings.Merge(".", zeroSettings)
 	finalSettings.Merge(".", defaults)
 
+	defaultsConfig := Config(c)
+	if len(additionalDefaults) > 0 {
+		defaultsConfig = c.defaultsContext(ms)
+	}
 	for _, def := range additionalDefaults {
-		if err := def(c, finalSettings); err != nil {
+		if err := def(defaultsConfig, finalSettings); err != nil {
 			return fmt.Errorf("can not apply additional defaults: %w", err)
 		}
 	}
@@ -336,6 +352,7 @@ func (c *config) UnmarshalDefaults(output any, additionalDefaults ...UnmarshalDe
 }
 
 func (c *config) UnmarshalKey(key string, output any, defaults ...UnmarshalDefaults) error {
+	c.registerSecrets(key, output, true)
 	if refl.IsPointerToStruct(output) {
 		if err := c.unmarshalStruct(key, output, defaults); err != nil {
 			return fmt.Errorf("can not unmarshal config struct with key %s: %w", key, err)
@@ -488,6 +505,7 @@ func (c *config) isSet(key string) bool {
 }
 
 func (c *config) merge(prefix string, setting any, options ...MergeOption) error {
+	c.registerSecrets(prefix, setting, false)
 	if msi, ok := setting.(map[string]any); ok {
 		return c.mergeMsi(prefix, msi, options...)
 	}
@@ -735,13 +753,20 @@ func (c *config) unmarshalStruct(key string, output any, additionalDefaults []Un
 	finalSettings.Merge(".", zeroSettings)
 	finalSettings.Merge(".", defaults)
 
+	defaultsConfig := Config(c)
+	if len(additionalDefaults) > 0 {
+		defaultsConfig = c.defaultsContext(ms)
+	}
 	for _, def := range additionalDefaults {
-		if err := def(c, finalSettings); err != nil {
+		if err := def(defaultsConfig, finalSettings); err != nil {
 			return fmt.Errorf("can not apply additional defaults: %w", err)
 		}
 	}
 
-	if c.settings.Has(key) {
+	root := strings.Trim(key, ".") == ""
+	if root {
+		finalSettings.Merge(".", c.settings)
+	} else if c.settings.Has(key) {
 		if settings, err = c.settings.Get(key).Map(); err != nil {
 			return fmt.Errorf("can not get settings for key: %s: %w", key, err)
 		}
@@ -750,6 +775,9 @@ func (c *config) unmarshalStruct(key string, output any, additionalDefaults []Un
 	}
 
 	environmentKey := c.resolveEnvKey(c.envKeyPrefix, key)
+	if root {
+		environmentKey = c.resolveEnvKey("", c.envKeyPrefix)
+	}
 	environmentKeySettings, err := c.readEnvironmentFromStructKeys(environmentKey, ms.Keys())
 	if err != nil {
 		return fmt.Errorf("can not read environment key settings for key %s: %w", key, err)
@@ -763,7 +791,11 @@ func (c *config) unmarshalStruct(key string, output any, additionalDefaults []Un
 	finalSettings.Merge(".", environmentKeySettings)
 	finalSettings.Merge(".", environmentValueSettings)
 
-	c.settings.Set(key, finalSettings)
+	if root {
+		c.settings.Merge(".", finalSettings)
+	} else {
+		c.settings.Set(key, finalSettings)
+	}
 
 	if err = ms.Write(finalSettings); err != nil {
 		return fmt.Errorf("error unmarshalling key: %s: %w", key, err)

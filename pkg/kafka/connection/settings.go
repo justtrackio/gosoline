@@ -21,7 +21,7 @@ type Settings struct {
 
 	// Credentials.
 	Username string `cfg:"username"`
-	Password string `cfg:"password"`
+	Password string `cfg:"password,secret"`
 }
 
 func ParseSettings(config cfg.Config, name string) (*Settings, error) {

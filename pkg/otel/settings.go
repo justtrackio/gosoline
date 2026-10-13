@@ -66,7 +66,7 @@ type ExporterSettings struct {
 	// Timeout bounds a single export attempt.
 	Timeout time.Duration `cfg:"timeout" default:"10s"`
 	// Headers are static headers attached to every export (auth, tenant, ...).
-	Headers map[string]string `cfg:"headers"`
+	Headers map[string]string `cfg:"headers,secret"`
 	// TLS configures transport security when Insecure is false.
 	TLS TLSSettings `cfg:"tls"`
 	// Retry configures the exporter's built-in retry behavior.

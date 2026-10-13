@@ -33,12 +33,6 @@ much more.
 
 Read our [documentation](https://gosoline-project.github.io/docs/) to learn how to use gosoline.
 
-## Configuration logs
-
-`application.WithConfigDebug` redacts values whose flattened configuration keys contain `password`, `secret`, `token`, `key`, `dsn`, or `credential`. Matching is case-insensitive and includes nested settings and list entries.
-
-Redaction changes only the log output. Applications still receive the original configuration values. The configuration fingerprint uses the redacted representation, so a change to a secret value alone does not change the logged fingerprint.
-
 ## Quickstart
 
 Every application consists of at least a main.go and config.dist.yml file.

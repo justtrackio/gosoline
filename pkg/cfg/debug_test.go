@@ -14,105 +14,110 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDebugConfigMasksSensitiveValues(t *testing.T) {
-	for _, keyword := range []string{"PaSsWoRd", "SeCrEt", "ToKeN", "KeY", "DsN", "CrEdEnTiAl"} {
-		t.Run(keyword, func(t *testing.T) {
-			key := "prefix" + keyword + "suffix"
-			secret := "synthetic-private-" + keyword
-			settings := map[string]any{
-				key:                secret,
-				"nested":           map[string]any{key: secret},
-				"parent" + keyword: map[string]any{"value": secret},
-				"service":          "payment-service",
-				"port":             8080,
-			}
-			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), settings)
-
-			output, messages := captureDebugConfig(t, config)
-
-			require.NotContains(t, output, secret)
-			require.Contains(t, output, "cfg "+key+"=")
-			require.Contains(t, output, "cfg nested."+key+"=")
-			require.Contains(t, output, "cfg parent"+keyword+".value=")
-			require.Contains(t, messages, "cfg service=payment-service")
-			require.Contains(t, messages, "cfg port=8080")
-
-			for _, path := range []string{key, "nested." + key, "parent" + keyword + ".value"} {
-				value, err := config.GetString(path)
-				require.NoError(t, err)
-				require.Equal(t, secret, value)
-			}
-		})
-	}
+type debugCredentials struct {
+	Opaque      string `cfg:"opaque,secret"`
+	AccessKeyID string `cfg:"access_key_id"`
 }
 
-func TestDebugConfigMasksEveryListPosition(t *testing.T) {
-	clients := make([]any, 12)
-	keys := make([]any, len(clients))
-	for i := range clients {
-		clients[i] = map[string]any{
-			"auth": map[string]any{"accessToKeN": fmt.Sprintf("synthetic-client-private-%d", i)},
-			"name": fmt.Sprintf("visible-client-%d", i),
-		}
-		keys[i] = fmt.Sprintf("synthetic-ring-private-%d", i)
-	}
-	settings := map[string]any{"clients": clients, "KeYRing": keys}
-	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), settings)
-
+func TestDebugConfigUsesOnlySecretAnnotations(t *testing.T) {
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
+	require.NoError(t, config.Option(cfg.WithConfigSetting("provider", &debugCredentials{
+		Opaque: "synthetic-private", AccessKeyID: "public-key",
+	}), cfg.WithConfigSetting("credentials_cache.expiry_window", "visible-cache")))
 	output, messages := captureDebugConfig(t, config)
-
-	for i := range clients {
-		require.NotContains(t, output, fmt.Sprintf("synthetic-client-private-%d", i))
-		require.NotContains(t, output, fmt.Sprintf("synthetic-ring-private-%d", i))
-		require.Contains(t, output, fmt.Sprintf("cfg clients.%d.auth.accessToKeN=", i))
-		require.Contains(t, messages, fmt.Sprintf("cfg clients.%d.name=visible-client-%d", i, i))
-		require.Contains(t, output, fmt.Sprintf("cfg KeYRing.%d=", i))
-	}
-	storedClients, err := config.GetMsiSlice("clients")
+	require.NotContains(t, output, "synthetic-private")
+	require.Contains(t, messages, "cfg provider.opaque=[REDACTED]")
+	require.Contains(t, messages, "cfg provider.access_key_id=public-key")
+	require.Contains(t, messages, "cfg credentials_cache.expiry_window=visible-cache")
+	require.True(t, config.IsSecret("provider.opaque"))
+	require.False(t, config.IsSecret("provider.access_key_id"))
+	require.False(t, config.IsSecret("credentials_cache.expiry_window"))
+	value, err := config.GetString("provider.opaque")
 	require.NoError(t, err)
-	require.Len(t, storedClients, len(clients))
-	for i, client := range storedClients {
-		require.Equal(t, map[string]any{
-			"auth": map[string]any{"accessToKeN": fmt.Sprintf("synthetic-client-private-%d", i)},
-			"name": fmt.Sprintf("visible-client-%d", i),
-		}, client)
-	}
-	storedKeys, err := config.GetStringSlice("KeYRing")
-	require.NoError(t, err)
-	for i := range storedKeys {
-		require.Equal(t, fmt.Sprintf("synthetic-ring-private-%d", i), storedKeys[i])
-	}
-	require.Len(t, storedKeys, len(keys))
+	require.Equal(t, "synthetic-private", value)
+	var decoded debugCredentials
+	require.NoError(t, config.UnmarshalKey("provider", &decoded))
+	require.Equal(t, "synthetic-private", decoded.Opaque)
 }
 
-func TestDebugConfigFingerprintUsesRedactedValues(t *testing.T) {
-	for _, keyword := range []string{"PaSsWoRd", "SeCrEt", "ToKeN", "KeY", "DsN", "CrEdEnTiAl"} {
-		t.Run(keyword, func(t *testing.T) {
-			fingerprint := func(secret, service string) string {
-				config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
-					"clients": []any{
-						map[string]any{keyword: secret},
-						map[string]any{keyword: secret},
-						map[string]any{keyword: secret},
-					},
-					"service": service,
-				})
-				_, messages := captureDebugConfig(t, config)
-				for _, message := range messages {
-					if strings.HasPrefix(message, "cfg fingerprint: ") {
-						return message
-					}
-				}
-				t.Fatal("missing config fingerprint")
-
-				return ""
-			}
-
-			original := fingerprint("synthetic-private-before", "payment-service")
-			require.Equal(t, original, fingerprint("synthetic-private-after", "payment-service"))
-			require.NotEqual(t, original, fingerprint("synthetic-private-before", "changed-service"))
-		})
+func TestDebugConfigTypedDynamicContainers(t *testing.T) {
+	type namedClients map[string]debugCredentials
+	clients := namedClients{"first": {Opaque: "synthetic-first", AccessKeyID: "public-first"}}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
+	var schema namedClients
+	// Empty typed containers establish the schema for future dynamic entries.
+	require.NoError(t, config.Option(cfg.WithConfigSetting("clients", schema)))
+	clients["later.with.dot"] = debugCredentials{Opaque: "synthetic-later", AccessKeyID: "public-later"}
+	require.NoError(t, config.Option(cfg.WithConfigSetting("clients", clients)))
+	list := make([]debugCredentials, 12)
+	for i := range list {
+		list[i] = debugCredentials{Opaque: fmt.Sprintf("synthetic-%d", i), AccessKeyID: fmt.Sprintf("public-%d", i)}
 	}
+	require.NoError(t, config.Option(cfg.WithConfigSetting("list", list)))
+	output, messages := captureDebugConfig(t, config)
+	require.NotContains(t, output, "synthetic-")
+	require.Contains(t, output, "public-later")
+	for i := range list {
+		require.Contains(t, messages, fmt.Sprintf("cfg list.%d.opaque=[REDACTED]", i))
+		require.Contains(t, messages, fmt.Sprintf("cfg list.%d.access_key_id=public-%d", i, i))
+		require.True(t, config.IsSecret(fmt.Sprintf("list[%d].opaque", i)))
+	}
+	require.Equal(t, "synthetic-later", clients["later.with.dot"].Opaque)
+	require.Equal(t, "synthetic-11", list[11].Opaque)
+}
+
+func TestDebugConfigMasksWholeContainerAndFingerprint(t *testing.T) {
+	type settings struct {
+		Private map[string]string `cfg:"opaque,secret"`
+		Public  string            `cfg:"service"`
+	}
+	fingerprint := func(secret, public string) string {
+		config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
+		require.NoError(t, config.Option(cfg.WithConfigSetting("provider", &settings{
+			Private: map[string]string{"synthetic-private-map-key": secret}, Public: public,
+		})))
+		output, messages := captureDebugConfig(t, config)
+		require.NotContains(t, output, secret)
+		require.NotContains(t, output, "synthetic-private-map-key")
+		require.Contains(t, messages, "cfg provider.opaque=[REDACTED]")
+		require.True(t, config.IsSecret("provider.opaque.anything"))
+		for _, message := range messages {
+			if strings.HasPrefix(message, "cfg fingerprint: ") {
+				return message
+			}
+		}
+		t.Fatal("missing fingerprint")
+
+		return ""
+	}
+	original := fingerprint("synthetic-before", "public")
+	require.Equal(t, original, fingerprint("synthetic-after", "public"))
+	require.NotEqual(t, original, fingerprint("synthetic-before", "changed-public"))
+}
+
+func TestDebugConfigDefaultsSourceAndEnvironmentAnnotations(t *testing.T) {
+	type settings struct {
+		Credentials   debugCredentials `cfg:"credentials"`
+		DefaultSecret string           `cfg:"default_opaque,secret" default:"synthetic-default"`
+	}
+	env := cfg.NewMemoryEnvProvider()
+	require.NoError(t, env.SetEnv("PROVIDER_CREDENTIALS_OPAQUE", "synthetic-env"))
+	config := cfg.NewWithInterfaces(env, map[string]any{
+		"shared": map[string]any{"opaque": "synthetic-source", "access_key_id": "source-public"},
+	})
+	require.NoError(t, config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer)))
+	var decoded settings
+	require.NoError(t, config.UnmarshalKey("provider", &decoded, cfg.UnmarshalWithDefaultsFromKey("shared", "credentials")))
+	require.Equal(t, "synthetic-env", decoded.Credentials.Opaque)
+	require.True(t, config.IsSecret("shared.opaque"))
+	require.False(t, config.IsSecret("shared.access_key_id"))
+	output, messages := captureDebugConfig(t, config)
+	require.NotContains(t, output, "synthetic-")
+	require.Contains(t, messages, "cfg shared.access_key_id=source-public")
+	require.Contains(t, messages, "cfg provider.default_opaque=[REDACTED]")
+	outputOnly := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider())
+	require.NoError(t, outputOnly.UnmarshalDefaults(&decoded))
+	require.False(t, outputOnly.IsSecret("credentials.opaque"))
 }
 
 func captureDebugConfig(t *testing.T, config cfg.Config) (outputText string, messages []string) {

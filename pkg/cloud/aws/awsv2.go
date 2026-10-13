@@ -28,8 +28,8 @@ type ClientSettingsAware interface {
 
 type Credentials struct {
 	AccessKeyID     string `cfg:"access_key_id"`
-	SecretAccessKey string `cfg:"secret_access_key"`
-	SessionToken    string `cfg:"session_token"`
+	SecretAccessKey string `cfg:"secret_access_key,secret"`
+	SessionToken    string `cfg:"session_token,secret"`
 }
 
 type CredentialsCacheOptions struct {
