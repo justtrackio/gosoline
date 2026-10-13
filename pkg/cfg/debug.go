@@ -11,6 +11,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/funk"
 )
 
+// DebugConfig logs flattened settings and their fingerprint with sensitive values redacted.
+// Redaction does not change the underlying configuration.
 func DebugConfig(ctx context.Context, config Config, logger Logger) error {
 	settings := config.AllSettings()
 	flattened, err := flatten.Flatten(settings, "", flatten.DotStyle)
@@ -23,7 +25,12 @@ func DebugConfig(ctx context.Context, config Config, logger Logger) error {
 	sort.Strings(keys)
 
 	for i, key := range keys {
-		hashValues[i] = fmt.Sprintf("%v=%v", key, flattened[key])
+		value := flattened[key]
+		if isSensitiveConfigKey(key) {
+			value = "[REDACTED]"
+		}
+
+		hashValues[i] = fmt.Sprintf("%v=%v", key, value)
 		logger.Info(ctx, "cfg %s", hashValues[i])
 	}
 
@@ -33,4 +40,16 @@ func DebugConfig(ctx context.Context, config Config, logger Logger) error {
 	logger.Info(ctx, "cfg fingerprint: %x", hashBytes)
 
 	return nil
+}
+
+func isSensitiveConfigKey(key string) bool {
+	for _, needle := range [...]string{"password", "secret", "token", "key", "dsn", "credential"} {
+		for i := 0; i+len(needle) <= len(key); i++ {
+			if strings.EqualFold(key[i:i+len(needle)], needle) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
