@@ -167,23 +167,13 @@ func (c *config) defaultsContext(output any) Config {
 // Metadata must not change default loading. An absent destination field has no
 // annotations to transfer; an unresolved interface is rejected only by logging.
 func (c *defaultsConfig) registerSource(source, target string) {
-	typ, value, secret := c.typ, c.value, false
-	for _, name := range mapx.SplitUnescapedDotN(strings.Trim(target, "."), -1) {
-		if name == "" {
-			continue
+	typ, value, secret, found := projectionDestination(c.typ, c.value, loggingSelectorPath(target))
+	if !found {
+		if typ != nil && typ.Kind() == reflect.Interface {
+			c.unsupportedSource(source, target, typ)
 		}
-		var found bool
-		typ, value, secret, found = projectionTarget(typ, value, name)
-		if !found {
-			if typ != nil && typ.Kind() == reflect.Interface {
-				c.unsupportedSource(source, target, typ)
-			}
 
-			return
-		}
-		if secret {
-			break
-		}
+		return
 	}
 	if !secret {
 		typ, value = projectionModel(typ, value)
@@ -715,12 +705,8 @@ func loggingIndirect(value reflect.Value, seen map[uintptr]bool) reflect.Value {
 
 func loggingIndexes(value reflect.Value, indexes string, seen map[uintptr]bool) reflect.Value {
 	for indexes != "" {
-		end := strings.IndexByte(indexes, ']')
-		if indexes[0] != '[' || end < 0 {
-			return reflect.Value{}
-		}
-		index, err := strconv.Atoi(indexes[1:end])
-		if err != nil || index < 0 {
+		index, remaining, ok := loggingIndex(indexes)
+		if !ok {
 			return reflect.Value{}
 		}
 		value = loggingIndirect(value, seen)
@@ -728,10 +714,23 @@ func loggingIndexes(value reflect.Value, indexes string, seen map[uintptr]bool) 
 			return reflect.Value{}
 		}
 		value = value.Index(index)
-		indexes = indexes[end+1:]
+		indexes = remaining
 	}
 
 	return value
+}
+
+func loggingIndex(indexes string) (index int, remaining string, ok bool) {
+	end := strings.IndexByte(indexes, ']')
+	if indexes == "" || indexes[0] != '[' || end < 0 {
+		return 0, "", false
+	}
+	index, err := strconv.Atoi(indexes[1:end])
+	if err != nil || index < 0 {
+		return 0, "", false
+	}
+
+	return index, indexes[end+1:], true
 }
 
 func projectionModel(typ reflect.Type, value reflect.Value) (reflect.Type, reflect.Value) {
@@ -748,6 +747,95 @@ func projectionModel(typ reflect.Type, value reflect.Value) (reflect.Type, refle
 	}
 
 	return typ, value
+}
+
+// Resolve only the selected default destination, using current concrete values
+// where present and declared collection element types before defaults add them.
+func projectionDestination(typ reflect.Type, value reflect.Value, path string) (reflect.Type, reflect.Value, bool, bool) {
+	typ, value = projectionModel(typ, value)
+	if typ == nil {
+		return nil, reflect.Value{}, false, false
+	}
+	if path == "" {
+		return typ, value, false, true
+	}
+	switch typ.Kind() {
+	case reflect.Interface:
+		return typ, reflect.Value{}, false, false
+	case reflect.Struct:
+		return projectionStructDestination(typ, value, path)
+	case reflect.Map:
+		return projectionMapDestination(typ, value, path)
+	case reflect.Array, reflect.Slice:
+		return projectionIndexedDestination(typ, value, path)
+	default:
+		return nil, reflect.Value{}, false, false
+	}
+}
+
+func projectionStructDestination(typ reflect.Type, value reflect.Value, path string) (reflect.Type, reflect.Value, bool, bool) {
+	for i := range typ.NumField() {
+		field := typ.Field(i)
+		if field.PkgPath != "" {
+			continue
+		}
+		child := reflect.Value{}
+		if value.IsValid() {
+			child = value.Field(i)
+		}
+		if field.Anonymous {
+			if childType, childValue, secret, found := projectionDestination(field.Type, child, path); found {
+				return childType, childValue, secret, true
+			}
+
+			continue
+		}
+		tag, ok := mapx.ReadStructTag(field.Tag, "cfg")
+		if !ok {
+			continue
+		}
+		fieldPath := loggingSelectorPath(tag.Name)
+		if path != fieldPath && !strings.HasPrefix(path, fieldPath+".") && !strings.HasPrefix(path, fieldPath+"[") {
+			continue
+		}
+		if tag.Secret {
+			return field.Type, child, true, true
+		}
+
+		return projectionDestination(field.Type, child, strings.TrimPrefix(strings.TrimPrefix(path, fieldPath), "."))
+	}
+
+	return nil, reflect.Value{}, false, false
+}
+
+func projectionMapDestination(typ reflect.Type, value reflect.Value, path string) (reflect.Type, reflect.Value, bool, bool) {
+	if typ.Key().Kind() != reflect.String {
+		return nil, reflect.Value{}, false, false
+	}
+	segments := mapx.SplitUnescapedDotN(path, 2)
+	name, remaining := loggingPathSegment(segments[0])
+	if len(segments) > 1 {
+		remaining = debugJoin(remaining, segments[1])
+	}
+	child := reflect.Value{}
+	if value.IsValid() {
+		child = loggingMapValue(value, name)
+	}
+
+	return projectionDestination(typ.Elem(), child, remaining)
+}
+
+func projectionIndexedDestination(typ reflect.Type, value reflect.Value, path string) (reflect.Type, reflect.Value, bool, bool) {
+	index, remaining, ok := loggingIndex(path)
+	if !ok || (typ.Kind() == reflect.Array && index >= typ.Len()) {
+		return nil, reflect.Value{}, false, false
+	}
+	child := reflect.Value{}
+	if value.IsValid() && index < value.Len() {
+		child = value.Index(index)
+	}
+
+	return projectionDestination(typ.Elem(), child, strings.TrimPrefix(remaining, "."))
 }
 
 func projectionTarget(typ reflect.Type, value reflect.Value, name string) (reflect.Type, reflect.Value, bool, bool) {

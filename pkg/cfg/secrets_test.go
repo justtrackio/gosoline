@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	_ "github.com/justtrackio/gosoline/pkg/cloud/aws"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	_ "github.com/justtrackio/gosoline/pkg/currency"
 	_ "github.com/justtrackio/gosoline/pkg/db"
 	_ "github.com/justtrackio/gosoline/pkg/httpserver/auth"
@@ -980,4 +980,113 @@ func normalizedSelectorDebugFingerprint(t *testing.T, key, selector, display str
 	require.Equal(t, publicCredentials{Opaque: "visible-replaced-source-model"}, native[key])
 
 	return debugConfigFingerprint(t, messages)
+}
+
+func TestDebugConfigDefaultsResolveCollectionDestinations(t *testing.T) {
+	type sliceSettings struct {
+		Rows []gosoAws.Credentials `cfg:"rows"`
+	}
+	type mapSettings struct {
+		Clients map[string]gosoAws.Credentials `cfg:"clients"`
+	}
+	type groupedSettings struct {
+		Clients map[string]gosoAws.Credentials `cfg:"clients.group"`
+	}
+	type indexedSettings struct {
+		First gosoAws.Credentials `cfg:"rows[0]"`
+	}
+	type interfaceSettings struct {
+		Clients map[string]any `cfg:"clients"`
+	}
+	for _, entry := range []struct {
+		name      string
+		target    string
+		display   string
+		newOutput func() any
+	}{
+		{name: "empty_slice", target: "rows[0]", display: "rows.0", newOutput: func() any { return &sliceSettings{} }},
+		{name: "empty_named_map", target: "clients.default", display: "clients.default", newOutput: func() any { return &mapSettings{} }},
+		{name: "escaped_named_map", target: `clients.tenant\.one`, display: `clients.tenant\.one`, newOutput: func() any { return &mapSettings{} }},
+		{name: "dotted_field", target: "clients.group.default", display: "clients.group.default", newOutput: func() any { return &groupedSettings{} }},
+		{name: "indexed_field", target: "rows[0]", display: "rows.0", newOutput: func() any { return &indexedSettings{} }},
+		{name: "present_interface_pointer", target: "clients.default", display: "clients.default", newOutput: func() any {
+			return &interfaceSettings{Clients: map[string]any{"default": &gosoAws.Credentials{}}}
+		}},
+	} {
+		t.Run(entry.name, func(t *testing.T) {
+			fingerprint := func(private, public string) string {
+				return defaultCollectionDebugFingerprint(t, entry.newOutput(), entry.target, entry.display, private, public)
+			}
+			baseline := fingerprint("synthetic-collection-default-before", "visible-collection-default")
+			require.Equal(t, baseline, fingerprint("synthetic-collection-default-after", "visible-collection-default"))
+			require.NotEqual(t, baseline, fingerprint("synthetic-collection-default-before", "visible-collection-default-changed"))
+		})
+	}
+}
+
+func defaultCollectionDebugFingerprint(t *testing.T, output any, target, display, private, public string) string {
+	t.Helper()
+	shared := map[string]any{"secret_access_key": private, "session_token": private, "access_key_id": public}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{"shared": shared})
+	require.NoError(t, config.UnmarshalKey("provider", output, cfg.UnmarshalWithDefaultsFromKey("shared", target)))
+	destination := config.AllSettings()["provider"]
+	logged, messages := captureDebugConfig(t, config)
+	require.NotContains(t, logged, private)
+	for _, prefix := range []string{"shared", "provider." + display} {
+		require.Contains(t, messages, "cfg "+prefix+".secret_access_key=[REDACTED]")
+		require.Contains(t, messages, "cfg "+prefix+".session_token=[REDACTED]")
+		require.Contains(t, messages, "cfg "+prefix+".access_key_id="+public)
+	}
+	require.Equal(t, shared, config.AllSettings()["shared"])
+	require.Equal(t, destination, config.AllSettings()["provider"])
+	for _, path := range []string{"shared.secret_access_key", "provider." + target + ".secret_access_key"} {
+		stored, err := config.GetString(path)
+		require.NoError(t, err)
+		require.Equal(t, private, stored)
+	}
+
+	return debugConfigFingerprint(t, messages)
+}
+
+func TestDebugConfigDefaultsCollectionSecretAncestorCollapsesSource(t *testing.T) {
+	type settings struct {
+		Clients map[string]gosoAws.Credentials `cfg:"clients,secret"`
+		Public  string                         `cfg:"public"`
+	}
+	shared := map[string]any{
+		"secret_access_key": "synthetic-secret-ancestor",
+		"access_key_id":     "synthetic-secret-container-key",
+	}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
+		"shared":   shared,
+		"provider": map[string]any{"public": "visible-secret-ancestor-sibling"},
+	})
+	var output settings
+	require.NoError(t, config.UnmarshalKey("provider", &output, cfg.UnmarshalWithDefaultsFromKey("shared", "clients.default")))
+	logged, messages := captureDebugConfig(t, config)
+	require.NotContains(t, logged, "synthetic-secret")
+	require.Contains(t, messages, "cfg shared=[REDACTED]")
+	require.Contains(t, messages, "cfg provider.clients=[REDACTED]")
+	require.Contains(t, messages, "cfg provider.public=visible-secret-ancestor-sibling")
+	require.Equal(t, "synthetic-secret-ancestor", output.Clients["default"].SecretAccessKey)
+	require.Equal(t, shared, config.AllSettings()["shared"])
+}
+
+func TestDebugConfigDefaultsUnresolvedCollectionInterfaceIsLoggingOnly(t *testing.T) {
+	type settings struct {
+		Clients map[string]any `cfg:"clients"`
+	}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
+		"shared": map[string]any{"secret_access_key": "synthetic-unresolved-collection"},
+	})
+	var output settings
+	require.NoError(t, config.UnmarshalKey("provider", &output, cfg.UnmarshalWithDefaultsFromKey("shared", "clients.default")))
+	logger := &debugCountingLogger{}
+	err := cfg.DebugConfig(t.Context(), config, logger)
+	require.ErrorContains(t, err, "clients.default")
+	require.NotContains(t, err.Error(), "synthetic-unresolved-collection")
+	require.Empty(t, logger.messages)
+	stored, err := config.GetString("provider.clients.default.secret_access_key")
+	require.NoError(t, err)
+	require.Equal(t, "synthetic-unresolved-collection", stored)
 }
