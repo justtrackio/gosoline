@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"reflect"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -23,14 +22,6 @@ const (
 type basicAuthAuthenticator struct {
 	logger log.Logger
 	users  map[string]string
-}
-
-type basicAuthSettings struct {
-	Users []string `cfg:"api_auth_basic_users,secret"`
-}
-
-func init() {
-	cfg.RegisterConfigDebugType(".", reflect.TypeFor[basicAuthSettings]())
 }
 
 func NewBasicAuthHandler(config cfg.Config, logger log.Logger) (gin.HandlerFunc, error) {

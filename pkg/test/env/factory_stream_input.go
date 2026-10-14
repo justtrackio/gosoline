@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	registerComponentFactory(componentStreamInput, new(streamInputFactory))
+	componentFactories[componentStreamInput] = new(streamInputFactory)
 }
 
 const componentStreamInput = "streamInput"

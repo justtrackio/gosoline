@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	registerComponentFactory(componentOtel, &otelFactory{})
+	componentFactories[componentOtel] = &otelFactory{}
 }
 
 const componentOtel = "otel"

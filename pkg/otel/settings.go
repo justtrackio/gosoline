@@ -7,7 +7,6 @@ package otel
 import (
 	"fmt"
 	"net"
-	"reflect"
 	"strconv"
 	"time"
 
@@ -27,10 +26,6 @@ const (
 type Settings struct {
 	Resource ResourceSettings `cfg:"resource"`
 	Exporter ExporterSettings `cfg:"exporter"`
-}
-
-func init() {
-	cfg.RegisterConfigDebugType(ConfigKey, reflect.TypeFor[Settings]())
 }
 
 // ResourceSettings configures the OTEL resource attributes derived from the app identity.
@@ -71,7 +66,7 @@ type ExporterSettings struct {
 	// Timeout bounds a single export attempt.
 	Timeout time.Duration `cfg:"timeout" default:"10s"`
 	// Headers are static headers attached to every export (auth, tenant, ...).
-	Headers map[string]string `cfg:"headers,secret"`
+	Headers map[string]string `cfg:"headers"`
 	// TLS configures transport security when Insecure is false.
 	TLS TLSSettings `cfg:"tls"`
 	// Retry configures the exporter's built-in retry behavior.

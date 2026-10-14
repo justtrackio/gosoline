@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -23,8 +22,9 @@ const (
 
 type LookupEnv func(key string) (string, bool)
 
-// Config exposes original configuration values. Secret annotations affect only
-// DebugConfig logging, not getters, defaults, storage or decoded outputs.
+// Config exposes original configuration values. DebugConfig heuristically masks
+// sensitive keys and high-entropy values in logs and fingerprints without opt-in;
+// getters, defaults, storage and decoded outputs retain their original values.
 //
 //go:generate go run github.com/vektra/mockery/v2 --name Config
 type Config interface {
@@ -61,8 +61,6 @@ type config struct {
 	settings       *mapx.MapX
 	envKeyPrefix   string
 	envKeyReplacer *strings.Replacer
-	secretMu       sync.RWMutex
-	logProjections []logProjection
 }
 
 var (
@@ -82,11 +80,6 @@ func NewWithInterfaces(envProvider EnvProvider, msis ...map[string]any) GosoConf
 		sanitizers:  make([]Sanitizer, 0),
 	}
 
-	// The first initial map preserves literal keys rather than Merge's selectors.
-	// Later maps are not stored, so their tags must not affect debug output.
-	if len(msis) > 0 {
-		cfg.registerSecrets(".", &msis[0], false)
-	}
 	cfg.settings = mapx.NewMapX(msis...)
 
 	return cfg
@@ -334,12 +327,8 @@ func (c *config) UnmarshalDefaults(output any, additionalDefaults ...UnmarshalDe
 	finalSettings.Merge(".", zeroSettings)
 	finalSettings.Merge(".", defaults)
 
-	defaultsConfig := Config(c)
-	if len(additionalDefaults) > 0 {
-		defaultsConfig = c.defaultsContext(output)
-	}
 	for _, def := range additionalDefaults {
-		if err := def(defaultsConfig, finalSettings); err != nil {
+		if err := def(c, finalSettings); err != nil {
 			return fmt.Errorf("can not apply additional defaults: %w", err)
 		}
 	}
@@ -352,7 +341,6 @@ func (c *config) UnmarshalDefaults(output any, additionalDefaults ...UnmarshalDe
 }
 
 func (c *config) UnmarshalKey(key string, output any, defaults ...UnmarshalDefaults) error {
-	c.registerSecrets(key, output, true)
 	if refl.IsPointerToStruct(output) {
 		if err := c.unmarshalStruct(key, output, defaults); err != nil {
 			return fmt.Errorf("can not unmarshal config struct with key %s: %w", key, err)
@@ -505,7 +493,6 @@ func (c *config) isSet(key string) bool {
 }
 
 func (c *config) merge(prefix string, setting any, options ...MergeOption) error {
-	c.registerSecrets(prefix, setting, false)
 	if msi, ok := setting.(map[string]any); ok {
 		return c.mergeMsi(prefix, msi, options...)
 	}
@@ -753,12 +740,8 @@ func (c *config) unmarshalStruct(key string, output any, additionalDefaults []Un
 	finalSettings.Merge(".", zeroSettings)
 	finalSettings.Merge(".", defaults)
 
-	defaultsConfig := Config(c)
-	if len(additionalDefaults) > 0 {
-		defaultsConfig = c.defaultsContext(output)
-	}
 	for _, def := range additionalDefaults {
-		if err := def(defaultsConfig, finalSettings); err != nil {
+		if err := def(c, finalSettings); err != nil {
 			return fmt.Errorf("can not apply additional defaults: %w", err)
 		}
 	}

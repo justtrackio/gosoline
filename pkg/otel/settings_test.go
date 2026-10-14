@@ -1,16 +1,10 @@
 package otel_test
 
 import (
-	"bytes"
 	"testing"
-	"time"
 
-	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/clock"
-	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/otel"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestExporterSettings_Address(t *testing.T) {
@@ -56,38 +50,4 @@ func TestExporterSettings_SignalPaths(t *testing.T) {
 		assert.Equal(t, "", s.MetricsPath())
 		assert.Equal(t, "", s.LogsPath())
 	})
-}
-
-func TestExporterHeadersArePrivateInConfigDebug(t *testing.T) {
-	headers := map[string]string{
-		"Authorization": "synthetic-exporter-token",
-		"X-Tenant":      "synthetic-tenant-header",
-	}
-	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{
-		"otel": map[string]any{
-			"exporter": map[string]any{
-				"headers": headers,
-				"host":    "visible-collector",
-				"tls": map[string]any{
-					"key_file": "/visible/client-key.pem",
-				},
-			},
-		},
-	})
-	settings, err := otel.ReadSettings(config)
-	require.NoError(t, err)
-	require.Equal(t, headers, settings.Exporter.Headers)
-
-	var output bytes.Buffer
-	handler := log.NewHandlerIoWriter(config, log.PriorityInfo, log.FormatterJson, "main", time.RFC3339, &output)
-	logger := log.NewLoggerWithInterfaces(clock.NewFakeClock(), []log.Handler{handler})
-	require.NoError(t, cfg.DebugConfig(t.Context(), config, logger))
-	require.NotContains(t, output.String(), "synthetic-exporter-token")
-	require.NotContains(t, output.String(), "synthetic-tenant-header")
-	require.Contains(t, output.String(), "visible-collector")
-	require.Contains(t, output.String(), "/visible/client-key.pem")
-
-	stored, err := config.GetStringMapString("otel.exporter.headers")
-	require.NoError(t, err)
-	require.Equal(t, headers, stored)
 }

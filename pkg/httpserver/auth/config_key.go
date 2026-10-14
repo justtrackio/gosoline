@@ -4,7 +4,6 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"net/http"
-	"reflect"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -24,14 +23,6 @@ type configKeyAuthenticator struct {
 	logger   log.Logger
 	keys     []string
 	provider ApiKeyProvider
-}
-
-type configKeySettings struct {
-	Keys []string `cfg:"api_auth_keys,secret"`
-}
-
-func init() {
-	cfg.RegisterConfigDebugType(".", reflect.TypeFor[configKeySettings]())
 }
 
 type ApiKeyProvider func(ginCtx *gin.Context) string

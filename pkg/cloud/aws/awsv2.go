@@ -3,7 +3,6 @@ package aws
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -29,8 +28,8 @@ type ClientSettingsAware interface {
 
 type Credentials struct {
 	AccessKeyID     string `cfg:"access_key_id"`
-	SecretAccessKey string `cfg:"secret_access_key,secret"`
-	SessionToken    string `cfg:"session_token,secret"`
+	SecretAccessKey string `cfg:"secret_access_key"`
+	SessionToken    string `cfg:"session_token"`
 }
 
 type CredentialsCacheOptions struct {
@@ -51,15 +50,6 @@ type ClientSettings struct {
 	CredentialsCacheOpts CredentialsCacheOptions `cfg:"credentials_cache"`
 	HttpClient           ClientHttpSettings      `cfg:"http_client"`
 	Backoff              exec.BackoffSettings
-}
-
-type clientDebugSettings struct {
-	Clients map[string]ClientSettings `cfg:"clients"`
-}
-
-func init() {
-	cfg.RegisterConfigDebugType("cloud.aws.defaults", reflect.TypeFor[ClientSettings]())
-	cfg.RegisterConfigDebugType("cloud.aws", reflect.TypeFor[map[string]clientDebugSettings]())
 }
 
 func (s *ClientSettings) SetBackoff(backoff exec.BackoffSettings) {

@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	registerComponentFactory(componentKafka, new(kafkaFactory))
+	componentFactories[componentKafka] = new(kafkaFactory)
 }
 
 const componentKafka = "kafka"

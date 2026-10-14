@@ -2,7 +2,6 @@ package env
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -11,16 +10,6 @@ import (
 )
 
 var componentFactories = map[string]componentFactory{}
-
-func init() {
-	cfg.RegisterConfigDebugType("test.defaults.images", reflect.TypeFor[map[string]ContainerImageSettings]())
-}
-
-func registerComponentFactory(typ string, factory componentFactory) {
-	componentFactories[typ] = factory
-	settingsType := reflect.TypeOf(factory.GetSettingsSchema())
-	cfg.RegisterConfigDebugType("test.components."+typ, reflect.MapOf(reflect.TypeFor[string](), settingsType))
-}
 
 type ComponentContainerDescription struct {
 	ContainerConfig  *ContainerConfig

@@ -3,7 +3,6 @@ package connection
 import (
 	"crypto/tls"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -22,11 +21,7 @@ type Settings struct {
 
 	// Credentials.
 	Username string `cfg:"username"`
-	Password string `cfg:"password,secret"`
-}
-
-func init() {
-	cfg.RegisterConfigDebugType("kafka.connection", reflect.TypeFor[map[string]Settings]())
+	Password string `cfg:"password"`
 }
 
 func ParseSettings(config cfg.Config, name string) (*Settings, error) {
