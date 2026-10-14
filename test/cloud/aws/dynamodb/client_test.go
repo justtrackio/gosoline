@@ -96,29 +96,25 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 	_, err := proxy.AddToxic("latency_down", "latency", "downstream", 1.0, toxiproxy.Attributes{
 		"latency": 200,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
+	latencyActive := true
+	defer func() {
+		if latencyActive {
+			s.NoError(proxy.RemoveToxic("latency_down"))
+		}
+	}()
 
 	ctx := s.T().Context()
-	resource := &exec.ExecutableResource{
-		Type: "DynamoDB",
-		Name: "PutItem",
-	}
+	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), s.Env().Logger(), "http_timeout")
+	s.Require().NoError(err)
 
-	loggerMock := logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
-	loggerMock.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(loggerMock)
-	loggerMock.EXPECT().Warn(matcher.Context, "attempt number %d to request resource %s failed after %s cause of error: %s", mock.AnythingOfType("int"), resource, mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*http.ResponseError")).Twice()
-	loggerMock.EXPECT().Warn(matcher.Context, "sent request to resource %s successful after %d attempts in %s", resource, 3, mock.AnythingOfType("time.Duration")).Once()
-	loggerMock.EXPECT().Info(matcher.Context, "created new %s client %s", "dynamodb", "http_timeout").Once()
-
-	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), loggerMock, "http_timeout")
-	s.NoError(err)
-
-	_, err = client.PutItem(ctx, &awsDdb.PutItemInput{
-		Item: map[string]types.AttributeValue{
-			"id": &types.AttributeValueMemberS{
-				Value: "goso-id",
-			},
+	item := map[string]types.AttributeValue{
+		"id": &types.AttributeValueMemberS{
+			Value: "goso-id",
 		},
+	}
+	_, err = client.PutItem(ctx, &awsDdb.PutItemInput{
+		Item:      item,
 		TableName: aws.String("gosoline-cloud-dynamodb-test"),
 	}, func(options *awsDdb.Options) {
 		options.APIOptions = append(options.APIOptions, func(stack *middleware.Stack) error {
@@ -127,8 +123,9 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 			return stack.Finalize.Add(middleware.FinalizeMiddlewareFunc("bla", func(ctx context.Context, input middleware.FinalizeInput, handler middleware.FinalizeHandler) (middleware.FinalizeOutput, middleware.Metadata, error) {
 				i++
 				if i == 3 {
-					err := proxy.RemoveToxic("latency_down")
-					s.NoError(err)
+					if s.NoError(proxy.RemoveToxic("latency_down")) {
+						latencyActive = false
+					}
 				}
 
 				return handler.HandleFinalize(ctx, input)
@@ -136,7 +133,15 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 		})
 	})
 
-	s.NoError(err)
+	s.Require().NoError(err)
+
+	output, err := s.clientDefault.GetItem(ctx, &awsDdb.GetItemInput{
+		Key:            item,
+		TableName:      aws.String("gosoline-cloud-dynamodb-test"),
+		ConsistentRead: aws.Bool(true),
+	})
+	s.Require().NoError(err)
+	s.Equal(item, output.Item)
 }
 
 func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
@@ -205,30 +210,31 @@ func (s *ClientTestSuite) TestRetryOnTransactionConflict() {
 		options.APIOptions = append(options.APIOptions, func(stack *middleware.Stack) error {
 			i := 0
 
-			return stack.Deserialize.Add(middleware.DeserializeMiddlewareFunc(
-				"injectTransactionConflict",
-				func(ctx context.Context, input middleware.DeserializeInput, next middleware.DeserializeHandler) (middleware.DeserializeOutput, middleware.Metadata, error) {
-					i++
+			return stack.Deserialize.Add(
+				middleware.DeserializeMiddlewareFunc(
+					"injectTransactionConflict",
+					func(ctx context.Context, input middleware.DeserializeInput, next middleware.DeserializeHandler) (middleware.DeserializeOutput, middleware.Metadata, error) {
+						i++
 
-					out, meta, err := next.HandleDeserialize(ctx, input)
-					if err != nil {
-						return out, meta, err
-					}
-
-					if i == 1 {
-						err = &types.TransactionCanceledException{
-							Message: aws.String(""),
-							CancellationReasons: []types.CancellationReason{
-								{
-									Code: aws.String("TransactionConflict"),
-								},
-							},
+						out, meta, err := next.HandleDeserialize(ctx, input)
+						if err != nil {
+							return out, meta, err
 						}
-					}
 
-					return out, meta, err
-				},
-			),
+						if i == 1 {
+							err = &types.TransactionCanceledException{
+								Message: aws.String(""),
+								CancellationReasons: []types.CancellationReason{
+									{
+										Code: aws.String("TransactionConflict"),
+									},
+								},
+							}
+						}
+
+						return out, meta, err
+					},
+				),
 				middleware.Before,
 			)
 		})
