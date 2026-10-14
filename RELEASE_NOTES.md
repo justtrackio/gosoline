@@ -1,181 +1,171 @@
-# Release notes: native OpenTelemetry support
+# Release notes: metric v2 emission contract
 
 **Target:** next release
-**Feature branch:** `feat/complete-otel-implementation`
 
-This release adds native OpenTelemetry support across tracing, metrics, and structured logging, together with shared exporter configuration and more reliable application shutdown.
+**Metric schema:** `v2.0`
 
-## Highlights
+This release establishes Gosoline's metric v2 emission contract: canonical namespace and leaf names, instrument kinds, units, and dimensions. Read `metric.schema_version` from the metadata document to identify the contract. There is no overlap period or dual emission; dashboards, alerts, and queries that use the former names or dimensions must be migrated.
 
-### Native OpenTelemetry for all telemetry signals
+## Canonical names and writer output
 
-Gosoline can now export traces, metrics, and logs through OpenTelemetry Protocol (OTLP):
+Metrics are authored once using a canonical namespace and leaf; each writer renders them for its backend. For the HTTP server request-duration histogram:
 
-- **Traces** support the existing `otel_http` exporter plus the new `otel_grpc` and `stdout` exporters.
-- **Metrics** support a new `otel` writer with periodic OTLP export.
-- **Logs** support a new `otel` handler. Structured fields are preserved, and the active trace and span context is attached for trace-to-log correlation.
-- All three signals can share the same OpenTelemetry resource, including service name, service namespace, application identity, and custom attributes.
+| Writer | Exported metric name | Duration unit |
+|---|---|---|
+| CloudWatch | `HttpServerRequestDuration` | milliseconds for this metric, as authored |
+| Prometheus | `gosoline_http_server_request_duration_seconds` | seconds |
+| OTEL | `gosoline.http.server.request.duration` | `s` |
 
-### Shared OTLP exporter configuration
+The Prometheus writer always uses the fixed `gosoline` prefix, not an application-derived prefix. Application identity belongs in scrape-target labels. For framework metrics with canonical namespaces, the OTEL writer prefixes names with `gosoline.`; those names are Gosoline's own, not OpenTelemetry semantic-convention names. Namespace-less custom OTEL metrics are rendered from the leaf without the `gosoline.` prefix.
 
-The new `otel` configuration block is shared by the metric, log, and new gRPC trace exporters. It supports:
+The `http.server.request.duration` histogram uses canonical dimensions `name`, `route`, `request.method`, and `response.status_code`. The `http.client.request.duration` histogram uses `request.method` with `response.status_code` for responses or `error.type` for failures. Status is the full numeric code, not a `1xx`–`5xx` class. `http.server.rejected.requests` carries only `name`, `route`, and `request.method`; it has no `response.status_code`. In particular, route is `route`, not `http.route`. Prometheus converts dotted dimension keys to valid label names, for example `request.method` to `request_method` and `response.status_code` to `response_status_code`.
 
-- OTLP gRPC and HTTP transports
-- Explicit `endpoint` or `host`/`port` configuration, including IPv6-safe endpoint construction
-- Per-signal HTTP paths
-- Static export headers
-- Gzip compression
-- Export timeouts and retry/backoff settings
-- TLS and mutual TLS, including custom CA and client certificates
-- Resource attributes with gosoline identity placeholder expansion
+Most duration observations are authored in milliseconds. `cloud.aws.kinesis.acquire.duration` is authored in seconds. Prometheus and OTEL render durations in seconds; CloudWatch retains the actual authored unit, so its duration values are not universally milliseconds.
 
-Example configuration:
+Framework-authored duration metrics that were Prometheus summaries now use histograms; custom metrics using `KindSummary` remain Prometheus summaries. Use histogram buckets (for example, `histogram_quantile`) for the framework duration metrics. `UnitMillisecondsAverage` and its eight related units resolve to their base unit before rendering, so millisecond histograms do not export UCUM unit `1`.
 
-```yaml
-otel:
-  resource:
-    service_name_pattern: "{app.name}"
-    service_namespace_pattern: "{app.namespace}"
-    attributes:
-      deployment.environment: "{app.env}"
-  exporter:
-    protocol: grpc
-    host: localhost
-    port: 4317
-    insecure: true
-    compression: gzip
-    timeout: 10s
-    retry:
-      enabled: true
+The four Kafka batch-size metrics—`kafka.produce.batch.size`, `kafka.produce.batch.compressed.size`, `kafka.fetch.batch.size`, and `kafka.fetch.batch.compressed.size`—use byte units rather than count units. Kafka consumer metrics already had topic-level dimensions before this release; their v2 names, instrument types, and attributes change. Separately, `kafka.MetricPair` now emits per-topic/partition series only; its former topic-only `KindTotal` point was CloudWatch-visible and is removed. Prometheus and OTEL already filter `KindTotal`. Aggregate retained partition series in CloudWatch for topic-level views.
 
-tracing:
-  provider: otel
-  otel:
-    exporter: otel_grpc
-    propagators: [tracecontext, baggage]
+Use `metric.RegisterHelp(namespace, metricName, help)` to register package-level descriptions; `Kind.WithHelp(...)` overrides a description for one datum. Prometheus and OTEL resolve help from the datum first, then registered help, then a unit-description fallback for unregistered custom metrics. CloudWatch does not export help text.
 
-metric:
-  enabled: true
-  writers: [otel]
-  writer_settings:
-    otel:
-      interval: 15s
+## Writer API and custom metrics
 
-log:
-  handlers:
-    otel:
-      type: otel
-      level: info
-```
-
-The legacy `tracing.otel.exporter: otel_http` path and its `tracing.otel.http.*` settings remain available.
-
-### OpenTelemetry metric behavior
-
-The OTEL metric writer:
-
-- Maps gosoline counters, gauges, histograms, and summaries to the corresponding OTEL instruments.
-- Converts gosoline units to UCUM-compatible OTEL units.
-- Exports dimensions as metric attributes.
-- Honors explicit histogram bucket boundaries.
-- Uses OTEL semantic-convention naming and shared resource attributes.
-- Can run alongside the existing Prometheus writer.
-
-Raw Prometheus and OTEL writers do not aggregate metrics in gosoline; aggregation is still available through writers that support it.
-
-### Lifecycle and shutdown
-
-- Add `application.WithOtelShutdown` to register metric and tracing provider shutdown with the kernel.
-- Shutdown handlers run in registration order, continue after individual handler errors, and receive a bounded live context based on `kernel.killTimeout`.
-- The root logger now closes resource-owning handlers, including the OTEL log provider, and reports close errors.
-- Forced kernel exit remains available when graceful cleanup blocks.
-
-### Examples and verification
-
-The branch adds a runnable `examples/otel` application and OTEL collector configuration, plus OTEL integration coverage for trace, metric, and log export.
-
-## Breaking changes
-
-### `log.GosoLogger` now requires `Close`
-
-`log.GosoLogger` has a new method:
+The metric writer API now takes the canonical namespace explicitly:
 
 ```go
-Close(ctx context.Context) error
+func NewWriter(namespace string, defaults ...*Datum) Writer
+func NewWriterWithInterfaces(clock clock.Clock, channel *metricChannel, namespace string) Writer
 ```
 
-Custom implementations, fakes, and mocks of `log.GosoLogger` must implement `Close`. The logger closes all handlers implementing the new optional `log.ClosingHandler` interface.
+`metric.Datum` also has a `Namespace` field. An empty namespace omits only the canonical namespace from the datum; it does not preserve backend names. Writers still apply their own rendering rules:
 
-### Kernel builders now require `log.GosoLogger`
+| Writer | A custom counter leaf `my.custom.metric` with an empty namespace |
+|---|---|
+| CloudWatch | `MyCustomMetric` |
+| Prometheus | `gosoline_my_custom_metric_total` |
+| OTEL | `my.custom.metric` |
 
-The logger parameter of the following exported functions changed from `log.Logger` to `log.GosoLogger`:
-
-- `kernel.BuildFactory`
-- `kernel.BuildKernel`
-- `kernel.NewFactory`
-
-Callers that pass a value typed only as `log.Logger` must provide a `log.GosoLogger` instead.
-
-### `OtelExporterFactory` returns the exporter interface
-
-`tracing.OtelExporterFactory` and `tracing.NewOtelHttpTracer` now return `sdktrace.SpanExporter` instead of the concrete `*otlptrace.Exporter`. Custom exporter factories must update their return type:
+The Prometheus interface constructor no longer accepts a namespace. Its current signature is:
 
 ```go
-func(ctx context.Context, config cfg.Config, logger log.Logger) (sdktrace.SpanExporter, error)
+func NewPrometheusWriterWithInterfaces(
+    logger log.Logger,
+    registry *prometheus.Registry,
+    metricLimit int64,
+    writeGraceTime time.Duration,
+) Writer
 ```
 
-### Aggregation is rejected for raw writers
+It uses the fixed `gosoline` prefix. Remove the former `metric.writer_settings.prometheus.naming.namespace_pattern` and `namespace_delimiter` settings and update direct constructor calls to the current signature.
 
-Applications that set either of these options to `true` now fail configuration/startup validation:
+The Kafka helper API also changed: `kafka.MetricPair` now takes one `kafka.MetricSpec` instead of positional arguments; its current package signature is `func MetricPair(spec MetricSpec) metric.Data`. `MetricSpec` carries client type/name, namespace, metric name, topic, partition, error type, value, unit, and kind. The former `kafka.DimensionConsumer` and `kafka.DimensionProducer` constants are removed; use `kafka.DimensionClientType` with `kafka.ClientTypeConsumer` or `kafka.ClientTypeProducer`.
 
-```yaml
-metric:
-  writer_settings:
-    prometheus:
-      aggregate: true
-    otel:
-      aggregate: true
-```
+## HTTP metric migrations
 
-Remove those settings or set them to `false`. Use a metric writer that supports gosoline-side aggregation when aggregation is required.
+HTTP client and server request counters, status-class counters, and duration series are consolidated into request-duration histograms. The previous entries below are source-level metric-family identifiers, not literal v1 exporter names; the old exported names depended on the writer and, for some writers, application identity.
 
-### Every gosoline metric is renamed, and the metric schema version is `v2.0`
+| Previous source-level metric family | V2 metric and migration |
+|---|---|
+| HTTP client `HttpClientRequest`, `HttpClientError`, `HttpClientResponseCode1XX` through `HttpClientResponseCode5XX`, and `HttpRequestDuration` | `http.client.request.duration` is a histogram with `request.method`, full `response.status_code`, and `error.type` dimensions as applicable. In Prometheus, use the histogram's `_count` series in place of the request counter; use the full status-code dimension instead of the former status-class families. |
+| HTTP server `HttpRequestCount`, `HttpRequestCountPerRoute`, `HttpStatus1XX` through `HttpStatus5XX`, and `HttpRequestResponseTime` | `http.server.request.duration` is a route/method/full-status histogram. Its Prometheus `_count` replaces the request counters. CloudWatch no longer emits the former server-only `KindTotal` request/duration aggregate; Prometheus and OTEL already filtered `KindTotal`. Aggregate route series in CloudWatch for server-wide views. |
+| HTTP server `HttpRequestsRejected` | `http.server.rejected.requests` carries `name`, `route`, and `request.method` only (no `response.status_code`); CloudWatch no longer emits a server-wide rejection aggregate. |
 
-Gosoline metrics no longer bake identity, units or dimensions into the name. Each metric is authored
-once as a canonical namespace plus a leaf, and every writer renders that one name into its own
-convention:
+The exported `pkg/httpserver` constants `MetricHttpRequestCount`, `MetricHttpRequestCountPerRoute`, `MetricHttpRequestResponseTime`, and `MetricHttpStatus` are removed. The current `MetricHttpRequestsRejected` constant names the leaf `rejected.requests`.
 
-| Writer | Rendering of `http.server` + `request.duration` |
-|--------|--------------------------------------------------|
-| CloudWatch | `HttpServerRequestDuration`, value in milliseconds |
-| Prometheus | `<app>_http_server_request_duration_seconds`, value in seconds |
-| OTEL | `http.server.request.duration`, unit `s` on the instrument |
+A cancelled HTTP client request is recorded in `http.client.request.duration` with `error.type="request_canceled"` before the original cancellation error is returned. Other request failures use `error.type="request_failed"`. Valid HTTP responses, including error status codes such as 500, carry the numeric `response.status_code` dimension.
 
-Dimension keys follow the same rule: they are authored canonically and the Prometheus writer renders
-them into valid label names, so `http.route` is exported as the label `http_route`.
+## Canonical name migrations
 
-`metric.SchemaVersion` is `v2.0`. Read it from the metadata document under `metric.schema_version` to
-decide which names to expect - there is no overlap window and no dual emission, so alarms, dashboards
-and queries keyed on a former name break at this release by design.
+The former names below are canonical/logical migration keys, not exact v1 exporter names; the old writer and application namespace determined rendered series. Re-key consumer queries and dashboards accordingly.
 
-Further consequences of the rename:
+| Former canonical/logical family | V2 canonical metric |
+|---|---|
+| `metric.records` | `metric.log.records` |
+| SQL repository `db.client.operation.duration` | `db.repo.operation.duration` |
+| DynamoDB repository `db.client.operation.duration` | `ddb.operation.duration` |
 
-- **Durations are seconds in Prometheus and OTEL.** CloudWatch keeps milliseconds. Call sites still
-  record milliseconds; the writers scale.
-- **Prometheus summaries became histograms.** Quantiles move from summary quantiles to
-  `histogram_quantile` over buckets.
-- **`UnitMillisecondsAverage` and its eight siblings now resolve to their base unit** before the unit
-  is rendered, so millisecond histograms no longer report UCUM `1`.
-- **The four Kafka byte metrics changed from a count unit to bytes**, which is what they always
-  measured.
-- **`metric.Datum` gained a `Namespace` field** and `metric.NewWriter` gained a leading `namespace`
-  parameter. Application code that writes its own metrics passes `metric.NewWriter("")` to keep its
-  names unchanged.
+## Outcome metrics and writer-specific queries
 
-#### Final canonical inventory (schema `v2.0`)
+Standalone failure or alternative-outcome families now use the metric for the operation, distinguished by dimensions. The left column is a logical family name or source identifier, not an exact old exported name; v1 names varied by writer and application namespace.
 
-This is the complete final framework-authored inventory. It is grouped by canonical namespace; the
-backend writers apply their rendering rules after these names are authored.
+| Earlier family or source identifier | V2 metric | Outcome dimension |
+|---|---|---|
+| `stream.errors` | `stream.consumed.messages` | `error.type` |
+| `kafka.producer.send.errors` | `kafka.producer.sent.messages` | `error.type` |
+| `cloud.aws.kinesis.send.errors` | `cloud.aws.kinesis.sent.messages` | `error.type`, using the reason Kinesis reported |
+| `cloud.aws.kinesis.consume.errors` | `cloud.aws.kinesis.consumed.messages` | `error.type`; see the overlapping total below |
+| `kvstore.hits` | `kvstore.reads` | `hit` (`true` or `false`) |
+| `limit.releases`, `limit.throttles`, `limit.errors` | `limit.takes` | `outcome` (`allowed`, `throttled`, or `error`) and, for failures, `error.type` |
+| `mdlsub.consumed.events`, `mdlsub.skipped.events`, `mdlsub.consume.errors` | `mdlsub.events` | `outcome` (`applied` or `skipped`) and, for failures, `error.type` |
+| `kafka.consumer.consume.errors` | `kafka.consumer.consumed.messages` | `error.type` |
+| `ModelEventNotifySuccess` and `ModelEventNotifyFailure` | `db.repo.model_event.notifications` | The success path uses the internal default marker; failures use `error.type="notify_failed"` |
+
+The notification success and failure families are both consolidated into `db.repo.model_event.notifications`, a `UnitCount` counter. There is no separate success label and no error-only replacement metric.
+
+`metric.DimensionDefault` (`"{{default}}"`) is an internal marker, not a value exported by a writer. Its backend representation is:
+
+| Writer | Default representation | Example success/total selection |
+|---|---|---|
+| Prometheus | Empty label value; `error.type` renders as `error_type` | `error_type=""` |
+| OTEL | The `error.type` attribute is absent | Select points with no `error.type` attribute |
+| CloudWatch | The default dimension is omitted | Select the series without that dimension |
+
+For notification failures, select `error_type="notify_failed"` in Prometheus, the `error.type="notify_failed"` attribute in OTEL, or the CloudWatch series carrying that error dimension. For other outcome metrics, use the same writer-specific representation for their dimensions.
+
+Where outcome categories are exclusive, sum the outcome series to obtain attempts. `stream.consumed.messages` and `cloud.aws.kinesis.consumed.messages` are exceptions: their default series is the all-processed total, while `error.type="processing_failed"` is an overlapping failed-record subset. Do not add or subtract that subset to infer successful records. Error values name the failed action, not a Go error type.
+
+## Stream and Kinesis semantics
+
+Single-message and batch stream consumers share the v2 metrics `stream.process.duration`, `stream.consumed.messages`, and `stream.retry.operations`:
+
+- `stream.process.duration` records one observation per processing invocation, including a batch invocation; it is not one duration observation per message.
+- `stream.consumed.messages` records the all-processed per-invocation message total with the internal default marker: a single-message invocation counts one, and a batch invocation counts its messages. Failed, unacknowledged records emit `error.type="processing_failed"` as an overlapping subset; a non-ignored unknown-model failure is counted once in that subset, with no standalone unknown-model or error metric.
+- `stream.retry.operations` records retry queue operations by attempt, using `operation="get"` and `operation="put"`.
+
+The Kinesis record writer reports each `PutRecords` attempt. `cloud.aws.kinesis.sent.messages` counts successful records on the default series and failed records by the error reason Kinesis returned. `cloud.aws.kinesis.batch.records` is a histogram of records in each attempt; a retried record is counted again in the subsequent attempt, so this is attempt-level work rather than a unique-record total. The failed-record subset and retry behavior remain part of the producer contract. The shard reader now emits its metrics—including `cloud.aws.kinesis.reads`, `cloud.aws.kinesis.consumed.messages`, and `cloud.aws.kinesis.lag`—with stream-and-shard dimensions only. The former stream-only `KindTotal` points for shard-reader metrics were CloudWatch-visible and are removed; Prometheus and OTEL already filter `KindTotal`. Aggregate retained shard series in CloudWatch for stream-level views.
+
+Kinsumer no longer emits `ShardTaskRatio` per stream or the application-wide `ShardTaskRatioMax`. The former ratio was `shardCount / clientCount * 100`; the v2 `cloud.aws.kinesis.shard.count` and `cloud.aws.kinesis.client.count` gauges are raw per-stream counts, each dimensioned by `stream.name`. Derive `shard.count / client.count` per stream (ideal ratio `1`, not `100`), then take the maximum across streams when global scaling needs one value; update thresholds rather than carrying forward the old ×100 scale. These are stream gauges, not calculator output. `cloud.aws.kinesis.lag` remains a per-stream/per-shard cumulative histogram in OTEL, with millisecond observations; CloudWatch continues to report the maximum of current samples.
+
+## Calculator and per-runner removals
+
+The `pkg/metric/calculator` package and `application.WithMetricsCalculatorModule(app)` are removed. Remove these old configuration keys:
+
+- `metric.calculator`
+- `metric.calculator.handlers.stream_messages_per_runner`
+- `metric.calculator.handlers.httpserver_requests_per_runner`
+
+The source-level metrics `PerRunnerStreamMessages`, `PerRunnerHttpServerRequests`, `StreamMessagesAvailable`, and `StreamMessagesSent` are no longer emitted. Replace autoscaling rules that depended on them with application-specific signals. Do not substitute a similarly named configuration key: the removed handlers read the exact keys above.
+
+## Canonical dimension changes
+
+Update queries, dashboards, and alerts to the v2 dimension keys and values:
+
+| Former key | V2 key or value |
+|---|---|
+| `Consumer` (stream) | `consumer.name` |
+| `ProducerDaemon` | `producer.name` |
+| `Scheduler` | `name` |
+| `ModelId` | `model.id` |
+| `model`, `store` (kvstore) | `model.id`, `store.type` |
+| `Operation` (blob) | `operation` |
+| `Operation` (db, ddb) | `operation.name` |
+| `Type` (db connections) | `connection.state` (`used` or `idle`) |
+| `Topic` | `topic.name` |
+| `StreamName` | `stream.name` |
+| Redis list destination | `list.name` |
+| `ShardId`, `Partition` | `partition.id` |
+| `ClientType`, `Client`, `Broker` | `client.type`, `client.name`, `broker.address` |
+| `Method`, `Path`, `ServerName` | `request.method`, `route`, `name` |
+| `full_method` | `service` and `method` |
+| `name`, `prefix` (limit) | `name`, `prefix` |
+| `sampled` | `sampled` |
+| `trace_id` (limit) | Removed; trace IDs are unbounded-cardinality and belong on spans |
+
+The names remain Gosoline's own rather than semantic-convention metric names. `error.type` is used for bounded outcome labels, not arbitrary error strings.
+
+## Source-reviewed metric inventory (`v2.0`)
+
+Source review lists 62 framework-authored canonical metric leaves across 18 namespaces for schema `v2.0`.
 
 | Namespace | Canonical leaves |
 |---|---|
@@ -198,176 +188,18 @@ backend writers apply their rendering rules after these names are authored.
 | `smpl` | `decisions` |
 | `stream` | `consumed.messages`; `process.duration`; `retry.operations`; `produced.messages`; `batch.messages`; `aggregate.messages`; `idle.duration`; `message.count`; `reads`; `writes` |
 
-#### Focused contract update status
+The full metric specification, including units, kinds, descriptions, and dimensions, is in `pkg/metric/SEMCONV.md`.
 
-`metric.SchemaVersion` is **`v2.0`**: this revision is one contract change, published under one
-version, rather than a version increment per edit inside it. There is still no dual emission.
+## Existing example
 
-| Status | Metric or behavior | Consumer action |
-|---|---|---|
-| Unchanged | Every final inventory entry not called out below | Keep using its canonical namespace and leaf. Moving namespace constants into emitting packages changes source ownership, not those emitted names. |
-| Deleted | `autoscaling.per_runner.stream.messages`; `autoscaling.per_runner.http.server.requests` | Remove the per-runner calculator configuration and replace scaling policies with application-specific signals; the calculator and both handlers are no longer present. |
-| Deleted | `stream.available.messages`; `stream.sent.messages` | Their only emitter was the messages-per-runner handler, so nothing has written them since it was removed; drop them from dashboards and alerts. |
-| Renamed | Log records: `metric.records` → `metric.log.records` | Re-key log-volume dashboards and alerts. The leaf now says what is counted, so it cannot be mistaken for the metric records the daemon writes. |
-| Renamed | SQL repository operations: `db.client.operation.duration` → `db.repo.operation.duration` | Re-key SQL repository dashboards, alerts, and queries to `db.repo`. |
-| Renamed | DynamoDB repository operations: `db.client.operation.duration` → `ddb.operation.duration` | Re-key DynamoDB repository dashboards, alerts, and queries to `ddb`. |
-| Deleted and consolidated | `db.repo.model_event.notify.errors` | Use `db.repo.model_event.notifications` for both outcomes; the former error-only metric is not emitted. |
-| Added outcome coverage | A cancelled HTTP client request | `http.client.request.duration` is emitted with `error.type="request_canceled"` before the original cancellation error is returned. |
-| Deleted aggregate series | HTTP server-only, Kafka topic-only, and Kinesis stream-only aggregate data | Query or aggregate the retained detailed series in the backend rather than searching for a framework-emitted `KindTotal` datum. |
-| Instrument type restored | `cloud.aws.kinesis.lag` | OTEL now retains the per-stream-and-shard cumulative histogram maximum; millisecond observations and CloudWatch maximum aggregation of current samples remain unchanged. |
-| Instrument metadata restored | RecordWriter `cloud.aws.kinesis.sent.messages` and `cloud.aws.kinesis.batch.records` | Successful and failed sends use explicit counter/count metadata in the canonical namespace, including failure-only attempts. Batch sizes remain per-attempt histograms, including retries; record counts and retry behavior are unchanged. |
-| Preserved across the restored batch consumer | `stream.process.duration`; `stream.consumed.messages`; `stream.retry.operations` | Single and batch consumers share the V2 names, types and attributes; no legacy consumer metrics are restored. Duration records one observation per processing invocation, batch totals count records, failures count unacknowledged records, and retry operations carry `operation="get"` or `operation="put"`. |
-| Dimension value changed | An unknown model on a stream consumer | Both consumers count a non-ignored model failure once with `error.type="processing_failed"` on `stream.consumed.messages`; no standalone unknown-model or error counter is emitted. |
-| Help text added | Every metric in the inventory above | Each metric is exported with a description of what it counts instead of `unit: <unit>`. Emitting packages register it through `metric.RegisterHelp`; `Kind.WithHelp` still overrides it per datum. |
-| Renamed | **Your own** metrics written through `metric.NewWriter("")`, on CloudWatch | A namespace-less leaf is now PascalCased exactly like a namespaced one, so `my.custom.metric` exports as `MyCustomMetric` and `my-metric-name` as `My-metric-name`. This hits application-authored metrics, not only gosoline's: re-key every CloudWatch dashboard and alarm built on one. See "Metrics authored outside gosoline" below for the Prometheus and OTEL effect. |
-
-#### Failures and outcomes are attributes, not metrics
-
-Twelve metrics were folded into the metric recording the operation, so a failure or an alternative
-outcome is a series on that metric rather than a metric of its own. For metrics with exclusive
-outcomes, attempts are the sum over attribute values; the stream and Kinesis consumed-message totals
-are exceptions whose failure series overlap their all-processed default series.
-
-| Removed | Now query | Attribute that tells them apart |
-|---|---|---|
-| `stream.errors` | `stream.consumed.messages` | `error.type` |
-| `kafka.producer.send.errors` | `kafka.producer.sent.messages` | `error.type` |
-| `cloud.aws.kinesis.send.errors` | `cloud.aws.kinesis.sent.messages` | `error.type`, carrying the reason Kinesis reported |
-| `cloud.aws.kinesis.consume.errors` | `cloud.aws.kinesis.consumed.messages` | `error.type`; `{{default}}` is the all-processed batch total and `processing_failed` is an overlapping per-record subset |
-| `kvstore.hits` | `kvstore.reads` | `hit` (`true` / `false`) |
-| `limit.releases`, `limit.throttles`, `limit.errors` | `limit.takes` | `outcome` (`allowed` / `throttled` / `error`) plus `error.type` |
-| `mdlsub.consumed.events`, `mdlsub.skipped.events`, `mdlsub.consume.errors` | `mdlsub.events` | `outcome` (`applied` / `skipped`) plus `error.type` |
-| `kafka.consumer.consume.errors` | `kafka.consumer.consumed.messages` | `error.type` |
-
-`limit.takes` is now recorded when a take **ends** rather than when it starts, because its outcome is
-not known at the start.
-
-`kafka.consumer.consumed.messages` is topic-level — `client.type`, `client.name`, `topic.name` — matching
-the consumer rewrite on `main`, which processes a poll's records in one batch across partitions and has no
-per-partition breakdown to attribute to. Its failed share carries `error.type="processing_failed"` rather
-than a Go error type, because that pipeline reports a record failure as a boolean and the concrete error is
-not available where the metric is written. The kafka consumer also gained `sleep.duration` (time spent
-honouring a configured consume delay) and lost `wait.duration` in that rewrite.
-
-`cloud.aws.kinesis.consumed.messages` emits its `error.type="{{default}}"` batch total when the batch
-completes, including every processed failure. Each failed record is also emitted immediately with
-`error.type="processing_failed"`; those points overlap the total and must not be added to it or
-subtracted to infer successful records.
-
-Across every folded metric, `error.type` names the **action that failed** — `send_failed`,
-`connect_failed`, `request_failed`, `request_canceled`, `operation_failed`, `notify_failed`,
-`apply_failed`, `processing_failed` — never the Go error type (whose cardinality is unbounded). The
-`{{default}}` value normally identifies success; `stream.consumed.messages` and
-`cloud.aws.kinesis.consumed.messages` instead use it for their all-processed totals, with
-`processing_failed` as an overlapping subset. Do not sum or subtract those series to derive success.
-Re-key any dashboard or alert that filtered on a Go type string such as `*fmt.wrapError`.
-
-The full specification, including every metric's attributes and the semantic-convention metric it
-derives from, is `pkg/metric/SEMCONV.md`.
-
-#### Prometheus writer: exported names no longer carry the application
-
-The Prometheus writer's namespace is now the fixed string `gosoline` rather than a namespace formatted
-from the application identity. `gosoline` names the framework that authored the metric; the application
-belongs in the labels the scrape target is discovered with, so carrying it in the metric name kept one
-query from spanning several applications.
-
-| | Before | After |
-|---|---|---|
-| Exported name | `<app.namespace>_<app.name>_http_server_request_duration_seconds` | `gosoline_http_server_request_duration_seconds` |
-
-**Every Prometheus query, recording rule, dashboard and alert has to be re-keyed**, and the
-`metric.writer_settings.prometheus.naming` configuration block - `namespace_pattern` and
-`namespace_delimiter` - is removed. Leaving it in a configuration file is harmless; it has no effect.
-`metric.NewPrometheusWriterWithInterfaces` lost its `namespace` parameter for the same reason.
-
-#### Metrics authored outside gosoline
-
-A datum written through a writer with no namespace is now rendered by the same rules as a namespaced
-one, minus the namespace, because its leaf can carry canonical separators just the same:
-
-| Writer | Leaf `my.custom.metric`, before | After |
-|---|---|---|
-| CloudWatch | `my.custom.metric` | `MyCustomMetric` |
-| Prometheus | `my.custom.metric`, rejected at registration | `my_custom_metric_total` on a counter |
-| OTEL | `my.custom.metric` | `my.custom.metric`, unchanged |
-
-The Prometheus rendering fixes an outright defect - a dotted name is not a valid Prometheus metric
-name, so those metrics were never exported. **The CloudWatch rendering renames custom metrics**, since
-a leaf is now PascalCased whether or not a namespace precedes it; re-key any CloudWatch dashboard built
-on a `metric.NewWriter("")` metric.
-
-##### DB-repository notification outcomes
-
-The single counter is `db.repo.model_event.notifications`, with `UnitCount` and `KindCounter` for
-both paths. There is no `success` label.
-
-- Successful notification selector: ``db.repo.model_event.notifications{error.type="{{default}}"}``.
-- Failed notification selector: ``db.repo.model_event.notifications{error.type="notify_failed"}``.
-
-This consolidation replaces—not supplements—`db.repo.model_event.notify.errors`.
-
-##### HTTP cancellation duration
-
-If a client request ends with an error matching `context.Canceled`, gosoline records the total request
-duration under `http.client.request.duration` before returning that original error. The cancellation
-outcome carries `error.type="request_canceled"`, told apart from a generic `error.type="request_failed"`,
-and retains the normal default response-status dimension. Cancellations remain excluded from
-application-error logging.
-
-##### Aggregate-query guidance
-
-Gosoline no longer produces redundant aggregate `KindTotal` data:
-
-- HTTP server middleware emits the route/method/status duration and route/method rejection series
-  only; aggregate across those dimensions in the backend for server-level views.
-- Kafka emits its topic-and-partition series only; aggregate topic partitions in the backend.
-- Kinesis emits its stream-and-shard series only; aggregate stream shards in the backend.
-
-Prometheus may still render counter instruments with its conventional `_total` suffix. That naming
-rule is distinct from the removed framework-authored `KindTotal` aggregate datum.
-
-#### Attribute-key policy
-
-**No gosoline metric carries a canonical OpenTelemetry semantic-convention name, and no attribute key
-carries a namespace prefix.** The conventions are followed for grammar, units and attribute shape; the
-names stay gosoline's own, and the OTEL renderer prefixes every one with `gosoline.`. `error.type` is
-the single key taken verbatim from a convention, because its values are what make an operation metric
-self-describing.
-
-An attribute key never repeats the namespace of the metric it is attached to - the metric already names
-its subsystem.
-
-| Former key | Key now |
-|---|---|
-| `Consumer` (stream) | `consumer.name` |
-| `ProducerDaemon` | `producer.name` |
-| `Scheduler` | `name` |
-| `ModelId` | `model.id` |
-| `model`, `store` (kvstore) | `model.id`, `store.type` |
-| `Operation` (blob) | `operation` |
-| `Operation` (db, ddb) | `operation.name` |
-| `Type` (db connections) | `connection.state`, values `used` and `idle` |
-| `Topic` | `topic.name` |
-| `StreamName` | `stream.name` |
-| redis list destination | `list.name` |
-| `ShardId`, `Partition` | `partition.id` |
-| `ClientType`, `Client`, `Broker` | `client.type`, `client.name`, `broker.address` |
-| `Method`, `Path`, `ServerName` | `request.method`, `route`, `name` |
-| `full_method` | `service` and `method` |
-| `name`, `prefix` (limit) | `name`, `prefix` |
-| `sampled` | `sampled` |
-| `trace_id` (limit) | **removed** - a trace id is unbounded cardinality and belongs on a span |
+The existing `examples/otel` application now passes a namespace to `metric.NewWriter`. The v2 writer exports its millisecond-authored duration metric in seconds.
 
 ## Upgrade checklist
 
-1. Update custom `log.GosoLogger` implementations with `Close(context.Context) error`.
-2. Update direct calls to the kernel builder functions to pass a `log.GosoLogger`.
-3. Update custom `tracing.OtelExporterFactory` functions to return `sdktrace.SpanExporter`.
-4. Remove `aggregate: true` from Prometheus or OTEL writer settings.
-5. Add `application.WithOtelShutdown` when OTEL trace and/or metric providers must be flushed during application shutdown.
-6. Pass a namespace to `metric.NewWriter`; use `metric.NewWriter("")` to keep application-authored metric names unchanged.
-7. Re-key every alarm, dashboard, query, and metric-calculator configuration using the final inventory above; select by `metric.schema_version` (`v2.0` for this release).
-8. Re-key SQL repository operation telemetry to `db.repo.operation.duration` and DynamoDB repository operation telemetry to `ddb.operation.duration`.
-9. Replace notification-failure queries with `db.repo.model_event.notifications` filtered by `error.type`, and aggregate detailed HTTP, Kafka, and Kinesis series in the backend.
-10. Remove `metric.calculator` and `stream.metrics.messages_per_runner` configuration, and replace ECS scaling policies that reference `PerRunner*`, `StreamMessages`, `HttpServerRequests` or `ShardTaskRatio`; none of those per-runner metrics are emitted.
+1. Read `metric.schema_version`; migrate consumers to schema `v2.0`. Do not expect v1 aliases or dual emission.
+2. Re-key metric queries, dashboards, alerts, and recording rules against the canonical inventory; update dimensions and units as well as names.
+3. Replace HTTP request/status-class counters with histogram counts and the full numeric `response.status_code`; use route-level server rejections. For CloudWatch server-wide, topic-level, and stream-level views, aggregate the retained HTTP route, Kafka partition, and Kinesis shard series; the old server/topic/stream-only `KindTotal` series are not emitted by CloudWatch (Prometheus and OTEL already filter `KindTotal`).
+4. Replace standalone outcome metrics with operation metrics and writer-appropriate `error.type`/default selectors. Preserve the overlapping stream and Kinesis consumer failure-subset semantics.
+5. Update `metric.NewWriter` and `NewWriterWithInterfaces` calls, Prometheus writer construction, and removed Prometheus naming settings. Migrate Kafka callers to `kafka.MetricPair(kafka.MetricSpec{...})` and update removed or changed Kafka/HTTP metric constants. Re-key custom metrics for each backend's rendering.
+6. Remove the calculator option and exact configuration keys above; replace per-runner scaling inputs with application-specific signals and derive Kinesis capacity ratios from the shard/client gauges.
+7. Update duration dashboards for seconds in Prometheus and OTEL, preserve CloudWatch's authored units, and use histogram queries for framework duration metrics while retaining custom `KindSummary` queries.
