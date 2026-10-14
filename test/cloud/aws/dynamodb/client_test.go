@@ -106,9 +106,7 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 
 	ctx := s.T().Context()
 	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), s.Env().Logger(), "http_timeout")
-	if !s.NoError(err) {
-		return
-	}
+	s.Require().NoError(err)
 
 	item := map[string]types.AttributeValue{
 		"id": &types.AttributeValueMemberS{
@@ -135,18 +133,14 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 		})
 	})
 
-	if !s.NoError(err) {
-		return
-	}
+	s.Require().NoError(err)
 
 	output, err := s.clientDefault.GetItem(ctx, &awsDdb.GetItemInput{
 		Key:            item,
 		TableName:      aws.String("gosoline-cloud-dynamodb-test"),
 		ConsistentRead: aws.Bool(true),
 	})
-	if !s.NoError(err) {
-		return
-	}
+	s.Require().NoError(err)
 	s.Equal(item, output.Item)
 }
 
