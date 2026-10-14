@@ -4,7 +4,6 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -16,6 +15,7 @@ const (
 	ByAnonymous     = "anonymous"
 	ByApiKey        = "apiKey"
 	HeaderApiKey    = "X-API-KEY"
+	configApiKeys   = "api_auth_keys"
 	AttributeApiKey = "apiKey"
 )
 
@@ -50,20 +50,12 @@ func NewConfigKeyHandler(config cfg.Config, logger log.Logger, provider ApiKeyPr
 }
 
 func NewConfigKeyAuthenticator(config cfg.Config, logger log.Logger, provider ApiKeyProvider) (Authenticator, error) {
-	if !config.IsSet("api_auth_keys") {
-		return nil, fmt.Errorf("api key setting api_auth_keys is missing")
-	}
-
-	entries, err := config.GetStringSlice("api_auth_keys")
+	keys, err := config.GetStringSlice(configApiKeys)
 	if err != nil {
-		return nil, fmt.Errorf("could not get api keys from config: %w", err)
+		return nil, fmt.Errorf("could not get string slice from config: %w", err)
 	}
 
-	for index, key := range entries {
-		entries[index] = strings.TrimSpace(key)
-	}
-
-	keys := funk.Filter(entries, func(key string) bool {
+	keys = funk.Filter(keys, func(key string) bool {
 		return key != ""
 	})
 

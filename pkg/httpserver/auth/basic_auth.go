@@ -16,6 +16,7 @@ const (
 	ByBasicAuth = "basicAuth"
 
 	headerBasicAuth = "Authorization"
+	configBasicAuth = "api_auth_basic_users"
 	AttributeUser   = "user"
 )
 
@@ -55,27 +56,21 @@ func NewBasicAuthHandler(config cfg.Config, logger log.Logger) (gin.HandlerFunc,
 }
 
 func NewBasicAuthAuthenticator(config cfg.Config, logger log.Logger) (Authenticator, error) {
-	if !config.IsSet("api_auth_basic_users") {
-		return nil, fmt.Errorf("basic auth users setting api_auth_basic_users is missing")
-	}
-
-	entries, err := config.GetStringSlice("api_auth_basic_users")
+	userEntries, err := config.GetStringSlice(configBasicAuth)
 	if err != nil {
 		return nil, fmt.Errorf("can not get basic auth users: %w", err)
 	}
 
 	users := make(map[string]string)
 
-	for index, user := range entries {
-		user = strings.TrimSpace(user)
-
+	for _, user := range userEntries {
 		if user == "" {
 			continue
 		}
 
 		split := strings.SplitN(user, ":", 2)
 		if len(split) != 2 {
-			return nil, fmt.Errorf("invalid basic auth credentials at api_auth_basic_users[%d]: missing colon separator", index)
+			return nil, fmt.Errorf("invalid basic auth credentials: %s", user)
 		}
 
 		users[split[0]] = split[1]

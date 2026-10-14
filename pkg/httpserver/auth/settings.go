@@ -1,8 +1,6 @@
 package auth
 
-import (
-	"time"
-)
+import "time"
 
 type (
 	Settings struct {
