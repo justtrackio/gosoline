@@ -96,9 +96,7 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 	_, err := proxy.AddToxic("latency_down", "latency", "downstream", 1.0, toxiproxy.Attributes{
 		"latency": 200,
 	})
-	if !s.NoError(err) {
-		return
-	}
+	s.Require().NoError(err)
 	latencyActive := true
 	defer func() {
 		if latencyActive {

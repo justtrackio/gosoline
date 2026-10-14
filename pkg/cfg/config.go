@@ -22,10 +22,6 @@ const (
 
 type LookupEnv func(key string) (string, bool)
 
-// Config exposes original configuration values. DebugConfig heuristically masks
-// sensitive keys and high-entropy values in logs and fingerprints without opt-in;
-// getters, defaults, storage and decoded outputs retain their original values.
-//
 //go:generate go run github.com/vektra/mockery/v2 --name Config
 type Config interface {
 	AllKeys() []string
@@ -78,9 +74,8 @@ func NewWithInterfaces(envProvider EnvProvider, msis ...map[string]any) GosoConf
 	cfg := &config{
 		envProvider: envProvider,
 		sanitizers:  make([]Sanitizer, 0),
+		settings:    mapx.NewMapX(msis...),
 	}
-
-	cfg.settings = mapx.NewMapX(msis...)
 
 	return cfg
 }

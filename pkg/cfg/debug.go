@@ -12,16 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/funk"
 )
 
-// DebugConfig logs flattened settings and an MD5 fingerprint of the same redacted
-// entries. It recognizes case-insensitive password/secret/token/key/dsn/credential
-// substrings in the leaf key, ignoring trailing ASCII numeric list indices.
-// Exact api_auth_basic_users and Authorization path segments mask their subtrees.
-// Independently, rendered values or embedded ASCII token runs of at least 12 bytes
-// are masked when byte Shannon entropy is >= min(4.5, log2(byte length)-0.1).
-// This heuristic requires no opt-in: public high-entropy values may be masked,
-// while short, low-entropy or hex-only secrets and unknown credential containers
-// may remain visible. It is not a secrecy guarantee. Getters, stored settings and
-// decoded values remain unchanged.
+// DebugConfig prints the effective config values to the logger while redacting sensitive or secret values.
 func DebugConfig(ctx context.Context, config Config, logger Logger) error {
 	settings := config.AllSettings()
 	flattened, err := flatten.Flatten(settings, "", flatten.DotStyle)
@@ -34,18 +25,11 @@ func DebugConfig(ctx context.Context, config Config, logger Logger) error {
 	sort.Strings(keys)
 
 	for i, key := range keys {
-		value := flattened[key]
-		if isSensitiveConfigKey(key) {
-			hashValues[i] = key + "=[REDACTED]"
-		} else if text, ok := value.(string); ok && isSensitiveConfigValue(text) {
-			hashValues[i] = key + "=[REDACTED]"
-		} else {
-			entry := fmt.Sprintf("%v=%v", key, value)
-			if _, ok := value.(string); !ok && isSensitiveConfigValue(entry[len(key)+1:]) {
-				entry = key + "=[REDACTED]"
-			}
-			hashValues[i] = entry
+		entry, redact := shouldRedact(key, flattened[key])
+		if redact {
+			entry = key + "=[REDACTED]"
 		}
+		hashValues[i] = entry
 		logger.Info(ctx, "cfg %s", hashValues[i])
 	}
 
@@ -57,38 +41,56 @@ func DebugConfig(ctx context.Context, config Config, logger Logger) error {
 	return nil
 }
 
-func isSensitiveConfigKey(key string) bool {
-	leafStart, leafEnd := 0, len(key)
+// shouldRedact checks keys before rendering values, so known sensitive values are
+// never formatted. It returns the full entry for reuse without formatting twice.
+func shouldRedact(key string, value any) (entry string, redact bool) {
+	if isSensitiveConfigKey(key) {
+		return "", true
+	}
 
-	for start := 0; start <= len(key); {
-		end := start
-		for end < len(key) && key[end] != '.' {
-			end++
+	if text, ok := value.(string); ok {
+		if isSensitiveConfigValue(text) {
+			return "", true
 		}
-		segment := key[start:end]
+
+		return key + "=" + text, false
+	}
+
+	entry = fmt.Sprintf("%v=%v", key, value)
+
+	return entry, isSensitiveConfigValue(entry[len(key)+1:])
+}
+
+// isSensitiveConfigKey matches six case-insensitive substrings in the leaf or its
+// list owner, ignoring trailing ASCII numeric indices. Only exact Authorization
+// and api_auth_basic_users segments redact entire subtrees, not unknown containers.
+func isSensitiveConfigKey(key string) bool {
+	leaf := key
+	for segment := range strings.SplitSeq(key, ".") {
 		if strings.EqualFold(segment, "api_auth_basic_users") ||
 			strings.EqualFold(segment, "Authorization") {
 			return true
 		}
-		numeric := segment != ""
-		for i := 0; i < len(segment) && numeric; i++ {
-			numeric = segment[i] >= '0' && segment[i] <= '9'
+		if !isASCIINumericIndex(segment) {
+			leaf = segment
 		}
-		if !numeric {
-			leafStart, leafEnd = start, end
-		}
-		start = end + 1
 	}
-	leaf := key[leafStart:leafEnd]
+	leaf = strings.ToLower(leaf)
 	for _, needle := range [...]string{"password", "secret", "token", "key", "dsn", "credential"} {
-		for i := 0; i+len(needle) <= len(leaf); i++ {
-			if strings.EqualFold(leaf[i:i+len(needle)], needle) {
-				return true
-			}
+		if strings.Contains(leaf, needle) {
+			return true
 		}
 	}
 
 	return false
+}
+
+// isASCIINumericIndex recognizes a nonempty sequence of ASCII digits, equivalent
+// to ^\d+$ without interpreting Unicode digits as flattened list indices.
+func isASCIINumericIndex(segment string) bool {
+	return segment != "" && strings.IndexFunc(segment, func(r rune) bool {
+		return r < '0' || r > '9'
+	}) == -1
 }
 
 const (
@@ -97,8 +99,9 @@ const (
 	maxConfigEntropy      = 4.5
 )
 
-// isSensitiveConfigValue examines only the rendered value, never its key.
-// Separators such as '=' and '.' keep assignments and JWT sections independent.
+// isSensitiveConfigValue checks the rendered value and maximal ASCII token runs.
+// Padding '=' and JWT dots separate runs; the already-checked whole value is skipped.
+// It may mask public high-entropy values and miss short or low-entropy secrets.
 func isSensitiveConfigValue(value string) bool {
 	if len(value) < minConfigEntropyBytes {
 		return false
@@ -108,28 +111,33 @@ func isSensitiveConfigValue(value string) bool {
 		return true
 	}
 
-	for start := 0; start < len(value); {
-		for start < len(value) && !isConfigTokenByte(value[start]) {
-			start++
+	for tokenStart := 0; tokenStart < len(value); {
+		for tokenStart < len(value) && !isBase64TokenByte(value[tokenStart]) {
+			tokenStart++
 		}
-		end := start
-		for end < len(value) && isConfigTokenByte(value[end]) {
-			end++
+		tokenEnd := tokenStart
+		for tokenEnd < len(value) && isBase64TokenByte(value[tokenEnd]) {
+			tokenEnd++
 		}
-		if end-start >= minConfigEntropyBytes && (start != 0 || end != len(value)) && hasConfigValueEntropy(value[start:end]) {
+		isWholeValue := tokenStart == 0 && tokenEnd == len(value)
+		if !isWholeValue && hasConfigValueEntropy(value[tokenStart:tokenEnd]) {
 			return true
 		}
-		start = end + 1
+		tokenStart = tokenEnd + 1
 	}
 
 	return false
 }
 
-func isConfigTokenByte(b byte) bool {
+// isBase64TokenByte recognizes standard and URL-safe Base64 alphabet membership,
+// excluding '=' padding. It does not validate Base64 encoding.
+func isBase64TokenByte(b byte) bool {
 	return b >= 'A' && b <= 'Z' || b >= 'a' && b <= 'z' ||
 		b >= '0' && b <= '9' || b == '_' || b == '-' || b == '+' || b == '/'
 }
 
+// hasConfigValueEntropy requires at least 12 bytes and byte Shannon entropy
+// >= min(4.5, log2(byte length)-0.1), considering the value only, never its key.
 func hasConfigValueEntropy(value string) bool {
 	if len(value) < minConfigEntropyBytes {
 		return false
