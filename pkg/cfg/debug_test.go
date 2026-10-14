@@ -2,6 +2,7 @@ package cfg_test
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -20,11 +21,10 @@ func TestDebugConfigMasksSensitiveValues(t *testing.T) {
 			key := "prefix" + keyword + "suffix"
 			secret := "synthetic-private-" + keyword
 			settings := map[string]any{
-				key:                secret,
-				"nested":           map[string]any{key: secret},
-				"parent" + keyword: map[string]any{"value": secret},
-				"service":          "payment-service",
-				"port":             8080,
+				key:       secret,
+				"nested":  map[string]any{key: secret},
+				"service": "payment-service",
+				"port":    8080,
 			}
 			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), settings)
 
@@ -33,11 +33,10 @@ func TestDebugConfigMasksSensitiveValues(t *testing.T) {
 			require.NotContains(t, output, secret)
 			require.Contains(t, output, "cfg "+key+"=")
 			require.Contains(t, output, "cfg nested."+key+"=")
-			require.Contains(t, output, "cfg parent"+keyword+".value=")
 			require.Contains(t, messages, "cfg service=payment-service")
 			require.Contains(t, messages, "cfg port=8080")
 
-			for _, path := range []string{key, "nested." + key, "parent" + keyword + ".value"} {
+			for _, path := range []string{key, "nested." + key} {
 				value, err := config.GetString(path)
 				require.NoError(t, err)
 				require.Equal(t, secret, value)
@@ -121,7 +120,12 @@ func captureDebugConfig(t *testing.T, config cfg.Config) (outputText string, mes
 	var output bytes.Buffer
 	handler := log.NewHandlerIoWriter(config, log.PriorityInfo, log.FormatterJson, "main", time.RFC3339, &output)
 	logger := log.NewLoggerWithInterfaces(clock.NewFakeClock(), []log.Handler{handler})
+	// Initialize the handler's lazy channel settings before testing DebugConfig purity.
+	logger.Info(t.Context(), "fixture logger warmup")
+	output.Reset()
+	settingsBeforeDebug := config.AllSettings()
 	require.NoError(t, cfg.DebugConfig(t.Context(), config, logger))
+	require.Equal(t, settingsBeforeDebug, config.AllSettings())
 
 	lines := strings.Split(strings.TrimSpace(output.String()), "\n")
 	messages = make([]string, len(lines))
@@ -133,6 +137,12 @@ func captureDebugConfig(t *testing.T, config cfg.Config) (outputText string, mes
 		messages[i] = entry.Message
 	}
 
+	entries := make([]string, len(messages)-1)
+	for i, message := range messages[:len(messages)-1] {
+		entries[i] = strings.TrimPrefix(message, "cfg ")
+	}
+	require.Equal(t, fmt.Sprintf("cfg fingerprint: %x", md5.Sum([]byte(strings.Join(entries, ";")))), messages[len(messages)-1])
+
 	return output.String(), messages
 }
 
@@ -143,7 +153,16 @@ func TestDebugConfigEntropyBoundaries(t *testing.T) {
 		masked bool
 	}{
 		{"empty", "", false},
-		{"31_bytes", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcde", false},
+		{"11_bytes", "ABCDEFGHIJK", false},
+		{"12_bytes", "ABCDEFGHIJKL", true},
+		{"12_repeated", "ABCDEFABCDEF", false},
+		{"20_exact_adaptive_boundary", "ABCDEFGHIJKLMNOPQRSA", true},
+		{"20_below_adaptive_boundary", "ABCDEFGHIJKLMNOPQRAB", false},
+		{"24_above_adaptive_boundary", "ABCDEFGHIJKLMNOPQRSTUVWA", true},
+		{"24_below_adaptive_boundary", "ABCDEFGHIJKLMNOPQRSTUVAB", false},
+		{"25_above_capped_boundary", "ABCDEFGHIJKLMNOPQRSTUVWXA", true},
+		{"25_below_capped_boundary", "ABCDEFGHIJKLMNOPQRSTUVWAB", false},
+		{"31_bytes", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcde", true},
 		{"32_bytes", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef", true},
 		{"exact_4_5", "ABCDEFGHABCDEFGHijklmnopqrstuvwx", true},
 		{"below_4_5", "ABCDEFGHIJABCDEFGHIJklmnopqrstuv", false},
@@ -153,6 +172,7 @@ func TestDebugConfigEntropyBoundaries(t *testing.T) {
 		{"uuid", "79db3180-99a9-4157-91c3-a591b9a8f01c", false},
 		{"hex", strings.Repeat("0123456789abcdef", 4), false},
 		{"public_url", "https://api.example.com/v1/metrics", false},
+		{"short_public_url", "https://x.io", false},
 		{"public_base64_false_positive", "c29tZSBzdHJpbmcgd2l0aCDDvG5pY8O4ZMOr", true},
 		{"unicode_repeated_bytes", strings.Repeat("é", 32), false},
 	} {
@@ -173,7 +193,7 @@ func TestDebugConfigEntropyBoundaries(t *testing.T) {
 }
 
 func TestDebugConfigEntropyEmbeddedValues(t *testing.T) {
-	private := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef"
+	private := "ABCDEFGHIJKL"
 	padding := strings.Repeat("x", 512)
 	for _, value := range []string{
 		"Bearer " + private,
@@ -194,7 +214,7 @@ func TestDebugConfigEntropyEmbeddedValues(t *testing.T) {
 func TestDebugConfigEntropyUsesFormattedLeaves(t *testing.T) {
 	type namedString string
 	type namedMap map[string]string
-	private := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef"
+	private := "ABCDEFGHIJKL"
 	for _, value := range []any{
 		namedString(private),
 		[]string{"visible", private},
@@ -277,9 +297,9 @@ func TestDebugConfigEntropyFingerprintAndStorage(t *testing.T) {
 
 		return ""
 	}
-	original := fingerprint("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef", "visible")
-	require.Equal(t, original, fingerprint("abcdefghijklmnopqrstuvwxyzABCDEF", "visible"))
-	require.NotEqual(t, original, fingerprint("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef", "changed"))
+	original := fingerprint("ABCDEFGHIJKL", "visible")
+	require.Equal(t, original, fingerprint("abcdefghijkl", "visible"))
+	require.NotEqual(t, original, fingerprint("ABCDEFGHIJKL", "changed"))
 }
 
 func TestDebugConfigEntropyDoesNotIncludeKey(t *testing.T) {
@@ -287,4 +307,105 @@ func TestDebugConfigEntropyDoesNotIncludeKey(t *testing.T) {
 	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{name: "short"})
 	_, messages := captureDebugConfig(t, config)
 	require.Contains(t, messages, "cfg "+name+"=short")
+}
+
+func TestDebugConfigPublicParentKeysRemainVisible(t *testing.T) {
+	for _, keyword := range []string{"PaSsWoRd", "SeCrEt", "ToKeN", "KeY", "DsN", "CrEdEnTiAl"} {
+		t.Run(keyword, func(t *testing.T) {
+			key := "parent" + keyword
+			fingerprint := func(value string) string {
+				settings := map[string]any{key: map[string]any{"expiry_window": value}}
+				config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), settings)
+				_, messages := captureDebugConfig(t, config)
+				require.Contains(t, messages, "cfg "+key+".expiry_window="+value)
+				stored, err := config.GetString(key + ".expiry_window")
+				require.NoError(t, err)
+				require.Equal(t, value, stored)
+
+				return messages[len(messages)-1]
+			}
+			require.NotEqual(t, fingerprint("5m"), fingerprint("10m"))
+		})
+	}
+}
+
+func TestDebugConfigCredentialsCacheExpiryRemainsVisible(t *testing.T) {
+	settings := map[string]any{
+		"cloud": map[string]any{
+			"aws": map[string]any{
+				"s3": map[string]any{
+					"clients": map[string]any{
+						"default": map[string]any{
+							"credentials_cache": map[string]any{"expiry_window": "5m"},
+						},
+					},
+				},
+			},
+		},
+	}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), settings)
+	_, messages := captureDebugConfig(t, config)
+	require.Contains(t, messages, "cfg cloud.aws.s3.clients.default.credentials_cache.expiry_window=5m")
+	stored, err := config.GetDuration("cloud.aws.s3.clients.default.credentials_cache.expiry_window")
+	require.NoError(t, err)
+	require.Equal(t, 5*time.Minute, stored)
+}
+
+func TestDebugConfigNestedListOwnersAndCredentialContainers(t *testing.T) {
+	rows := make([]any, 12)
+	for i := range rows {
+		rows[i] = []any{"old", "new"}
+	}
+	settings := map[string]any{
+		"KeYRing":            rows,
+		"native_keyring":     []string{"old", "new"},
+		"public_token_cache": map[string]any{"durations": rows},
+		"nested": []any{
+			map[string]any{
+				"headers":    map[string]any{"aUtHoRiZaTiOn": map[string]any{"values": rows}},
+				"httpserver": map[string]any{"api_auth_basic_users": rows},
+			},
+		},
+	}
+	config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), settings)
+	output, messages := captureDebugConfig(t, config)
+	require.NotContains(t, output, "cfg native_keyring=[old new]")
+	require.Contains(t, messages, "cfg native_keyring=[REDACTED]")
+	for i := range rows {
+		for j, value := range []string{"old", "new"} {
+			require.Contains(t, messages, fmt.Sprintf("cfg KeYRing.%d.%d=[REDACTED]", i, j))
+			require.Contains(t, messages, fmt.Sprintf("cfg public_token_cache.durations.%d.%d=%s", i, j, value))
+			require.Contains(t, messages, fmt.Sprintf("cfg nested.0.headers.aUtHoRiZaTiOn.values.%d.%d=[REDACTED]", i, j))
+			require.Contains(t, messages, fmt.Sprintf("cfg nested.0.httpserver.api_auth_basic_users.%d.%d=[REDACTED]", i, j))
+		}
+	}
+	native, err := config.GetStringSlice("native_keyring")
+	require.NoError(t, err)
+	require.Equal(t, []string{"old", "new"}, native)
+}
+
+func TestDebugConfigShortEmbeddedEntropyBoundaries(t *testing.T) {
+	for _, tc := range []struct {
+		token  string
+		masked bool
+	}{
+		{"ABCDEFGHIJK", false},
+		{"ABCDEFGHIJKL", true},
+		{"ABCDEFABCDEF", false},
+	} {
+		t.Run(tc.token, func(t *testing.T) {
+			value := strings.Repeat("x", 512) + "=" + tc.token + "=="
+			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{"opaque": value})
+			output, messages := captureDebugConfig(t, config)
+			if tc.masked {
+				require.NotContains(t, output, tc.token)
+				require.Contains(t, messages, "cfg opaque=[REDACTED]")
+			} else {
+				require.Contains(t, messages, "cfg opaque="+value)
+			}
+			stored, err := config.GetString("opaque")
+			require.NoError(t, err)
+			require.Equal(t, value, stored)
+		})
+	}
 }

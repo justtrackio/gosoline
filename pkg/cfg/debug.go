@@ -14,12 +14,14 @@ import (
 
 // DebugConfig logs flattened settings and an MD5 fingerprint of the same redacted
 // entries. It recognizes case-insensitive password/secret/token/key/dsn/credential
-// substrings in the full key, api_auth_basic_users path segments and Authorization
-// header path segments. Independently, it masks values or embedded ASCII token runs with
-// at least 32 bytes and Shannon entropy of at least 4.5 bits per byte.
+// substrings in the leaf key, ignoring trailing ASCII numeric list indices.
+// Exact api_auth_basic_users and Authorization path segments mask their subtrees.
+// Independently, rendered values or embedded ASCII token runs of at least 12 bytes
+// are masked when byte Shannon entropy is >= min(4.5, log2(byte length)-0.1).
 // This heuristic requires no opt-in: public high-entropy values may be masked,
-// while unknown short or hex-only secrets may remain visible. It is not a secrecy
-// guarantee. Getters, stored settings and decoded values remain unchanged.
+// while short, low-entropy or hex-only secrets and unknown credential containers
+// may remain visible. It is not a secrecy guarantee. Getters, stored settings and
+// decoded values remain unchanged.
 func DebugConfig(ctx context.Context, config Config, logger Logger) error {
 	settings := config.AllSettings()
 	flattened, err := flatten.Flatten(settings, "", flatten.DotStyle)
@@ -56,15 +58,9 @@ func DebugConfig(ctx context.Context, config Config, logger Logger) error {
 }
 
 func isSensitiveConfigKey(key string) bool {
-	for _, needle := range [...]string{"password", "secret", "token", "key", "dsn", "credential"} {
-		for i := 0; i+len(needle) <= len(key); i++ {
-			if strings.EqualFold(key[i:i+len(needle)], needle) {
-				return true
-			}
-		}
-	}
+	leafStart, leafEnd := 0, len(key)
 
-	for start := 0; start < len(key); {
+	for start := 0; start <= len(key); {
 		end := start
 		for end < len(key) && key[end] != '.' {
 			end++
@@ -74,16 +70,37 @@ func isSensitiveConfigKey(key string) bool {
 			strings.EqualFold(segment, "Authorization") {
 			return true
 		}
+		numeric := segment != ""
+		for i := 0; i < len(segment) && numeric; i++ {
+			numeric = segment[i] >= '0' && segment[i] <= '9'
+		}
+		if !numeric {
+			leafStart, leafEnd = start, end
+		}
 		start = end + 1
+	}
+	leaf := key[leafStart:leafEnd]
+	for _, needle := range [...]string{"password", "secret", "token", "key", "dsn", "credential"} {
+		for i := 0; i+len(needle) <= len(leaf); i++ {
+			if strings.EqualFold(leaf[i:i+len(needle)], needle) {
+				return true
+			}
+		}
 	}
 
 	return false
 }
 
+const (
+	minConfigEntropyBytes = 12
+	configEntropySlack    = 0.1
+	maxConfigEntropy      = 4.5
+)
+
 // isSensitiveConfigValue examines only the rendered value, never its key.
 // Separators such as '=' and '.' keep assignments and JWT sections independent.
 func isSensitiveConfigValue(value string) bool {
-	if len(value) < 32 {
+	if len(value) < minConfigEntropyBytes {
 		return false
 	}
 
@@ -99,7 +116,7 @@ func isSensitiveConfigValue(value string) bool {
 		for end < len(value) && isConfigTokenByte(value[end]) {
 			end++
 		}
-		if end-start >= 32 && (start != 0 || end != len(value)) && hasConfigValueEntropy(value[start:end]) {
+		if end-start >= minConfigEntropyBytes && (start != 0 || end != len(value)) && hasConfigValueEntropy(value[start:end]) {
 			return true
 		}
 		start = end + 1
@@ -114,7 +131,7 @@ func isConfigTokenByte(b byte) bool {
 }
 
 func hasConfigValueEntropy(value string) bool {
-	if len(value) < 32 {
+	if len(value) < minConfigEntropyBytes {
 		return false
 	}
 
@@ -130,7 +147,8 @@ func hasConfigValueEntropy(value string) bool {
 			weightedCounts += float64(count) * math.Log2(float64(count))
 		}
 	}
-	entropy := math.Log2(float64(len(value))) - weightedCounts/float64(len(value))
+	logLength := math.Log2(float64(len(value)))
+	entropy := logLength - weightedCounts/float64(len(value))
 
-	return entropy >= 4.5
+	return entropy >= math.Min(maxConfigEntropy, logLength-configEntropySlack)
 }
