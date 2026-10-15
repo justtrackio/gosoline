@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,6 +42,7 @@ func TestDynamoDbNamingIsolation(t *testing.T) {
 	factory := new(dynamoDbFactory)
 	containers := map[string]*Container{"main": {bindings: map[string]ContainerBinding{"main": {host: "localhost", port: "8000"}}}}
 	patterns := make([]string, 0, 2)
+	tables := make(map[string]struct{})
 	for range 2 {
 		config := cfg.New()
 		require.NoError(t, config.Option(cfg.WithConfigMap(map[string]any{
@@ -54,6 +56,14 @@ func TestDynamoDbNamingIsolation(t *testing.T) {
 		require.NoError(t, err)
 		require.Contains(t, naming.TablePattern, "-{app.env}-{name}")
 		patterns = append(patterns, naming.TablePattern)
+		for _, model := range []string{"items", strings.Repeat("a", 209), strings.Repeat("a", 208) + "b"} {
+			table, err := ddb.GetTableName(config, &ddb.Settings{ModelId: mdl.ModelId{Env: "test", Name: model}})
+			require.NoError(t, err)
+			require.LessOrEqual(t, len(table), 255)
+			require.True(t, strings.HasPrefix(table, "goso-"))
+			require.NotContains(t, tables, table)
+			tables[table] = struct{}{}
+		}
 		s3Endpoint, err := config.GetString("cloud.aws.s3.clients.default.endpoint")
 		require.NoError(t, err)
 		require.Equal(t, "http://s3:5000", s3Endpoint)

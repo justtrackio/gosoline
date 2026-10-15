@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -24,7 +25,7 @@ import (
 func TestSharedAwsServicesPurgeIsolation(t *testing.T) {
 	settings := func() map[string]any {
 		return map[string]any{
-			"app.env": "test", "app.name": "aws-isolation", "app.namespace": "{app.env}",
+			"app.env": "test", "app.name": "aws-isolation", "app.namespace": strings.Repeat("a", 210),
 			"test.auto_detect.enabled":         false,
 			"test.components.dynamodb.default": map[string]any{},
 			"test.components.s3.default":       map[string]any{},
@@ -55,6 +56,7 @@ func TestSharedAwsServicesPurgeIsolation(t *testing.T) {
 	for _, environment := range []*env.Environment{owner, external} {
 		table, err := ddb.GetTableName(environment.Config(), &ddb.Settings{ModelId: mdl.ModelId{Env: "test", Name: "items"}})
 		require.NoError(t, err)
+		require.Len(t, table, 255)
 		tables = append(tables, table)
 		client := environment.DynamoDb("default").DdbClient()
 		_, err = client.CreateTable(ctx, &dynamodb.CreateTableInput{
