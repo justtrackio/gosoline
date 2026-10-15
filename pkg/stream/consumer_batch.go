@@ -569,15 +569,20 @@ func (c *BatchConsumer) runCallback(ctx context.Context) error {
 	cfn := coffin.New()
 	runCtx := cfn.Context(ctx)
 
-	cfn.GoWithContextf(runCtx, c.runBatches, "panic during batch collection")
-
-	if callback, ok := c.batchCallback.(RunnableCallback); ok {
-		cfn.GoWithContextf(runCtx, callback.Run, "panic during batch callback Run")
-	}
-
+	// Keep the coffin tracked until all children are registered, even if one finishes immediately.
 	cfn.Go(func() error {
-		<-runCtx.Done()
-		c.stopIncomingData(context.WithoutCancel(ctx))
+		cfn.GoWithContextf(runCtx, c.runBatches, "panic during batch collection")
+
+		if callback, ok := c.batchCallback.(RunnableCallback); ok {
+			cfn.GoWithContextf(runCtx, callback.Run, "panic during batch callback Run")
+		}
+
+		cfn.Go(func() error {
+			<-runCtx.Done()
+			c.stopIncomingData(context.WithoutCancel(ctx))
+
+			return nil
+		})
 
 		return nil
 	})
