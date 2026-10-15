@@ -26,6 +26,9 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"go.opentelemetry.io/otel/attribute"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"golang.org/x/sys/unix"
 )
 
@@ -335,6 +338,94 @@ func (s *ConsumerTestSuite) TestConsumerRunProcessesDuplicatePartitionsSequentia
 	processedMu.Lock()
 	assert.Equal(t, []*kgo.Record{first, second}, processed)
 	processedMu.Unlock()
+}
+
+func (s *ConsumerTestSuite) TestConsumerRunExportsConsumedMessagesCounter() {
+	for _, succeeded := range []int{2, 0} {
+		s.Run(fmt.Sprintf("succeeded_%d", succeeded), func() {
+			t := s.T()
+			otelReader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(otelReader))
+			t.Cleanup(func() {
+				require.NoError(t, provider.Shutdown(t.Context()))
+			})
+			exporter := metric.NewOtelWriterWithInterfaces(s.logger, provider.Meter("kafka-consumer-test"))
+			metricWriter := metricMocks.NewWriter(t)
+			metricWriter.EXPECT().Write(matcher.Context, mock.Anything).Run(func(ctx context.Context, data metric.Data) {
+				for _, datum := range data {
+					if datum.MetricName != "consumed.messages" {
+						continue
+					}
+
+					assert.NoError(t, datum.IsValid())
+					// The normal metric writer stamps this namespace before passing data to a backend.
+					// Forward the emitted datum unchanged otherwise, so missing metadata cannot be hidden.
+					datum.Namespace = "kafka.consumer"
+					exporter.WriteOne(ctx, datum)
+				}
+			}).Times(3)
+
+			records := []*kgo.Record{
+				{Topic: "test-topic", Partition: 0, Offset: 1},
+				{Topic: "test-topic", Partition: 0, Offset: 2},
+				{Topic: "test-topic", Partition: 0, Offset: 3},
+			}
+			reader := kafkaConsumerMocks.NewReader(t)
+			reader.EXPECT().PollRecords(nil, 100).Return(fetchWithPartitionError(records, nil)).Once()
+			reader.EXPECT().PollRecords(nil, 100).Return(clientClosedFetches()).Once()
+			reader.EXPECT().CommitRecords(matcher.Context, records[0], records[1], records[2]).Return(nil).Once()
+			reader.EXPECT().AllowRebalance().Once()
+			reader.EXPECT().CloseAllowingRebalance().Once()
+
+			c := consumer.NewConsumerWithInterfaces(
+				s.logger,
+				s.clk,
+				s.healthCheckTimer,
+				func(_ context.Context, _ *consumer.PartitionManager) (consumer.Reader, error) {
+					return reader, nil
+				},
+				&consumer.Settings{MaxPollRecords: 100, RunnerCount: 1, ProcessingMode: consumer.ProcessingModeOrdered},
+				metricWriter,
+				"test-topic",
+				"test-consumer",
+			)
+			require.NoError(t, c.Run(t.Context(), func(_ context.Context, record *kgo.Record) bool {
+				return record.Offset <= int64(succeeded)
+			}))
+
+			var exported metricdata.ResourceMetrics
+			require.NoError(t, otelReader.Collect(t.Context(), &exported))
+			require.Len(t, exported.ScopeMetrics, 1)
+			require.Len(t, exported.ScopeMetrics[0].Metrics, 1)
+			got := exported.ScopeMetrics[0].Metrics[0]
+			assert.Equal(t, "gosoline.kafka.consumer.consumed.messages", got.Name)
+			assert.Equal(t, "{message}", got.Unit)
+			counter, ok := got.Data.(metricdata.Sum[float64])
+			require.True(t, ok, "consumed messages must export as a counter, got %T", got.Data)
+			assert.True(t, counter.IsMonotonic)
+			assert.Equal(t, metricdata.CumulativeTemporality, counter.Temporality)
+			require.Len(t, counter.DataPoints, 2)
+
+			values := make(map[string]float64)
+			for _, point := range counter.DataPoints {
+				for key, expected := range map[string]string{
+					kafka.DimensionClientType: kafka.ClientTypeConsumer,
+					kafka.DimensionClient:     "test-consumer",
+					kafka.DimensionTopic:      "test-topic",
+				} {
+					value, exists := point.Attributes.Value(attribute.Key(key))
+					assert.True(t, exists, "missing attribute %s", key)
+					assert.Equal(t, expected, value.AsString())
+				}
+				errorType, _ := point.Attributes.Value(attribute.Key(metric.DimensionErrorType))
+				values[errorType.AsString()] = point.Value
+			}
+			assert.Equal(t, map[string]float64{
+				"":                  float64(succeeded),
+				"processing_failed": float64(len(records) - succeeded),
+			}, values)
+		})
+	}
 }
 
 func (s *ConsumerTestSuite) TestConsumerRunRecoversProcessingPanicAndCommits() {

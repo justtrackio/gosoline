@@ -686,6 +686,8 @@ func consumedMessagesDatum(name, topicName, errorType string, value float64) *me
 			metric.DimensionErrorType: errorType,
 		},
 		Value: value,
+		Unit:  metric.UnitCount,
+		Kind:  metric.KindCounter.Build(),
 	}
 }
 
