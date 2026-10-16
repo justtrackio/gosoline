@@ -102,6 +102,8 @@ Standalone failure or alternative-outcome families now use the metric for the op
 
 The notification success and failure families are both consolidated into `db.repo.model_event.notifications`, a `UnitCount` counter. There is no separate success label and no error-only replacement metric.
 
+`kafka.consumer.consumed.messages` is also a `UnitCount` counter. Its registered zero-value default and all outcome samples carry the unit and counter kind, including `error.type="processing_failed"` samples. This prevents missing-unit validation errors in idle and active consumers. OTEL exports `gosoline.kafka.consumer.consumed.messages` as a monotonic counter with unit `{message}`; Prometheus exports `gosoline_kafka_consumer_consumed_messages_total` as a counter.
+
 `metric.DimensionDefault` (`"{{default}}"`) is an internal marker, not a value exported by a writer. Its backend representation is:
 
 | Writer | Default representation | Example success/total selection |
