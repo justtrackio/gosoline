@@ -28,6 +28,9 @@ func IsNilOrEmpty[T comparable](in *T) bool {
 	return in == nil || *in == Empty[T]()
 }
 
+// Box returns a pointer to a copy of v.
+//
+// Deprecated: Use new(v) instead, available since Go 1.26.
 func Box[T any](v T) *T {
 	return &v
 }
@@ -62,6 +65,9 @@ func UnboxWith[T any](v *T, mkDef func() T) T {
 	return *v
 }
 
+// FirstNonEmpty returns the first non-zero value, or the zero value if none exists.
+//
+// Deprecated: Use cmp.Or instead, available since Go 1.22.
 func FirstNonEmpty[T comparable](values ...T) T {
 	for _, v := range values {
 		if !IsEmpty(v) {

@@ -1,3 +1,6 @@
+// Package json forwards JSON operations to encoding/json.
+//
+// Deprecated: Use the standard library's encoding/json package instead.
 package json
 
 import "encoding/json"
