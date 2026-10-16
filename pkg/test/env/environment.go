@@ -216,8 +216,19 @@ func (e *Environment) Mailpit(name string) *mailpitComponent {
 	return e.Component(componentMailpit, name).(*mailpitComponent)
 }
 
-func (e *Environment) Localstack(name string) *localstackComponent {
-	return e.Component(ComponentLocalstack, name).(*localstackComponent)
+// Floci returns the shared Floci AWS test component.
+func (e *Environment) Floci(name string) *flociComponent {
+	return e.Component(ComponentFloci, name).(*flociComponent)
+}
+
+// DynamoDb returns the DynamoDB test component backed by Floci.
+func (e *Environment) DynamoDb(name string) *dynamoDbComponent {
+	return e.Component(componentDynamoDb, name).(*dynamoDbComponent)
+}
+
+// S3 returns the S3 test component backed by Floci.
+func (e *Environment) S3(name string) *s3Component {
+	return e.Component(componentS3, name).(*s3Component)
 }
 
 func (e *Environment) MySql(name string) *mysqlComponent {

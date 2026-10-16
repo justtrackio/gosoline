@@ -48,7 +48,7 @@ blob.legacy.bucket: "my-legacy-bucket"
 
 ## Testing
 - `go test ./pkg/blob` for unit tests.
-- Integration tests require AWS credentials or LocalStack.
+- Integration tests require AWS credentials or Floci.
 
 ## Related packages
 - `pkg/cloud/aws/s3` - low-level S3 client

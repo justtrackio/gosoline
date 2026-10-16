@@ -141,15 +141,20 @@ func WithDelayedCancelContext(parentCtx context.Context, delay time.Duration) (c
 // you call the returned context.CancelFunc, WithStoppableDeadlineContext does not cancel the context if it is not yet canceled
 // once you stop it.
 func WithStoppableDeadlineContext(parentCtx context.Context, deadline time.Time) (context.Context, StopFunc) {
+	return WithStoppableDeadlineContextWithClock(parentCtx, deadline, clock.Provider)
+}
+
+// WithStoppableDeadlineContextWithClock uses the given clock for deadline timers.
+// Stopping it preserves the context for callers reading a streaming response.
+func WithStoppableDeadlineContextWithClock(parentCtx context.Context, deadline time.Time, clk clock.Clock) (context.Context, StopFunc) {
 	parentDeadline, ok := parentCtx.Deadline()
 	if ok && deadline.After(parentDeadline) {
 		deadline = parentDeadline
 	}
 
 	return newStoppableContext(parentCtx, &deadline, func(ctx *stoppableContext) (bool, error) {
-		c := clock.Provider
-		waitTime := -c.Since(deadline)
-		timer := c.NewTimer(waitTime)
+		waitTime := -clk.Since(deadline)
+		timer := clk.NewTimer(waitTime)
 		defer timer.Stop()
 
 		select {

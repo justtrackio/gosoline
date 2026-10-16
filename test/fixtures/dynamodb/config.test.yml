@@ -15,6 +15,6 @@ metric:
 
 test:
   components:
-    localstack:
+    floci:
       default:
 
