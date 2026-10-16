@@ -39,12 +39,11 @@ func (f *s3Factory) GetSettingsSchema() ComponentBaseSettingsAware {
 func (f *s3Factory) DescribeContainers(settings any) ComponentContainerDescriptions {
 	s := settings.(*s3Settings)
 	ports := PortBindings{
-		"main": {ContainerPort: 5000, HostPort: s.Port, Protocol: "tcp"},
+		"main": {ContainerPort: 4566, HostPort: s.Port, Protocol: "tcp"},
 	}
 	containerConfig := &ContainerConfig{
 		Auth: s.Image.Auth, Repository: s.Image.Repository, Tag: s.Image.Tag,
 		PortBindings: ports,
-		Env:          map[string]string{"S3_IGNORE_SUBDOMAIN_BUCKETNAME": "true"},
 	}
 	if s.isExternal() {
 		containerConfig = externalContainer(s.Host, ports)
@@ -69,16 +68,19 @@ func (f *s3Factory) Component(config cfg.Config, _ log.Logger, containers map[st
 		region:  settings.(*s3Settings).Region,
 		buckets: make(map[string]string),
 	}
-	if !config.IsSet("blob") {
-		return component, nil
-	}
-	stores, err := config.GetStringMap("blob")
+	stores, err := config.GetStringMap("blob", map[string]any{})
 	if err != nil {
 		return nil, fmt.Errorf("can not read blob stores: %w", err)
 	}
+	names := []string{"default"}
+	for name := range stores {
+		if name != "default" {
+			names = append(names, name)
+		}
+	}
 	// Keep stores sharing a bucket together, while isolating separate environments.
 	suffix := strings.ReplaceAll(uuid.New().NewV4(), "-", "")[:12]
-	for name := range stores {
+	for _, name := range names {
 		store, err := blob.ReadStoreSettings(config, name)
 		if err != nil {
 			return nil, fmt.Errorf("can not read blob store %s: %w", name, err)

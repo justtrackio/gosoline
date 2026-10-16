@@ -176,9 +176,13 @@ func (r *containerRunnerLocal) pullContainerImage(description *ComponentContaine
 		return nil
 	}
 
+	pullTag := config.Tag
+	if _, digest, ok := strings.Cut(pullTag, "@"); ok {
+		pullTag = digest
+	}
 	pullImageOptions := docker.PullImageOptions{
 		Repository: config.Repository,
-		Tag:        config.Tag,
+		Tag:        pullTag,
 	}
 
 	containerAuth := description.ContainerConfig.Auth

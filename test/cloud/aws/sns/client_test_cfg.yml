@@ -9,6 +9,6 @@ app:
 
 test:
   components:
-    localstack:
+    floci:
       default:
 

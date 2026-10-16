@@ -67,7 +67,7 @@ func (s *SubscriberTestSuite) SetupSuite() []suite.Option {
 			},
 			"test": map[string]any{
 				"components": map[string]any{
-					"localstack": map[string]any{
+					"floci": map[string]any{
 						"default": map[string]any{},
 					},
 				},

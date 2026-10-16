@@ -39,7 +39,7 @@ func (s *DynamoDbSuite) TestDynamoDb() {
 	err := s.Env().LoadFixtureSets(s.dynamoDbFixtureSet1())
 	s.NoError(err)
 
-	ddbClient := s.Env().Localstack("default").DdbClient()
+	ddbClient := s.Env().Floci("default").DdbClient()
 	gio, err := ddbClient.GetItem(s.T().Context(), &dynamodb.GetItemInput{
 		Key: map[string]types.AttributeValue{
 			"Name": &types.AttributeValueMemberS{
@@ -78,7 +78,7 @@ func (s *DynamoDbSuite) TestDynamoDbKvStore() {
 	err := s.Env().LoadFixtureSets(s.dynamoDbKvStoreFixtureSet1())
 	s.NoError(err)
 
-	ddbClient := s.Env().Localstack("default").DdbClient()
+	ddbClient := s.Env().Floci("default").DdbClient()
 	gio, err := ddbClient.GetItem(s.T().Context(), &dynamodb.GetItemInput{
 		Key: map[string]types.AttributeValue{
 			"key": &types.AttributeValueMemberS{

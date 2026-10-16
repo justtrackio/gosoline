@@ -31,11 +31,9 @@ func (c *dynamoDbComponent) CfgOptions() []cfg.Option {
 				"endpoint":   c.Address(),
 				"region":     c.region,
 				"purge_type": "drop_table",
-				"naming": map[string]any{
-					"table_pattern": c.tablePattern,
-				},
 			},
 		}),
+		cfg.WithConfigOverride("cloud.aws.dynamodb.clients.default.naming.table_pattern", c.tablePattern),
 	}
 }
 

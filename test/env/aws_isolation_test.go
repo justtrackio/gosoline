@@ -16,6 +16,7 @@ import (
 	ddbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/justtrackio/gosoline/pkg/blob"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/test/env"
@@ -23,16 +24,41 @@ import (
 )
 
 func TestSharedAwsServicesPurgeIsolation(t *testing.T) {
+	for _, scenario := range []struct {
+		name           string
+		implicitBucket bool
+		environment    bool
+	}{
+		{name: "explicit_bucket"},
+		{name: "implicit_default_bucket", implicitBucket: true},
+		{name: "environment_names", implicitBucket: true, environment: true},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			if scenario.environment {
+				t.Setenv("BLOB_DEFAULT_BUCKET", "shared-env-bucket")
+				t.Setenv("CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_TABLE_PATTERN", "!nodecode {app.namespace}-{name}")
+			}
+			testSharedAwsServicesPurgeIsolation(t, scenario.implicitBucket)
+		})
+	}
+}
+
+func testSharedAwsServicesPurgeIsolation(t *testing.T, implicitBucket bool) {
 	settings := func() map[string]any {
-		return map[string]any{
+		settings := map[string]any{
 			"app.env": "test", "app.name": "aws-isolation", "app.namespace": strings.Repeat("a", 210),
 			"test.auto_detect.enabled":         false,
 			"test.components.dynamodb.default": map[string]any{},
 			"test.components.s3.default":       map[string]any{},
 			"blob.default.bucket":              "shared-test-bucket",
 		}
+		if implicitBucket {
+			delete(settings, "blob.default.bucket")
+		}
+
+		return settings
 	}
-	owner, err := env.NewEnvironment(t, env.WithConfigMap(settings()))
+	owner, err := env.NewEnvironment(t, env.WithConfigMap(settings()), env.WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, owner.Stop()) })
 	externalSettings := settings()
@@ -47,7 +73,7 @@ func TestSharedAwsServicesPurgeIsolation(t *testing.T) {
 		externalSettings["test.components."+typ+".default.host"] = host
 		externalSettings["test.components."+typ+".default.port"] = portNumber
 	}
-	external, err := env.NewEnvironment(t, env.WithConfigMap(externalSettings))
+	external, err := env.NewEnvironment(t, env.WithConfigMap(externalSettings), env.WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, external.Stop()) })
 	ctx := context.Background()

@@ -33,7 +33,7 @@ func (c *s3Component) CfgOptions() []cfg.Option {
 		}),
 	}
 	for name, bucket := range c.buckets {
-		options = append(options, cfg.WithConfigSetting("blob."+name+".bucket", bucket))
+		options = append(options, cfg.WithConfigOverride("blob."+name+".bucket", bucket))
 	}
 
 	return options

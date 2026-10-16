@@ -29,7 +29,7 @@ func (s *EofBindTestSuite) SetupSuite() []suite.Option {
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("./config.dist.eofBind.yml"),
 		suite.WithSharedEnvironment(),
-		suite.WithoutAutoDetectedComponents("localstack"),
+		suite.WithoutAutoDetectedComponents("floci"),
 	}
 }
 

@@ -30,7 +30,7 @@ func (s *ConcurrencyTestSuite) SetupSuite() []suite.Option {
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("./config.dist.concurrency.yml"),
 		suite.WithSharedEnvironment(),
-		suite.WithoutAutoDetectedComponents("localstack"),
+		suite.WithoutAutoDetectedComponents("floci"),
 	}
 }
 

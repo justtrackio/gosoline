@@ -2,10 +2,12 @@ package env
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/justtrackio/gosoline/pkg/blob"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -14,7 +16,7 @@ import (
 )
 
 func TestExternalServiceBindings(t *testing.T) {
-	for _, typ := range []string{componentMySql, componentRedis, componentMailpit, componentWiremock, componentDynamoDb, componentS3} {
+	for _, typ := range []string{componentMySql, componentRedis, componentMailpit, componentWiremock, componentDynamoDb, componentS3, ComponentFloci} {
 		t.Run(typ, func(t *testing.T) {
 			config := cfg.New()
 			require.NoError(t, config.Option(cfg.WithConfigMap(map[string]any{
@@ -39,13 +41,14 @@ func TestExternalServiceBindings(t *testing.T) {
 }
 
 func TestDynamoDbNamingIsolation(t *testing.T) {
+	t.Setenv("CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_TABLE_PATTERN", "!nodecode {app.env}-{name}")
 	factory := new(dynamoDbFactory)
 	containers := map[string]*Container{"main": {bindings: map[string]ContainerBinding{"main": {host: "localhost", port: "8000"}}}}
 	patterns := make([]string, 0, 2)
 	tables := make(map[string]struct{})
 	for range 2 {
 		config := cfg.New()
-		require.NoError(t, config.Option(cfg.WithConfigMap(map[string]any{
+		require.NoError(t, config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer), cfg.WithConfigMap(map[string]any{
 			"cloud.aws.s3.clients.default.endpoint":                   "http://s3:5000",
 			"cloud.aws.dynamodb.clients.default.naming.table_pattern": "{app.env}-{name}",
 		})))
@@ -88,6 +91,9 @@ func TestS3BucketIsolation(t *testing.T) {
 		component, err := factory.Component(config, nil, containers, &s3Settings{Region: "eu-central-1"})
 		require.NoError(t, err)
 		require.NoError(t, config.Option(component.(ComponentCfgOptionAware).CfgOptions()...))
+		defaultStore, err := blob.ReadStoreSettings(config, "default")
+		require.NoError(t, err)
+		require.True(t, strings.HasPrefix(defaultStore.Bucket, "gosoline-test-"))
 		bucket, err := config.GetString("blob.first.bucket")
 		require.NoError(t, err)
 		otherBucket, err := config.GetString("blob.second.bucket")
@@ -153,4 +159,26 @@ func TestRedisDatabaseIsolation(t *testing.T) {
 	db, err := config.GetInt("redis.default.db")
 	require.NoError(t, err)
 	require.Equal(t, 2, db)
+}
+
+func TestS3ImplicitDefaultIsolation(t *testing.T) {
+	t.Setenv("BLOB_DEFAULT_BUCKET", "shared-env-bucket")
+	var buckets []string
+	for range 2 {
+		config := cfg.New()
+		require.NoError(t, config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer), cfg.WithConfigMap(map[string]any{
+			"app.env": "test", "app.name": "blob-test", "app.namespace": "gosoline-test",
+		})))
+		component, err := new(s3Factory).Component(config, nil, map[string]*Container{"main": {
+			bindings: map[string]ContainerBinding{"main": {host: "localhost", port: "4566"}},
+		}}, &s3Settings{Region: "eu-central-1"})
+		require.NoError(t, err)
+		require.NoError(t, config.Option(component.(ComponentCfgOptionAware).CfgOptions()...))
+		store, err := blob.ReadStoreSettings(config, "default")
+		require.NoError(t, err)
+		require.True(t, strings.HasPrefix(store.Bucket, "shared-env-bucket-"))
+		buckets = append(buckets, store.Bucket)
+	}
+	require.NotEqual(t, buckets[0], buckets[1])
+	require.Equal(t, "shared-env-bucket", os.Getenv("BLOB_DEFAULT_BUCKET"))
 }

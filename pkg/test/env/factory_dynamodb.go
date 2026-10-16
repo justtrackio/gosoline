@@ -37,12 +37,11 @@ func (f *dynamoDbFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 func (f *dynamoDbFactory) DescribeContainers(settings any) ComponentContainerDescriptions {
 	s := settings.(*dynamoDbSettings)
 	ports := PortBindings{
-		"main": {ContainerPort: 8000, HostPort: s.Port, Protocol: "tcp"},
+		"main": {ContainerPort: 4566, HostPort: s.Port, Protocol: "tcp"},
 	}
 	containerConfig := &ContainerConfig{
 		Auth: s.Image.Auth, Repository: s.Image.Repository, Tag: s.Image.Tag,
 		PortBindings: ports,
-		Cmd:          []string{"-jar", "DynamoDBLocal.jar", "-inMemory", "-sharedDb", "-disableTelemetry"},
 	}
 	if s.isExternal() {
 		containerConfig = externalContainer(s.Host, ports)
