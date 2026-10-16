@@ -30,6 +30,8 @@ Use `metric.RegisterHelp(namespace, metricName, help)` to register package-level
 
 OTEL count units derive a singular item annotation from the final metric-name component using the existing inflection dependency: custom leaves such as `queries` and `statuses` export `{query}` and `{status}`. Singular and uncountable leaves retain UCUM unit `1`; physical units are unaffected.
 
+OTEL instrument units and descriptions are resolved only when a counter, gauge, or histogram is first registered, using the writer's existing instrument caches. Repeated samples do not repeat count-unit inflection or description lookup.
+
 ## Writer API and custom metrics
 
 The metric writer API now takes the canonical namespace explicitly:

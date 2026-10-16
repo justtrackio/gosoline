@@ -130,26 +130,24 @@ func (w *otelWriter) Write(ctx context.Context, batch Data) {
 
 func (w *otelWriter) record(ctx context.Context, datum *Datum) error {
 	name := renderOtelName(datum.Namespace, datum.MetricName)
-	unit := otelInstrumentUnit(datum.MetricName, datum.Unit)
-	help := resolveHelp(datum)
 	value := datum.Value * unitScale(datum.Unit)
 	attrs := otelmetric.WithAttributes(w.attributes(datum)...)
 
 	switch effectiveKind(datum) {
 	case kindCounter:
-		instrument, err := w.counter(name, unit, help)
+		instrument, err := w.counter(name, datum)
 		if err != nil {
 			return err
 		}
 		instrument.Add(ctx, value, attrs)
 	case kindHistogram, kindSummary:
-		instrument, err := w.histogram(name, unit, help, datum.Kind.buckets)
+		instrument, err := w.histogram(name, datum)
 		if err != nil {
 			return err
 		}
 		instrument.Record(ctx, value, attrs)
 	default:
-		instrument, err := w.gauge(name, unit, help)
+		instrument, err := w.gauge(name, datum)
 		if err != nil {
 			return err
 		}
@@ -173,7 +171,7 @@ func (w *otelWriter) attributes(datum *Datum) []attribute.KeyValue {
 	return attrs
 }
 
-func (w *otelWriter) counter(name, unit, help string) (otelmetric.Float64Counter, error) {
+func (w *otelWriter) counter(name string, datum *Datum) (otelmetric.Float64Counter, error) {
 	w.lck.Lock()
 	defer w.lck.Unlock()
 
@@ -181,7 +179,11 @@ func (w *otelWriter) counter(name, unit, help string) (otelmetric.Float64Counter
 		return instrument, nil
 	}
 
-	instrument, err := w.meter.Float64Counter(name, otelmetric.WithUnit(unit), otelmetric.WithDescription(help))
+	instrument, err := w.meter.Float64Counter(
+		name,
+		otelmetric.WithUnit(otelInstrumentUnit(datum.MetricName, datum.Unit)),
+		otelmetric.WithDescription(resolveHelp(datum)),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +193,7 @@ func (w *otelWriter) counter(name, unit, help string) (otelmetric.Float64Counter
 	return instrument, nil
 }
 
-func (w *otelWriter) gauge(name, unit, help string) (otelmetric.Float64Gauge, error) {
+func (w *otelWriter) gauge(name string, datum *Datum) (otelmetric.Float64Gauge, error) {
 	w.lck.Lock()
 	defer w.lck.Unlock()
 
@@ -199,7 +201,11 @@ func (w *otelWriter) gauge(name, unit, help string) (otelmetric.Float64Gauge, er
 		return instrument, nil
 	}
 
-	instrument, err := w.meter.Float64Gauge(name, otelmetric.WithUnit(unit), otelmetric.WithDescription(help))
+	instrument, err := w.meter.Float64Gauge(
+		name,
+		otelmetric.WithUnit(otelInstrumentUnit(datum.MetricName, datum.Unit)),
+		otelmetric.WithDescription(resolveHelp(datum)),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +215,7 @@ func (w *otelWriter) gauge(name, unit, help string) (otelmetric.Float64Gauge, er
 	return instrument, nil
 }
 
-func (w *otelWriter) histogram(name, unit, help string, buckets []float64) (otelmetric.Float64Histogram, error) {
+func (w *otelWriter) histogram(name string, datum *Datum) (otelmetric.Float64Histogram, error) {
 	w.lck.Lock()
 	defer w.lck.Unlock()
 
@@ -218,11 +224,11 @@ func (w *otelWriter) histogram(name, unit, help string, buckets []float64) (otel
 	}
 
 	options := []otelmetric.Float64HistogramOption{
-		otelmetric.WithUnit(unit),
-		otelmetric.WithDescription(help),
+		otelmetric.WithUnit(otelInstrumentUnit(datum.MetricName, datum.Unit)),
+		otelmetric.WithDescription(resolveHelp(datum)),
 	}
-	if len(buckets) > 0 {
-		options = append(options, otelmetric.WithExplicitBucketBoundaries(buckets...))
+	if len(datum.Kind.buckets) > 0 {
+		options = append(options, otelmetric.WithExplicitBucketBoundaries(datum.Kind.buckets...))
 	}
 
 	instrument, err := w.meter.Float64Histogram(name, options...)
