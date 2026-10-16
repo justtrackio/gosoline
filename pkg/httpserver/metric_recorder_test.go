@@ -101,17 +101,17 @@ func isMetricDatum(datum *metric.Datum, metricName string, value float64) bool {
 
 	return datum.Priority == metric.PriorityHigh &&
 		datum.MetricName == metricName &&
-		datum.Dimensions["ServerName"] == "api" &&
+		datum.Dimensions[dimensionServerName] == "api" &&
 		len(datum.Dimensions) == 1 &&
-		datum.Unit == metric.UnitCountMaximum &&
-		reflect.DeepEqual(datum.Kind, metric.KindGauge.Build()) &&
+		datum.Unit == "" &&
+		reflect.DeepEqual(datum.Kind, metric.Kind{}) &&
 		datum.Value == value
 }
 
 func assertMetricDatum(t *testing.T, datum *metric.Datum, metricName string, value float64) {
 	assert.Equal(t, metric.PriorityHigh, datum.Priority)
 	assert.Equal(t, metricName, datum.MetricName)
-	assert.Equal(t, metric.Dimensions{"ServerName": "api"}, datum.Dimensions)
+	assert.Equal(t, metric.Dimensions{dimensionServerName: "api"}, datum.Dimensions)
 	assert.Equal(t, metric.UnitCountMaximum, datum.Unit)
 	assert.Equal(t, metric.KindGauge.Build(), datum.Kind)
 	assert.Equal(t, value, datum.Value)

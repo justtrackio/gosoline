@@ -273,18 +273,16 @@ func testShardReaderRecoversHandlerPanic(t *testing.T, mode ProcessingMode) {
 	metricWriter.EXPECT().Write(matcher.Context, metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameFailedRecords,
-			Dimensions: metric.Dimensions{"StreamName": ""},
-			Value:      1,
-			Unit:       metric.UnitCount,
-			Kind:       metric.KindTotal,
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameFailedRecords,
-			Dimensions: metric.Dimensions{"StreamName": "", "ShardId": ""},
-			Value:      1,
-			Unit:       metric.UnitCount,
+			Namespace:  metricNamespaceCloudAwsKinesis,
+			MetricName: metricNameConsumedMessages,
+			Dimensions: metric.Dimensions{
+				dimensionStream:           "",
+				dimensionShard:            "",
+				metric.DimensionErrorType: errorTypeProcessingFailed,
+			},
+			Value: 1,
+			Unit:  metric.UnitCount,
+			Kind:  metric.KindCounter.Build(),
 		},
 	}).Once()
 

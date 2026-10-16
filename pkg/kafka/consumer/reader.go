@@ -32,7 +32,7 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 		return nil, fmt.Errorf("failed to build full kafka consumer group id: %w", err)
 	}
 
-	metricsHook := kafka.NewMetricsHook(metric.NewWriter(), kafka.DimensionConsumer, name)
+	metricsHook := kafka.NewMetricsHook(metric.NewWriter(metricNamespaceKafka), kafka.ClientTypeConsumer, name)
 
 	opts := []kgo.Opt{
 		kgo.ConsumeResetOffset(settings.GetStartOffset()),

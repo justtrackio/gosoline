@@ -38,7 +38,6 @@ type PrometheusSettings struct {
 	MetricLimit    int64                    `cfg:"metric_limit" default:"10000"`
 	Api            PrometheusServerSettings `cfg:"api"`
 	WriteGraceTime time.Duration            `cfg:"write_grace_time" default:"10s"`
-	Naming         PrometheusNamingSettings `cfg:"naming"`
 }
 
 type PrometheusServerSettings struct {
@@ -46,11 +45,6 @@ type PrometheusServerSettings struct {
 	Port    int             `cfg:"port" default:"8092"`
 	Path    string          `cfg:"path" default:"/metrics"`
 	Timeout TimeoutSettings `cfg:"timeout"`
-}
-
-type PrometheusNamingSettings struct {
-	NamespacePattern   string `cfg:"namespace_pattern,nodecode" default:"{app.namespace}-{app.name}" validate:"required"`
-	NamespaceDelimiter string `cfg:"namespace_delimiter" default:"_"`
 }
 
 type metricsServer struct {

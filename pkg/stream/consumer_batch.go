@@ -43,7 +43,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
 // UntypedBatchConsumerCallback decodes models and processes a batch, returning
@@ -168,7 +167,7 @@ func (c *BatchConsumer) enqueueRetry(ctx context.Context, msg *Message) bool {
 		return false
 	}
 
-	c.writeMetricRetryCount(ctx, metricNameConsumerRetryGetCount)
+	c.writeMetricRetryCount(ctx, retryOperationGet)
 	select {
 	case ack := <-result:
 		return ack
@@ -388,14 +387,25 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context) (failed int) {
 		ctx = samplingCtx
 	}
 
+	cancelledFailure := false
 	if acks, err = c.callBatch(ctx, decoded.models, decoded.attributes); err != nil {
-		c.handleError(ctx, err, "batch processing failed")
+		c.logError(ctx, err, "batch processing failed")
+		cancelledFailure = exec.IsRequestCanceled(err) || ctx.Err() != nil
 	}
 
 	if len(acks) != len(decoded.messages) {
-		c.handleError(ctx, fmt.Errorf("%d acknowledgements for %d models", len(acks), len(decoded.messages)), "batch result length mismatch")
+		c.logError(ctx, fmt.Errorf("%d acknowledgements for %d models", len(acks), len(decoded.messages)), "batch result length mismatch")
 	}
 
+	failedRecords := 0
+	for i := range decoded.messages {
+		if i >= len(acks) || !acks[i] {
+			failedRecords++
+		}
+	}
+	if failedRecords > 0 && !cancelledFailure {
+		c.writeMetricProcessingFailed(ctx, failedRecords)
+	}
 	for i, message := range decoded.messages {
 		if i < len(acks) && acks[i] {
 			continue
@@ -462,7 +472,6 @@ func (c *BatchConsumer) decodeBatch(ctx context.Context, batch []batchMessage) d
 
 	for _, message := range batch {
 		if model, err = c.getBatchModel(message.message.Attributes); err != nil {
-			c.metricWriter.Write(ctx, metric.Data{&metric.Datum{MetricName: metricNameConsumerUnknownModelError, Dimensions: map[string]string{metricDimensionConsumer: c.name}, Value: 1}})
 
 			var ignorable IgnorableGetModelError
 			if errors.As(err, &ignorable) && ignorable.IsIgnorableWithSettings(c.settings.IgnoreOnGetModelError) {
@@ -544,19 +553,19 @@ func (c *BatchConsumer) retryBatchMessage(ctx context.Context, message batchMess
 	}
 
 	if !c.settings.Retry.Enabled {
-		c.handleError(ctx, fmt.Errorf("attributes %v", message.message.Attributes), "unsuccessful acknowledged batch message requires replay")
+		c.logError(ctx, fmt.Errorf("attributes %v", message.message.Attributes), "unsuccessful acknowledged batch message requires replay")
 
 		return false
 	}
 
 	retryMessage, _ := c.buildRetryMessage(&message.retryMessage)
-	c.writeMetricRetryCount(ctx, metricNameConsumerRetryPutCount)
+	c.writeMetricRetryCount(ctx, retryOperationPut)
 
 	ctx, cancel := exec.WithDelayedCancelContext(ctx, c.settings.Retry.GraceTime)
 	defer cancel()
 
 	if err := c.retryHandler.Put(ctx, retryMessage); err != nil {
-		c.handleError(ctx, err, "can not put batch message into retry handler; replay required")
+		c.logError(ctx, err, "can not put batch message into retry handler; replay required")
 
 		return false
 	}
