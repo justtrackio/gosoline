@@ -183,6 +183,73 @@ func TestS3ImplicitDefaultIsolation(t *testing.T) {
 	require.Equal(t, "shared-env-bucket", os.Getenv("BLOB_DEFAULT_BUCKET"))
 }
 
+func TestS3InheritedDefaultsWithoutDefaultStore(t *testing.T) {
+	settings := map[string]any{
+		"app.env":                  "test",
+		"app.name":                 "blob-test",
+		"blob.default.prefix":      "shared-prefix",
+		"blob.default.client_name": "default",
+		"blob.named.bucket":        "named-bucket",
+	}
+	containers := map[string]*Container{"main": {bindings: map[string]ContainerBinding{"main": {host: "localhost", port: "4566"}}}}
+	config := cfg.New()
+	require.NoError(t, config.Option(cfg.WithConfigMap(settings)))
+	store, err := blob.ReadStoreSettings(config, "named")
+	require.NoError(t, err)
+	require.Equal(t, "named-bucket", store.Bucket)
+
+	component, err := new(s3Factory).Component(config, nil, containers, &s3Settings{Region: "eu-central-1"})
+	require.NoError(t, err)
+	require.NoError(t, config.Option(component.(ComponentCfgOptionAware).CfgOptions()...))
+	store, err = blob.ReadStoreSettings(config, "named")
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(store.Bucket, "named-bucket-"))
+	require.Equal(t, "shared-prefix", store.Prefix)
+	require.Equal(t, "default", store.ClientName)
+
+	// An explicitly configured default bucket still requires valid naming.
+	settings["blob.default.bucket"] = ""
+	invalid := cfg.New()
+	require.NoError(t, invalid.Option(cfg.WithConfigMap(settings)))
+	_, err = new(s3Factory).Component(invalid, nil, containers, &s3Settings{Region: "eu-central-1"})
+	require.ErrorContains(t, err, "can not read blob store default")
+
+	delete(settings, "blob.default.bucket")
+	delete(settings, "blob.named.bucket")
+	invalidDefault := cfg.New()
+	require.NoError(t, invalidDefault.Option(cfg.WithConfigMap(settings)))
+	_, err = new(s3Factory).Component(invalidDefault, nil, containers, &s3Settings{Region: "eu-central-1"})
+	require.ErrorContains(t, err, "can not read blob store default")
+}
+
+func TestS3DefaultStoreWithCustomClient(t *testing.T) {
+	for _, pattern := range []string{"custom-bucket", "{invalid}"} {
+		t.Run(pattern, func(t *testing.T) {
+			config := cfg.New()
+			require.NoError(t, config.Option(cfg.WithConfigMap(map[string]any{
+				"app.env": "test", "app.name": "blob-test",
+				"blob.default.client_name": "custom", "blob.default.prefix": "shared-prefix",
+				"blob.named.bucket": "named-bucket",
+				"cloud.aws.s3.clients.custom.naming.bucket_pattern": pattern,
+			})))
+			containers := map[string]*Container{"main": {bindings: map[string]ContainerBinding{"main": {host: "localhost", port: "4566"}}}}
+			component, err := new(s3Factory).Component(config, nil, containers, &s3Settings{Region: "eu-central-1"})
+			if pattern == "{invalid}" {
+				require.ErrorContains(t, err, "unknown placeholder")
+
+				return
+			}
+			require.NoError(t, err)
+			require.NoError(t, config.Option(component.(ComponentCfgOptionAware).CfgOptions()...))
+			store, err := blob.ReadStoreSettings(config, "default")
+			require.NoError(t, err)
+			require.True(t, strings.HasPrefix(store.Bucket, "custom-bucket-"))
+			require.Equal(t, "shared-prefix", store.Prefix)
+			require.Equal(t, "custom", store.ClientName)
+		})
+	}
+}
+
 func TestFlociWithoutBlobConfiguration(t *testing.T) {
 	containers := map[string]*Container{"main": {bindings: map[string]ContainerBinding{"main": {host: "localhost", port: "4566"}}}}
 	config := cfg.New()

@@ -72,11 +72,17 @@ func (f *s3Factory) Component(config cfg.Config, _ log.Logger, containers map[st
 	if err != nil {
 		return nil, fmt.Errorf("can not read blob stores: %w", err)
 	}
+	defaultClient, err := config.GetString("blob.default.client_name", "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not read default blob client: %w", err)
+	}
+	defaultConfigured := config.IsSet("app.namespace") || config.IsSet("blob.default.bucket") ||
+		config.HasPrefix("cloud.aws.s3.clients.default.naming") || config.HasPrefix("cloud.aws.s3.clients."+defaultClient+".naming")
 	names := make([]string, 0, len(stores)+1)
 	for name := range stores {
 		names = append(names, name)
 	}
-	if _, hasDefault := stores["default"]; !hasDefault && (config.IsSet("app.namespace") || config.HasPrefix("blob.default") || config.HasPrefix("cloud.aws.s3.clients.default.naming")) {
+	if _, hasDefault := stores["default"]; !hasDefault && defaultConfigured {
 		names = append(names, "default")
 	}
 	// Keep stores sharing a bucket together, while isolating separate environments.
@@ -84,6 +90,11 @@ func (f *s3Factory) Component(config cfg.Config, _ log.Logger, containers map[st
 	for _, name := range names {
 		store, err := blob.ReadStoreSettings(config, name)
 		if err != nil {
+			// Named stores can inherit defaults that do not form a usable default store.
+			if name == "default" && len(stores) > 1 && !defaultConfigured {
+				continue
+			}
+
 			return nil, fmt.Errorf("can not read blob store %s: %w", name, err)
 		}
 		bucket := store.Bucket[:min(len(store.Bucket), 50)]

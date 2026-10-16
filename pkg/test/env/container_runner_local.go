@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/distribution/reference"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/uuid"
@@ -96,8 +97,7 @@ func (r *containerRunnerLocal) RunContainer(ctx context.Context, request Contain
 		}
 	}
 
-	containerAuth := config.Auth
-	authConfig := r.getAuthConfig(containerAuth)
+	authConfig := r.getAuthConfig(config.Repository, config.Auth)
 
 	envs := make([]string, 0, len(config.Env))
 	for k, v := range config.Env {
@@ -185,8 +185,7 @@ func (r *containerRunnerLocal) pullContainerImage(description *ComponentContaine
 		Tag:        pullTag,
 	}
 
-	containerAuth := description.ContainerConfig.Auth
-	authConfig := r.getAuthConfig(containerAuth)
+	authConfig := r.getAuthConfig(config.Repository, config.Auth)
 
 	err = r.pool.Client.PullImage(pullImageOptions, authConfig)
 	if err != nil {
@@ -196,12 +195,31 @@ func (r *containerRunnerLocal) pullContainerImage(description *ComponentContaine
 	return nil
 }
 
-func (r *containerRunnerLocal) getAuthConfig(containerAuth authSettings) docker.AuthConfiguration {
+func (r *containerRunnerLocal) getAuthConfig(repository string, containerAuth authSettings) docker.AuthConfiguration {
 	if !containerAuth.IsEmpty() {
 		return containerAuth.GetAuthConfig()
 	}
 
-	return r.runnerSettings.Auth.GetAuthConfig()
+	if r.runnerSettings.Auth.ServerAddress == "" {
+		return docker.AuthConfiguration{}
+	}
+
+	image, err := reference.ParseNormalizedNamed(repository)
+	if err == nil && containerRegistry(reference.Domain(image)) == containerRegistry(r.runnerSettings.Auth.ServerAddress) {
+		return r.runnerSettings.Auth.GetAuthConfig()
+	}
+
+	return docker.AuthConfiguration{}
+}
+
+func containerRegistry(address string) string {
+	address = strings.TrimPrefix(strings.TrimPrefix(strings.ToLower(address), "https://"), "http://")
+	host, _, _ := strings.Cut(address, "/")
+	if host == "index.docker.io" || host == "registry-1.docker.io" {
+		return "docker.io"
+	}
+
+	return host
 }
 
 func (r *containerRunnerLocal) getTmpfsConfig(settings []TmpfsSettings) map[string]string {
