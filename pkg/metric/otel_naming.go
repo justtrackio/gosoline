@@ -123,6 +123,22 @@ func unitScale(unit types.StandardUnit) float64 {
 	return scale
 }
 
+// scaleHistogramBuckets converts authored boundaries to the base unit without mutating caller-owned
+// bucket slices. Writers call it only when creating a histogram instrument.
+func scaleHistogramBuckets(unit types.StandardUnit, buckets []float64) []float64 {
+	scale := unitScale(unit)
+	if scale == 1 || len(buckets) == 0 {
+		return buckets
+	}
+
+	scaled := make([]float64, len(buckets))
+	for i, bucket := range buckets {
+		scaled[i] = bucket * scale
+	}
+
+	return scaled
+}
+
 // otelInstrumentUnit returns the unit an OTEL instrument for the given leaf and unit carries. A count
 // of discrete things uses the singular leaf as its UCUM annotation; unchanged singular or uncountable
 // leaves retain the dimensionless count unit.

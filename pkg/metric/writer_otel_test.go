@@ -20,7 +20,7 @@ func TestOtelWriterHistogramBuckets(t *testing.T) {
 	}{
 		"custom buckets": {
 			buckets:        []float64{1, 5, 10},
-			expectedBounds: []float64{1, 5, 10},
+			expectedBounds: []float64{0.001, 0.005, 0.01},
 		},
 		"nil buckets": {
 			expectedBounds: defaultBuckets,
@@ -174,4 +174,31 @@ func writeAndCollect(t *testing.T, datum *metric.Datum) metricdata.ResourceMetri
 	require.NoError(t, reader.Collect(t.Context(), &exported))
 
 	return exported
+}
+
+func TestOtelWriterScalesHistogramBucketsToBaseUnits(t *testing.T) {
+	buckets := []float64{1, 5, 10}
+	exported := writeAndCollect(t, &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		Namespace:  "http.server",
+		MetricName: "request.duration",
+		Unit:       metric.UnitMilliseconds,
+		Value:      7,
+		Kind:       metric.KindHistogram.WithBuckets(buckets).Build(),
+	})
+
+	require.Len(t, exported.ScopeMetrics, 1)
+	require.Len(t, exported.ScopeMetrics[0].Metrics, 1)
+
+	histogram, ok := exported.ScopeMetrics[0].Metrics[0].Data.(metricdata.Histogram[float64])
+	require.True(t, ok)
+	require.Len(t, histogram.DataPoints, 1)
+
+	point := histogram.DataPoints[0]
+	require.Len(t, point.Bounds, 3)
+	for i, expected := range []float64{0.001, 0.005, 0.01} {
+		assert.InDelta(t, expected, point.Bounds[i], 1e-12)
+	}
+	assert.Equal(t, []uint64{0, 0, 1, 0}, point.BucketCounts)
+	assert.Equal(t, []float64{1, 5, 10}, buckets)
 }

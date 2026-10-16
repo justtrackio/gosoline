@@ -161,6 +161,7 @@ func (k SummaryKindBuilder) Build() Kind {
 // otherwise the default is no buckets. (In other words, if you want to
 // use both regular buckets and buckets for a native histogram, you have
 // to define the regular buckets here explicitly.)
+// Bucket values use the datum's authored unit; Prometheus and OTEL scale explicit bounds with observations.
 func (k HistogramKindBuilder) WithBuckets(buckets []float64) HistogramKindBuilder {
 	k.buckets = buckets
 

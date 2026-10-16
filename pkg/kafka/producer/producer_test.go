@@ -3,13 +3,16 @@ package producer_test
 import (
 	"context"
 	"errors"
-	"reflect"
 	"testing"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/kafka/producer"
 	kafkaProducerMocks "github.com/justtrackio/gosoline/pkg/kafka/producer/mocks"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -31,8 +34,7 @@ func TestProducerProduceSyncSuccess(t *testing.T) {
 			return false
 		}
 
-		return hasNoUnitOrKind(data) &&
-			data[0].MetricName == "batch.records" && data[0].Value == 2.0 &&
+		return data[0].MetricName == "batch.records" && data[0].Value == 2.0 &&
 			data[1].MetricName == "produce.duration" &&
 			data[2].MetricName == "sent.messages" && data[2].Value == 2.0
 	})).Once()
@@ -59,8 +61,7 @@ func TestProducerProduceSyncFailure(t *testing.T) {
 			return false
 		}
 
-		return hasNoUnitOrKind(data) &&
-			data[0].MetricName == "batch.records" && data[0].Value == 2.0 &&
+		return data[0].MetricName == "batch.records" && data[0].Value == 2.0 &&
 			data[1].MetricName == "produce.duration" &&
 			data[2].MetricName == "sent.messages" && data[2].Value == 1.0 &&
 			data[2].Dimensions["error.type"] == "{{default}}" &&
@@ -91,8 +92,7 @@ func TestProducerProduceSyncBatchSize(t *testing.T) {
 			return false
 		}
 
-		return hasNoUnitOrKind(data) &&
-			data[0].MetricName == "batch.records" && data[0].Value == 3.0 &&
+		return data[0].MetricName == "batch.records" && data[0].Value == 3.0 &&
 			data[1].MetricName == "produce.duration" &&
 			data[2].MetricName == "sent.messages" && data[2].Value == 3.0
 	})).Once()
@@ -103,12 +103,47 @@ func TestProducerProduceSyncBatchSize(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func hasNoUnitOrKind(data metric.Data) bool {
-	for _, datum := range data {
-		if datum.Unit != "" || !reflect.DeepEqual(datum.Kind, metric.Kind{}) {
-			return false
+func TestProducerProduceSyncEmitsFailedRecordsAsCounter(t *testing.T) {
+	writer := kafkaProducerMocks.NewWriter(t)
+	registry := prometheus.NewRegistry()
+	metricWriter := metric.NewPrometheusWriterWithInterfaces(log.NewLogger(), registry, 1000, time.Second)
+
+	records := []*kgo.Record{{Value: []byte("test")}}
+	results := kgo.ProduceResults{
+		{Record: records[0], Err: errors.New("produce error")},
+	}
+	writer.EXPECT().ProduceSync(mock.Anything, records[0]).Return(results)
+
+	p := producer.NewProducerWithInterfaces(writer, metricWriter, "test-producer", "test-topic")
+	err := p.ProduceSync(t.Context(), records...)
+	assert.Error(t, err)
+
+	families, err := registry.Gather()
+	assert.NoError(t, err)
+	var sent *dto.MetricFamily
+	for _, family := range families {
+		if family.GetName() == "gosoline_kafka_producer_sent_messages_total" {
+			sent = family
+			break
 		}
 	}
+	if !assert.NotNil(t, sent) {
+		return
+	}
 
-	return true
+	assert.Equal(t, dto.MetricType_COUNTER, sent.GetType())
+	var foundFailure bool
+	var failureCount float64
+	for _, sample := range sent.Metric {
+		labels := make(map[string]string, len(sample.Label))
+		for _, label := range sample.Label {
+			labels[label.GetName()] = label.GetValue()
+		}
+		if labels["error_type"] == "send_failed" {
+			foundFailure = true
+			failureCount = sample.GetCounter().GetValue()
+		}
+	}
+	assert.True(t, foundFailure)
+	assert.Equal(t, 1.0, failureCount)
 }

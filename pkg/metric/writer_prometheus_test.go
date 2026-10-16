@@ -409,3 +409,102 @@ func Test_promWriter_RendersDottedDimensionKeys(t *testing.T) {
 
 	assert.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expected), "gosoline_http_server_rejected_requests_total"))
 }
+
+func Test_promWriter_UsesCanonicalDefaultsBeforeNormalization(t *testing.T) {
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+	defaultDimensions := metric.Dimensions{
+		"consumer.name": "batch",
+		"error.type":    metric.DimensionDefault,
+	}
+	metric.NewWriter("stream", &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: "consumed.messages",
+		Dimensions: defaultDimensions,
+		Unit:       metric.UnitCount,
+		Kind:       metric.KindCounter.Build(),
+	})
+
+	inputDimensions := metric.Dimensions{
+		"consumer.name": "batch",
+		"error.type":    metric.DimensionDefault,
+	}
+	input := &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		Namespace:  "stream",
+		MetricName: "consumed.messages",
+		Dimensions: inputDimensions,
+		Value:      3,
+	}
+	registry := prometheus.NewRegistry()
+	w := metric.NewPrometheusWriterWithInterfaces(logger, registry, 1000, writeGraceTime)
+	w.WriteOne(t.Context(), input)
+
+	families, err := registry.Gather()
+	assert.NoError(t, err)
+	if !assert.Len(t, families, 1) {
+		return
+	}
+
+	family := families[0]
+	assert.Equal(t, "gosoline_stream_consumed_messages_total", family.GetName())
+	assert.Equal(t, dto.MetricType_COUNTER, family.GetType())
+	if !assert.Len(t, family.Metric, 1) {
+		return
+	}
+
+	labels := make(map[string]string, len(family.Metric[0].Label))
+	for _, label := range family.Metric[0].Label {
+		labels[label.GetName()] = label.GetValue()
+	}
+	assert.Equal(t, "", labels["error_type"])
+	assert.Equal(t, 3.0, family.Metric[0].GetCounter().GetValue())
+	assert.Empty(t, input.Unit)
+	assert.Equal(t, metric.Kind{}, input.Kind)
+	assert.Equal(t, inputDimensions, input.Dimensions)
+}
+
+func Test_promWriter_ScalesHistogramBucketsToBaseUnits(t *testing.T) {
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+	buckets := []float64{1, 5, 10}
+	registry := prometheus.NewRegistry()
+	w := metric.NewPrometheusWriterWithInterfaces(logger, registry, 1000, writeGraceTime)
+	w.WriteOne(t.Context(), &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		Namespace:  "http.server",
+		MetricName: "request.duration",
+		Unit:       metric.UnitMilliseconds,
+		Value:      7,
+		Kind:       metric.KindHistogram.WithBuckets(buckets).Build(),
+	})
+
+	families, err := registry.Gather()
+	assert.NoError(t, err)
+	if !assert.Len(t, families, 1) {
+		return
+	}
+
+	family := families[0]
+	assert.Equal(t, "gosoline_http_server_request_duration_seconds", family.GetName())
+	assert.Equal(t, dto.MetricType_HISTOGRAM, family.GetType())
+	if !assert.Len(t, family.Metric, 1) {
+		return
+	}
+
+	histogram := family.Metric[0].GetHistogram()
+	if !assert.NotNil(t, histogram) {
+		return
+	}
+	assert.Equal(t, uint64(1), histogram.GetSampleCount())
+	assert.InDelta(t, 0.007, histogram.GetSampleSum(), 1e-9)
+	assert.Equal(t, []float64{1, 5, 10}, buckets)
+	if !assert.Len(t, histogram.Bucket, 3) {
+		return
+	}
+
+	expectedBounds := []float64{0.001, 0.005, 0.01}
+	expectedCounts := []uint64{0, 0, 1}
+	for i, bucket := range histogram.Bucket {
+		assert.InDelta(t, expectedBounds[i], bucket.GetUpperBound(), 1e-12)
+		assert.Equal(t, expectedCounts[i], bucket.GetCumulativeCount())
+	}
+}

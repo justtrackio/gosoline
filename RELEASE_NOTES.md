@@ -20,7 +20,13 @@ The Prometheus writer always uses the fixed `gosoline` prefix, not an applicatio
 
 The `http.server.request.duration` histogram uses canonical dimensions `name`, `route`, `request.method`, and `response.status_code`. The `http.client.request.duration` histogram uses `request.method` with `response.status_code` for responses or `error.type` for failures. Status is the full numeric code, not a `1xx`–`5xx` class. `http.server.rejected.requests` carries only `name`, `route`, and `request.method`; it has no `response.status_code`. In particular, route is `route`, not `http.route`. Prometheus converts dotted dimension keys to valid label names, for example `request.method` to `request_method` and `response.status_code` to `response_status_code`.
 
+The Prometheus writer resolves registered defaults against canonical names and dimensions before translating dotted label
+keys and `{{default}}` values, preserving the declared priority, unit, and instrument kind for default-backed samples.
+
 Most duration observations are authored in milliseconds. `cloud.aws.kinesis.acquire.duration` is authored in seconds. Prometheus and OTEL render durations in seconds; CloudWatch retains the actual authored unit, so its duration values are not universally milliseconds.
+
+Explicit histogram bucket bounds use the metric's authored unit. Prometheus and OTEL convert these bounds along with
+observations to their base unit; for example, 1, 5, and 10 milliseconds become 0.001, 0.005, and 0.01 seconds.
 
 Framework-authored duration metrics that were Prometheus summaries now use histograms; custom metrics using `KindSummary` remain Prometheus summaries. Use histogram buckets (for example, `histogram_quantile`) for the framework duration metrics. `UnitMillisecondsAverage` and its eight related units resolve to their base unit before rendering, so millisecond histograms do not export UCUM unit `1`.
 
@@ -107,6 +113,9 @@ Standalone failure or alternative-outcome families now use the metric for the op
 The notification success and failure families are both consolidated into `db.repo.model_event.notifications`, a `UnitCount` counter. There is no separate success label and no error-only replacement metric.
 
 `kafka.consumer.consumed.messages` is also a `UnitCount` counter. Its registered zero-value default and all outcome samples carry the unit and counter kind, including `error.type="processing_failed"` samples. This prevents missing-unit validation errors in idle and active consumers. OTEL exports `gosoline.kafka.consumer.consumed.messages` as a monotonic counter with unit `{message}`; Prometheus exports `gosoline_kafka_consumer_consumed_messages_total` as a counter.
+
+`kafka.producer.sent.messages` uses a `UnitCount` counter for both successful records on the default series and failed
+records with `error.type="send_failed"`.
 
 `metric.DimensionDefault` (`"{{default}}"`) is an internal marker, not a value exported by a writer. Its backend representation is:
 

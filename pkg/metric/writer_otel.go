@@ -228,7 +228,7 @@ func (w *otelWriter) histogram(name string, datum *Datum) (otelmetric.Float64His
 		otelmetric.WithDescription(resolveHelp(datum)),
 	}
 	if len(datum.Kind.buckets) > 0 {
-		options = append(options, otelmetric.WithExplicitBucketBoundaries(datum.Kind.buckets...))
+		options = append(options, otelmetric.WithExplicitBucketBoundaries(scaleHistogramBuckets(datum.Unit, datum.Kind.buckets)...))
 	}
 
 	instrument, err := w.meter.Float64Histogram(name, options...)

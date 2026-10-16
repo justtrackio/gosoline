@@ -128,6 +128,8 @@ func recordsSentDatum(dims metric.Dimensions, errorType string, value float64) *
 		Namespace:  metricNamespaceKafkaProducer,
 		MetricName: metricNameRecordsSent,
 		Dimensions: withErrorType(dims, errorType),
+		Unit:       metric.UnitCount,
+		Kind:       metric.KindCounter.Build(),
 		Value:      value,
 	}
 }

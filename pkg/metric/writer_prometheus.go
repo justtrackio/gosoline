@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -35,9 +36,14 @@ var (
 )
 
 type (
-	prometheusMetricProcessor func(metric prometheus.Collector)
-	prometheusWriterCtxKey    string
-	registryAppCtxKey         string
+	prometheusMetricProcessor     func(metric prometheus.Collector)
+	prometheusWriterCtxKey        string
+	registryAppCtxKey             string
+	prometheusHistogramBucketsKey struct {
+		subsystem string
+		name      string
+		unit      StandardUnit
+	}
 )
 
 func ProvideRegistry(ctx context.Context, name string) (*prometheus.Registry, error) {
@@ -51,12 +57,14 @@ func ProvideRegistry(ctx context.Context, name string) (*prometheus.Registry, er
 }
 
 type prometheusWriter struct {
-	logger         log.Logger
-	registry       *prometheus.Registry
-	namespace      string
-	metricLimit    int64
-	metrics        *int64
-	writeGraceTime time.Duration
+	logger               log.Logger
+	registry             *prometheus.Registry
+	namespace            string
+	metricLimit          int64
+	metrics              *int64
+	writeGraceTime       time.Duration
+	histogramBucketsLock sync.RWMutex
+	histogramBuckets     map[prometheusHistogramBucketsKey][]float64
 }
 
 // ProvidePrometheusWriter provides a prometheus writer. If one is registered under the default key in
@@ -99,12 +107,13 @@ func NewPrometheusWriterWithInterfaces(
 	writeGraceTime time.Duration,
 ) Writer {
 	return &prometheusWriter{
-		logger:         logger.WithChannel("metrics"),
-		registry:       registry,
-		namespace:      prometheusNamespace,
-		metricLimit:    metricLimit,
-		metrics:        mdl.Box(int64(0)),
-		writeGraceTime: writeGraceTime,
+		logger:           logger.WithChannel("metrics"),
+		registry:         registry,
+		namespace:        prometheusNamespace,
+		metricLimit:      metricLimit,
+		metrics:          mdl.Box(int64(0)),
+		writeGraceTime:   writeGraceTime,
+		histogramBuckets: make(map[prometheusHistogramBucketsKey][]float64),
 	}
 }
 
@@ -136,7 +145,6 @@ func (w *prometheusWriter) Write(applicationCtx context.Context, batch Data) {
 func (w *prometheusWriter) write(ctx context.Context, batch Data) {
 	for _, datum := range batch {
 		datum = mdl.Box(preprocessPrometheusMetric(datum))
-		amendFromDefault(datum)
 
 		if w.shouldFilterMetric(datum) {
 			continue
@@ -215,13 +223,13 @@ func (w *prometheusWriter) createSummary(subsystem string, datum *Datum) *promet
 	}, w.DatumDimensionKeys(datum))
 }
 
-func (w *prometheusWriter) createHistogram(subsystem string, datum *Datum) *prometheus.HistogramVec {
+func (w *prometheusWriter) createHistogram(subsystem string, datum *Datum, buckets []float64) *prometheus.HistogramVec {
 	return prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: w.namespace,
 		Subsystem: subsystem,
 		Name:      datum.MetricName,
 		Help:      datum.Kind.help,
-		Buckets:   datum.Kind.buckets,
+		Buckets:   buckets,
 	}, w.DatumDimensionKeys(datum))
 }
 
@@ -304,9 +312,35 @@ func (w *prometheusWriter) summary(ctx context.Context, subsystem string, datum 
 }
 
 func (w *prometheusWriter) histogram(ctx context.Context, subsystem string, datum *Datum) {
-	metric := w.createHistogram(subsystem, datum)
+	key := prometheusHistogramBucketsKey{
+		subsystem: subsystem,
+		name:      datum.MetricName,
+		unit:      datum.Unit,
+	}
+	buckets := datum.Kind.buckets
+	cacheBuckets := len(buckets) > 0
+	if cacheBuckets {
+		w.histogramBucketsLock.RLock()
+		cached, ok := w.histogramBuckets[key]
+		w.histogramBucketsLock.RUnlock()
+		if ok {
+			buckets = cached
+			cacheBuckets = false
+		} else {
+			buckets = scaleHistogramBuckets(datum.Unit, buckets)
+		}
+	}
 
+	metric := w.createHistogram(subsystem, datum, buckets)
 	err := w.registerAndProcessMetric(metric, datum.MetricName, func(metric prometheus.Collector) {
+		if cacheBuckets {
+			w.histogramBucketsLock.Lock()
+			if _, ok := w.histogramBuckets[key]; !ok {
+				w.histogramBuckets[key] = buckets
+			}
+			w.histogramBucketsLock.Unlock()
+		}
+
 		metric.(*prometheus.HistogramVec).
 			With(prometheus.Labels(datum.Dimensions)).
 			Observe(datum.Value)
@@ -340,6 +374,8 @@ func (w *prometheusWriter) DatumDimensionKeys(datum *Datum) []string {
 // rejected at registration.
 func preprocessPrometheusMetric(datum *Datum) Datum {
 	d := *datum
+	// Default IDs use canonical dimension keys and values; resolve before rendering labels.
+	amendFromDefault(&d)
 	d.Dimensions = make(Dimensions, len(datum.Dimensions))
 
 	for dimension, value := range datum.Dimensions {

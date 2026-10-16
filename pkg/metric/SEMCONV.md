@@ -68,12 +68,19 @@ Prometheus dimension keys become label names by replacing dots with underscores;
 prefixed by the metric namespace. For example, `request.method` becomes `request_method`, while
 `route` and `name` remain unchanged. A value of `{{default}}` becomes the empty label value.
 
+Registered defaults are matched using canonical names and dimensions before this label rendering, so translating dotted
+keys and the internal `{{default}}` marker does not change which metadata applies to a datum.
+
 OpenTelemetry preserves canonical dots between namespace and leaf and prefixes the name with
 `gosoline.` when a namespace is present. Without a namespace, it normalizes and exports only the
 leaf name: for example, a namespace-less custom metric with `MetricName: "api_request"` is exported
 as `api_request`, without a `gosoline.` prefix. Its unit is expressed on the instrument. CloudWatch
 concatenates the canonical namespace and leaf in PascalCase and does not add a metric-name prefix; its
 CloudWatch namespace identifies the application.
+
+Explicit bounds set with `KindHistogram.WithBuckets` are authored in the datum's unit. Prometheus and OpenTelemetry
+scale them with observations when registering the histogram, so duration bucket bounds in milliseconds are converted
+to seconds along with the observed values.
 
 ## Attributes
 
@@ -163,6 +170,9 @@ retry operations with `operation="get"` or `operation="put"`, not the number of 
 | `sent.messages` | count | counter | `client.type`, `client.name`, `topic.name`, `error.type` | `messaging.client.sent.messages` |
 | `produce.duration` | ms | histogram | `client.type`, `client.name`, `topic.name` | `messaging.client.operation.duration` |
 | `batch.records` | count | histogram | `client.type`, `client.name`, `topic.name` | none |
+
+`sent.messages` records successful records on the default series and failed records with `error.type="send_failed"`.
+Both outcomes use a count-valued counter.
 
 ### `kafka` — `pkg/kafka`
 
