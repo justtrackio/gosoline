@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDaemonThrottleErrorExpiresAfterTicker(t *testing.T) {
+func TestDaemonThrottleErrorExpires(t *testing.T) {
 	fakeClock := clock.NewFakeClock()
 	daemon := newThrottleTestDaemon(fakeClock)
 	ctx, cancel := context.WithCancel(t.Context())
@@ -20,7 +20,7 @@ func TestDaemonThrottleErrorExpiresAfterTicker(t *testing.T) {
 	assert.True(t, daemon.throttleError(ctx, "invalid datum"))
 	assert.False(t, daemon.throttleError(ctx, "invalid datum"))
 
-	fakeClock.BlockUntilTickers(2)
+	fakeClock.BlockUntil(1)
 	fakeClock.Advance(time.Minute)
 
 	require.Eventually(t, func() bool {
@@ -34,7 +34,7 @@ func TestDaemonThrottleErrorReleasesOnContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 
 	assert.True(t, daemon.throttleError(ctx, "invalid datum"))
-	fakeClock.BlockUntilTickers(2)
+	fakeClock.BlockUntil(1)
 	cancel()
 
 	nextCtx, nextCancel := context.WithCancel(t.Context())

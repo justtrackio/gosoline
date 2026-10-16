@@ -28,6 +28,8 @@ The four Kafka batch-size metrics—`kafka.produce.batch.size`, `kafka.produce.b
 
 Use `metric.RegisterHelp(namespace, metricName, help)` to register package-level descriptions; `Kind.WithHelp(...)` overrides a description for one datum. Prometheus and OTEL resolve help from the datum first, then registered help, then a unit-description fallback for unregistered custom metrics. CloudWatch does not export help text.
 
+OTEL count units derive a singular item annotation from the final metric-name component using the existing inflection dependency: custom leaves such as `queries` and `statuses` export `{query}` and `{status}`. Singular and uncountable leaves retain UCUM unit `1`; physical units are unaffected.
+
 ## Writer API and custom metrics
 
 The metric writer API now takes the canonical namespace explicitly:
@@ -192,9 +194,11 @@ Source review lists 62 framework-authored canonical metric leaves across 18 name
 
 The full metric specification, including units, kinds, descriptions, and dimensions, is in `pkg/metric/SEMCONV.md`.
 
-## Existing example
+## Existing examples
 
 The existing `examples/otel` application now passes a namespace to `metric.NewWriter`. The v2 writer exports its millisecond-authored duration metric in seconds.
+
+The Prometheus example now supplies a valid count unit for its custom summary. Its tutorial links to the public metric specification and shows the fixed `gosoline` prefix and observed custom-series output.
 
 ## Upgrade checklist
 

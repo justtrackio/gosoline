@@ -1,13 +1,16 @@
 # Gosoline metric semantic conventions
 
-Gosoline follows the OpenTelemetry semantic conventions for **grammar, units and attribute shape**, and
-deliberately does **not** use their names. Nothing gosoline exports is a canonical semantic-convention
-metric: the OTEL renderer prefixes every name with `gosoline.`, so a backend can never mistake a
-gosoline metric for the convention's own.
+Gosoline-owned metrics follow the OpenTelemetry semantic conventions for **grammar, units and
+attribute shape**, but deliberately do **not** use their names. Each has a Gosoline namespace, which
+the OTEL renderer prefixes with `gosoline.` so the exported names cannot be mistaken for canonical
+semantic-convention metrics. A custom metric without a namespace is normalized from its leaf without
+that prefix; application authors should avoid canonical semantic-convention names.
 
-This file is the specification. **Any change to a metric name, attribute key, unit or instrument type
-updates this file in the same commit.** The conformance test in `conformance_test.go` enforces the
-inventory; it cannot enforce this document, so keeping it current is on whoever changes a metric.
+This file is the human-facing metric specification. **Any change to a metric name, attribute key, unit
+or instrument type updates this file in the same commit.** The emitting packages and their registered
+defaults are the source of what is written; the inventory below is maintained manually from that
+source and the writer behavior. Focused behavioral tests verify runtime emission and rendering, not
+this document, so keep the inventory and exceptions current alongside the source changes.
 
 ## Why the names diverge
 
@@ -21,7 +24,7 @@ across every subsystem, which is what actually makes the metrics learnable.
 
 ## The grammar
 
-The rules live in `AGENTS.md` under "Naming grammar" and are summarised here:
+The authored names follow the grammar defined here:
 
 1. The namespace names the owner; never repeat it in the leaf.
 2. Event counter: `[qualifier.]<plural-noun>`, qualifier a past participle.
@@ -32,6 +35,45 @@ The rules live in `AGENTS.md` under "Naming grammar" and are summarised here:
    except for explicitly documented all-processed totals.
 7. Components lowercase, words joined by `_`, hierarchy by `.`.
 8. An attribute key never repeats its metric's namespace.
+
+## Authored names and writer rendering
+
+A datum's canonical name consists of an optional namespace and a metric leaf, supplied through
+`Datum.Namespace` and `Datum.MetricName`. Gosoline-owned metrics use the grammar above.
+`metric.NewWriter(namespace)` stamps its namespace onto datums whose `Namespace` is empty; an
+explicit datum namespace takes precedence. An empty writer namespace leaves the metric unnamespaced.
+An application can choose its own namespace and leaf for custom metrics; the same writer-specific
+rendering rules below apply to them.
+
+The canonical name never includes a backend-specific prefix, a unit suffix, `_total`, or an attribute
+value. For example, a writer created with namespace `example` and a count counter named `api_request`
+has the canonical name `example.api_request`.
+
+| Writer | Rendering of `http.server` + `request.duration` (`ms`) |
+|---|---|
+| CloudWatch | `HttpServerRequestDuration`, in milliseconds |
+| Prometheus | `gosoline_http_server_request_duration_seconds`, observations scaled to seconds |
+| OpenTelemetry | `gosoline.http.server.request.duration`, instrument unit `s` |
+
+The Prometheus writer always applies the fixed `gosoline` namespace; it is not derived from
+application configuration. It renders the datum namespace as a subsystem and the metric leaf as the
+name, replacing dots with underscores in both. It appends `_seconds` for duration units, `_bytes` for
+byte units, and `_total` for counters (a count counter therefore gets `_total` without another unit
+suffix). A count-valued summary has no name suffix; Prometheus emits its `_sum` and `_count` series.
+With the example namespace above, `api_request` renders as
+`gosoline_example_api_request_total`. With an empty namespace, it renders as
+`gosoline_api_request_total`. Neither `app.name` nor `app.namespace` is added automatically.
+
+Prometheus dimension keys become label names by replacing dots with underscores; they are not
+prefixed by the metric namespace. For example, `request.method` becomes `request_method`, while
+`route` and `name` remain unchanged. A value of `{{default}}` becomes the empty label value.
+
+OpenTelemetry preserves canonical dots between namespace and leaf and prefixes the name with
+`gosoline.` when a namespace is present. Without a namespace, it normalizes and exports only the
+leaf name: for example, a namespace-less custom metric with `MetricName: "api_request"` is exported
+as `api_request`, without a `gosoline.` prefix. Its unit is expressed on the instrument. CloudWatch
+concatenates the canonical namespace and leaf in PascalCase and does not add a metric-name prefix; its
+CloudWatch namespace identifies the application.
 
 ## Attributes
 
@@ -243,13 +285,13 @@ that overlaps that total. Never sum or subtract those series to derive a success
 
 ## Changing a metric
 
-1. Change the emitting package: the name constant, the attribute keys, the emission sites and the
-   registered defaults.
-2. Update `authoredNames` and, if a key is new, `authoredDimensionKeys` in `conformance_test.go`, plus
-   the expected OTEL unit map.
+1. Change the emitting package's name and attribute declarations, emission sites, and registered
+   defaults as needed.
+2. Manually update this inventory and the deliberate exceptions below to reflect the emitted names,
+   units, instrument types, and attributes.
 3. Register or update the help text with `metric.RegisterHelp` in the emitting package.
-4. **Update this file** — the inventory table, and the exceptions section if the change adds or
-   resolves one.
+4. Run focused behavioral tests for any affected renderer, writer, unit, or emitting path. Existing
+   naming and writer tests in `pkg/metric` cover backend rendering; they do not check this inventory.
 5. Record the observable change in `RELEASE_NOTES.md`.
 6. Removing the last emitter of a metric means removing its inventory entry in the same change, so the
    inventory never claims a metric nothing writes.

@@ -58,6 +58,8 @@ func (ctrl *metricController) OneK(c *gin.Context) {
 }
 
 func (ctrl *metricController) MySummary(c *gin.Context) {
+	// Keep the fractional multiplier to demonstrate that count-valued summaries can
+	// observe non-integral values.
 	ctrl.apiCallSummaryMetric(c.Request.Context(), float64(atomic.LoadInt64(ctrl.c))*1.1)
 	val := atomic.AddInt64(ctrl.c, 1)
 
@@ -84,6 +86,7 @@ func (ctrl *metricController) apiCallSummaryMetric(ctx context.Context, val floa
 		Priority:   metric.PriorityHigh,
 		MetricName: "my_summary",
 		Value:      val,
+		Unit:       metric.UnitCount,
 		Kind:       metric.KindSummary.Build(),
 	})
 }

@@ -293,13 +293,7 @@ func (d *Daemon) throttleError(ctx context.Context, err string) bool {
 	d.errorThrottlesLck.Unlock()
 
 	go func() {
-		ticker := d.clock.NewTicker(time.Minute)
-		defer ticker.Stop()
-
-		select {
-		case <-ctx.Done():
-		case <-ticker.Chan():
-		}
+		d.clock.SleepWithContext(ctx, time.Minute)
 
 		d.errorThrottlesLck.Lock()
 		delete(d.errorThrottles, err)

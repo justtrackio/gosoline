@@ -5,6 +5,7 @@ import (
 	"unicode"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	"github.com/jinzhu/inflection"
 )
 
 // FormatOtelMetricName normalizes a gosoline metric name to the OTEL naming standard:
@@ -123,8 +124,8 @@ func unitScale(unit types.StandardUnit) float64 {
 }
 
 // otelInstrumentUnit returns the unit an OTEL instrument for the given leaf and unit carries. A count
-// of discrete things is reported as the UCUM annotation derived from the metric's own plural leaf, so
-// a plural name and a non-unit unit can never disagree.
+// of discrete things uses the singular leaf as its UCUM annotation; unchanged singular or uncountable
+// leaves retain the dimensionless count unit.
 func otelInstrumentUnit(leaf string, unit types.StandardUnit) string {
 	ucumUnit := ToUcumUnit(unit)
 
@@ -132,30 +133,12 @@ func otelInstrumentUnit(leaf string, unit types.StandardUnit) string {
 		return ucumUnit
 	}
 
-	if singular, ok := singularize(lastComponent(leaf)); ok {
+	leaf = lastComponent(leaf)
+	if singular := inflection.Singular(leaf); singular != leaf {
 		return "{" + singular + "}"
 	}
 
 	return ucumUnit
-}
-
-// singularize strips the plural suffix off a word, reporting whether the word was plural at all. It
-// deliberately covers no more than a trailing `s` or `es`, and the conformance test asserts the
-// result for every authored name so a surprise fails the build rather than a backend.
-func singularize(word string) (string, bool) {
-	if len(word) < 2 || !strings.HasSuffix(word, "s") || strings.HasSuffix(word, "ss") {
-		return "", false
-	}
-
-	// `es` is only the plural suffix where the singular itself ends in a sibilant, so `batches`
-	// singularizes to `batch` while `releases` singularizes to `release` rather than to `releas`.
-	for _, suffix := range []string{"sses", "xes", "zes", "ches", "shes"} {
-		if strings.HasSuffix(word, suffix) {
-			return strings.TrimSuffix(word, "es"), true
-		}
-	}
-
-	return strings.TrimSuffix(word, "s"), true
 }
 
 // lastComponent returns the last dot-delimited component of a canonical name.

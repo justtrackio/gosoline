@@ -81,6 +81,21 @@ func TestOtelInstrumentUnit(t *testing.T) {
 			unit:     UnitCount,
 			expected: "{release}",
 		},
+		"plural query leaf uses its singular count unit": {
+			leaf:     "queries",
+			unit:     UnitCount,
+			expected: "{query}",
+		},
+		"plural status leaf uses its singular count unit": {
+			leaf:     "statuses",
+			unit:     UnitCount,
+			expected: "{status}",
+		},
+		"uncountable leaf keeps the dimensionless unit": {
+			leaf:     "species",
+			unit:     UnitCount,
+			expected: "1",
+		},
 		"singular leaf keeps the dimensionless unit": {
 			leaf:     "item.count",
 			unit:     UnitCount,
