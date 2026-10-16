@@ -72,11 +72,12 @@ func (f *s3Factory) Component(config cfg.Config, _ log.Logger, containers map[st
 	if err != nil {
 		return nil, fmt.Errorf("can not read blob stores: %w", err)
 	}
-	names := []string{"default"}
+	names := make([]string, 0, len(stores)+1)
 	for name := range stores {
-		if name != "default" {
-			names = append(names, name)
-		}
+		names = append(names, name)
+	}
+	if _, hasDefault := stores["default"]; !hasDefault && (config.IsSet("app.namespace") || config.HasPrefix("blob.default") || config.HasPrefix("cloud.aws.s3.clients.default.naming")) {
+		names = append(names, "default")
 	}
 	// Keep stores sharing a bucket together, while isolating separate environments.
 	suffix := strings.ReplaceAll(uuid.New().NewV4(), "-", "")[:12]

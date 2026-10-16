@@ -182,3 +182,27 @@ func TestS3ImplicitDefaultIsolation(t *testing.T) {
 	require.NotEqual(t, buckets[0], buckets[1])
 	require.Equal(t, "shared-env-bucket", os.Getenv("BLOB_DEFAULT_BUCKET"))
 }
+
+func TestFlociWithoutBlobConfiguration(t *testing.T) {
+	containers := map[string]*Container{"main": {bindings: map[string]ContainerBinding{"main": {host: "localhost", port: "4566"}}}}
+	config := cfg.New()
+	require.NoError(t, config.Option(cfg.WithConfigMap(map[string]any{"app.env": "test", "app.name": "http-only", "cloud.aws.default.ec2.metadata.available": false})))
+	component, err := new(flociFactory).Component(config, nil, containers, &flociSettings{Region: "eu-central-1"})
+	require.NoError(t, err)
+	require.NoError(t, config.Option(component.(ComponentCfgOptionAware).CfgOptions()...))
+	require.False(t, config.IsSet("blob"))
+	require.NotNil(t, component.(*flociComponent).S3Client())
+	invalid := cfg.New()
+	require.NoError(t, invalid.Option(cfg.WithConfigMap(map[string]any{"app.env": "test", "app.name": "http-only", "cloud.aws.s3.clients.default.naming.bucket_pattern": "{invalid}"})))
+	_, err = new(flociFactory).Component(invalid, nil, containers, &flociSettings{Region: "eu-central-1"})
+	require.ErrorContains(t, err, "unknown placeholder")
+	t.Setenv("BLOB_DEFAULT_BUCKET", "environment-bucket")
+	fromEnv := cfg.New()
+	require.NoError(t, fromEnv.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer), cfg.WithConfigMap(map[string]any{"app.env": "test", "app.name": "http-only"})))
+	component, err = new(flociFactory).Component(fromEnv, nil, containers, &flociSettings{Region: "eu-central-1"})
+	require.NoError(t, err)
+	require.NoError(t, fromEnv.Option(component.(ComponentCfgOptionAware).CfgOptions()...))
+	store, err := blob.ReadStoreSettings(fromEnv, "default")
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(store.Bucket, "environment-bucket-"))
+}
