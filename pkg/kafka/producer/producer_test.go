@@ -124,6 +124,7 @@ func TestProducerProduceSyncEmitsFailedRecordsAsCounter(t *testing.T) {
 	for _, family := range families {
 		if family.GetName() == "gosoline_kafka_producer_sent_messages_total" {
 			sent = family
+
 			break
 		}
 	}
