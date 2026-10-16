@@ -19,6 +19,9 @@ func ParseDateTime(datetime string) (time.Time, error) {
 	return time.Parse(defaultDateTimeFormat, datetime)
 }
 
+// ParseDateTimeWithFormat parses datetime using format as a Go time layout.
+//
+// Deprecated: Use time.Parse(format, datetime) instead.
 func ParseDateTimeWithFormat(format string, datetime string) (time.Time, error) {
 	return time.Parse(format, datetime)
 }

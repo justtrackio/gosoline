@@ -54,7 +54,7 @@ func IntersectMaps[K comparable, V any, M ~map[K]V](m1, m2 M, ms ...M) M {
 	result := make(M)
 
 	for k, v := range m1 {
-		if _, ok := m2[k]; ok && All(ms, func(m3 M) bool {
+		if _, ok := m2[k]; ok && AllMatch(ms, func(m3 M) bool {
 			_, ok := m3[k]
 
 			return ok
@@ -71,7 +71,7 @@ func IntersectMapsWith[K comparable, V any, M ~map[K]V](combine func(V, V) V, m1
 	result := make(M)
 
 	for k, v1 := range m1 {
-		if v2, ok := m2[k]; ok && All(ms, func(m3 M) bool {
+		if v2, ok := m2[k]; ok && AllMatch(ms, func(m3 M) bool {
 			_, ok := m3[k]
 
 			return ok
@@ -108,6 +108,9 @@ func DifferenceMaps[K comparable, V1, V2 any, M1 ~map[K]V1, M2 ~map[K]V2](left M
 }
 
 // Keys returns the keys from a map as a slice. The order of the result will be undefined.
+//
+// Deprecated: Use maps.Keys (Go 1.23) to iterate over keys, or slices.Collect(maps.Keys(m))
+// to collect them. Collect returns nil for an empty map; Keys returns a non-nil empty slice.
 func Keys[K comparable, V any, M ~map[K]V](m M) []K {
 	keys := make([]K, 0, len(m))
 
@@ -119,6 +122,9 @@ func Keys[K comparable, V any, M ~map[K]V](m M) []K {
 }
 
 // Values returns the values from a map as a slice. The order of the result will be undefined.
+//
+// Deprecated: Use maps.Values (Go 1.23) to iterate over values, or slices.Collect(maps.Values(m))
+// to collect them. Collect returns nil for an empty map; Values returns a non-nil empty slice.
 func Values[K comparable, V any, M ~map[K]V](m M) []V {
 	values := make([]V, 0, len(m))
 
