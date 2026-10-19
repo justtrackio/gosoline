@@ -22,6 +22,8 @@ func init() {
 	metric.RegisterHelp(metricNamespace, MetricHttpOpenConnections, "connections the HTTP server currently holds open")
 	metric.RegisterHelp(metricNamespace, MetricHttpRequestDuration, "duration of an HTTP server request")
 	metric.RegisterHelp(metricNamespace, MetricHttpRequestsRejected, "HTTP requests the server rejected before handling them")
+	metric.RegisterHelp(metricNamespace, metricRequests, "HTTP requests received by the server")
+	metric.RegisterHelp(metricNamespace, metricRouteRequests, "HTTP server requests by route and method")
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name ServerMetricRecorder

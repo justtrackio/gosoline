@@ -122,7 +122,7 @@ prefix stripped. It is **not** that attribute, and tooling keyed on the conventi
 
 ## The inventory
 
-62 metrics across 18 namespaces. `unit` is the authored unit; every writer renders it into its own
+64 metrics across 18 namespaces. `unit` is the authored unit; every writer renders it into its own
 convention (Prometheus scales durations to seconds and appends `_seconds`, OTEL sets the UCUM unit on
 the instrument).
 
@@ -258,11 +258,15 @@ the pool's current `used` and `idle` connection counts as separate series keyed 
 | Metric | Unit | Type | Attributes | Derived from |
 |---|---|---|---|---|
 | `http.server.request.duration` | ms | histogram | `name`, `route`, `request.method`, `response.status_code` | `http.server.request.duration` |
+| `http.server.requests` | count | counter | `name` | none |
+| `http.server.routed.requests` | count | counter | `name`, `route`, `request.method` | none |
 | `http.server.rejected.requests` | count | counter | `name`, `route`, `request.method` | none |
 | `http.server.active_request.count` | count | gauge | `name` | `http.server.active_requests` |
 | `http.server.connection.count` | count | gauge | `name` | none |
 | `http.client.request.duration` | ms | histogram | `request.method`, `response.status_code`, `error.type` | `http.client.request.duration` |
 | `rpc.server.request.duration` | ms | histogram | `service`, `method` | `rpc.server.duration` |
+
+The two request counters are high-priority `UnitCount` monotonic counters with zero defaults: `requests` has one server series keyed only by `name`, while `routed.requests` has one zero-default series per application route definition and method. Neither carries `response.status_code`. They are recorded once after each matched request leaves the metric middleware, including requests aborted by downstream server middleware; unmatched routes (an empty Gin route template) remain excluded. Matched built-in health routes are counted, but `/health` has no zero default because it is registered outside the route definitions. The duration histogram remains a separate latency sample with the full response status code.
 
 ### Remaining namespaces
 

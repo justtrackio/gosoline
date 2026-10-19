@@ -72,15 +72,17 @@ The Kafka helper API also changed: `kafka.MetricPair` now takes one `kafka.Metri
 
 ## HTTP metric migrations
 
-HTTP client and server request counters, status-class counters, and duration series are consolidated into request-duration histograms. The previous entries below are source-level metric-family identifiers, not literal v1 exporter names; the old exported names depended on the writer and, for some writers, application identity.
+HTTP client request/error/status-class counters are consolidated into request-duration histograms. HTTP server request counters are separate v2 instruments; only server status-class counters and latency are represented by its duration histogram. The previous entries below are source-level metric-family identifiers, not literal v1 exporter names; the old exported names depended on the writer and, for some writers, application identity.
 
 | Previous source-level metric family | V2 metric and migration |
 |---|---|
 | HTTP client `HttpClientRequest`, `HttpClientError`, `HttpClientResponseCode1XX` through `HttpClientResponseCode5XX`, and `HttpRequestDuration` | `http.client.request.duration` is a histogram with `request.method`, full `response.status_code`, and `error.type` dimensions as applicable. In Prometheus, use the histogram's `_count` series in place of the request counter; use the full status-code dimension instead of the former status-class families. |
-| HTTP server `HttpRequestCount`, `HttpRequestCountPerRoute`, `HttpStatus1XX` through `HttpStatus5XX`, and `HttpRequestResponseTime` | `http.server.request.duration` is a route/method/full-status histogram. Its Prometheus `_count` replaces the request counters. CloudWatch no longer emits the former server-only `KindTotal` request/duration aggregate; Prometheus and OTEL already filtered `KindTotal`. Aggregate route series in CloudWatch for server-wide views. |
+| HTTP server `HttpRequestCount`, `HttpRequestCountPerRoute`, `HttpStatus1XX` through `HttpStatus5XX`, and `HttpRequestResponseTime` | `http.server.requests` is a server-only counter with `name`; `http.server.routed.requests` counts by `name`, `route`, and `request.method`. `http.server.request.duration` remains a route/method/full-status latency histogram, not a replacement for either count; the former server-wide duration aggregate is not retained. |
 | HTTP server `HttpRequestsRejected` | `http.server.rejected.requests` carries `name`, `route`, and `request.method` only (no `response.status_code`); CloudWatch no longer emits a server-wide rejection aggregate. |
 
-The exported `pkg/httpserver` constants `MetricHttpRequestCount`, `MetricHttpRequestCountPerRoute`, `MetricHttpRequestResponseTime`, and `MetricHttpStatus` are removed. The current `MetricHttpRequestsRejected` constant names the leaf `rejected.requests`.
+The server counters are high-priority monotonic `UnitCount` counters. `requests` has one zero default per server; `routed.requests` has a zero default for each application route definition. They export as CloudWatch `HttpServerRequests` and `HttpServerRoutedRequests`, Prometheus `gosoline_http_server_requests_total` and `gosoline_http_server_routed_requests_total`, and OTEL `gosoline.http.server.requests` and `gosoline.http.server.routed.requests`. Both count each matched request once, including requests aborted by downstream server middleware; unmatched Gin routes remain excluded. Matched built-in health routes are counted but have no zero default before their first request. The duration histogram remains a separate latency sample with the full response status code.
+
+The exported `pkg/httpserver` constants `MetricHttpRequestCount`, `MetricHttpRequestCountPerRoute`, `MetricHttpRequestResponseTime`, and `MetricHttpStatus` remain removed; no v1 Go aliases are restored. The current `MetricHttpRequestsRejected` constant names the leaf `rejected.requests`.
 
 A cancelled HTTP client request is recorded in `http.client.request.duration` with `error.type="request_canceled"` before the original cancellation error is returned. Other request failures use `error.type="request_failed"`. Valid HTTP responses, including error status codes such as 500, carry the numeric `response.status_code` dimension.
 
@@ -180,7 +182,7 @@ The names remain Gosoline's own rather than semantic-convention metric names. `e
 
 ## Source-reviewed metric inventory (`v2.0`)
 
-Source review lists 62 framework-authored canonical metric leaves across 18 namespaces for schema `v2.0`.
+Source review lists 64 framework-authored canonical metric leaves across 18 namespaces for schema `v2.0`.
 
 | Namespace | Canonical leaves |
 |---|---|
@@ -191,7 +193,7 @@ Source review lists 62 framework-authored canonical metric leaves across 18 name
 | `db.repo` | `operation.duration`; `model_event.notifications` |
 | `ddb` | `operation.duration` |
 | `http.client` | `request.duration` |
-| `http.server` | `request.duration`; `rejected.requests`; `active_request.count`; `connection.count` |
+| `http.server` | `request.duration`; `requests`; `routed.requests`; `rejected.requests`; `active_request.count`; `connection.count` |
 | `kafka` | `connects`; `throttles`; `throttle.duration`; `produce.batch.records`; `produce.batch.size`; `produce.batch.compressed.size`; `fetch.batch.records`; `fetch.batch.size`; `fetch.batch.compressed.size` |
 | `kafka.consumer` | `consumed.messages`; `process.duration`; `polls`; `poll.duration`; `commit.duration`; `sleep.duration`; `rebalances` |
 | `kafka.producer` | `sent.messages`; `produce.duration`; `batch.records` |
@@ -215,7 +217,7 @@ The Prometheus example now supplies a valid count unit for its custom summary. I
 
 1. Read `metric.schema_version`; migrate consumers to schema `v2.0`. Do not expect v1 aliases or dual emission.
 2. Re-key metric queries, dashboards, alerts, and recording rules against the canonical inventory; update dimensions and units as well as names.
-3. Replace HTTP request/status-class counters with histogram counts and the full numeric `response.status_code`; use route-level server rejections. For CloudWatch server-wide, topic-level, and stream-level views, aggregate the retained HTTP route, Kafka partition, and Kinesis shard series; the old server/topic/stream-only `KindTotal` series are not emitted by CloudWatch (Prometheus and OTEL already filter `KindTotal`).
+3. Use `http.server.requests` for per-server HTTP counts and `http.server.routed.requests` for route/method counts; use the duration histogram for latency and full numeric status codes, and keep rejected requests route-level. Replace HTTP client request/status-class counters with histogram counts and full status codes. For CloudWatch topic-level and stream-level views, aggregate retained Kafka partition and Kinesis shard series; the old topic-/stream-only `KindTotal` series are not emitted there (Prometheus and OTEL already filter `KindTotal`).
 4. Replace standalone outcome metrics with operation metrics and writer-appropriate `error.type`/default selectors. Preserve the overlapping stream and Kinesis consumer failure-subset semantics.
 5. Update `metric.NewWriter` and `NewWriterWithInterfaces` calls, Prometheus writer construction, and removed Prometheus naming settings. Migrate Kafka callers to `kafka.MetricPair(kafka.MetricSpec{...})` and update removed or changed Kafka/HTTP metric constants. Re-key custom metrics for each backend's rendering.
 6. Remove the calculator option and exact configuration keys above; replace per-runner scaling inputs with application-specific signals and derive Kinesis capacity ratios from the shard/client gauges.
