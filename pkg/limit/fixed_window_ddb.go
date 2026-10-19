@@ -69,7 +69,7 @@ func (f fixedWindowDdb) Increment(ctx context.Context, prefix string) (incr *int
 	now := f.clock.Now
 
 	// This will create a new entry if none yet exists. It also will reset the current value to
-	// 1 again, if time.Now is already past the entries TTL (which means, we are already in the next
+	// 1 again, if time.Now is at or past the entry's TTL (which means, we are already in the next
 	// time window and can release the lock). If none of those conditions apply for the current
 	// state, it means that we can increment the value safely, because one of the following things must
 	// be true:
@@ -80,7 +80,7 @@ func (f fixedWindowDdb) Increment(ctx context.Context, prefix string) (incr *int
 	reset := f.repo.UpdateItemBuilder().
 		WithCondition(ddb.Or(
 			ddb.AttributeNotExists(attrTtl),
-			ddb.Lt(attrTtl, now().Unix()))).
+			ddb.Lte(attrTtl, now().Unix()))).
 		Set(attrVal, 1).
 		Set(attrTtl, now().Add(f.window).Unix()).
 		ReturnAllNew()

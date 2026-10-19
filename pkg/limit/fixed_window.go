@@ -7,9 +7,11 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
+//go:generate go run github.com/vektra/mockery/v2 --name Incrementer
 type Incrementer interface {
 	Increment(ctx context.Context, prefix string) (incr *int, ttl *time.Duration, err error)
 }
+
 type FixedWindowConfig struct {
 	Name   string
 	Cap    int
@@ -46,37 +48,40 @@ func (f fixedWindow) Wait(ctx context.Context, prefix string) (err error) {
 		}
 	}()
 
-	incr, ttl, err := f.backend.Increment(ctx, prefix)
-	if err != nil {
-		return err
-	}
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 
-	// The incrementer will always start at 1, but it is nicer to calculate the
-	// waiting time with the counter value starting at 0
-	increment := *incr - 1
+		incr, ttl, err := f.backend.Increment(ctx, prefix)
+		if err != nil {
+			return err
+		}
 
-	capacity := f.config.Cap
-	if increment >= capacity {
+		if *incr <= f.config.Cap {
+			return nil
+		}
+
 		f.middleware.OnThrottle(ctx, invocation)
-		// If there are so many request are after exceeding the limit that we will
-		// overflow the capacity again, we want those requests to wait for the next
-		// window in which a requests will be possible again.
-		// If the incremented value minus one is bigger or equal to our capacity,
-		// we want to wait until the TTL is expired.
-		// If the incremented value is bigger than 2 * increment, we want to wait
-		// until the TTl is expired PLUS until the next window is open.
+		// Spread queued requests across future windows according to their counter value.
+		increment := *incr - 1
+		capacity := f.config.Cap
 		queueTime := *ttl + (time.Duration((increment-capacity)/capacity) * f.config.Window)
+		// Backends with second-resolution TTLs can report zero before the window expires.
+		// Avoid repeatedly incrementing the counter without waiting in that case.
+		if queueTime <= 0 {
+			queueTime = time.Second
+		}
 
 		t := f.clock.NewTimer(queueTime)
-		for {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-t.Chan():
-				return nil
-			}
+		select {
+		case <-ctx.Done():
+			t.Stop()
+
+			return ctx.Err()
+		case <-t.Chan():
+			// Waiting does not reserve capacity. Recheck so this request is counted
+			// in the window in which it proceeds, alongside any new requests.
 		}
 	}
-
-	return nil
 }
