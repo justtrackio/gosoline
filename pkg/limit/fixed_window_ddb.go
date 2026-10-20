@@ -12,14 +12,27 @@ import (
 )
 
 const (
-	attrVal = "val"
-	attrTtl = "ttl"
+	attrVal             = "val"
+	attrTtl             = "ttl"
+	attrWindowExpiresAt = "windowExpiresAt"
 )
 
 type window struct {
 	Key string `json:"key" ddb:"key=hash"`
 	Val int    `json:"val"`
-	Ttl int64  `json:"ttl" ddb:"ttl=enabled"`
+	// Ttl is the cleanup expiry in Unix seconds, rounded up.
+	Ttl int64 `json:"ttl" ddb:"ttl=enabled"`
+	// WindowExpiresAt is the precise window expiry in Unix nanoseconds.
+	WindowExpiresAt int64 `json:"windowExpiresAt"`
+}
+
+func (w window) expiresAt() time.Time {
+	if w.WindowExpiresAt != 0 {
+		return time.Unix(0, w.WindowExpiresAt)
+	}
+
+	// Legacy windows expire when ttl < now.Unix(): the following second.
+	return time.Unix(w.Ttl+1, 0)
 }
 
 type fixedWindowDdb struct {
@@ -32,6 +45,10 @@ type fixedWindowDdb struct {
 }
 
 func NewFixedWindowDdb(ctx context.Context, config cfg.Config, logger log.Logger, settings *ddb.Settings, c FixedWindowConfig) (LimiterWithMiddleware, error) {
+	if c.Window <= 0 {
+		return nil, fmt.Errorf("fixed window duration must be positive, got %s", c.Window)
+	}
+
 	settings.Main.Model = &window{}
 
 	repo, err := ddb.NewRepository(ctx, config, logger, settings)
@@ -62,27 +79,28 @@ func NewFixedWindowDdb(ctx context.Context, config cfg.Config, logger log.Logger
 }
 
 func (f fixedWindowDdb) Increment(ctx context.Context, prefix string) (incr *int, ttl *time.Duration, err error) {
-	key := f.keyBuilder(prefix)
+	item := &window{Key: f.keyBuilder(prefix)}
 
-	item := &window{Key: key}
+	now := f.clock.Now()
+	expiresAt := now.Add(f.window)
+	// Cleanup must not delete a window before its precise expiry.
+	cleanupTtl := expiresAt.Unix()
+	if expiresAt.Nanosecond() != 0 {
+		cleanupTtl++
+	}
 
-	now := f.clock.Now
+	// Existing rows keep their legacy expiry until their first renewal.
+	legacyExpired := ddb.And(
+		ddb.AttributeNotExists(attrWindowExpiresAt),
+		ddb.Or(ddb.AttributeNotExists(attrTtl), ddb.Lt(attrTtl, now.Unix())),
+	)
+	expired := ddb.Or(ddb.Lte(attrWindowExpiresAt, now.UnixNano()), legacyExpired)
 
-	// This will create a new entry if none yet exists. It also will reset the current value to
-	// 1 again, if time.Now is at or past the entry's TTL (which means, we are already in the next
-	// time window and can release the lock). If none of those conditions apply for the current
-	// state, it means that we can increment the value safely, because one of the following things must
-	// be true:
-	// 1. The TTL is still valid and the counter was not reset by another request -> we can increment
-	// 2. The TTL has already expired between requests -> we might throttle too often -> we can increment
-	// 3. The entry was already reset by another request -> we will return the new increment and ttl -> we are already
-	//    in the next window -> we can increment
 	reset := f.repo.UpdateItemBuilder().
-		WithCondition(ddb.Or(
-			ddb.AttributeNotExists(attrTtl),
-			ddb.Lte(attrTtl, now().Unix()))).
+		WithCondition(expired).
 		Set(attrVal, 1).
-		Set(attrTtl, now().Add(f.window).Unix()).
+		Set(attrWindowExpiresAt, expiresAt.UnixNano()).
+		Set(attrTtl, cleanupTtl).
 		ReturnAllNew()
 
 	resp, err := f.repo.UpdateItem(ctx, reset, item)
@@ -101,9 +119,9 @@ func (f fixedWindowDdb) Increment(ctx context.Context, prefix string) (incr *int
 		}
 	}
 
-	t := time.Duration(item.Ttl-now().Unix()) * time.Second
+	remaining := item.expiresAt().Sub(f.clock.Now())
 
-	return &item.Val, &t, nil
+	return &item.Val, &remaining, nil
 }
 
 func (f fixedWindowDdb) keyBuilder(prefix string) string {
