@@ -203,6 +203,7 @@ func (c *Consumer) process(gracedCtx context.Context, msg *Message, hasNativeRet
 	var attributes map[string]string
 
 	if model, err = c.callback.GetModel(msg.Attributes); err != nil {
+		c.writeMetricModelLookupFailed(gracedCtx)
 
 		// Check if this error is ignorable based on consumer settings
 		var ignorableErr IgnorableGetModelError
@@ -296,6 +297,7 @@ func (c *Consumer) retry(ctx context.Context, msg *Message) {
 	defer stop()
 
 	if err := c.retryHandler.Put(ctx, retryMsg); err != nil {
+		c.writeMetricRetryPutFailed(ctx)
 		c.logError(ctx, err, "can not put the message into the retry handler")
 	}
 }

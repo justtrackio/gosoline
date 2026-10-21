@@ -15,6 +15,7 @@ const metricNamespace = "rpc.server"
 
 func init() {
 	metric.RegisterHelp(metricNamespace, MetricRpcServerDuration, "duration of a gRPC server call")
+	metric.RegisterHelp(metricNamespace, metricRpcServerRequests, "gRPC server calls completed by service and method")
 }
 
 type key int
@@ -22,9 +23,9 @@ type key int
 const (
 	contextKey key = 0
 
-	// MetricRpcServerDuration records how long an RPC took. Its observation count is the request count,
-	// so a separate request counter is not needed.
+	// MetricRpcServerDuration records the latency distribution of a gRPC server call.
 	MetricRpcServerDuration = "request.duration"
+	metricRpcServerRequests = "requests"
 
 	// The semantic-convention attributes identifying the RPC that was served.
 	MetricDimensionRpcService = "service"
@@ -141,16 +142,29 @@ func (s *statsHandler) writeLog(ctx context.Context, holder *statsHolder) {
 func (s *statsHandler) writeMetrics(ctx context.Context, holder *statsHolder) {
 	service, method := splitFullMethod(holder.FullMethod)
 
-	s.metricWriter.WriteOne(ctx, &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: MetricRpcServerDuration,
-		Dimensions: metric.Dimensions{
-			MetricDimensionRpcService: service,
-			MetricDimensionRpcMethod:  method,
+	s.metricWriter.Write(ctx, metric.Data{
+		&metric.Datum{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricRpcServerRequests,
+			Dimensions: metric.Dimensions{
+				MetricDimensionRpcService: service,
+				MetricDimensionRpcMethod:  method,
+			},
+			Value: 1.0,
+			Unit:  metric.UnitCount,
+			Kind:  metric.KindCounter.Build(),
 		},
-		Value: float64(holder.TotalTime) / float64(time.Millisecond),
-		Unit:  metric.UnitMillisecondsAverage,
-		Kind:  metric.KindHistogram.Build(),
+		&metric.Datum{
+			Priority:   metric.PriorityHigh,
+			MetricName: MetricRpcServerDuration,
+			Dimensions: metric.Dimensions{
+				MetricDimensionRpcService: service,
+				MetricDimensionRpcMethod:  method,
+			},
+			Value: float64(holder.TotalTime) / float64(time.Millisecond),
+			Unit:  metric.UnitMillisecondsAverage,
+			Kind:  metric.KindHistogram.Build(),
+		},
 	})
 }
 

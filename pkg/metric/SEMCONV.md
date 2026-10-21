@@ -110,6 +110,7 @@ namespace prefix.
 | `producer.name` | producer daemon name | none |
 | `request.method` | HTTP method | derived from `http.request.method` |
 | `response.status_code` | HTTP status code | derived from `http.response.status_code` |
+| `response.status_class` | bounded HTTP response class derived from `response.status_code` (`1xx` through `5xx`) | none |
 | `route` | HTTP route template | derived from `http.route` |
 | `sampled` | whether the sampler kept the item | none |
 | `service` | gRPC service | derived from `rpc.service` |
@@ -122,9 +123,9 @@ prefix stripped. It is **not** that attribute, and tooling keyed on the conventi
 
 ## The inventory
 
-64 metrics across 18 namespaces. `unit` is the authored unit; every writer renders it into its own
-convention (Prometheus scales durations to seconds and appends `_seconds`, OTEL sets the UCUM unit on
-the instrument).
+80 metric leaves across 18 namespaces, including all 30 existing histograms. The 16 restored leaves below
+are counter instruments. `unit` is the authored unit; every writer renders it into its own convention (Prometheus
+scales durations to seconds and appends `_seconds`, OTEL sets the UCUM unit on the instrument).
 
 ### `stream` — `pkg/stream`
 
@@ -132,7 +133,7 @@ the instrument).
 |---|---|---|---|---|
 | `process.duration` | ms | histogram | `consumer.name` | `messaging.process.duration` |
 | `consumed.messages` | count | counter | `consumer.name`, `error.type` | `messaging.client.consumed.messages` |
-| `retry.operations` | count | counter | `consumer.name`, `operation` | none |
+| `retry.operations` | count | counter | `consumer.name`, `operation`, `error.type` | none |
 | `produced.messages` | count | counter | `producer.name` | none |
 | `batch.messages` | count | histogram | `producer.name` | none |
 | `aggregate.messages` | count | histogram | `producer.name` | none |
@@ -147,9 +148,17 @@ consumer. It is not a per-message duration when emitted by a batch consumer.
 
 The default `consumed.messages` series remains the all-processed total, including callback failures; a
 batch contributes its record count, not one. `error.type="processing_failed"` is an overlapping
-record-based failure series, including false or missing acknowledgements, not an extra batch count.
-Ignored model errors and canceled processing do not emit that failure series. `retry.operations` counts
-retry operations with `operation="get"` or `operation="put"`, not the number of records in a retry.
+record-based failure series, including false or missing acknowledgements. Canceled processing does
+not emit that failure series. Every `GetModel` failure also emits `error.type="model_lookup_failed"`,
+including failures configured to be ignored. A non-ignored lookup failure overlaps
+`processing_failed`; an ignored one does not. Both diagnostic series overlap the default total and must
+not be summed with it or subtracted to infer successes. For processing-error totals, filter
+`error.type="processing_failed"` rather than summing all diagnostic values.
+
+`retry.operations` counts retry-handler operations with `operation="get"` or `operation="put"`, not
+records. Normal attempts carry `error.type="{{default}}"`; a failed retry-handler put also emits
+`error.type="retry_handler_put_failed"` on the same `operation="put"` series. That marker is an
+overlapping diagnostic subset, not an extra attempt. Select the default error type for total attempts.
 
 ### `kafka.consumer` — `pkg/kafka/consumer`
 
@@ -191,6 +200,21 @@ carry `client.type`, `client.name`, `topic.name`, and `partition.id`, not `broke
 | `fetch.batch.records` | count | histogram |
 | `fetch.batch.size` | bytes | histogram |
 | `fetch.batch.compressed.size` | bytes | histogram |
+| `produced.records` | count | counter |
+| `produced.batch.size` | bytes | counter |
+| `produced.batch.compressed.size` | bytes | counter |
+| `fetched.records` | count | counter |
+| `fetched.batch.size` | bytes | counter |
+| `fetched.batch.compressed.size` | bytes | counter |
+
+The six new high-priority counters use the same `OnProduceBatchWritten` and `OnFetchBatchRead` hooks
+as the existing batch histograms, with `client.type`, `client.name`, `topic.name`, and `partition.id`.
+Produced/fetched record counters add `NumRecords`; `.batch.size` adds `UncompressedBytes`; and
+`.batch.compressed.size` adds `CompressedBytes`. The histograms remain per-batch distributions; the
+counters are independent volume instruments, have no zero defaults, and are the source for total
+record/byte volume. Do not use a histogram's `_count` or `_sum` as a substitute for these counters.
+These hook boundaries are distinct from the application-level
+`kafka.producer.sent.messages` and `kafka.consumer.consumed.messages` metrics.
 
 ### `cloud.aws.kinesis` — `pkg/cloud/aws/kinesis`
 
@@ -228,9 +252,16 @@ default total; do not sum them with it or subtract them to infer successes.
 | Metric | Unit | Type | Attributes |
 |---|---|---|---|
 | `reads` | count | counter | `model.id`, `store.type`, `hit` |
+| `attempted.reads` | count | counter | `model.id`, `store.type` |
 | `writes` | count | counter | `model.id`, `store.type` |
 | `deletes` | count | counter | `model.id`, `store.type` |
 | `item.count` | count | gauge | `model.id`, `store.type` |
+
+`attempted.reads` counts requested read items before delegation: `Contains` and `Get` add one each;
+`GetBatch` adds the number of keys after successful key conversion and before delegation. Delegated
+failures count, but key-conversion failures do not. It has a high-priority zero default per model and
+store. Existing `reads{hit="true"}` and `reads{hit="false"}` count only successful reads and remain
+unchanged; their sum is successful read volume, not attempted volume.
 
 ### `db.client`, `db.repo`, `ddb` — `pkg/db`, `pkg/db-repo`, `pkg/ddb`
 
@@ -241,11 +272,19 @@ default total; do not sum them with it or subtract them to infer successes.
 | `db.repo.operation.duration` | ms | histogram | `operation.name`, `model.id`, `error.type` | `db.client.operation.duration` |
 | `db.repo.model_event.notifications` | count | counter | `model.id`, `error.type` | none |
 | `ddb.operation.duration` | ms | histogram | `operation.name`, `model.id`, `error.type` | `db.client.operation.duration` |
+| `db.repo.operations` | count | counter | `operation.name`, `model.id`, `error.type` | none |
+| `ddb.operations` | count | counter | `operation.name`, `model.id`, `error.type` | none |
 
 `db.client.connections` increments once for each database driver `Open` attempt and has no attributes;
 it is not a live pool-connection count. `db.client.connection.count` is a periodic gauge that reports
 the pool's current `used` and `idle` connection counts as separate series keyed by `connection.state`
 (derived from `db.client.connection.state`).
+
+`db.repo.operations` increments after each SQL repository call returns for `Create`, `Read`, `Update`,
+`Delete`, and `Query`; `ddb.operations` increments after the wrapped DynamoDB save (`operation.name="save"`)
+returns. Both use `error.type="{{default}}"` on success and `"operation_failed"` on failure, with
+high-priority zero defaults for both series per model and operation. The existing duration histograms
+remain unchanged and are not replacements for these operation counters.
 
 ### `mdlsub` — `pkg/mdlsub`
 
@@ -260,13 +299,41 @@ the pool's current `used` and `idle` connection counts as separate series keyed 
 | `http.server.request.duration` | ms | histogram | `name`, `route`, `request.method`, `response.status_code` | `http.server.request.duration` |
 | `http.server.requests` | count | counter | `name` | none |
 | `http.server.routed.requests` | count | counter | `name`, `route`, `request.method` | none |
+| `http.server.responses` | count | counter | `name`, `response.status_code`, `response.status_class` | none |
+| `http.server.routed.responses` | count | counter | `name`, `route`, `request.method`, `response.status_code`, `response.status_class` | none |
 | `http.server.rejected.requests` | count | counter | `name`, `route`, `request.method` | none |
 | `http.server.active_request.count` | count | gauge | `name` | `http.server.active_requests` |
 | `http.server.connection.count` | count | gauge | `name` | none |
+| `http.client.requests` | count | counter | `request.method` | none |
+| `http.client.completed.requests` | count | counter | `request.method`, `response.status_code`, `response.status_class`, `error.type` | none |
 | `http.client.request.duration` | ms | histogram | `request.method`, `response.status_code`, `error.type` | `http.client.request.duration` |
+| `rpc.server.requests` | count | counter | `service`, `method` | none |
 | `rpc.server.request.duration` | ms | histogram | `service`, `method` | `rpc.server.duration` |
 
-The two request counters are high-priority `UnitCount` monotonic counters with zero defaults: `requests` has one server series keyed only by `name`, while `routed.requests` has one zero-default series per application route definition and method. Neither carries `response.status_code`. They are recorded once after each matched request leaves the metric middleware, including requests aborted by downstream server middleware; unmatched routes (an empty Gin route template) remain excluded. Matched built-in health routes are counted, but `/health` has no zero default because it is registered outside the route definitions. The duration histogram remains a separate latency sample with the full response status code.
+The statusless HTTP server counters remain high-priority `UnitCount` monotonic counters with their
+existing zero defaults: `requests` has one series keyed only by `name`, and `routed.requests` has one
+per application route definition and method. Both still count each matched request once after the
+metric middleware runs, including requests aborted by downstream middleware. Matched built-in health
+routes count; unmatched Gin routes (an empty route template) remain excluded. `/health` still has no
+zero default because it is registered outside the route definitions.
+
+The new `responses` and `routed.responses` counters are high-priority `UnitCount` counters with the
+full numeric status code and bounded `response.status_class` values `1xx` through `5xx`. They count
+each matched response, including responses from aborted downstream requests and matched built-in
+health routes; unmatched Gin routes remain excluded. Neither has a zero default. `responses` is keyed
+by `name`, status code, and class; `routed.responses` adds `route` and `request.method`. The duration
+histogram remains a separate latency measurement with the full status code and no status class.
+
+`http.client.requests` increments after request and URL validation, immediately before `Execute`,
+with `request.method`. `http.client.completed.requests` increments once after `Execute` returns in the
+response, transport-error, and cancellation branches. A valid response carries the numeric status
+code, its `1xx`–`5xx` class, and `error.type="{{default}}"`; a transport error or cancellation carries
+`response.status_code="{{default}}"` and `response.status_class="{{default}}"`, with
+`error.type="request_failed"` or `"request_canceled"`, respectively. These counters have no zero
+defaults; the duration histogram remains a separate latency instrument.
+
+`rpc.server.requests` increments once at each gRPC `stats.End`, alongside the duration histogram,
+for successful and failed calls. It is keyed by `service` and `method` and has no zero defaults.
 
 ### Remaining namespaces
 
@@ -275,27 +342,36 @@ The two request counters are high-priority `UnitCount` monotonic counters with z
 | `blob.batch.operations` | count | counter | `operation` | `pkg/blob` |
 | `conc.scheduler.batch.tasks` | count | histogram | `name` | `pkg/conc/scheduler` |
 | `conc.scheduler.task.queue.duration` | ms | histogram | `name` | `pkg/conc/scheduler` |
-| `limit.takes` | count | counter | `name`, `prefix`, `outcome` (`allowed`, `throttled`, `error`), `error.type` | `pkg/limit` |
+| `limit.attempted.takes` | count | counter | `name`, `prefix` | `pkg/limit` |
+| `limit.takes` | count | counter | `name`, `prefix`, `outcome` (`allowed`, `error`), `error.type` | `pkg/limit` |
+| `limit.throttled.takes` | count | counter | `name`, `prefix` | `pkg/limit` |
 | `smpl.decisions` | count | counter | `sampled` | `pkg/smpl` |
 | `metric.log.records` | count | counter | `level` | `pkg/metric` |
 
 ## Deliberate exceptions
 
-**`limit.takes` is recorded when a take ends, not when it starts.** The middleware is told `OnTake`
-before the outcome is known, so counting there could not carry `outcome`. Attempts are the sum over
-`outcome`; there is no separate attempt counter.
+**Limiter counters separate attempt, terminal result, and throttling.** `limit.attempted.takes` records
+one take at `OnTake`; `limit.takes` records only mutually exclusive terminal `allowed` or `error`
+outcomes; `limit.throttled.takes` records throttling at `OnThrottle`. All use `name` and `prefix`,
+with no zero defaults. Do not sum them as outcomes or count throttled takes through `limit.takes`.
+`outcome="throttled"` and the exported `OutcomeThrottled` symbol are removed, with no alias.
 
 **`cloud.aws.kinesis.acquire.duration` is in seconds**, the only duration that is not milliseconds.
 Prometheus and OTEL are unaffected — both scale durations to seconds — but a CloudWatch consumer sees
 `Seconds`.
 
-**`error.type` names the action that failed, never a Go error type.** A folded metric's failed share carries
-a stable, bounded-cardinality marker naming what failed — `send_failed`, `connect_failed`, `request_failed`,
-`request_canceled`, `operation_failed`, `notify_failed`, `apply_failed`, `processing_failed` — not the Go
-error's type (which would carry unbounded cardinality) or its message. The successful share usually carries
-`{{default}}`. `stream.consumed.messages` and `cloud.aws.kinesis.consumed.messages` are exceptions: their
-`{{default}}` series is the total of all processed records, while `processing_failed` is a per-record subset
-that overlaps that total. Never sum or subtract those series to derive a success-only count.
+**`error.type` names the action that failed, never a Go error type.** A folded metric's failed share
+carries a stable, bounded-cardinality marker — `send_failed`, `connect_failed`, `request_failed`,
+`request_canceled`, `operation_failed`, `notify_failed`, `apply_failed`, `processing_failed`,
+`model_lookup_failed`, `retry_handler_put_failed`, or `rate_limit_error` — not the Go error's type
+(which would carry unbounded cardinality) or its message. The successful share usually carries
+`{{default}}`. For Prometheus this is an empty label value, for OTEL the attribute is absent, and for
+CloudWatch the dimension is omitted. On HTTP client completion counters, missing response code/class
+also use the internal `{{default}}` marker. `stream.consumed.messages` and
+`cloud.aws.kinesis.consumed.messages` are exceptions: their `{{default}}` series is the total of all
+processed records, while `processing_failed` is a per-record subset that overlaps that total. Stream
+`model_lookup_failed` diagnostics also overlap the default total; only non-ignored model lookup
+failures overlap the `processing_failed` subset. Never sum or subtract those series to derive success.
 
 ## Changing a metric
 

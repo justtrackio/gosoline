@@ -415,6 +415,12 @@ func (c *consumerBase) writeMetricProcessingFailed(ctx context.Context, count in
 	})
 }
 
+func (c *consumerBase) writeMetricModelLookupFailed(ctx context.Context) {
+	c.metricWriter.Write(ctx, metric.Data{
+		consumedMessagesDatum(c.name, errorTypeModelLookupFailed, 1),
+	})
+}
+
 func (c *consumerBase) isHealthy() bool {
 	return c.input.IsHealthy() && c.retryInput.IsHealthy()
 }
@@ -437,16 +443,12 @@ func (c *consumerBase) writeMetricDurationAndProcessedCount(ctx context.Context,
 
 func (c *consumerBase) writeMetricRetryCount(ctx context.Context, operation string) {
 	c.metricWriter.Write(ctx, metric.Data{
-		&metric.Datum{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameConsumerRetryOperations,
-			Dimensions: map[string]string{
-				dimensionConsumer:       c.name,
-				dimensionRetryOperation: operation,
-			},
-			Unit:  metric.UnitCount,
-			Value: 1,
-			Kind:  metric.KindCounter.Build(),
-		},
+		retryOperationsDatum(c.name, operation, metric.DimensionDefault, 1),
+	})
+}
+
+func (c *consumerBase) writeMetricRetryPutFailed(ctx context.Context) {
+	c.metricWriter.Write(ctx, metric.Data{
+		retryOperationsDatum(c.name, retryOperationPut, errorTypeRetryHandlerPutFailed, 1),
 	})
 }

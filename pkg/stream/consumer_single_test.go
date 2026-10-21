@@ -14,6 +14,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/metric"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
 	"github.com/justtrackio/gosoline/pkg/smpl"
 	smplMocks "github.com/justtrackio/gosoline/pkg/smpl/mocks"
@@ -23,6 +24,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	uuidMocks "github.com/justtrackio/gosoline/pkg/uuid/mocks"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -66,7 +68,7 @@ type ConsumerTestSuite struct {
 	settings        stream.ConsumerSettings
 	logger          log.Logger
 	tracer          tracing.Tracer
-	metricWriter    *metricMocks.Writer
+	metricWriter    metric.Writer
 	encoder         stream.MessageEncoder
 	samplingDecider *smplMocks.Decider
 }
@@ -107,8 +109,9 @@ func (s *ConsumerTestSuite) SetupTest() {
 
 	s.logger = logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	s.tracer = tracing.NewLocalTracer()
-	s.metricWriter = metricMocks.NewWriter(s.T())
-	s.metricWriter.EXPECT().Write(matcher.Context, mock.Anything).Return().Maybe()
+	metricWriter := metricMocks.NewWriter(s.T())
+	metricWriter.EXPECT().Write(matcher.Context, mock.Anything).Return().Maybe()
+	s.metricWriter = metricWriter
 	s.encoder = stream.NewMessageEncoder(&stream.MessageEncoderSettings{})
 
 	s.settings = stream.ConsumerSettings{
@@ -242,6 +245,50 @@ func (s *ConsumerTestSuite) TestGetModelErrorRetries() {
 	s.callback.EXPECT().Run(matcher.Context).Return(nil).Once()
 	s.expectPreparationRetry()
 	s.NoError(s.consumer.Run(s.kernelCtx))
+}
+
+func (s *ConsumerTestSuite) TestIgnoredModelAndFailedRetryPutDiagnosticsAreOverlapping() {
+	registry := prometheus.NewRegistry()
+	s.metricWriter = metric.NewPrometheusWriterWithInterfaces(s.logger, registry, 1000, time.Second)
+	s.settings.IgnoreOnGetModelError.UnknownModel = true
+	s.buildConsumer()
+
+	ignored := stream.NewJsonMessage(`"ignored"`, map[string]string{"ignore": "true"})
+	failed := stream.NewJsonMessage(`"failed"`)
+
+	s.expectRetryInputRun()
+	s.expectInputRun(ignored, failed)
+	s.callback.EXPECT().GetModel(mock.Anything).RunAndReturn(func(attributes map[string]string) (any, error) {
+		if attributes["ignore"] == "true" {
+			return nil, ignorableUnknownModelError{}
+		}
+
+		return mdl.Box("failed"), nil
+	}).Twice()
+	s.callback.EXPECT().Consume(matcher.Context, mock.Anything, mock.Anything).Return(false, nil).Once()
+	s.callback.EXPECT().Run(matcher.Context).Return(nil).Once()
+	s.uuidGen.EXPECT().NewV4().Return("retry-id").Once()
+	s.retryHandler.EXPECT().Put(matcher.Context, mock.MatchedBy(func(msg *stream.Message) bool {
+		return msg.Attributes[stream.AttributeRetryId] == "retry-id"
+	})).Return(fmt.Errorf("retry queue unavailable")).Once()
+
+	s.NoError(s.consumer.Run(s.kernelCtx))
+
+	requirePrometheusCounter(s.T(), registry, "gosoline_consumed_messages_total", map[string]string{
+		"consumer_name": "test", "error_type": "",
+	}, 2)
+	requirePrometheusCounter(s.T(), registry, "gosoline_consumed_messages_total", map[string]string{
+		"consumer_name": "test", "error_type": "model_lookup_failed",
+	}, 1)
+	requirePrometheusCounter(s.T(), registry, "gosoline_consumed_messages_total", map[string]string{
+		"consumer_name": "test", "error_type": "processing_failed",
+	}, 1)
+	requirePrometheusCounter(s.T(), registry, "gosoline_retry_operations_total", map[string]string{
+		"consumer_name": "test", "operation": "put", "error_type": "",
+	}, 1)
+	requirePrometheusCounter(s.T(), registry, "gosoline_retry_operations_total", map[string]string{
+		"consumer_name": "test", "operation": "put", "error_type": "retry_handler_put_failed",
+	}, 1)
 }
 
 func (s *ConsumerTestSuite) TestDecodeErrorRetries() {

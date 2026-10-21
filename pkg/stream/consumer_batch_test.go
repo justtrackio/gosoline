@@ -13,6 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/metric"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
 	"github.com/justtrackio/gosoline/pkg/smpl"
 	"github.com/justtrackio/gosoline/pkg/smpl/smplctx"
@@ -22,6 +23,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/justtrackio/gosoline/pkg/uuid"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -47,6 +49,7 @@ type BatchConsumerTestSuite struct {
 	output          *streamMocks.Output
 	logger          log.Logger
 	metrics         *metricMocks.Writer
+	metricWriter    metric.Writer
 	settings        stream.ConsumerSettings
 	batchSettings   stream.BatchConsumerSettings
 	samplingDecider smpl.Decider
@@ -94,6 +97,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 	s.logger = logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	s.metrics = metricMocks.NewWriter(t)
 	s.metrics.EXPECT().Write(matcher.Context, mock.Anything).Maybe()
+	s.metricWriter = s.metrics
 	s.settings = stream.ConsumerSettings{
 		Input: "consumer", IdleTimeout: time.Hour, GraceTime: 100 * time.Millisecond,
 		Retry:       stream.ConsumerRetrySettings{Enabled: true, Type: "sqs", GraceTime: 10 * time.Millisecond},
@@ -897,7 +901,7 @@ func (s *BatchConsumerTestSuite) startConsumerWithCallback(size int, interval ti
 	base := stream.NewConsumerBaseWithInterfaces(
 		uuid.New(),
 		s.logger,
-		s.metrics,
+		s.metricWriter,
 		tracing.NewLocalTracer(),
 		s.input,
 		stream.NewMessageEncoder(&stream.MessageEncoderSettings{Encoding: stream.EncodingJson, EncodeHandlers: handlers}),
@@ -1082,4 +1086,72 @@ func successfulBatch(_ context.Context, models []any, _ []map[string]string) ([]
 	}
 
 	return acks, nil
+}
+
+func (s *BatchConsumerTestSuite) TestIgnoredModelAndFailedRetryPutDiagnosticsAreOverlapping() {
+	t := s.T()
+	registry := prometheus.NewRegistry()
+	s.metricWriter = metric.NewPrometheusWriterWithInterfaces(s.logger, registry, 1000, time.Second)
+	s.retryWriteErr = errors.New("retry queue unavailable")
+	s.settings.IgnoreOnGetModelError.UnknownModel = true
+	s.startConsumerWithCallback(2, time.Hour, diagnosticBatchTestCallback{})
+
+	ignored, err := stream.MarshalJsonMessage(batchTestModel{Value: 1}, map[string]string{"ignore": "true"})
+	require.NoError(t, err)
+	failed, err := stream.MarshalJsonMessage(batchTestModel{Value: 2})
+	require.NoError(t, err)
+
+	for _, message := range []*stream.Message{ignored, failed} {
+		s.input.Publish(message)
+
+		select {
+		case ack := <-s.input.admitted:
+			require.True(t, ack)
+		case <-time.After(time.Second):
+			t.Fatal("input callback did not acknowledge buffering")
+		}
+	}
+
+	require.Eventually(t, func() bool {
+		value, found, err := findPrometheusCounter(registry, "gosoline_retry_operations_total", map[string]string{
+			"consumer_name": "test", "operation": "put", "error_type": "retry_handler_put_failed",
+		})
+		require.NoError(t, err)
+
+		return found && value == 1
+	}, time.Second, time.Millisecond)
+
+	s.cancel()
+	waitBatchTest(t, s.done)
+	require.ErrorContains(t, s.err, "unsuccessful acknowledged messages requiring replay")
+
+	requirePrometheusCounter(t, registry, "gosoline_consumed_messages_total", map[string]string{
+		"consumer_name": "test", "error_type": "",
+	}, 2)
+	requirePrometheusCounter(t, registry, "gosoline_consumed_messages_total", map[string]string{
+		"consumer_name": "test", "error_type": "model_lookup_failed",
+	}, 1)
+	requirePrometheusCounter(t, registry, "gosoline_consumed_messages_total", map[string]string{
+		"consumer_name": "test", "error_type": "processing_failed",
+	}, 1)
+	requirePrometheusCounter(t, registry, "gosoline_retry_operations_total", map[string]string{
+		"consumer_name": "test", "operation": "put", "error_type": "",
+	}, 1)
+	requirePrometheusCounter(t, registry, "gosoline_retry_operations_total", map[string]string{
+		"consumer_name": "test", "operation": "put", "error_type": "retry_handler_put_failed",
+	}, 1)
+}
+
+type diagnosticBatchTestCallback struct{}
+
+func (diagnosticBatchTestCallback) GetModel(attributes map[string]string) (any, error) {
+	if attributes["ignore"] == "true" {
+		return nil, ignorableUnknownModelError{}
+	}
+
+	return new(batchTestModel), nil
+}
+
+func (diagnosticBatchTestCallback) Consume(context.Context, []any, []map[string]string) ([]bool, error) {
+	return []bool{false}, nil
 }

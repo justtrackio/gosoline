@@ -10,15 +10,15 @@ import (
 const (
 	metricNamespace = "limit"
 
-	MetricNameRateLimitTake = "takes"
+	MetricNameRateLimitTake           = "takes"
+	metricNameRateLimitAttemptedTake  = "attempted.takes"
+	metricNameRateLimitThrottledTakes = "throttled.takes"
 
-	// dimensionOutcome tells apart how one take ended. A take is counted once, when it ends, so the
-	// attempts are the sum over this attribute rather than a metric of their own.
+	// dimensionOutcome distinguishes the mutually exclusive terminal result of a take.
 	dimensionOutcome = "outcome"
 
-	OutcomeAllowed   = "allowed"
-	OutcomeThrottled = "throttled"
-	OutcomeError     = "error"
+	OutcomeAllowed = "allowed"
+	OutcomeError   = "error"
 
 	// errorTypeRateLimit is the error.type of a failed take. The middleware is handed no error value,
 	// so the type names the operation that failed rather than a Go type.
@@ -26,7 +26,9 @@ const (
 )
 
 func init() {
-	metric.RegisterHelp(metricNamespace, MetricNameRateLimitTake, "attempts to take a rate limiter token, by outcome and error type")
+	metric.RegisterHelp(metricNamespace, MetricNameRateLimitTake, "rate limiter token takes that completed, by outcome and error type")
+	metric.RegisterHelp(metricNamespace, metricNameRateLimitAttemptedTake, "attempts to take a rate limiter token")
+	metric.RegisterHelp(metricNamespace, metricNameRateLimitThrottledTakes, "rate limiter token takes throttled while waiting")
 }
 
 type metricMiddleware struct {
@@ -45,24 +47,24 @@ func NewMetricMiddlewareWithInterfaces(metricWriter metric.Writer) *metricMiddle
 	}
 }
 
-// OnTake records nothing: a take is counted once, when it ends, so its outcome is known. The number of
-// attempts is the sum of MetricNameRateLimitTake over every outcome.
-func (m metricMiddleware) OnTake(context.Context, Invocation) {}
+// OnTake records an attempt as soon as the limiter starts processing it.
+func (m metricMiddleware) OnTake(ctx context.Context, i Invocation) {
+	m.write(ctx, m.buildMetric(metricNameRateLimitAttemptedTake, i))
+}
 
 func (m metricMiddleware) OnRelease(ctx context.Context, i Invocation) {
 	m.write(ctx, m.buildTake(i, OutcomeAllowed, metric.DimensionDefault))
 }
 
 func (m metricMiddleware) OnThrottle(ctx context.Context, i Invocation) {
-	m.write(ctx, m.buildTake(i, OutcomeThrottled, metric.DimensionDefault))
+	m.write(ctx, m.buildMetric(metricNameRateLimitThrottledTakes, i))
 }
 
 func (m metricMiddleware) OnError(ctx context.Context, i Invocation) {
 	m.write(ctx, m.buildTake(i, OutcomeError, errorTypeRateLimit))
 }
 
-// buildTake reports one completed attempt to take a token. A throttled or failed attempt is the same
-// metric told apart by its outcome and error type, so neither needs a metric of its own.
+// buildTake reports one mutually exclusive terminal result of a take.
 func (m metricMiddleware) buildTake(i Invocation, outcome string, errorType string) *metric.Datum {
 	datum := m.buildMetric(MetricNameRateLimitTake, i)
 	datum.Dimensions[dimensionOutcome] = outcome

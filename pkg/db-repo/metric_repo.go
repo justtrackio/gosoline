@@ -10,14 +10,17 @@ import (
 )
 
 const (
-	// MetricNameDbOperationDuration records how long a repository operation took. Its observation count
-	// is the operation count and its error type tells a failure from a success, so neither needs a
-	// metric of its own.
+	// MetricNameDbOperationDuration records how long a repository operation took.
 	MetricNameDbOperationDuration = "operation.duration"
+	metricNameDbOperations        = "operations"
 
 	// dimensionOperation is the semantic-convention attribute naming the database operation.
 	dimensionOperation = "operation.name"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, metricNameDbOperations, "SQL repository operations completed, by operation and error type")
+}
 
 type metricRepository struct {
 	Repository
@@ -83,11 +86,12 @@ func (r metricRepository) writeMetric(ctx context.Context, op string, err error,
 		errorType = errorTypeOperationFailed
 	}
 
+	modelId := r.GetModelId()
 	datum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: MetricNameDbOperationDuration,
-		Dimensions: dbOperationDimensions(op, r.GetModelId(), errorType),
+		Dimensions: dbOperationDimensions(op, modelId, errorType),
 		Value:      latencyMillisecond,
 	}
 	if err != nil {
@@ -96,6 +100,16 @@ func (r metricRepository) writeMetric(ctx context.Context, op string, err error,
 	}
 
 	r.output.WriteOne(ctx, datum)
+
+	r.output.WriteOne(ctx, &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		Timestamp:  time.Now(),
+		MetricName: metricNameDbOperations,
+		Dimensions: dbOperationDimensions(op, modelId, errorType),
+		Value:      1.0,
+		Unit:       metric.UnitCount,
+		Kind:       metric.KindCounter.Build(),
+	})
 }
 
 func dbOperationDimensions(op string, modelId string, errorType string) map[string]string {
@@ -111,7 +125,7 @@ func dbOperationDimensions(op string, modelId string, errorType string) map[stri
 }
 
 func getDefaultRepositoryMetrics(modelIdString string) []*metric.Datum {
-	defaults := make([]*metric.Datum, 0, len(operations))
+	defaults := make([]*metric.Datum, 0, len(operations)*3)
 
 	for _, op := range operations {
 		defaults = append(defaults, &metric.Datum{
@@ -122,6 +136,24 @@ func getDefaultRepositoryMetrics(modelIdString string) []*metric.Datum {
 			Value:      0.0,
 			Kind:       metric.KindHistogram.Build(),
 		})
+		defaults = append(defaults,
+			&metric.Datum{
+				Priority:   metric.PriorityHigh,
+				MetricName: metricNameDbOperations,
+				Dimensions: dbOperationDimensions(op, modelIdString, ""),
+				Unit:       metric.UnitCount,
+				Value:      0.0,
+				Kind:       metric.KindCounter.Build(),
+			},
+			&metric.Datum{
+				Priority:   metric.PriorityHigh,
+				MetricName: metricNameDbOperations,
+				Dimensions: dbOperationDimensions(op, modelIdString, errorTypeOperationFailed),
+				Unit:       metric.UnitCount,
+				Value:      0.0,
+				Kind:       metric.KindCounter.Build(),
+			},
+		)
 	}
 
 	return defaults

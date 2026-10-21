@@ -10,12 +10,16 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
-const metricNamespace = "ddb"
+const (
+	metricNamespace      = "ddb"
+	metricNameOperations = "operations"
+)
 
 const errorTypeOperationFailed = "operation_failed"
 
 func init() {
 	metric.RegisterHelp(metricNamespace, MetricNameOperationDuration, "duration of a DynamoDB repository operation")
+	metric.RegisterHelp(metricNamespace, metricNameOperations, "DynamoDB repository operations completed, by operation and error type")
 }
 
 type metricRepository struct {
@@ -49,11 +53,12 @@ func (r metricRepository) writeMetric(ctx context.Context, op string, err error,
 		errorType = errorTypeOperationFailed
 	}
 
+	modelId := r.GetModelId().String()
 	datum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: MetricNameOperationDuration,
-		Dimensions: operationDimensions(op, r.GetModelId().String(), errorType),
+		Dimensions: operationDimensions(op, modelId, errorType),
 		Value:      latencyMillisecond,
 	}
 	if err != nil {
@@ -62,6 +67,16 @@ func (r metricRepository) writeMetric(ctx context.Context, op string, err error,
 	}
 
 	r.metric.WriteOne(ctx, datum)
+
+	r.metric.WriteOne(ctx, &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		Timestamp:  time.Now(),
+		MetricName: metricNameOperations,
+		Dimensions: operationDimensions(op, modelId, errorType),
+		Value:      1.0,
+		Unit:       metric.UnitCount,
+		Kind:       metric.KindCounter.Build(),
+	})
 }
 
 func operationDimensions(op string, modelId string, errorType string) map[string]string {
@@ -78,7 +93,7 @@ func operationDimensions(op string, modelId string, errorType string) map[string
 
 func getDefaultMetrics(mId mdl.ModelId) metric.Data {
 	model := mId.String()
-	defaults := make([]*metric.Datum, 0)
+	defaults := make([]*metric.Datum, 0, 3)
 
 	for _, op := range []string{OpSave} {
 		defaults = append(defaults, &metric.Datum{
@@ -89,6 +104,24 @@ func getDefaultMetrics(mId mdl.ModelId) metric.Data {
 			Value:      0.0,
 			Kind:       metric.KindHistogram.Build(),
 		})
+		defaults = append(defaults,
+			&metric.Datum{
+				Priority:   metric.PriorityHigh,
+				MetricName: metricNameOperations,
+				Dimensions: operationDimensions(op, model, ""),
+				Unit:       metric.UnitCount,
+				Value:      0.0,
+				Kind:       metric.KindCounter.Build(),
+			},
+			&metric.Datum{
+				Priority:   metric.PriorityHigh,
+				MetricName: metricNameOperations,
+				Dimensions: operationDimensions(op, model, errorTypeOperationFailed),
+				Unit:       metric.UnitCount,
+				Value:      0.0,
+				Kind:       metric.KindCounter.Build(),
+			},
+		)
 	}
 
 	return defaults

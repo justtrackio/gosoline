@@ -14,11 +14,12 @@ const (
 	// metric name formatting, dimension keys and unit representation. Its current value is v2.0 and
 	// it is the single source of truth for the value published under MetadataKeySchemaVersion.
 	//
-	// v2.0 is the one MAJOR increment covering the whole v1.0 contract migration. Every further
-	// rename, removal or unit change made while that migration is still unmerged belongs to the same
-	// increment, so do not raise the version again for one of them.
+	// v2.0 is the one MAJOR increment for the still-unmerged MR introducing the v2 contract.
+	// All iterations in that MR, including names, dimensions, units, instrument kinds, defaults
+	// and corrected counting semantics, keep this value. Do not bump MAJOR or MINOR or add a
+	// separate capability-version signal until that MR has merged.
 	//
-	// Increment rules:
+	// Increment rules after the v2-introducing MR has merged:
 	//   - MAJOR: a metric name, dimension key or unit representation is removed or renamed
 	//     (MINOR resets to 0), even if the same change also adds something.
 	//   - MINOR: purely additive change.

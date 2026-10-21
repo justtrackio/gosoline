@@ -13,11 +13,12 @@ import (
 const (
 	metricNamespace = "kvstore"
 
-	// number of items stored in the store (if available)
+	// number of items currently stored in the store (if available)
 	metricNameKvStoreSize = "item.count"
-	// number of items we try to read from the store
+	// number of successful read items, separated by whether the store served them itself
 	metricNameKvStoreRead = "reads"
-	// number of items found and read from the store
+	// number of read items requested from the store, including failed calls
+	metricNameKvStoreAttemptedRead = "attempted.reads"
 	// number of items written to the store
 	metricNameKvStoreWrite = "writes"
 	// number of items deleted from the store
@@ -31,7 +32,8 @@ const (
 )
 
 func init() {
-	metric.RegisterHelp(metricNamespace, metricNameKvStoreRead, "read operations performed against a key-value store, by whether the store served them itself")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreRead, "successful read operations performed against a key-value store, by whether the store served them itself")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreAttemptedRead, "read operations attempted against a key-value store")
 	metric.RegisterHelp(metricNamespace, metricNameKvStoreWrite, "write operations performed against a key-value store")
 	metric.RegisterHelp(metricNamespace, metricNameKvStoreDelete, "delete operations performed against a key-value store")
 	metric.RegisterHelp(metricNamespace, metricNameKvStoreSize, "items a key-value store currently holds")
@@ -68,6 +70,7 @@ func NewMetricStoreWithInterfaces[T any](store KvStore[T], settings *Settings) K
 }
 
 func (s *MetricStore[T]) Contains(ctx context.Context, key any) (bool, error) {
+	s.recordAttemptedReads(ctx, 1)
 	found, err := s.KvStore.Contains(ctx, key)
 
 	if err == nil {
@@ -78,6 +81,7 @@ func (s *MetricStore[T]) Contains(ctx context.Context, key any) (bool, error) {
 }
 
 func (s *MetricStore[T]) Get(ctx context.Context, key any, value *T) (bool, error) {
+	s.recordAttemptedReads(ctx, 1)
 	found, err := s.KvStore.Get(ctx, key, value)
 
 	if err == nil {
@@ -93,6 +97,7 @@ func (s *MetricStore[T]) GetBatch(ctx context.Context, keys any, result any) ([]
 		return nil, fmt.Errorf("can not morph keys to slice of interfaces: %w", err)
 	}
 
+	s.recordAttemptedReads(ctx, len(keySlice))
 	missing, err := s.KvStore.GetBatch(ctx, keySlice, result)
 
 	if err == nil {
@@ -175,9 +180,20 @@ func (s *MetricStore[T]) recordSizeValue(ctx context.Context, size int64) {
 	})
 }
 
-// recordReads counts read operations. A read the store served from its own data is the same metric
-// told apart by its hit attribute, so a hit needs no metric of its own: hits are
-// `reads{hit="true"}`, misses `reads{hit="false"}`, and the total is the sum over both.
+func (s *MetricStore[T]) recordAttemptedReads(ctx context.Context, reads int) {
+	s.metricWriter.WriteOne(ctx, &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: metricNameKvStoreAttemptedRead,
+		Dimensions: s.dimensions(),
+		Value:      float64(reads),
+		Unit:       metric.UnitCount,
+		Kind:       metric.KindCounter.Build(),
+	})
+}
+
+// recordReads counts successful reads. A read the store served from its own data is the same metric
+// told apart by its hit attribute: hits are `reads{hit="true"}`, misses are `reads{hit="false"}`,
+// and the total successful read volume is the sum over both.
 func (s *MetricStore[T]) recordReads(ctx context.Context, reads int, hits int) {
 	s.recordHit(ctx, true, int64(hits))
 	s.recordHit(ctx, false, int64(reads-hits))
@@ -255,8 +271,18 @@ func getDefaultMetrics(model string, store string) metric.Data {
 	defaults := metric.Data{
 		readDefault(model, store, true),
 		readDefault(model, store, false),
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameKvStoreAttemptedRead,
+			Dimensions: metric.Dimensions{
+				dimensionModel: model,
+				dimensionStore: store,
+			},
+			Unit:  metric.UnitCount,
+			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
+		},
 	}
-
 	for _, name := range names {
 		defaults = append(defaults, &metric.Datum{
 			Priority:   metric.PriorityHigh,

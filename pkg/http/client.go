@@ -34,20 +34,22 @@ const (
 	PutRequest     = "PUT"
 	PatchRequest   = "PATCH"
 	OptionsRequest = "OPTIONS"
-	// metricRequestDuration records how long a request took. Its observation count is the request
-	// count, and its dimensions tell status codes and failures apart, so none of those needs a metric
-	// of its own.
-	metricRequestDuration = "request.duration"
+	// metricRequestDuration records request latency; independent counters report request starts and completions.
+	metricRequestDuration         = "request.duration"
+	metricClientRequests          = "requests"
+	metricClientCompletedRequests = "completed.requests"
 
-	dimensionMethod     = "request.method"
-	dimensionStatusCode = "response.status_code"
-
+	dimensionMethod          = "request.method"
+	dimensionStatusCode      = "response.status_code"
+	dimensionStatusClass     = "response.status_class"
 	errorTypeRequestCanceled = "request_canceled"
 	errorTypeRequestFailed   = "request_failed"
 )
 
 func init() {
 	metric.RegisterHelp(metricNamespace, metricRequestDuration, "duration of an HTTP client request")
+	metric.RegisterHelp(metricNamespace, metricClientRequests, "HTTP client requests started")
+	metric.RegisterHelp(metricNamespace, metricClientCompletedRequests, "HTTP client requests completed, by response status and error type")
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Client
@@ -617,10 +619,19 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 
 	c.prepareRequest(ctx, req, request)
 	start := c.clock.Now()
+	c.writeRequestCounter(ctx, metricClientRequests, metric.Dimensions{
+		dimensionMethod: method,
+	})
 	resp, err := req.Execute(method, url)
 	totalDuration := c.clock.Now().Sub(start)
 
 	if errors.Is(err, context.Canceled) {
+		c.writeRequestCounter(ctx, metricClientCompletedRequests, metric.Dimensions{
+			dimensionMethod:           method,
+			dimensionStatusCode:       metric.DimensionDefault,
+			dimensionStatusClass:      metric.DimensionDefault,
+			metric.DimensionErrorType: errorTypeRequestCanceled,
+		})
 		c.writeRequestDuration(ctx, method, metric.Dimensions{
 			metric.DimensionErrorType: errorTypeRequestCanceled,
 		}, float64(totalDuration/time.Millisecond))
@@ -628,10 +639,13 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 		return nil, err
 	}
 
-	// Only log an error if the error was not caused by a canceled context
-	// Otherwise a user might spam our error logs by just canceling a lot of requests
-	// (or many users spam us because sometimes they cancel requests)
 	if err != nil {
+		c.writeRequestCounter(ctx, metricClientCompletedRequests, metric.Dimensions{
+			dimensionMethod:           method,
+			dimensionStatusCode:       metric.DimensionDefault,
+			dimensionStatusClass:      metric.DimensionDefault,
+			metric.DimensionErrorType: errorTypeRequestFailed,
+		})
 		c.writeRequestDuration(ctx, method, metric.Dimensions{
 			metric.DimensionErrorType: errorTypeRequestFailed,
 		}, float64(totalDuration/time.Millisecond))
@@ -645,9 +659,18 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	// If we get an error, we might not actually have sent anything,
 	// so the duration will be very low. If we get back an error (e.g., status 500),
 	// we log the duration as this is just a valid http response.
+	statusCode := resp.StatusCode()
+	responseStatusCode := strconv.Itoa(statusCode)
+	statusClass := responseStatusClass(statusCode)
+	c.writeRequestCounter(ctx, metricClientCompletedRequests, metric.Dimensions{
+		dimensionMethod:           method,
+		dimensionStatusCode:       responseStatusCode,
+		dimensionStatusClass:      statusClass,
+		metric.DimensionErrorType: metric.DimensionDefault,
+	})
 	requestDurationMs := float64(resp.Time() / time.Millisecond)
 	c.writeRequestDuration(ctx, method, metric.Dimensions{
-		dimensionStatusCode: strconv.Itoa(resp.StatusCode()),
+		dimensionStatusCode: responseStatusCode,
 	}, requestDurationMs)
 
 	return response, nil
@@ -712,8 +735,8 @@ func (c *client) setDefaultHeaders(req *resty.Request) {
 	}
 }
 
-// writeRequestDuration records one request, identified by its method and by either the status code it
-// answered with or the type of error it failed with.
+// writeRequestDuration records one request's latency, identified by its method and either the status
+// code it answered with or the type of error it failed with.
 func (c *client) writeRequestDuration(ctx context.Context, method string, dimensions metric.Dimensions, durationMs float64) {
 	dimensions[dimensionMethod] = method
 
@@ -734,6 +757,34 @@ func (c *client) writeRequestDuration(ctx context.Context, method string, dimens
 		Value:      durationMs,
 		Kind:       metric.KindHistogram.Build(),
 	})
+}
+
+func (c *client) writeRequestCounter(ctx context.Context, metricName string, dimensions metric.Dimensions) {
+	c.metricWriter.WriteOne(ctx, &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: metricName,
+		Dimensions: dimensions,
+		Unit:       metric.UnitCount,
+		Value:      1.0,
+		Kind:       metric.KindCounter.Build(),
+	})
+}
+
+func responseStatusClass(statusCode int) string {
+	switch {
+	case statusCode >= 100 && statusCode <= 199:
+		return "1xx"
+	case statusCode >= 200 && statusCode <= 299:
+		return "2xx"
+	case statusCode >= 300 && statusCode <= 399:
+		return "3xx"
+	case statusCode >= 400 && statusCode <= 499:
+		return "4xx"
+	case statusCode >= 500 && statusCode <= 599:
+		return "5xx"
+	default:
+		return metric.DimensionDefault
+	}
 }
 
 func buildResponse(resp *resty.Response, totalDuration *time.Duration) *Response {

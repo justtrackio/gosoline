@@ -23,6 +23,13 @@ const (
 	MetricNameFetchBatchBytes      = "fetch.batch.size"
 	MetricNameFetchBatchBytesCmp   = "fetch.batch.compressed.size"
 
+	metricNameProducedRecords       = "produced.records"
+	metricNameProducedBatchBytes    = "produced.batch.size"
+	metricNameProducedBatchBytesCmp = "produced.batch.compressed.size"
+	metricNameFetchedRecords        = "fetched.records"
+	metricNameFetchedBatchBytes     = "fetched.batch.size"
+	metricNameFetchedBatchBytesCmp  = "fetched.batch.compressed.size"
+
 	errorTypeConnectFailed = "connect_failed"
 )
 
@@ -36,6 +43,12 @@ func init() {
 	metric.RegisterHelp(metricNamespace, MetricNameFetchBatchRecords, "records a kafka client fetched per batch")
 	metric.RegisterHelp(metricNamespace, MetricNameFetchBatchBytes, "uncompressed size of a batch a kafka client fetched")
 	metric.RegisterHelp(metricNamespace, MetricNameFetchBatchBytesCmp, "compressed size of a batch a kafka client fetched")
+	metric.RegisterHelp(metricNamespace, metricNameProducedRecords, "records a kafka client produced")
+	metric.RegisterHelp(metricNamespace, metricNameProducedBatchBytes, "uncompressed bytes a kafka client produced")
+	metric.RegisterHelp(metricNamespace, metricNameProducedBatchBytesCmp, "compressed bytes a kafka client produced")
+	metric.RegisterHelp(metricNamespace, metricNameFetchedRecords, "records a kafka client fetched")
+	metric.RegisterHelp(metricNamespace, metricNameFetchedBatchBytes, "uncompressed bytes a kafka client fetched")
+	metric.RegisterHelp(metricNamespace, metricNameFetchedBatchBytesCmp, "compressed bytes a kafka client fetched")
 }
 
 // MetricsHook implements franz-go hook interfaces to emit metrics for broker
@@ -102,17 +115,23 @@ func (h *MetricsHook) OnBrokerThrottle(meta kgo.BrokerMetadata, throttleInterval
 
 func (h *MetricsHook) OnProduceBatchWritten(_ kgo.BrokerMetadata, topic string, partition int32, metrics kgo.ProduceBatchMetrics) {
 	h.metricWriter.Write(context.Background(), metric.Data{
-		h.batchDatum(MetricNameProduceBatchRecords, topic, partition, float64(metrics.NumRecords), metric.UnitCount),
-		h.batchDatum(MetricNameProduceBatchBytes, topic, partition, float64(metrics.UncompressedBytes), metric.UnitBytes),
-		h.batchDatum(MetricNameProduceBatchBytesCmp, topic, partition, float64(metrics.CompressedBytes), metric.UnitBytes),
+		h.batchDatum(MetricNameProduceBatchRecords, topic, partition, float64(metrics.NumRecords), metric.UnitCount, metric.KindHistogram.Build()),
+		h.batchDatum(MetricNameProduceBatchBytes, topic, partition, float64(metrics.UncompressedBytes), metric.UnitBytes, metric.KindHistogram.Build()),
+		h.batchDatum(MetricNameProduceBatchBytesCmp, topic, partition, float64(metrics.CompressedBytes), metric.UnitBytes, metric.KindHistogram.Build()),
+		h.batchDatum(metricNameProducedRecords, topic, partition, float64(metrics.NumRecords), metric.UnitCount, metric.KindCounter.Build()),
+		h.batchDatum(metricNameProducedBatchBytes, topic, partition, float64(metrics.UncompressedBytes), metric.UnitBytes, metric.KindCounter.Build()),
+		h.batchDatum(metricNameProducedBatchBytesCmp, topic, partition, float64(metrics.CompressedBytes), metric.UnitBytes, metric.KindCounter.Build()),
 	})
 }
 
 func (h *MetricsHook) OnFetchBatchRead(_ kgo.BrokerMetadata, topic string, partition int32, metrics kgo.FetchBatchMetrics) {
 	h.metricWriter.Write(context.Background(), metric.Data{
-		h.batchDatum(MetricNameFetchBatchRecords, topic, partition, float64(metrics.NumRecords), metric.UnitCount),
-		h.batchDatum(MetricNameFetchBatchBytes, topic, partition, float64(metrics.UncompressedBytes), metric.UnitBytes),
-		h.batchDatum(MetricNameFetchBatchBytesCmp, topic, partition, float64(metrics.CompressedBytes), metric.UnitBytes),
+		h.batchDatum(MetricNameFetchBatchRecords, topic, partition, float64(metrics.NumRecords), metric.UnitCount, metric.KindHistogram.Build()),
+		h.batchDatum(MetricNameFetchBatchBytes, topic, partition, float64(metrics.UncompressedBytes), metric.UnitBytes, metric.KindHistogram.Build()),
+		h.batchDatum(MetricNameFetchBatchBytesCmp, topic, partition, float64(metrics.CompressedBytes), metric.UnitBytes, metric.KindHistogram.Build()),
+		h.batchDatum(metricNameFetchedRecords, topic, partition, float64(metrics.NumRecords), metric.UnitCount, metric.KindCounter.Build()),
+		h.batchDatum(metricNameFetchedBatchBytes, topic, partition, float64(metrics.UncompressedBytes), metric.UnitBytes, metric.KindCounter.Build()),
+		h.batchDatum(metricNameFetchedBatchBytesCmp, topic, partition, float64(metrics.CompressedBytes), metric.UnitBytes, metric.KindCounter.Build()),
 	})
 }
 
@@ -124,7 +143,7 @@ func (h *MetricsHook) brokerDimensions(meta kgo.BrokerMetadata) metric.Dimension
 	}
 }
 
-func (h *MetricsHook) batchDatum(name string, topic string, partition int32, value float64, unit metric.StandardUnit) *metric.Datum {
+func (h *MetricsHook) batchDatum(name string, topic string, partition int32, value float64, unit metric.StandardUnit, kind metric.Kind) *metric.Datum {
 	return &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: name,
@@ -136,6 +155,6 @@ func (h *MetricsHook) batchDatum(name string, topic string, partition int32, val
 		},
 		Value: value,
 		Unit:  unit,
-		Kind:  metric.KindHistogram.Build(),
+		Kind:  kind,
 	}
 }

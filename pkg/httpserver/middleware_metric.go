@@ -10,17 +10,20 @@ import (
 
 const (
 	// MetricHttpRequestDuration records an HTTP server request's latency with response status.
-	// Separate counters report request totals without a response-status dimension.
+	// Statusless counters report request totals; response counters report status by route and server.
 	MetricHttpRequestDuration  = "request.duration"
 	MetricHttpRequestsRejected = "rejected.requests"
 
-	metricRequests      = "requests"
-	metricRouteRequests = "routed.requests"
+	metricRequests       = "requests"
+	metricRouteRequests  = "routed.requests"
+	metricResponses      = "responses"
+	metricRouteResponses = "routed.responses"
 
-	dimensionServerName = "name"
-	dimensionRoute      = "route"
-	dimensionMethod     = "request.method"
-	dimensionStatusCode = "response.status_code"
+	dimensionServerName  = "name"
+	dimensionRoute       = "route"
+	dimensionMethod      = "request.method"
+	dimensionStatusCode  = "response.status_code"
+	dimensionStatusClass = "response.status_class"
 )
 
 func NewMetricMiddleware(name string, metricRecorder ServerMetricRecorder) (middleware gin.HandlerFunc, setupHandler func(definitions []Definition)) {
@@ -57,6 +60,9 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 
 	ginCtx.Next()
 
+	responseStatus := ginCtx.Writer.Status()
+	responseStatusCode := strconv.Itoa(responseStatus)
+	responseStatusClass := httpStatusClass(responseStatus)
 	requestTimeNano := time.Since(start)
 	requestTimeMillisecond := float64(requestTimeNano) / float64(time.Millisecond)
 	routeDimensions := metric.Dimensions{
@@ -64,8 +70,20 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 		dimensionRoute:      path,
 		dimensionMethod:     method,
 	}
+	responseDimensions := metric.Dimensions{
+		dimensionServerName:  name,
+		dimensionStatusCode:  responseStatusCode,
+		dimensionStatusClass: responseStatusClass,
+	}
+	routedResponseDimensions := metric.Dimensions{
+		dimensionServerName:  name,
+		dimensionRoute:       path,
+		dimensionMethod:      method,
+		dimensionStatusCode:  responseStatusCode,
+		dimensionStatusClass: responseStatusClass,
+	}
 
-	data := make(metric.Data, 0, 4)
+	data := make(metric.Data, 0, 6)
 	data = append(data,
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
@@ -74,11 +92,27 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 				dimensionServerName: name,
 				dimensionRoute:      path,
 				dimensionMethod:     method,
-				dimensionStatusCode: strconv.Itoa(ginCtx.Writer.Status()),
+				dimensionStatusCode: responseStatusCode,
 			},
 			Unit:  metric.UnitMillisecondsAverage,
 			Value: requestTimeMillisecond,
 			Kind:  metric.KindHistogram.Build(),
+		},
+		&metric.Datum{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricResponses,
+			Dimensions: responseDimensions,
+			Unit:       metric.UnitCount,
+			Value:      1.0,
+			Kind:       metric.KindCounter.Build(),
+		},
+		&metric.Datum{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricRouteResponses,
+			Dimensions: routedResponseDimensions,
+			Unit:       metric.UnitCount,
+			Value:      1.0,
+			Kind:       metric.KindCounter.Build(),
 		},
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
@@ -155,4 +189,21 @@ func getMetricMiddlewareDefaults(name string, definitions ...Definition) metric.
 	}
 
 	return defaults
+}
+
+func httpStatusClass(statusCode int) string {
+	switch {
+	case statusCode >= 100 && statusCode <= 199:
+		return "1xx"
+	case statusCode >= 200 && statusCode <= 299:
+		return "2xx"
+	case statusCode >= 300 && statusCode <= 399:
+		return "3xx"
+	case statusCode >= 400 && statusCode <= 499:
+		return "4xx"
+	case statusCode >= 500 && statusCode <= 599:
+		return "5xx"
+	default:
+		return metric.DimensionDefault
+	}
 }

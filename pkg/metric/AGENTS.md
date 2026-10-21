@@ -143,10 +143,12 @@ inspecting the gosoline version.
 - Current value: `v2.0`, defined by the exported constant `metric.SchemaVersion` in
   `schema_version.go`. That constant is the single source of truth - no other package may define
   the literal value.
-- `v2.0` is the **one** MAJOR increment covering the whole migration off the `v1.0` contract. Every
-  further rename, removal or unit change made while that migration is unmerged belongs to the same
-  increment: do not raise the version again for one of them, and never publish above `v2.0` from
-  this revision.
+- `v2.0` is the **one** MAJOR increment for the still-unmerged MR introducing the `v2.0`
+  emission contract. All iterations in that MR belong to that same increment, including additions,
+  removals, renames, dimension changes, unit or instrument-kind changes, defaults and corrected
+  counting semantics. Do not bump MAJOR or MINOR, or introduce a separate capability-version signal,
+  for any of those changes while the MR remains unmerged. Apply the future increment rules below
+  only after the v2-introducing MR has merged.
 - Metadata key: `metric.schema_version` (`metric.MetadataKeySchemaVersion`). The value is written
   into the `appctx.Metadata` carrier and therefore served by the metadata server's root route.
 - Format: `v<MAJOR>.<MINOR>`, both components decimal integers of 1 to 9 digits without leading

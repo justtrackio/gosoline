@@ -472,6 +472,7 @@ func (c *BatchConsumer) decodeBatch(ctx context.Context, batch []batchMessage) d
 
 	for _, message := range batch {
 		if model, err = c.getBatchModel(message.message.Attributes); err != nil {
+			c.writeMetricModelLookupFailed(message.ctx)
 
 			var ignorable IgnorableGetModelError
 			if errors.As(err, &ignorable) && ignorable.IsIgnorableWithSettings(c.settings.IgnoreOnGetModelError) {
@@ -565,6 +566,7 @@ func (c *BatchConsumer) retryBatchMessage(ctx context.Context, message batchMess
 	defer cancel()
 
 	if err := c.retryHandler.Put(ctx, retryMessage); err != nil {
+		c.writeMetricRetryPutFailed(ctx)
 		c.logError(ctx, err, "can not put batch message into retry handler; replay required")
 
 		return false

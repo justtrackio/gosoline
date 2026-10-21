@@ -19,15 +19,17 @@ const (
 	retryOperationGet = "get"
 	retryOperationPut = "put"
 
-	errorTypeProcessingFailed = "processing_failed"
+	errorTypeProcessingFailed      = "processing_failed"
+	errorTypeModelLookupFailed     = "model_lookup_failed"
+	errorTypeRetryHandlerPutFailed = "retry_handler_put_failed"
 
 	metadataKeyConsumers = "stream.consumers"
 )
 
 func init() {
 	metric.RegisterHelp(metricNamespace, metricNameConsumerDuration, "duration of a consumer processing operation, including batch operations")
-	metric.RegisterHelp(metricNamespace, metricNameConsumerProcessedCount, "messages a consumer took in from its input, by error type")
-	metric.RegisterHelp(metricNamespace, metricNameConsumerRetryOperations, "retry queue operations a consumer performed")
+	metric.RegisterHelp(metricNamespace, metricNameConsumerProcessedCount, "messages a consumer processed, including overlapping error-type diagnostics")
+	metric.RegisterHelp(metricNamespace, metricNameConsumerRetryOperations, "retry queue operations a consumer performed, including overlapping error diagnostics")
 	metric.RegisterHelp(metricNamespace, metricNameMessageCount, "messages a producer daemon accepted for delivery")
 	metric.RegisterHelp(metricNamespace, metricNameBatchSize, "messages a producer daemon wrote per batch")
 	metric.RegisterHelp(metricNamespace, metricNameAggregateSize, "messages a producer daemon combined into one aggregate")
@@ -74,30 +76,25 @@ func consumedMessagesDatum(consumer string, errorType string, value float64) *me
 	}
 }
 
+func retryOperationsDatum(consumer, operation, errorType string, value float64) *metric.Datum {
+	return &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: metricNameConsumerRetryOperations,
+		Dimensions: map[string]string{
+			dimensionConsumer:         consumer,
+			dimensionRetryOperation:   operation,
+			metric.DimensionErrorType: errorType,
+		},
+		Value: value,
+		Unit:  metric.UnitCount,
+		Kind:  metric.KindCounter.Build(),
+	}
+}
+
 func getConsumerDefaultMetrics(name string) metric.Data {
 	return metric.Data{
 		consumedMessagesDatum(name, metric.DimensionDefault, 0.0),
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameConsumerRetryOperations,
-			Dimensions: map[string]string{
-				dimensionConsumer:       name,
-				dimensionRetryOperation: retryOperationPut,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameConsumerRetryOperations,
-			Dimensions: map[string]string{
-				dimensionConsumer:       name,
-				dimensionRetryOperation: retryOperationGet,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
-		},
+		retryOperationsDatum(name, retryOperationPut, metric.DimensionDefault, 0.0),
+		retryOperationsDatum(name, retryOperationGet, metric.DimensionDefault, 0.0),
 	}
 }
