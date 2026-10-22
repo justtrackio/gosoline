@@ -71,7 +71,7 @@ func TestWriteLotsOfBadMetrics(t *testing.T) {
 	daemon, err := metric.NewDaemonModule(ctx, config, logger)
 	assert.NoError(t, err)
 
-	writer := metric.NewWriter(&metric.Datum{
+	writer := metric.NewWriter("", &metric.Datum{
 		MetricName: "myMetricName",
 	})
 

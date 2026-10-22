@@ -84,7 +84,7 @@ func newConsumerBase(
 	var samplingDecider smpl.Decider
 
 	consumerLogger := logger.WithChannel(fmt.Sprintf("consumer-%s", name))
-	metricWriter := metric.NewWriter(getConsumerDefaultMetrics(name)...)
+	metricWriter := metric.NewWriter(metricNamespace, getConsumerDefaultMetrics(name)...)
 
 	if _, err := cfg.GetAppIdentity(config); err != nil {
 		return nil, fmt.Errorf("can not get app identity from config: %w", err)
@@ -386,22 +386,38 @@ func (c *consumerBase) buildRetryMessage(msg *Message) (retryMsg *Message, retry
 }
 
 func (c *consumerBase) handleError(ctx context.Context, err error, msg string) {
+	if !c.logError(ctx, err, msg) {
+		return
+	}
+
+	c.writeMetricProcessingFailed(ctx, 1)
+}
+
+func (c *consumerBase) logError(ctx context.Context, err error, msg string) bool {
 	if exec.IsRequestCanceled(err) || ctx.Err() != nil {
 		c.logger.Warn(ctx, "%s during shutdown: %s", msg, err)
 
-		return
+		return false
 	}
 
 	c.logger.Error(ctx, "%s: %w", msg, err)
 
+	return true
+}
+
+func (c *consumerBase) writeMetricProcessingFailed(ctx context.Context, count int) {
+	if ctx.Err() != nil {
+		return
+	}
+
 	c.metricWriter.Write(ctx, metric.Data{
-		&metric.Datum{
-			MetricName: metricNameConsumerError,
-			Dimensions: map[string]string{
-				metricDimensionConsumer: c.name,
-			},
-			Value: 1.0,
-		},
+		consumedMessagesDatum(c.name, errorTypeProcessingFailed, float64(count)),
+	})
+}
+
+func (c *consumerBase) writeMetricModelLookupFailed(ctx context.Context) {
+	c.metricWriter.Write(ctx, metric.Data{
+		consumedMessagesDatum(c.name, errorTypeModelLookupFailed, 1),
 	})
 }
 
@@ -415,29 +431,24 @@ func (c *consumerBase) writeMetricDurationAndProcessedCount(ctx context.Context,
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerDuration,
 			Dimensions: map[string]string{
-				metricDimensionConsumer: c.name,
+				dimensionConsumer: c.name,
 			},
 			Unit:  metric.UnitMillisecondsAverage,
 			Value: float64(duration.Milliseconds()),
+			Kind:  metric.KindHistogram.Build(),
 		},
-		&metric.Datum{
-			MetricName: metricNameConsumerProcessedCount,
-			Dimensions: map[string]string{
-				metricDimensionConsumer: c.name,
-			},
-			Value: float64(processedCount),
-		},
+		consumedMessagesDatum(c.name, metric.DimensionDefault, float64(processedCount)),
 	})
 }
 
-func (c *consumerBase) writeMetricRetryCount(ctx context.Context, metricName string) {
+func (c *consumerBase) writeMetricRetryCount(ctx context.Context, operation string) {
 	c.metricWriter.Write(ctx, metric.Data{
-		&metric.Datum{
-			MetricName: metricName,
-			Dimensions: map[string]string{
-				metricDimensionConsumer: c.name,
-			},
-			Value: float64(1),
-		},
+		retryOperationsDatum(c.name, operation, metric.DimensionDefault, 1),
+	})
+}
+
+func (c *consumerBase) writeMetricRetryPutFailed(ctx context.Context) {
+	c.metricWriter.Write(ctx, metric.Data{
+		retryOperationsDatum(c.name, retryOperationPut, errorTypeRetryHandlerPutFailed, 1),
 	})
 }

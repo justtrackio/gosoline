@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -24,15 +24,26 @@ func init() {
 	RegisterWriterFactory(WriterTypePrometheus, ProvidePrometheusWriter)
 }
 
+// prometheusNamespace is the single prefix every metric this writer exports carries. It names the
+// framework that authored the metric rather than the application emitting it: application identity
+// belongs in the labels the scrape target is discovered with, so carrying it in the metric name
+// prevents one query from spanning several applications.
+const prometheusNamespace = "gosoline"
+
 var (
 	_            Writer = &prometheusWriter{}
 	promReplacer        = strings.NewReplacer("-", "_")
 )
 
 type (
-	prometheusMetricProcessor func(metric prometheus.Collector)
-	prometheusWriterCtxKey    string
-	registryAppCtxKey         string
+	prometheusMetricProcessor     func(metric prometheus.Collector)
+	prometheusWriterCtxKey        string
+	registryAppCtxKey             string
+	prometheusHistogramBucketsKey struct {
+		subsystem string
+		name      string
+		unit      StandardUnit
+	}
 )
 
 func ProvideRegistry(ctx context.Context, name string) (*prometheus.Registry, error) {
@@ -46,12 +57,14 @@ func ProvideRegistry(ctx context.Context, name string) (*prometheus.Registry, er
 }
 
 type prometheusWriter struct {
-	logger         log.Logger
-	registry       *prometheus.Registry
-	namespace      string
-	metricLimit    int64
-	metrics        *int64
-	writeGraceTime time.Duration
+	logger               log.Logger
+	registry             *prometheus.Registry
+	namespace            string
+	metricLimit          int64
+	metrics              *int64
+	writeGraceTime       time.Duration
+	histogramBucketsLock sync.RWMutex
+	histogramBuckets     map[prometheusHistogramBucketsKey][]float64
 }
 
 // ProvidePrometheusWriter provides a prometheus writer. If one is registered under the default key in
@@ -69,22 +82,11 @@ func ProvidePrometheusWriter(ctx context.Context, config cfg.Config, logger log.
 func NewPrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	var err error
 	var settings *PrometheusSettings
-	var identity cfg.Identity
-	var namespace string
 	var registry *prometheus.Registry
 
 	if settings, err = getMetricWriterSettings[PrometheusSettings](config, WriterTypePrometheus); err != nil {
 		return nil, fmt.Errorf("could not get prometheus writer settings: %w", err)
 	}
-
-	if identity, err = cfg.GetAppIdentity(config); err != nil {
-		return nil, fmt.Errorf("could not get app identity from config: %w", err)
-	}
-
-	if namespace, err = identity.Format(settings.Naming.NamespacePattern, settings.Naming.NamespaceDelimiter); err != nil {
-		return nil, fmt.Errorf("could not format prometheus namespace: %w", err)
-	}
-	namespace = promReplacer.Replace(namespace)
 
 	if registry, err = ProvideRegistry(ctx, prometheusDefaultRegistry); err != nil {
 		return nil, err
@@ -93,7 +95,6 @@ func NewPrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logg
 	return NewPrometheusWriterWithInterfaces(
 		logger,
 		registry,
-		namespace,
 		settings.MetricLimit,
 		settings.WriteGraceTime,
 	), nil
@@ -102,17 +103,17 @@ func NewPrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logg
 func NewPrometheusWriterWithInterfaces(
 	logger log.Logger,
 	registry *prometheus.Registry,
-	namespace string,
 	metricLimit int64,
 	writeGraceTime time.Duration,
 ) Writer {
 	return &prometheusWriter{
-		logger:         logger.WithChannel("metrics"),
-		registry:       registry,
-		namespace:      namespace,
-		metricLimit:    metricLimit,
-		metrics:        mdl.Box(int64(0)),
-		writeGraceTime: writeGraceTime,
+		logger:           logger.WithChannel("metrics"),
+		registry:         registry,
+		namespace:        prometheusNamespace,
+		metricLimit:      metricLimit,
+		metrics:          mdl.Box(int64(0)),
+		writeGraceTime:   writeGraceTime,
+		histogramBuckets: make(map[prometheusHistogramBucketsKey][]float64),
 	}
 }
 
@@ -144,7 +145,6 @@ func (w *prometheusWriter) Write(applicationCtx context.Context, batch Data) {
 func (w *prometheusWriter) write(ctx context.Context, batch Data) {
 	for _, datum := range batch {
 		datum = mdl.Box(preprocessPrometheusMetric(datum))
-		amendFromDefault(datum)
 
 		if w.shouldFilterMetric(datum) {
 			continue
@@ -168,68 +168,54 @@ func (w *prometheusWriter) writeMetricFromDatum(ctx context.Context, datum *Datu
 		}
 	}()
 
-	if strings.Contains(datum.MetricName, "-") {
-		w.logger.Error(ctx, "metric name %s is invalid, as it contains a - characters, gracefully replacing with an _ character", datum.MetricName)
-		datum.MetricName = promReplacer.Replace(datum.MetricName)
+	metricKind := effectiveKind(datum)
+	datum.Kind.help = resolveHelp(datum)
+
+	subsystem, name := renderPrometheusName(datum.Namespace, datum.MetricName, datum.Unit, metricKind)
+	if strings.Contains(name, "-") {
+		w.logger.Warn(ctx, "metric name %s is invalid, as it contains a - characters, gracefully replacing with an _ character", name)
+		name = promReplacer.Replace(name)
 	}
 
-	switch w.getEffectiveKind(datum) {
+	datum.MetricName = name
+	datum.Value *= unitScale(datum.Unit)
+
+	switch metricKind {
 	case kindCounter:
-		w.counter(ctx, datum)
+		w.counter(ctx, subsystem, datum)
 	case kindGauge:
-		w.gauge(ctx, datum)
+		w.gauge(ctx, subsystem, datum)
 	case kindHistogram:
-		w.histogram(ctx, datum)
+		w.histogram(ctx, subsystem, datum)
 	case kindSummary:
-		w.summary(ctx, datum)
+		w.summary(ctx, subsystem, datum)
 	}
 }
 
-func (w *prometheusWriter) getEffectiveKind(datum *Datum) kind {
-	switch datum.Kind.kind {
-	case kindCounter, kindGauge, kindHistogram, kindSummary:
-		return datum.Kind.kind
-	}
-
-	switch datum.Unit {
-	case UnitCount:
-		return kindCounter
-	case UnitMilliseconds, UnitSeconds:
-		return kindSummary
-	default:
-		return kindGauge
-	}
-}
-
-func (w *prometheusWriter) buildHelp(datum *Datum) string {
-	if datum.Kind.help != "" {
-		return datum.Kind.help
-	}
-
-	return fmt.Sprintf("unit: %s", datum.Unit)
-}
-
-func (w *prometheusWriter) createCounter(datum *Datum) *prometheus.CounterVec {
+func (w *prometheusWriter) createCounter(subsystem string, datum *Datum) *prometheus.CounterVec {
 	return prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: w.namespace,
+		Subsystem: subsystem,
 		Name:      datum.MetricName,
-		Help:      w.buildHelp(datum),
+		Help:      datum.Kind.help,
 	}, w.DatumDimensionKeys(datum))
 }
 
-func (w *prometheusWriter) createGauge(datum *Datum) *prometheus.GaugeVec {
+func (w *prometheusWriter) createGauge(subsystem string, datum *Datum) *prometheus.GaugeVec {
 	return prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: w.namespace,
+		Subsystem: subsystem,
 		Name:      datum.MetricName,
-		Help:      w.buildHelp(datum),
+		Help:      datum.Kind.help,
 	}, w.DatumDimensionKeys(datum))
 }
 
-func (w *prometheusWriter) createSummary(datum *Datum) *prometheus.SummaryVec {
+func (w *prometheusWriter) createSummary(subsystem string, datum *Datum) *prometheus.SummaryVec {
 	return prometheus.NewSummaryVec(prometheus.SummaryOpts{
 		Namespace:  w.namespace,
+		Subsystem:  subsystem,
 		Name:       datum.MetricName,
-		Help:       w.buildHelp(datum),
+		Help:       datum.Kind.help,
 		Objectives: datum.Kind.objectives,
 		MaxAge:     datum.Kind.maxAge,
 		AgeBuckets: datum.Kind.ageBuckets,
@@ -237,12 +223,13 @@ func (w *prometheusWriter) createSummary(datum *Datum) *prometheus.SummaryVec {
 	}, w.DatumDimensionKeys(datum))
 }
 
-func (w *prometheusWriter) createHistogram(datum *Datum) *prometheus.HistogramVec {
+func (w *prometheusWriter) createHistogram(subsystem string, datum *Datum, buckets []float64) *prometheus.HistogramVec {
 	return prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: w.namespace,
+		Subsystem: subsystem,
 		Name:      datum.MetricName,
-		Help:      w.buildHelp(datum),
-		Buckets:   datum.Kind.buckets,
+		Help:      datum.Kind.help,
+		Buckets:   buckets,
 	}, w.DatumDimensionKeys(datum))
 }
 
@@ -285,8 +272,8 @@ func (w *prometheusWriter) registerAndProcessMetric(metric prometheus.Collector,
 	return nil
 }
 
-func (w *prometheusWriter) counter(ctx context.Context, datum *Datum) {
-	metric := w.createCounter(datum)
+func (w *prometheusWriter) counter(ctx context.Context, subsystem string, datum *Datum) {
+	metric := w.createCounter(subsystem, datum)
 
 	err := w.registerAndProcessMetric(metric, datum.MetricName, func(metric prometheus.Collector) {
 		metric.(*prometheus.CounterVec).
@@ -298,8 +285,8 @@ func (w *prometheusWriter) counter(ctx context.Context, datum *Datum) {
 	}
 }
 
-func (w *prometheusWriter) gauge(ctx context.Context, datum *Datum) {
-	metric := w.createGauge(datum)
+func (w *prometheusWriter) gauge(ctx context.Context, subsystem string, datum *Datum) {
+	metric := w.createGauge(subsystem, datum)
 
 	err := w.registerAndProcessMetric(metric, datum.MetricName, func(metric prometheus.Collector) {
 		metric.(*prometheus.GaugeVec).
@@ -311,8 +298,8 @@ func (w *prometheusWriter) gauge(ctx context.Context, datum *Datum) {
 	}
 }
 
-func (w *prometheusWriter) summary(ctx context.Context, datum *Datum) {
-	metric := w.createSummary(datum)
+func (w *prometheusWriter) summary(ctx context.Context, subsystem string, datum *Datum) {
+	metric := w.createSummary(subsystem, datum)
 
 	err := w.registerAndProcessMetric(metric, datum.MetricName, func(metric prometheus.Collector) {
 		metric.(*prometheus.SummaryVec).
@@ -324,10 +311,36 @@ func (w *prometheusWriter) summary(ctx context.Context, datum *Datum) {
 	}
 }
 
-func (w *prometheusWriter) histogram(ctx context.Context, datum *Datum) {
-	metric := w.createHistogram(datum)
+func (w *prometheusWriter) histogram(ctx context.Context, subsystem string, datum *Datum) {
+	key := prometheusHistogramBucketsKey{
+		subsystem: subsystem,
+		name:      datum.MetricName,
+		unit:      datum.Unit,
+	}
+	buckets := datum.Kind.buckets
+	cacheBuckets := len(buckets) > 0
+	if cacheBuckets {
+		w.histogramBucketsLock.RLock()
+		cached, ok := w.histogramBuckets[key]
+		w.histogramBucketsLock.RUnlock()
+		if ok {
+			buckets = cached
+			cacheBuckets = false
+		} else {
+			buckets = scaleHistogramBuckets(datum.Unit, buckets)
+		}
+	}
 
+	metric := w.createHistogram(subsystem, datum, buckets)
 	err := w.registerAndProcessMetric(metric, datum.MetricName, func(metric prometheus.Collector) {
+		if cacheBuckets {
+			w.histogramBucketsLock.Lock()
+			if _, ok := w.histogramBuckets[key]; !ok {
+				w.histogramBuckets[key] = buckets
+			}
+			w.histogramBucketsLock.Unlock()
+		}
+
 		metric.(*prometheus.HistogramVec).
 			With(prometheus.Labels(datum.Dimensions)).
 			Observe(datum.Value)
@@ -355,14 +368,22 @@ func (w *prometheusWriter) DatumDimensionKeys(datum *Datum) []string {
 	return dims
 }
 
+// preprocessPrometheusMetric prepares a copy of the datum for prometheus: the default dimension marker
+// becomes the empty label value, and every dimension key is rendered the way the metric name is,
+// because a dot is not a valid character in a prometheus label name and a datum carrying one is
+// rejected at registration.
 func preprocessPrometheusMetric(datum *Datum) Datum {
 	d := *datum
-	d.Dimensions = maps.Clone(datum.Dimensions)
+	// Default IDs use canonical dimension keys and values; resolve before rendering labels.
+	amendFromDefault(&d)
+	d.Dimensions = make(Dimensions, len(datum.Dimensions))
 
-	for dimension, value := range d.Dimensions {
+	for dimension, value := range datum.Dimensions {
 		if value == DimensionDefault {
-			d.Dimensions[dimension] = ""
+			value = ""
 		}
+
+		d.Dimensions[renderPrometheusLabelName(dimension)] = value
 	}
 
 	return d
