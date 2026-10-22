@@ -129,6 +129,18 @@ change, so neither ever claims a metric nothing writes.
 and the semantic-convention metric it derives from or deliberately diverges from, plus the exceptions to
 the grammar and why each exists.
 
+### CloudWatch-only dimension projections
+`KindTotal` is reserved for additional data points that materialize an aggregation needed by a
+CloudWatch consumer. The in-tree exception is `http.server.routed.responses`: alongside each raw
+five-dimension Counter, it emits the same namespace, name, value, unit, priority, and event boundary
+with `response.status_code=metric.DimensionDefault`. Keep the raw dimensions unchanged; CloudWatch
+omits that default, leaving `name`, `route`, `request.method`, and `response.status_class`. The
+projection has no zero default. OpenTelemetry skips `KindTotal` before instrument lookup and
+Prometheus before registry registration, so they export only the raw Counter. For CloudWatch queries,
+use the exact five-key `SCHEMA` to select raw series or a standard four-dimension MetricStat `Sum` for
+the class projection; never combine both dimension shapes. Do not restore topic-only Kafka or
+stream-only Kinesis total series.
+
 ### Dimension-key policy
 OpenTelemetry semantic-convention attributes may be added where a convention defines the relevant
 attribute. Existing custom dimensions are unchanged in this focused revision. For future custom

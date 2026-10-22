@@ -324,6 +324,24 @@ health routes; unmatched Gin routes remain excluded. Neither has a zero default.
 by `name`, status code, and class; `routed.responses` adds `route` and `request.method`. The duration
 histogram remains a separate latency measurement with the full status code and no status class.
 
+For CloudWatch only, each matched routed response Counter observation emits exactly one additional
+same-name `KindTotal` datum with the same event boundary, value, unit, and priority. The projection
+retains `name`, `route`, `request.method`, and the observed `response.status_class`, and sets
+`response.status_code` to `metric.DimensionDefault`, which CloudWatch omits. Each observed
+name/route/method/class tuple therefore has one active four-dimension class series; no zero default
+creates a series for an unobserved class. This is not a separate canonical metric. OpenTelemetry
+skips `KindTotal` before instrument lookup and Prometheus before registry registration, so both
+continue to export only the raw five-dimension Counter and do not double-count it.
+
+CloudWatch consumers must choose one series shape. Metrics Insights queries that read raw response
+Counters use the exact five-dimension `FROM SCHEMA(namespace, name, route, request.method,
+response.status_code, response.status_class)`, with the class filter applied to those data. A broad
+class query can include both the raw Counter and its projection and double-count. A class-only route
+total (for example, `response.status_class="5xx"`) uses a standard CloudWatch MetricStat `Sum` with
+exactly `name`, `route`, `request.method`, and `response.status_class` dimensions, with no
+`response.status_code`. This bounded HTTP projection does not restore the removed topic-only Kafka
+or stream-only Kinesis `KindTotal` series.
+
 `http.client.requests` increments after request and URL validation, immediately before `Execute`,
 with `request.method`. `http.client.completed.requests` increments once after `Execute` returns in the
 response, transport-error, and cancellation branches. A valid response carries the numeric status
