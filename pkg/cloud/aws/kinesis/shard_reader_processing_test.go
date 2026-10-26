@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	cloudwatchtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	awsKinesis "github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	cloudwatchMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch/mocks"
@@ -20,6 +21,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
 func TestShardReaderProcessesRecordsSeriallyInOrderedMode(t *testing.T) {
@@ -493,4 +496,96 @@ func TestShardReaderDefaultMetricsSeedOnlyMissingStreamProjection(t *testing.T) 
 		"consumed_total":  true,
 		"consumed_failed": true,
 	}, seen)
+}
+
+func TestShardReaderEmitsStandardProcessDurationHistogram(t *testing.T) {
+	checkpoint := &recordingCheckpoint{}
+	reader := newProcessingTestShardReader(t, ProcessingModeOrdered, 1, checkpoint)
+	reader.stream = Stream("events")
+	reader.shardId = ShardId("shard-1")
+	reader.settings.MaxBatchSize = 1
+	reader.settings.WaitTime = 0
+
+	testClock := clock.NewFakeClockAt(time.Unix(0, 0))
+	reader.clock = testClock
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+	reader.logger = logger
+
+	exportReader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(exportReader))
+	t.Cleanup(func() {
+		require.NoError(t, provider.Shutdown(t.Context()))
+	})
+
+	exportingWriter := metric.NewOtelWriterWithInterfaces(logger, provider.Meter("kinesis-process-duration-test"))
+	reader.metricWriter = exportingWriter
+	reader.kinesisClient = getRecordsTestClient{
+		output: &awsKinesis.GetRecordsOutput{
+			Records: []types.Record{
+				{Data: []byte("record"), SequenceNumber: aws.String("seq-1")},
+			},
+			NextShardIterator:  aws.String("next"),
+			MillisBehindLatest: aws.Int64(0),
+		},
+	}
+
+	millisecondsBehind := make(chan float64, 1)
+	iterator := ShardIterator("iterator")
+	lastSequenceNumber := SequenceNumber("")
+	_, err := reader.getAndProcessRecords(
+		t.Context(),
+		t.Context(),
+		millisecondsBehind,
+		&iterator,
+		&lastSequenceNumber,
+		func(context.Context, []byte) error {
+			testClock.Advance(250 * time.Millisecond)
+
+			return nil
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(t, 0.0, <-millisecondsBehind)
+	require.Equal(t, []SequenceNumber{"seq-1"}, checkpoint.sequenceNumbers())
+
+	var exported metricdata.ResourceMetrics
+	require.NoError(t, exportReader.Collect(t.Context(), &exported))
+
+	var processHistogram *metricdata.Histogram[float64]
+	for _, scope := range exported.ScopeMetrics {
+		for i := range scope.Metrics {
+			exportedMetric := &scope.Metrics[i]
+			if exportedMetric.Name != "gosoline.cloud.aws.kinesis.process.duration" {
+				continue
+			}
+
+			require.Nil(t, processHistogram, "process.duration must be exported as one histogram instrument")
+			require.Equal(t, "s", exportedMetric.Unit)
+			histogram, ok := exportedMetric.Data.(metricdata.Histogram[float64])
+			require.True(t, ok)
+			processHistogram = &histogram
+		}
+	}
+
+	require.NotNil(t, processHistogram)
+	require.Len(t, processHistogram.DataPoints, 1, "the stream-only KindTotal projection must be skipped by OTEL")
+	point := processHistogram.DataPoints[0]
+	require.Equal(t, []float64{0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10}, point.Bounds)
+	require.Equal(t, uint64(1), point.Count)
+	require.InDelta(t, 0.25, point.Sum, 1e-12)
+
+	dimensions := make(metric.Dimensions, len(point.Attributes.ToSlice()))
+	for _, attribute := range point.Attributes.ToSlice() {
+		dimensions[string(attribute.Key)] = attribute.Value.AsString()
+	}
+	require.Equal(t, metric.Dimensions{dimensionStream: "events", dimensionShard: "shard-1"}, dimensions)
+}
+
+type getRecordsTestClient struct {
+	Client
+	output *awsKinesis.GetRecordsOutput
+}
+
+func (c getRecordsTestClient) GetRecords(_ context.Context, _ *awsKinesis.GetRecordsInput, _ ...func(*awsKinesis.Options)) (*awsKinesis.GetRecordsOutput, error) {
+	return c.output, nil
 }

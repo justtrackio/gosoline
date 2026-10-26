@@ -697,9 +697,9 @@ func getConsumerDefaultMetrics(name, topicName string) metric.Data {
 	return metric.Data{
 		consumedMessagesDatum(name, topicName, metric.DimensionDefault, 0.0),
 		{Priority: metric.PriorityHigh, MetricName: metricNamePollCount, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
-		{Priority: metric.PriorityHigh, MetricName: metricNamePollDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
-		{Priority: metric.PriorityHigh, MetricName: metricNameProcessDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
-		{Priority: metric.PriorityHigh, MetricName: metricNameCommitDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
+		{Priority: metric.PriorityHigh, MetricName: metricNamePollDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.WithMessagingDurationBuckets().Build()},
+		{Priority: metric.PriorityHigh, MetricName: metricNameProcessDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.WithMessagingDurationBuckets().Build()},
+		{Priority: metric.PriorityHigh, MetricName: metricNameCommitDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.WithMessagingDurationBuckets().Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNameRebalanceCount, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNameSleepDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
 	}

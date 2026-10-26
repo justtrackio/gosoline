@@ -149,6 +149,6 @@ func getProducerDefaultMetrics(name, topicName string) metric.Data {
 	return metric.Data{
 		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaProducer, MetricName: metricNameRecordsSent, Dimensions: withErrorType(dims, metric.DimensionDefault), Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
 		{Priority: metric.PriorityHigh, MetricName: metricNameProduceBatchSize, Dimensions: dims, Unit: metric.UnitCountAverage, Kind: metric.KindHistogram.Build()},
-		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaProducer, MetricName: metricNameProduceDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
+		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaProducer, MetricName: metricNameProduceDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.WithMessagingDurationBuckets().Build()},
 	}
 }

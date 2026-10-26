@@ -755,7 +755,7 @@ func (c *client) writeRequestDuration(ctx context.Context, method string, dimens
 		Dimensions: dimensions,
 		Unit:       metric.UnitMillisecondsAverage,
 		Value:      durationMs,
-		Kind:       metric.KindHistogram.Build(),
+		Kind:       metric.KindHistogram.WithHttpDurationBuckets().Build(),
 	})
 }
 

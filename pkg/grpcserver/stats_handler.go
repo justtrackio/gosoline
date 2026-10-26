@@ -163,7 +163,7 @@ func (s *statsHandler) writeMetrics(ctx context.Context, holder *statsHolder) {
 			},
 			Value: float64(holder.TotalTime) / float64(time.Millisecond),
 			Unit:  metric.UnitMillisecondsAverage,
-			Kind:  metric.KindHistogram.Build(),
+			Kind:  metric.KindHistogram.WithRpcDurationBuckets().Build(),
 		},
 	})
 }

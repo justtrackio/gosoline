@@ -162,6 +162,25 @@ attribute. Existing custom dimensions are unchanged in this focused revision. Fo
 attributes, use a unique owned prefix such as `gosoline.*`; do not retroactively rename existing
 custom keys solely to apply that convention.
 
+### Histogram bucket policy
+
+Choose histogram boundaries by the metric's semantic family and measurement meaning, not by a
+namespace or duration suffix. When an OpenTelemetry semantic-convention family recommends explicit
+bounds, apply that recommendation to every applicable Gosoline family and document the category,
+complete metric list, authored-unit values, exported base-unit values, and primary source in
+`SEMCONV.md`. Use the existing `WithHttpDurationBuckets()`, `WithRpcDurationBuckets()`,
+`WithMessagingDurationBuckets()`, and `WithDatabaseDurationBuckets()` builder methods for their
+specified families; do not create per-emitter copies of those policies.
+
+When no directly applicable standard recommendation exists, keep the generic exporter defaults
+unless a custom policy is explicitly decided. Assess generic defaults in the exported base unit,
+not just the authored unit, and do not treat them as workload-fit evidence. If a default appears
+poorly suited, report the candidate range and discuss it before introducing custom boundaries.
+Never invent or apply a custom set based only on a metric name, guessed workload, or a desire to
+improve generic defaults. Do not claim ideal precision for every histogram without evidence from
+observed distributions.
+
+
 ## Metric schema version
 The metric schema version identifies the metric emission contract a gosoline build implements, so
 tooling (dashboard generators, alert provisioning, metric pipelines) can branch on it without

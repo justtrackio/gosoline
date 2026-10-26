@@ -63,7 +63,7 @@ func (r metricRepository) writeMetric(ctx context.Context, op string, err error,
 	}
 	if err != nil {
 		datum.Unit = metric.UnitMillisecondsAverage
-		datum.Kind = metric.KindHistogram.Build()
+		datum.Kind = metric.KindHistogram.WithDatabaseDurationBuckets().Build()
 	}
 
 	r.metric.WriteOne(ctx, datum)
@@ -102,7 +102,7 @@ func getDefaultMetrics(mId mdl.ModelId) metric.Data {
 			Dimensions: operationDimensions(op, model, ""),
 			Unit:       metric.UnitMillisecondsAverage,
 			Value:      0.0,
-			Kind:       metric.KindHistogram.Build(),
+			Kind:       metric.KindHistogram.WithDatabaseDurationBuckets().Build(),
 		})
 		defaults = append(defaults,
 			&metric.Datum{

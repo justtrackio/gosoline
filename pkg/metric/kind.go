@@ -35,6 +35,12 @@ var (
 	KindSummary = SummaryKindBuilder{}
 )
 
+// Standard duration histogram boundaries are authored in milliseconds.
+var (
+	standardHttpRpcMessagingDurationBuckets = []float64{5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000}
+	standardDatabaseDurationBuckets         = []float64{1, 5, 10, 50, 100, 500, 1000, 5000, 10000}
+)
+
 type (
 	kind string
 	Kind struct {
@@ -166,6 +172,34 @@ func (k HistogramKindBuilder) WithBuckets(buckets []float64) HistogramKindBuilde
 	k.buckets = buckets
 
 	return k
+}
+
+// WithHttpDurationBuckets sets standard explicit bounds for applicable HTTP semantic-convention duration metrics.
+// The bounds are authored in milliseconds; do not use this preset for arbitrary or custom duration metrics.
+// See https://opentelemetry.io/docs/specs/semconv/http/http-metrics/.
+func (k HistogramKindBuilder) WithHttpDurationBuckets() HistogramKindBuilder {
+	return k.WithBuckets(standardHttpRpcMessagingDurationBuckets)
+}
+
+// WithRpcDurationBuckets sets standard explicit bounds for applicable RPC semantic-convention duration metrics.
+// The bounds are authored in milliseconds; do not use this preset for arbitrary or custom duration metrics.
+// See https://opentelemetry.io/docs/specs/semconv/rpc/rpc-metrics/.
+func (k HistogramKindBuilder) WithRpcDurationBuckets() HistogramKindBuilder {
+	return k.WithBuckets(standardHttpRpcMessagingDurationBuckets)
+}
+
+// WithMessagingDurationBuckets sets standard explicit bounds for applicable messaging semantic-convention duration metrics.
+// The bounds are authored in milliseconds; do not use this preset for arbitrary or custom duration metrics.
+// See https://opentelemetry.io/docs/specs/semconv/messaging/messaging-metrics/.
+func (k HistogramKindBuilder) WithMessagingDurationBuckets() HistogramKindBuilder {
+	return k.WithBuckets(standardHttpRpcMessagingDurationBuckets)
+}
+
+// WithDatabaseDurationBuckets sets standard explicit bounds for applicable database semantic-convention duration metrics.
+// The bounds are authored in milliseconds; do not use this preset for arbitrary or custom duration metrics.
+// See https://opentelemetry.io/docs/specs/semconv/db/database-metrics/.
+func (k HistogramKindBuilder) WithDatabaseDurationBuckets() HistogramKindBuilder {
+	return k.WithBuckets(standardDatabaseDurationBuckets)
 }
 
 // WithObjectives sets the objectives your summary will contain. From the Prometheus documentation:

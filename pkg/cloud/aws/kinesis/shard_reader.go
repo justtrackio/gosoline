@@ -425,7 +425,7 @@ func (s *shardReader) getAndProcessRecords(
 	}
 
 	processDuration := s.clock.Since(processStart)
-	s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameProcessDuration, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
+	s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameProcessDuration, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.WithMessagingDurationBuckets().Build())
 	// The {{default}} series is the batch total, including failures counted per record above.
 	s.writeConsumedMessages(ctx, metric.DimensionDefault, float64(processedSize))
 

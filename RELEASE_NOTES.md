@@ -28,6 +28,40 @@ Most duration observations are authored in milliseconds. `cloud.aws.kinesis.acqu
 Explicit histogram bucket bounds use the metric's authored unit. Prometheus and OTEL convert these bounds along with
 observations to their base unit; for example, 1, 5, and 10 milliseconds become 0.001, 0.005, and 0.01 seconds.
 
+
+### Histogram bucket policies
+
+`HistogramKindBuilder` now provides `WithHttpDurationBuckets()`, `WithRpcDurationBuckets()`,
+`WithMessagingDurationBuckets()`, and `WithDatabaseDurationBuckets()`. The HTTP request
+(`http.server.request.duration`, `http.client.request.duration`), RPC
+(`rpc.server.request.duration`), and messaging (`stream.process.duration`,
+`kafka.consumer.process.duration`, `cloud.aws.kinesis.process.duration`,
+`kafka.producer.produce.duration`, `kafka.consumer.poll.duration`, and
+`kafka.consumer.commit.duration`) families use the recommended bounds `[5, 10, 25, 50, 75, 100,
+250, 500, 750, 1000, 2500, 5000, 7500, 10000]` ms, exported by Prometheus and OpenTelemetry as
+`[0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]` seconds. The
+database operation histograms (`db.repo.operation.duration`, `ddb.operation.duration`) use
+`[1, 5, 10, 50, 100, 500, 1000, 5000, 10000]` ms, exported as
+`[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10]` seconds. Poll and commit reuse the messaging
+client-operation recommendation for receive/settle operations without changing their client poll
+and offset-commit measurement boundaries; processing duration remains separate. Metric names,
+attributes, instrument kinds, and counting behavior are unchanged. The schema remains `v2.0`; no
+bucket-policy flag or migration mode is added.
+
+The other 19 histograms retain their generic exporter defaults; their bounds are in exported base
+units, not authored units. These defaults are not evidence of fit to observed workloads: values
+above 10 overflow Prometheus' finite count/byte buckets, while OpenTelemetry has no positive
+default boundary below 5 seconds for short custom-duration distributions. No claim is made that
+all histograms now have workload-ideal precision. See `pkg/metric/SEMCONV.md` for the complete
+unchanged-family list, default bounds, and primary recommendations.
+
+Histogram changes do not rebucket stored data, so historical coarser distributions cannot recover
+finer percentile detail. HTTP percentile aggregation rejects mixed explicit-bound layouts rather
+than combining buckets positionally: snapshots remain `Unknown` while their five-complete-minute
+window contains mixed layouts, and history has gaps only for mixed output bucket/grain pairs. HTTP
+history means share that conservative mixed-layout guard; route and general weighted means are
+bounds-independent.
+
 Framework-authored duration metrics that were Prometheus summaries now use histograms; custom metrics using `KindSummary` remain Prometheus summaries. Use histogram buckets (for example, `histogram_quantile`) for framework duration metrics. The histogram `_count` and `_sum` series describe histogram observations and are not substitutes for restored standalone Counter instruments or their event/volume semantics. `UnitMillisecondsAverage` and its eight related units resolve to their base unit before rendering, so millisecond histograms do not export UCUM unit `1`.
 
 Kafka's four existing batch-size distribution histograms—`kafka.produce.batch.size`, `kafka.produce.batch.compressed.size`, `kafka.fetch.batch.size`, and `kafka.fetch.batch.compressed.size`—use byte units. Six independent high-priority hook Counters now add produced/fetched record counts and uncompressed/compressed byte volumes in the corresponding franz-go batch callbacks; see “Restored counter migrations” below for exact names, values, dimensions, and boundaries. Keep the existing `produce.batch.*` and `fetch.batch.*` histograms for per-batch distributions, not as substitutes for the counters. Kafka consumer metrics already had topic-level dimensions before this release; their v2 names, instrument types, and attributes change. Separately, `kafka.MetricPair` now emits per-topic/partition series only; its former topic-only `KindTotal` point was CloudWatch-visible and is removed. Prometheus and OTEL already filter `KindTotal`. Aggregate retained partition series in CloudWatch for topic-level views.

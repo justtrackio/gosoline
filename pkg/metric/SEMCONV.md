@@ -82,6 +82,67 @@ Explicit bounds set with `KindHistogram.WithBuckets` are authored in the datum's
 scale them with observations when registering the histogram, so duration bucket bounds in milliseconds are converted
 to seconds along with the observed values.
 
+## Histogram bucket policy
+
+Explicit histogram boundaries follow the OpenTelemetry recommendation for the metric's semantic
+family, not a broad namespace or a duration suffix. These recommendations affect bucket boundaries
+only: Gosoline retains its own metric names, attributes, instrument kinds, and measurement
+boundaries. The convenience methods on `HistogramKindBuilder` apply these policies through
+`KindHistogram.WithBuckets`.
+
+| Builder method | Gosoline histogram(s) | Adopted semantic family |
+|---|---|---|
+| `WithHttpDurationBuckets()` | `http.server.request.duration`, `http.client.request.duration` | HTTP request duration |
+| `WithRpcDurationBuckets()` | `rpc.server.request.duration` | RPC call duration |
+| `WithMessagingDurationBuckets()` | `stream.process.duration`, `kafka.consumer.process.duration`, `cloud.aws.kinesis.process.duration` | Messaging process duration |
+| `WithMessagingDurationBuckets()` | `kafka.producer.produce.duration`, `kafka.consumer.poll.duration`, `kafka.consumer.commit.duration` | Messaging client-operation duration |
+| `WithDatabaseDurationBuckets()` | `db.repo.operation.duration`, `ddb.operation.duration` | Database client-operation duration |
+
+The Kafka consumer poll and commit histograms measure the executor/client poll operation and client
+offset commit, respectively; process duration remains separate. Poll and commit deliberately reuse
+the messaging client-operation recommendation for receive/settle operations. Their names,
+attributes, and measurement boundaries do not change.
+
+Both sets below are authored in milliseconds. Prometheus and OpenTelemetry scale the explicit
+bounds and observations together once, so exported duration values and bounds are in seconds;
+CloudWatch retains the authored observation unit.
+
+| Recommendation | Authored bounds (ms) | Exported bounds (s) |
+|---|---|---|
+| HTTP, RPC, and messaging | `[5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000]` | `[0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]` |
+| Database | `[1, 5, 10, 50, 100, 500, 1000, 5000, 10000]` | `[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10]` |
+
+The 19 histograms below have no directly applicable standard bucket recommendation identified in
+this policy and retain their existing generic exporter defaults:
+
+| Group | Histograms |
+|---|---|
+| Count and byte batches | `stream.batch.messages`, `stream.aggregate.messages`, `kafka.producer.batch.records`, `kafka.produce.batch.records`, `kafka.produce.batch.size`, `kafka.produce.batch.compressed.size`, `kafka.fetch.batch.records`, `kafka.fetch.batch.size`, `kafka.fetch.batch.compressed.size`, `cloud.aws.kinesis.batch.records`, `conc.scheduler.batch.tasks` |
+| Custom durations and lag | `stream.idle.duration`, `kafka.consumer.sleep.duration`, `kafka.throttle.duration`, `cloud.aws.kinesis.acquire.duration`, `cloud.aws.kinesis.lag`, `cloud.aws.kinesis.sleep.duration`, `cloud.aws.kinesis.wait.duration`, `conc.scheduler.task.queue.duration` |
+
+Generic histogram defaults are in the exported base unit, not the authored unit. For duration
+histograms that means seconds; for count and byte histograms it means counts and bytes:
+
+| Exporter | Generic bounds in exported base units |
+|---|---|
+| OpenTelemetry | `[0, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000]` |
+| Prometheus (`DefBuckets`) | `[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]` |
+
+These generic defaults are not evidence of fit to observed workloads. In particular, Prometheus'
+finite buckets end at 10, so larger count or byte observations overflow them; OpenTelemetry has no
+positive default boundary below 5 seconds, giving short custom-duration distributions poor
+resolution. No custom bounds are inferred for these families, and no claim is made that every
+histogram now has workload-ideal precision. Historical histogram data is not rebucketed: an older,
+coarser distribution cannot reconstruct finer percentile detail.
+
+The recommendations are published in the [HTTP metrics conventions](https://opentelemetry.io/docs/specs/semconv/http/http-metrics/),
+[RPC metrics conventions](https://opentelemetry.io/docs/specs/semconv/rpc/rpc-metrics/),
+[messaging metrics conventions](https://opentelemetry.io/docs/specs/semconv/messaging/messaging-metrics/),
+and [database metrics conventions](https://opentelemetry.io/docs/specs/semconv/db/database-metrics/).
+The generic OpenTelemetry boundaries are specified under
+[explicit-bucket histogram aggregation](https://opentelemetry.io/docs/specs/otel/metrics/sdk/#explicit-bucket-histogram-aggregation).
+
+
 ## Attributes
 
 `error.type` is the **only** key gosoline takes verbatim from a semantic convention, because its values

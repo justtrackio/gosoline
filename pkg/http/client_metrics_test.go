@@ -142,6 +142,13 @@ func TestClientRequestCountersTrackStartsAndCompletedOutcomes(t *testing.T) {
 	histogram, ok := duration.Data.(metricdata.Histogram[float64])
 	require.True(t, ok)
 	require.Len(t, histogram.DataPoints, 3)
+	expectedBounds := []float64{
+		0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25,
+		0.5, 0.75, 1, 2.5, 5, 7.5, 10,
+	}
+	for _, point := range histogram.DataPoints {
+		require.Equal(t, expectedBounds, point.Bounds)
+	}
 	durationOutcomes := make(map[string]bool, len(histogram.DataPoints))
 	for _, point := range histogram.DataPoints {
 		dimensions := clientMetricDimensions(point.Attributes.ToSlice())

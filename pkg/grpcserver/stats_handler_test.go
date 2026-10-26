@@ -66,6 +66,10 @@ func TestStatsHandlerCountsCompletedRPCWithError(t *testing.T) {
 	duration, ok := durationMetric.Data.(metricdata.Histogram[float64])
 	require.True(t, ok)
 	require.Len(t, duration.DataPoints, 1)
+	require.Equal(t, []float64{
+		0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25,
+		0.5, 0.75, 1, 2.5, 5, 7.5, 10,
+	}, duration.DataPoints[0].Bounds)
 	require.Equal(t, uint64(1), duration.DataPoints[0].Count)
 	require.Equal(t, metric.Dimensions{
 		MetricDimensionRpcService: "helloworld.v1.GreeterService",

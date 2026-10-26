@@ -108,7 +108,7 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 			},
 			Unit:  metric.UnitMillisecondsAverage,
 			Value: requestTimeMillisecond,
-			Kind:  metric.KindHistogram.Build(),
+			Kind:  metric.KindHistogram.WithHttpDurationBuckets().Build(),
 		},
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,

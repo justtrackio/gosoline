@@ -435,7 +435,7 @@ func (c *consumerBase) writeMetricDurationAndProcessedCount(ctx context.Context,
 			},
 			Unit:  metric.UnitMillisecondsAverage,
 			Value: float64(duration.Milliseconds()),
-			Kind:  metric.KindHistogram.Build(),
+			Kind:  metric.KindHistogram.WithMessagingDurationBuckets().Build(),
 		},
 		consumedMessagesDatum(c.name, metric.DimensionDefault, float64(processedCount)),
 	})
