@@ -818,37 +818,41 @@ func (s *shardReaderTestSuite) mockMetricCall(namespace string, metricName strin
 	compareKind := namespace != "cloud.aws.kinesis" || metricName != "process.duration"
 
 	return s.metricWriter.EXPECT().Write(matcher.Context, mock.MatchedBy(func(actual metric.Data) bool {
-		if len(actual) != len(expected) {
+		return shardReaderMetricDataMatches(actual, expected, compareKind)
+	}))
+}
+
+func shardReaderMetricDataMatches(actual metric.Data, expected metric.Data, compareKind bool) bool {
+	if len(actual) != len(expected) {
+		return false
+	}
+
+	for i, actualDatum := range actual {
+		expectedDatum := expected[i]
+		if actualDatum == nil || expectedDatum == nil {
+			if actualDatum != expectedDatum {
+				return false
+			}
+
+			continue
+		}
+
+		if actualDatum.Priority != expectedDatum.Priority ||
+			actualDatum.Timestamp != expectedDatum.Timestamp ||
+			actualDatum.Namespace != expectedDatum.Namespace ||
+			actualDatum.MetricName != expectedDatum.MetricName ||
+			!reflect.DeepEqual(actualDatum.Dimensions, expectedDatum.Dimensions) ||
+			actualDatum.Value != expectedDatum.Value ||
+			actualDatum.Unit != expectedDatum.Unit {
 			return false
 		}
 
-		for i, actualDatum := range actual {
-			expectedDatum := expected[i]
-			if actualDatum == nil || expectedDatum == nil {
-				if actualDatum != expectedDatum {
-					return false
-				}
-
-				continue
-			}
-
-			if actualDatum.Priority != expectedDatum.Priority ||
-				actualDatum.Timestamp != expectedDatum.Timestamp ||
-				actualDatum.Namespace != expectedDatum.Namespace ||
-				actualDatum.MetricName != expectedDatum.MetricName ||
-				!reflect.DeepEqual(actualDatum.Dimensions, expectedDatum.Dimensions) ||
-				actualDatum.Value != expectedDatum.Value ||
-				actualDatum.Unit != expectedDatum.Unit {
-				return false
-			}
-
-			// process.duration's histogram uses explicit messaging buckets; the real OTEL exporter assertion
-			// verifies that instrument while this matcher focuses on the emitted batch's public data fields.
-			if (compareKind || i != 0) && !reflect.DeepEqual(actualDatum.Kind, expectedDatum.Kind) {
-				return false
-			}
+		// process.duration's histogram uses explicit messaging buckets; the real OTEL exporter assertion
+		// verifies that instrument while this matcher focuses on the emitted batch's public data fields.
+		if (compareKind || i != 0) && !reflect.DeepEqual(actualDatum.Kind, expectedDatum.Kind) {
+			return false
 		}
+	}
 
-		return true
-	}))
+	return true
 }
