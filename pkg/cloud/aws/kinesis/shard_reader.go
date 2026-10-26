@@ -734,6 +734,17 @@ func (s *shardReader) writeMetric(ctx context.Context, namespace string, metricN
 			Unit:  unit,
 			Kind:  metricKind,
 		},
+		{
+			Priority:   metric.PriorityHigh,
+			Namespace:  namespace,
+			MetricName: metricName,
+			Dimensions: metric.Dimensions{
+				dimensionStream: string(s.stream),
+			},
+			Value: value,
+			Unit:  unit,
+			Kind:  metric.KindTotal,
+		},
 	})
 }
 
@@ -754,6 +765,18 @@ func (s *shardReader) writeConsumedMessages(ctx context.Context, errorType strin
 			Unit:  metric.UnitCount,
 			Kind:  metric.KindCounter.Build(),
 		},
+		{
+			Priority:   metric.PriorityHigh,
+			Namespace:  metricNamespaceCloudAwsKinesis,
+			MetricName: metricNameConsumedMessages,
+			Dimensions: metric.Dimensions{
+				dimensionStream:           string(s.stream),
+				metric.DimensionErrorType: errorType,
+			},
+			Value: value,
+			Unit:  metric.UnitCount,
+			Kind:  metric.KindTotal,
+		},
 	})
 }
 
@@ -761,6 +784,9 @@ func getShardReaderDefaultMetrics(stream Stream) metric.Data {
 	// no defaults for milliseconds behind - if we take a few minutes to process a batch, we are still that many ms behind
 	// as we reported before - not 0 (which would be the default if we are not writing a metric). Thus, we instead leave
 	// gaps in the metric to show this (thus, you maybe shouldn't define an alarm on a too short period).
+	// CloudWatch omits default-valued dimensions, so the existing raw count defaults already seed the
+	// stream-level reads and all-processed consumed.messages series. Only the failed projection needs
+	// its own zero; adding another default for either total would emit a duplicate stream datum.
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
@@ -784,6 +810,17 @@ func getShardReaderDefaultMetrics(stream Stream) metric.Data {
 			Unit:  metric.UnitCount,
 			Value: 0.0,
 			Kind:  metric.KindCounter.Build(),
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameConsumedMessages,
+			Dimensions: map[string]string{
+				dimensionStream:           string(stream),
+				metric.DimensionErrorType: errorTypeProcessingFailed,
+			},
+			Unit:  metric.UnitCount,
+			Value: 0.0,
+			Kind:  metric.KindTotal,
 		},
 	}
 }

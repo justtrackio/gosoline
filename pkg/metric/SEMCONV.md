@@ -232,6 +232,25 @@ These hook boundaries are distinct from the application-level
 | `client.count` | count | gauge | `stream.name` | none |
 | `batch.records` | count | histogram | `stream.name` | none |
 
+The six generic shard-reader metrics in the table also emit a same-name CloudWatch-only `KindTotal` projection
+beside each detailed stream-and-shard datum. The projection removes only `partition.id`; it keeps
+The metric pipeline applies the existing unit reducers for these CloudWatch statistics:
+
+| Metric | Projection dimensions | Unit | CloudWatch statistic |
+|---|---|---|---|
+| `acquire.duration` | `stream.name` | seconds (`UnitSecondsMaximum`) | Maximum |
+| `sleep.duration` | `stream.name` | ms (`UnitMillisecondsAverage`) | Average |
+| `lag` | `stream.name` | ms (`UnitMillisecondsMaximum`) | Maximum |
+| `process.duration` | `stream.name` | ms (`UnitMillisecondsAverage`) | Average |
+| `reads` | `stream.name` | count (`UnitCount`) | Sum |
+| `wait.duration` | `stream.name` | ms (`UnitMillisecondsAverage`) | Average |
+
+The detailed metrics keep their original `partition.id` dimensions and instrument kinds. These
+projections are not new metric names: OpenTelemetry and Prometheus filter `KindTotal` and continue
+exporting only the detailed stream-and-shard series. Existing raw count defaults for `reads` and the
+all-processed `consumed.messages` series already seed their CloudWatch stream series when default
+dimensions are omitted; do not register a duplicate projection zero. The `processing_failed`
+projection has no corresponding raw default, so it has its own zero default. There is no lag default.
 `sent.messages` carries the reason Kinesis gave as its `error.type`, not a Go type, because the API
 reports a per-record error code rather than an error value.
 
@@ -242,10 +261,16 @@ write attempt's batch size, including retries; it is not a Kinsumer read-batch m
 `consumed.messages` is an exception to the usual success meaning of `error.type="{{default}}"`: for Kinesis,
 that series is the full batch total emitted when processing completes, including failed records. Each failed
 record is also emitted immediately as `error.type="processing_failed"`. Those failure points overlap the
-default total; do not sum them with it or subtract them to infer successes.
+default total; do not sum them with it or subtract them to infer successes. CloudWatch gets a same-name
+`KindTotal` projection for each outcome: the default datum retains `error.type="{{default}}"` and CloudWatch
+omits it, leaving exactly `stream.name`; `processing_failed` retains `stream.name` and
+`error.type="processing_failed"`. Both use `UnitCount`/Sum, and the failed projection is an overlapping
+subset of the total, not a separate outcome. The detailed Counter remains stream-and-shard scoped for
+all exporters; OpenTelemetry and Prometheus skip the projection.
 
-`lag` retains millisecond samples and `UnitMillisecondsMaximum` aggregation for CloudWatch, while its
-`KindHistogram` instrument exposes the cumulative maximum to OpenTelemetry for each stream-and-shard series.
+`lag` retains millisecond samples and `UnitMillisecondsMaximum` aggregation for CloudWatch, including the
+stream-only projection. Its detailed `KindHistogram` instrument continues to expose the cumulative
+maximum to OpenTelemetry for each stream-and-shard series.
 
 ### `kvstore` — `pkg/kvstore`
 
@@ -333,6 +358,13 @@ creates a series for an unobserved class. This is not a separate canonical metri
 skips `KindTotal` before instrument lookup and Prometheus before registry registration, so both
 continue to export only the raw five-dimension Counter and do not double-count it.
 
+For CloudWatch only, each matched rejected request also emits one same-name `KindTotal` datum for
+`http.server.rejected.requests`, dimensioned by exactly `name`. The detailed Counter remains
+dimensioned by `name`, `route`, and `request.method` and is unchanged for every exporter. The
+server-level projection is `UnitCount`/Sum and has a zero default per server; existing detailed
+route/method rejection zero defaults remain. OpenTelemetry and Prometheus skip `KindTotal`, so they
+export only the detailed rejection Counter.
+
 CloudWatch consumers must choose one series shape. Metrics Insights queries that read raw response
 Counters use the exact five-dimension `FROM SCHEMA(namespace, name, route, request.method,
 response.status_code, response.status_class)`, with the class filter applied to those data. A broad
@@ -340,7 +372,7 @@ class query can include both the raw Counter and its projection and double-count
 total (for example, `response.status_class="5xx"`) uses a standard CloudWatch MetricStat `Sum` with
 exactly `name`, `route`, `request.method`, and `response.status_class` dimensions, with no
 `response.status_code`. This bounded HTTP projection does not restore the removed topic-only Kafka
-or stream-only Kinesis `KindTotal` series.
+`KindTotal` series; the separate shard-reader stream projections are documented above.
 
 `http.client.requests` increments after request and URL validation, immediately before `Execute`,
 with `request.method`. `http.client.completed.requests` increments once after `Execute` returns in the

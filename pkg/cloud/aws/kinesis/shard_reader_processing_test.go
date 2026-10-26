@@ -5,9 +5,14 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	cloudwatchtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	cloudwatchMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch/mocks"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -284,6 +289,18 @@ func testShardReaderRecoversHandlerPanic(t *testing.T, mode ProcessingMode) {
 			Unit:  metric.UnitCount,
 			Kind:  metric.KindCounter.Build(),
 		},
+		{
+			Priority:   metric.PriorityHigh,
+			Namespace:  metricNamespaceCloudAwsKinesis,
+			MetricName: metricNameConsumedMessages,
+			Dimensions: metric.Dimensions{
+				dimensionStream:           "",
+				metric.DimensionErrorType: errorTypeProcessingFailed,
+			},
+			Value: 1,
+			Unit:  metric.UnitCount,
+			Kind:  metric.KindTotal,
+		},
 	}).Once()
 
 	lastSequenceNumber := SequenceNumber("")
@@ -369,4 +386,111 @@ func processingTestRecords() []types.Record {
 		{Data: []byte("first"), SequenceNumber: aws.String("seq-1")},
 		{Data: []byte("second"), SequenceNumber: aws.String("seq-2")},
 	}
+}
+
+func TestShardReaderDefaultMetricsSeedOnlyMissingStreamProjection(t *testing.T) {
+	defaults := getShardReaderDefaultMetrics(Stream("events"))
+
+	require.ElementsMatch(t, metric.Data{
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameReadCount,
+			Dimensions: metric.Dimensions{
+				dimensionStream: "events",
+				dimensionShard:  metric.DimensionDefault,
+			},
+			Unit:  metric.UnitCount,
+			Value: 0,
+			Kind:  metric.KindCounter.Build(),
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameConsumedMessages,
+			Dimensions: metric.Dimensions{
+				dimensionStream:           "events",
+				dimensionShard:            metric.DimensionDefault,
+				metric.DimensionErrorType: metric.DimensionDefault,
+			},
+			Unit:  metric.UnitCount,
+			Value: 0,
+			Kind:  metric.KindCounter.Build(),
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameConsumedMessages,
+			Dimensions: metric.Dimensions{
+				dimensionStream:           "events",
+				metric.DimensionErrorType: errorTypeProcessingFailed,
+			},
+			Unit:  metric.UnitCount,
+			Value: 0,
+			Kind:  metric.KindTotal,
+		},
+	}, defaults)
+	for _, datum := range defaults {
+		datum.Namespace = metricNamespaceCloudAwsKinesis
+	}
+
+	now := time.Unix(1549283566, 0)
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+	cloudwatchClient := cloudwatchMocks.NewClient(t)
+	var cloudwatchData []cloudwatchtypes.MetricDatum
+	cloudwatchClient.EXPECT().PutMetricData(matcher.Context, mock.Anything).
+		Run(func(_ context.Context, input *cloudwatch.PutMetricDataInput, _ ...func(*cloudwatch.Options)) {
+			require.Equal(t, "test", aws.ToString(input.Namespace))
+			cloudwatchData = append(cloudwatchData, input.MetricData...)
+		}).
+		Return(nil, nil).
+		Once()
+	writer := metric.NewCloudwatchWriterWithInterfaces(
+		logger,
+		clock.NewFakeClockAt(now),
+		cloudwatchClient,
+		"test",
+		time.Second,
+	)
+	writer.Write(t.Context(), defaults)
+
+	require.Len(t, cloudwatchData, 3)
+	seen := map[string]bool{}
+	for _, datum := range cloudwatchData {
+		require.Equal(t, now, aws.ToTime(datum.Timestamp))
+		require.Equal(t, metric.UnitCount, datum.Unit)
+		require.Equal(t, 0.0, aws.ToFloat64(datum.Value))
+		dimensions := make(metric.Dimensions, len(datum.Dimensions))
+		for _, dimension := range datum.Dimensions {
+			dimensions[aws.ToString(dimension.Name)] = aws.ToString(dimension.Value)
+		}
+
+		switch aws.ToString(datum.MetricName) {
+		case "CloudAwsKinesisReads":
+			require.Equal(t, metric.Dimensions{dimensionStream: "events"}, dimensions)
+			require.False(t, seen["reads"])
+			seen["reads"] = true
+		case "CloudAwsKinesisConsumedMessages":
+			errorType := dimensions[metric.DimensionErrorType]
+			switch errorType {
+			case "":
+				require.Equal(t, metric.Dimensions{dimensionStream: "events"}, dimensions)
+				require.False(t, seen["consumed_total"])
+				seen["consumed_total"] = true
+			case errorTypeProcessingFailed:
+				require.Equal(t, metric.Dimensions{
+					dimensionStream:           "events",
+					metric.DimensionErrorType: errorTypeProcessingFailed,
+				}, dimensions)
+				require.False(t, seen["consumed_failed"])
+				seen["consumed_failed"] = true
+			default:
+				t.Fatalf("unexpected consumed.messages error.type %q", errorType)
+			}
+		default:
+			t.Fatalf("unexpected CloudWatch metric %q", aws.ToString(datum.MetricName))
+		}
+	}
+	require.Equal(t, map[string]bool{
+		"reads":           true,
+		"consumed_total":  true,
+		"consumed_failed": true,
+	}, seen)
 }

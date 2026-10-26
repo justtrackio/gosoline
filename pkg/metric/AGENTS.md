@@ -130,16 +130,31 @@ and the semantic-convention metric it derives from or deliberately diverges from
 the grammar and why each exists.
 
 ### CloudWatch-only dimension projections
-`KindTotal` is reserved for additional data points that materialize an aggregation needed by a
-CloudWatch consumer. The in-tree exception is `http.server.routed.responses`: alongside each raw
-five-dimension Counter, it emits the same namespace, name, value, unit, priority, and event boundary
-with `response.status_code=metric.DimensionDefault`. Keep the raw dimensions unchanged; CloudWatch
-omits that default, leaving `name`, `route`, `request.method`, and `response.status_class`. The
-projection has no zero default. OpenTelemetry skips `KindTotal` before instrument lookup and
-Prometheus before registry registration, so they export only the raw Counter. For CloudWatch queries,
-use the exact five-key `SCHEMA` to select raw series or a standard four-dimension MetricStat `Sum` for
-the class projection; never combine both dimension shapes. Do not restore topic-only Kafka or
-stream-only Kinesis total series.
+`KindTotal` materializes CloudWatch-specific aggregation beside unchanged detailed metrics. Keep all
+of these projections:
+
+- `http.server.routed.responses` emits the same namespace, name, value, unit, priority, and event
+  boundary as its raw five-dimension Counter, with `response.status_code=metric.DimensionDefault`.
+  CloudWatch omits that marker, leaving `name`, `route`, `request.method`, and
+  `response.status_class`.
+- `http.server.rejected.requests` retains its raw Counter dimensions `name`, `route`, and
+  `request.method`; each matched rejection also emits the same-name `KindTotal` Count with exactly
+  `name`. The server projection has a zero default; retain the detailed route/method defaults.
+- The Kinesis shard reader emits same-name projections for `acquire.duration`,
+  `sleep.duration`, `lag`, `process.duration`, `reads`, and `wait.duration`, removing only
+  `partition.id` so each projection has `stream.name`. Its `consumed.messages` projections also
+  retain `error.type`; CloudWatch omits the default marker. The default series is the all-processed
+  total and `processing_failed` is an overlapping subset.
+
+These are not separate canonical metric names. OpenTelemetry skips `KindTotal` before instrument
+lookup and Prometheus before registration, so both continue exporting only detailed data. Retain
+the existing Count/Sum, `UnitSecondsMaximum`, `UnitMillisecondsMaximum`, and
+`UnitMillisecondsAverage` reducers; do not substitute histogram counts or sums. Existing raw count
+defaults already seed the CloudWatch stream series for Kinesis `reads` and default
+`consumed.messages` when default-valued dimensions are omitted, so avoid duplicate projection
+defaults. Keep a zero default for the `processing_failed` projection, but do not add a raw failed
+default or a lag default. CloudWatch consumers must select a single dimension shape. The former
+topic-only Kafka projection remains removed; do not remove the Kinesis stream projections.
 
 ### Dimension-key policy
 OpenTelemetry semantic-convention attributes may be added where a convention defines the relevant

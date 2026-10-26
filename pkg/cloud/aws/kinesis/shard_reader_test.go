@@ -756,8 +756,8 @@ func (s *shardReaderTestSuite) consumeRecord(_ context.Context, record []byte) e
 	return s.consumeRecordError
 }
 
-// mockConsumedMessagesCall expects one `consumed.messages` series: the default-error series is the batch total, while
-// `processing_failed` records its per-record failure subset.
+// mockConsumedMessagesCall expects detailed and stream-only series for one `consumed.messages` outcome.
+// The default-error series is the batch total, while `processing_failed` records its per-record failure subset.
 func (s *shardReaderTestSuite) mockConsumedMessagesCall(errorType string, value float64) *metricMocks.Writer_Write_Call {
 	return s.metricWriter.EXPECT().Write(matcher.Context, metric.Data{
 		{
@@ -772,6 +772,18 @@ func (s *shardReaderTestSuite) mockConsumedMessagesCall(errorType string, value 
 			Value: value,
 			Unit:  metric.UnitCount,
 			Kind:  metric.KindCounter.Build(),
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			Namespace:  "cloud.aws.kinesis",
+			MetricName: "consumed.messages",
+			Dimensions: metric.Dimensions{
+				"stream.name":             string(s.stream),
+				metric.DimensionErrorType: errorType,
+			},
+			Value: value,
+			Unit:  metric.UnitCount,
+			Kind:  metric.KindTotal,
 		},
 	})
 }
@@ -789,6 +801,17 @@ func (s *shardReaderTestSuite) mockMetricCall(namespace string, metricName strin
 			Value: value,
 			Unit:  unit,
 			Kind:  metricKind,
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			Namespace:  namespace,
+			MetricName: metricName,
+			Dimensions: metric.Dimensions{
+				"stream.name": string(s.stream),
+			},
+			Value: value,
+			Unit:  unit,
+			Kind:  metric.KindTotal,
 		},
 	})
 }

@@ -37,31 +37,8 @@ func TestMetricMiddlewareExportsRequestAndResponseCountersForServerGates(t *test
 		require.NoError(t, provider.Shutdown(t.Context()))
 	})
 
-	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
-	otelWriter := metric.NewOtelWriterWithInterfaces(logger, provider.Meter("httpserver-test"))
-	var observedCounters []metric.Datum
-	var observedTotals []metric.Datum
-	var observedCountersMutex sync.Mutex
-	writer := namespaceMetricWriter{
-		Writer: otelWriter,
-		observe: func(batch metric.Data) {
-			observedCountersMutex.Lock()
-			defer observedCountersMutex.Unlock()
-			for _, datum := range batch {
-				switch datum.MetricName {
-				case "requests", "routed.requests", "responses", MetricHttpRequestsRejected:
-					observedCounters = append(observedCounters, *datum)
-				case "routed.responses":
-					// The intentional CloudWatch-only total projection is not an OTEL counter.
-					if reflect.DeepEqual(datum.Kind, metric.KindTotal) {
-						observedTotals = append(observedTotals, *datum)
-					} else {
-						observedCounters = append(observedCounters, *datum)
-					}
-				}
-			}
-		},
-	}
+	capture := &metricMiddlewareGateCapture{}
+	writer, prometheusRegistry := newMetricMiddlewareGateWriter(t, provider, capture)
 	definitions := []Definition{
 		{group: &Definitions{}, httpMethod: http.MethodGet, relativePath: "/widgets/:id"},
 		{group: &Definitions{}, httpMethod: http.MethodGet, relativePath: "/auth"},
@@ -174,17 +151,117 @@ func TestMetricMiddlewareExportsRequestAndResponseCountersForServerGates(t *test
 	var exported metricdata.ResourceMetrics
 	require.NoError(t, reader.Collect(t.Context(), &exported))
 
-	observedCountersMutex.Lock()
-	counterSamples := append([]metric.Datum(nil), observedCounters...)
-	totalSamples := append([]metric.Datum(nil), observedTotals...)
-	observedCountersMutex.Unlock()
-	for _, datum := range counterSamples {
+	observations := capture.snapshot()
+	assertMetricMiddlewareGateDatumKinds(t, observations)
+	metrics := metricMiddlewareMetricsByName(t, exported)
+	assertMetricMiddlewareGateCounterExports(t, metrics, observations, prometheusRegistry)
+	assertMetricMiddlewareGateRequestDuration(t, metrics)
+}
+
+type metricMiddlewareGateCapture struct {
+	mutex                  sync.Mutex
+	counters               []metric.Datum
+	responseTotals         []metric.Datum
+	rejectedTotals         []metric.Datum
+	cloudwatchRejectedData []types.MetricDatum
+}
+
+type metricMiddlewareGateSamples struct {
+	counters               []metric.Datum
+	responseTotals         []metric.Datum
+	rejectedTotals         []metric.Datum
+	cloudwatchRejectedData []types.MetricDatum
+}
+
+func (c *metricMiddlewareGateCapture) observeMetrics(batch metric.Data) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	for _, datum := range batch {
+		switch datum.MetricName {
+		case "requests", "routed.requests", "responses":
+			c.counters = append(c.counters, *datum)
+		case MetricHttpRequestsRejected:
+			if reflect.DeepEqual(datum.Kind, metric.KindTotal) {
+				c.rejectedTotals = append(c.rejectedTotals, *datum)
+			} else {
+				c.counters = append(c.counters, *datum)
+			}
+		case "routed.responses":
+			// The intentional CloudWatch-only total projection is not an OTEL counter.
+			if reflect.DeepEqual(datum.Kind, metric.KindTotal) {
+				c.responseTotals = append(c.responseTotals, *datum)
+			} else {
+				c.counters = append(c.counters, *datum)
+			}
+		}
+	}
+}
+
+func (c *metricMiddlewareGateCapture) observeCloudWatch(input *cloudwatch.PutMetricDataInput) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	for _, datum := range input.MetricData {
+		if aws.ToString(datum.MetricName) == "HttpServerRejectedRequests" {
+			c.cloudwatchRejectedData = append(c.cloudwatchRejectedData, datum)
+		}
+	}
+}
+
+func (c *metricMiddlewareGateCapture) snapshot() metricMiddlewareGateSamples {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	return metricMiddlewareGateSamples{
+		counters:               append([]metric.Datum(nil), c.counters...),
+		responseTotals:         append([]metric.Datum(nil), c.responseTotals...),
+		rejectedTotals:         append([]metric.Datum(nil), c.rejectedTotals...),
+		cloudwatchRejectedData: append([]types.MetricDatum(nil), c.cloudwatchRejectedData...),
+	}
+}
+
+func newMetricMiddlewareGateWriter(
+	t *testing.T,
+	provider *sdkmetric.MeterProvider,
+	capture *metricMiddlewareGateCapture,
+) (metric.Writer, *prometheus.Registry) {
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+	otelWriter := metric.NewOtelWriterWithInterfaces(logger, provider.Meter("httpserver-test"))
+	prometheusRegistry := prometheus.NewRegistry()
+	prometheusWriter := metric.NewPrometheusWriterWithInterfaces(logger, prometheusRegistry, 1000, time.Second)
+	cloudwatchClient := cloudwatchMocks.NewClient(t)
+	cloudwatchClient.EXPECT().PutMetricData(matcher.Context, mock.Anything).
+		Run(func(_ context.Context, input *cloudwatch.PutMetricDataInput, _ ...func(*cloudwatch.Options)) {
+			require.Equal(t, "test", aws.ToString(input.Namespace))
+			capture.observeCloudWatch(input)
+		}).
+		Return(nil, nil).
+		Maybe()
+	cloudwatchWriter := metric.NewCloudwatchWriterWithInterfaces(
+		logger,
+		clock.NewFakeClockAt(time.Unix(1549283566, 0)),
+		cloudwatchClient,
+		"test",
+		time.Second,
+	)
+
+	return namespaceMetricWriter{
+		Writer:  metricWriterFanout{cloudwatchWriter, otelWriter, prometheusWriter},
+		observe: capture.observeMetrics,
+	}, prometheusRegistry
+}
+
+func assertMetricMiddlewareGateDatumKinds(t *testing.T, observations metricMiddlewareGateSamples) {
+	t.Helper()
+
+	for _, datum := range observations.counters {
 		require.Equal(t, metric.PriorityHigh, datum.Priority)
 		require.Equal(t, metric.UnitCount, datum.Unit)
 		require.Equal(t, metric.KindCounter.Build(), datum.Kind)
 	}
 
-	require.Len(t, totalSamples, 6)
+	require.Len(t, observations.responseTotals, 6)
 	expectedTotalClasses := map[string]bool{
 		"/widgets/:id:2xx":  true,
 		"/widgets/:id:5xx":  true,
@@ -193,8 +270,8 @@ func TestMetricMiddlewareExportsRequestAndResponseCountersForServerGates(t *test
 		"/health:2xx":       true,
 		"/server-error:5xx": true,
 	}
-	actualTotalClasses := make(map[string]bool, len(totalSamples))
-	for _, datum := range totalSamples {
+	actualTotalClasses := make(map[string]bool, len(observations.responseTotals))
+	for _, datum := range observations.responseTotals {
 		require.Equal(t, metricNamespace, datum.Namespace)
 		require.Equal(t, "routed.responses", datum.MetricName)
 		require.Equal(t, metric.PriorityHigh, datum.Priority)
@@ -208,11 +285,29 @@ func TestMetricMiddlewareExportsRequestAndResponseCountersForServerGates(t *test
 		actualTotalClasses[datum.Dimensions[dimensionRoute]+":"+datum.Dimensions[dimensionStatusClass]] = true
 	}
 	require.Equal(t, expectedTotalClasses, actualTotalClasses)
-	for _, datum := range counterSamples {
+
+	require.Len(t, observations.rejectedTotals, 2)
+	rejectedProjectionValues := make(map[float64]bool, len(observations.rejectedTotals))
+	for _, datum := range observations.rejectedTotals {
+		require.Equal(t, metricNamespace, datum.Namespace)
+		require.Equal(t, MetricHttpRequestsRejected, datum.MetricName)
+		require.Equal(t, metric.PriorityHigh, datum.Priority)
+		require.Equal(t, metric.UnitCount, datum.Unit)
+		require.True(t, reflect.DeepEqual(datum.Kind, metric.KindTotal))
+		require.Equal(t, metric.Dimensions{dimensionServerName: "api"}, datum.Dimensions)
+		rejectedProjectionValues[datum.Value] = true
+	}
+	require.Equal(t, map[float64]bool{0: true, 1: true}, rejectedProjectionValues)
+
+	for _, datum := range observations.counters {
 		require.Equal(t, metric.PriorityHigh, datum.Priority)
 		require.Equal(t, metric.UnitCount, datum.Unit)
 		require.Equal(t, metric.KindCounter.Build(), datum.Kind)
 	}
+}
+
+func metricMiddlewareMetricsByName(t *testing.T, exported metricdata.ResourceMetrics) map[string]metricdata.Metrics {
+	t.Helper()
 
 	metrics := make(map[string]metricdata.Metrics)
 	for _, scope := range exported.ScopeMetrics {
@@ -220,8 +315,19 @@ func TestMetricMiddlewareExportsRequestAndResponseCountersForServerGates(t *test
 			metrics[emitted.Name] = emitted
 		}
 	}
-	require.Len(t, metrics, 6)
 
+	return metrics
+}
+
+func assertMetricMiddlewareGateCounterExports(
+	t *testing.T,
+	metrics map[string]metricdata.Metrics,
+	observations metricMiddlewareGateSamples,
+	prometheusRegistry *prometheus.Registry,
+) {
+	t.Helper()
+
+	require.Len(t, metrics, 6)
 	assertExportedCounter(t, metrics["gosoline.http.server.requests"], map[string]float64{"": 6}, false)
 	assertExportedCounter(t, metrics["gosoline.http.server.routed.requests"], map[string]float64{
 		"/widgets/:id":  2,
@@ -253,6 +359,12 @@ func TestMetricMiddlewareExportsRequestAndResponseCountersForServerGates(t *test
 		"/health:GET:200:2xx":       1,
 		"/server-error:GET:599:5xx": 1,
 	}, true)
+	assertCloudWatchRejectedProjection(t, observations.cloudwatchRejectedData)
+	assertPrometheusRawRejectedRequests(t, prometheusRegistry)
+}
+
+func assertMetricMiddlewareGateRequestDuration(t *testing.T, metrics map[string]metricdata.Metrics) {
+	t.Helper()
 
 	duration, ok := metrics["gosoline.http.server.request.duration"]
 	require.True(t, ok)
@@ -404,6 +516,84 @@ func assertCloudWatchRouteClassProjection(t *testing.T, cloudwatchData []types.M
 	require.Equal(t, map[string]float64{"500": 1, "599": 1}, rawCloudwatchValues)
 	require.Equal(t, 2, projectedCloudwatchCount)
 	require.Equal(t, 2.0, projectedCloudwatchSum)
+}
+
+func assertCloudWatchRejectedProjection(t *testing.T, cloudwatchData []types.MetricDatum) {
+	t.Helper()
+
+	rawValues := make(map[string][]float64, 5)
+	var projectedValues []float64
+	for _, datum := range cloudwatchData {
+		require.Equal(t, "HttpServerRejectedRequests", aws.ToString(datum.MetricName))
+		require.Equal(t, metric.UnitCount, datum.Unit)
+		value := aws.ToFloat64(datum.Value)
+		dimensions := make(metric.Dimensions, len(datum.Dimensions))
+		for _, dimension := range datum.Dimensions {
+			dimensions[aws.ToString(dimension.Name)] = aws.ToString(dimension.Value)
+		}
+
+		if route, ok := dimensions[dimensionRoute]; ok {
+			require.Len(t, dimensions, 3)
+			require.Equal(t, "api", dimensions[dimensionServerName])
+			require.Equal(t, http.MethodGet, dimensions[dimensionMethod])
+			rawValues[route] = append(rawValues[route], value)
+
+			continue
+		}
+
+		require.Equal(t, metric.Dimensions{dimensionServerName: "api"}, dimensions)
+		projectedValues = append(projectedValues, value)
+	}
+
+	require.Equal(t, map[string][]float64{
+		"/widgets/:id":  {0, 1},
+		"/auth":         {0},
+		"/chaos":        {0},
+		"/idle":         {0},
+		"/server-error": {0},
+	}, rawValues)
+	require.ElementsMatch(t, []float64{0, 1}, projectedValues)
+}
+
+func assertPrometheusRawRejectedRequests(t *testing.T, registry *prometheus.Registry) {
+	t.Helper()
+
+	families, err := registry.Gather()
+	require.NoError(t, err)
+	var rejectedRequests *dto.MetricFamily
+	for _, family := range families {
+		if family.GetName() == "gosoline_http_server_rejected_requests_total" {
+			rejectedRequests = family
+
+			break
+		}
+	}
+	require.NotNil(t, rejectedRequests)
+	require.Equal(t, dto.MetricType_COUNTER, rejectedRequests.GetType())
+	require.Len(t, rejectedRequests.Metric, 5)
+
+	values := make(map[string]float64, 5)
+	var sum float64
+	for _, sample := range rejectedRequests.Metric {
+		labels := make(map[string]string, len(sample.Label))
+		for _, label := range sample.Label {
+			labels[label.GetName()] = label.GetValue()
+		}
+		require.Len(t, labels, 3)
+		require.Equal(t, "api", labels["name"])
+		require.Equal(t, http.MethodGet, labels["request_method"])
+		value := sample.GetCounter().GetValue()
+		values[labels["route"]] = value
+		sum += value
+	}
+	require.Equal(t, map[string]float64{
+		"/widgets/:id":  1,
+		"/auth":         0,
+		"/chaos":        0,
+		"/idle":         0,
+		"/server-error": 0,
+	}, values)
+	require.Equal(t, 1.0, sum)
 }
 
 func assertOTELRawRoutedResponseCounters(t *testing.T, reader *sdkmetric.ManualReader) {
