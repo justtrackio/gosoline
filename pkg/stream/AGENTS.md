@@ -23,6 +23,106 @@
 - `go test ./pkg/stream` (covers transports via mocks).
 - Transports with external deps may need integration tests under `test/stream` (run with `-tags integration,fixtures`).
 
+## Avro encoding
+
+`NewAvroEncoder(schema)` uses the default `github.com/iskorotkov/avro/v2` codec
+through `avro.Marshal` / `avro.Unmarshal`, without a Gosoline-specific configuration.
+**There is no application-level map-entry cap. GO-2026-5048 remains unmitigated**
+under these defaults: malicious materialized maps can still exhaust memory,
+despite the fork no longer matching the original module's vulnerability finding.
+Do not treat a clear scanner result as proof this allocation risk is fixed.
+Schema definitions are passed through unchanged, with the fork's default tag,
+block encoding, string/byte and array allocation settings.
+
+The dependency changes from `github.com/hamba/avro/v2 v2.29.0` to
+`github.com/iskorotkov/avro/v2 v2.33.0`, which requires Go 1.24.13 or newer.
+Inherited fixes can affect existing applications: comma-separated struct-tag
+options are now parsed correctly; decimals exceeding schema precision or fixed
+size now fail encoding; enum compatibility and local-timestamp resolution are
+corrected. Malformed lengths/indices and truncated skipped collections fail
+earlier, and array allocation checks now accumulate across blocks without changing
+the configured default limit. Audit decimal schemas and tagged structs before
+upgrading. See the upstream
+[v2.30.0](https://github.com/hamba/avro/releases/tag/v2.30.0),
+[v2.32.0](https://github.com/iskorotkov/avro/releases/tag/v2.32.0) and
+[v2.33.0](https://github.com/iskorotkov/avro/releases/tag/v2.33.0) release notes.
+
+The fork reuses existing map values: decoding nested maps into a reused destination
+merges nested entries rather than replacing them. An incoming empty nested map
+preserves existing entries, and duplicate wire keys can merge nested map contents.
+This nested-map merge behaviour is explicitly accepted for this upgrade. Fresh
+decode destinations avoid stale entries between decodes; duplicate wire keys
+still merge nested maps even when the destination starts empty.
+
+Global configuration, named-type registrations and type converters continue to
+configure stream encoding through the fork's default codec. Consumers that
+previously configured Hamba must migrate those imports and registrations to
+`github.com/iskorotkov/avro/v2`; the two module paths do not share global state.
+No Gosoline-specific registration API is introduced.
+
+### Caller-supplied codec
+
+`NewAvroEncoderWithCodec(schema, codec)` accepts an application-created `avro.API`.
+The same codec handles encoding and decoding. Gosoline does not create additional
+defaults, change global configuration, or add YAML/environment settings.
+
+For example, an application can read its own settings and pass their values into
+this startup function:
+
+```go
+func registerAvro(schema string, maxMapEntries, maxValueBytes int) error {
+    codec := avro.Config{
+        MaxMapAllocSize:  maxMapEntries,
+        MaxByteSliceSize: maxValueBytes,
+    }.Freeze()
+
+    encoder, err := stream.NewAvroEncoderWithCodec(schema, codec)
+    if err != nil {
+        return err
+    }
+
+    stream.AddMessageBodyEncoder(stream.EncodingAvro, encoder)
+    return nil
+}
+```
+
+Here `avro` is `github.com/iskorotkov/avro/v2` and `stream` is
+`github.com/justtrackio/gosoline/pkg/stream`. These parameters are application
+policy, not Gosoline defaults. Other upstream `avro.Config` settings can be
+supplied in the same way.
+
+For custom union types or logical-type conversions, call `codec.Register` or
+`codec.RegisterTypeConverters` on that same instance before using the encoder.
+Global registrations do not configure a separately frozen codec. The constructor
+retains the supplied instance; it does not clone it or modify its configuration.
+A nil codec is rejected.
+
+Register the encoder before starting concurrent stream processing.
+`AddMessageBodyEncoder` stores one encoder per encoding type for the process;
+another Avro registration replaces the previous one. Direct callers can instead
+keep separate encoders with different codecs without registering them globally.
+
+A positive `MaxMapAllocSize` limits incoming entries cumulatively across the
+blocks of each materialized map. It does not limit total message memory or
+skipped fields, and it does not change the fork's nested-map merge behaviour.
+Nonpositive values leave this protection effectively unbounded. Applications
+that leave it disabled retain the GO-2026-5048 allocation risk.
+`MaxByteSliceSize` separately limits each decoded string/byte value; its upstream
+zero-value behaviour is unchanged. Limits apply during decoding, not as a
+producer-side payload validation policy. Decode errors propagate through the
+existing stream error path; no retry or dead-letter policy is added here.
+
+The existing constructor continues to use the current fork `avro.DefaultConfig`
+on each encode/decode call. Applications that do not opt into the new constructor
+keep their existing configuration and registration behaviour.
+
+
+`encoding_test.go` pins the historical wire format and checks truncated huge
+skipped map/array blocks, minimum block-count overflow and negative block sizes
+in a bounded subprocess. These fixtures omit collections from the destination
+and do not materialize huge allocations. Header-only EOF acceptance is inherited
+from the previous codec and is not hardened here.
+
 ## Transport types
 | Input | Output | Config prefix |
 |-------|--------|---------------|

@@ -6,7 +6,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 )
 
 // BuildResource constructs an OTEL resource from the application identity and the configured

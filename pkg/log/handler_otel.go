@@ -7,6 +7,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/otel"
+	"go.opentelemetry.io/otel/attribute"
 	otellog "go.opentelemetry.io/otel/log"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 )
@@ -91,9 +92,9 @@ func (h *handlerOtel) Log(ctx context.Context, timestamp time.Time, level int, m
 	record.SetTimestamp(timestamp)
 	record.SetSeverity(toOtelSeverity(level))
 	record.SetSeverityText(LevelName(level))
-	record.SetBody(otellog.StringValue(body))
+	record.SetBody(attribute.StringValue(body))
 
-	attributes := make([]otellog.KeyValue, 0, len(data.Fields)+len(data.ContextFields)+2)
+	attributes := make([]attribute.KeyValue, 0, len(data.Fields)+len(data.ContextFields)+2)
 	attributes = append(attributes, toOtelKeyValue("channel", data.Channel))
 
 	for key, value := range data.ContextFields {
@@ -136,21 +137,21 @@ func toOtelSeverity(level int) otellog.Severity {
 	}
 }
 
-func toOtelKeyValue(key string, value any) otellog.KeyValue {
+func toOtelKeyValue(key string, value any) attribute.KeyValue {
 	switch v := value.(type) {
 	case string:
-		return otellog.String(key, v)
+		return attribute.String(key, v)
 	case bool:
-		return otellog.Bool(key, v)
+		return attribute.Bool(key, v)
 	case int:
-		return otellog.Int64(key, int64(v))
+		return attribute.Int64(key, int64(v))
 	case int64:
-		return otellog.Int64(key, v)
+		return attribute.Int64(key, v)
 	case float64:
-		return otellog.Float64(key, v)
+		return attribute.Float64(key, v)
 	case float32:
-		return otellog.Float64(key, float64(v))
+		return attribute.Float64(key, float64(v))
 	default:
-		return otellog.String(key, fmt.Sprintf("%v", v))
+		return attribute.String(key, fmt.Sprintf("%v", v))
 	}
 }

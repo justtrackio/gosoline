@@ -45,7 +45,7 @@ func (l kafkaLogger) Log(level kgo.LogLevel, msg string, keyvals ...any) {
 
 	switch level {
 	case kgo.LogLevelError:
-		l.logger.WithFields(fields).Error(l.ctx, msg)
+		l.logger.WithFields(fields).Error(l.ctx, "%s", msg)
 	case kgo.LogLevelWarn:
 		l.logger.WithFields(fields).Warn(l.ctx, msg)
 	case kgo.LogLevelInfo:

@@ -4,7 +4,7 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 
 ## Quick facts
 - **Module path:** `github.com/justtrackio/gosoline`
-- **Go toolchain:** 1.24 (see `.tool-versions` for exact patch level)
+- **Go toolchain:** 1.26.10 minimum; `mise.toml` and GitHub Actions pin this patched release.
 - **Primary frameworks:** Gin (HTTP), AWS SDK v2, testify, mockery
 - **Key tags:** most packages ship `fixtures` and `integration` build tags. Always include both when building, testing, or linting to pull in fixture wiring.
 
