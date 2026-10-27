@@ -21,13 +21,15 @@ The dependency-security update includes intentional compatibility changes:
   CrateDB migration adapter no longer exist. Configuring `driver: cratedb`
   fails with `no driver factory defined for cratedb`. Migrate those applications
   before upgrading; MySQL and Redshift remain supported.
-- **Avro uses `github.com/iskorotkov/avro/v2` instead of Hamba.** Gosoline uses
-  the fork's default codec, without an added map-allocation limit. Update
-  application imports and global registrations to the fork; reused nested-map
-  values now merge rather than replace. **GO-2026-5048 remains unmitigated with
-  these defaults, even though the fork version clears the scanner advisory.**
-  Review the schema, registration and reused-value caveats in
-  [`pkg/stream/AGENTS.md`](pkg/stream/AGENTS.md#avro-encoding).
+- **Avro uses `github.com/iskorotkov/avro/v2` instead of Hamba.** The existing
+  constructor uses the fork's default codec, without an added map-allocation
+  limit. Applications can opt into `stream.NewAvroEncoderWithCodec(schema, codec)`
+  to supply their own limits, type registrations and converters. No Gosoline
+  defaults or configuration settings are added. Update application imports and
+  global registrations to the fork; reused nested-map values now merge rather
+  than replace. **GO-2026-5048 remains unmitigated with the default codec, even
+  though the fork version clears the scanner advisory.** See the
+  [caller-supplied codec example and compatibility caveats](pkg/stream/AGENTS.md#avro-encoding).
 - **S3 adopts the AWS SDK checksum defaults.** Supported uploads calculate
   CRC32 and downloads request checksum validation. S3-compatible services and
   proxies must support the resulting headers and HTTPS trailing-checksum
