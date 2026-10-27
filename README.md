@@ -8,6 +8,45 @@ challenges like configuration, logging, structured code execution, handling
 http requests, asynchronous message processing, writing integration tests and 
 much more.
 
+## Requirements and upgrade compatibility
+
+Gosoline requires **Go 1.26.10 or newer**. Upgrade application builders, CI and
+container toolchains together; Go 1.25 is no longer supported. A newer release
+line must also include its security fixes: Go 1.27 users need at least 1.27.3.
+
+The dependency-security update includes intentional compatibility changes:
+
+- **CrateDB support is removed.** `db.DriverNameCrateDb` and
+  `db.NewCrateDbDriver`, built-in driver registration, DSN generation and the
+  CrateDB migration adapter no longer exist. Configuring `driver: cratedb`
+  fails with `no driver factory defined for cratedb`. Migrate those applications
+  before upgrading; MySQL and Redshift remain supported.
+- **Avro uses `github.com/iskorotkov/avro/v2` instead of Hamba.** Gosoline uses
+  the fork's default codec, without an added map-allocation limit. Update
+  application imports and global registrations to the fork; reused nested-map
+  values now merge rather than replace. **GO-2026-5048 remains unmitigated with
+  these defaults, even though the fork version clears the scanner advisory.**
+  Review the schema, registration and reused-value caveats in
+  [`pkg/stream/AGENTS.md`](pkg/stream/AGENTS.md#avro-encoding).
+- **S3 adopts the AWS SDK checksum defaults.** Supported uploads calculate
+  CRC32 and downloads request checksum validation. S3-compatible services and
+  proxies must support the resulting headers and HTTPS trailing-checksum
+  encoding. Fully consume and check response-body read errors: validation can
+  fail after `GetObject` succeeds. Plaintext non-seekable uploads remain
+  unsupported; their error stage/message can change. Newly recognized invalid
+  `AWS_REQUEST_CHECKSUM_CALCULATION` or `AWS_RESPONSE_CHECKSUM_VALIDATION`
+  values can fail shared AWS configuration loading.
+- **OpenTelemetry uses core 1.45 and log 0.21.** Resource schema URLs advance
+  from 1.41.0 to 1.43.0. Direct consumers of the log value/attribute API must
+  migrate to `otel/attribute`. Review zero log-attribute limits, environment TLS
+  certificates, HTTP `Retry-After` handling and shutdown/flush errors before
+  upgrading; these now follow the corrected upstream behavior.
+
+Security fixes can also reject previously accepted malformed protocol input and
+change compressed bytes, parsing, logging and authentication edge cases. The
+security-update pull request records the complete dependency/version inventory,
+upstream compatibility references, exercised checks and remaining limitations.
+
 ## Why use it?
 
 - Provides an all-in-one solution for the primary use cases

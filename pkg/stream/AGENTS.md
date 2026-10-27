@@ -23,6 +23,49 @@
 - `go test ./pkg/stream` (covers transports via mocks).
 - Transports with external deps may need integration tests under `test/stream` (run with `-tags integration,fixtures`).
 
+## Avro encoding
+
+`encoding_avro.go` uses the default `github.com/iskorotkov/avro/v2` codec through
+`avro.Marshal` / `avro.Unmarshal`, without a Gosoline-specific configuration.
+**There is no application-level map-entry cap. GO-2026-5048 remains unmitigated**
+under these defaults: malicious materialized maps can still exhaust memory,
+despite the fork no longer matching the original module's vulnerability finding.
+Do not treat a clear scanner result as proof this allocation risk is fixed.
+Schema definitions are passed through unchanged, with the fork's default tag,
+block encoding, string/byte and array allocation settings.
+
+The dependency changes from `github.com/hamba/avro/v2 v2.29.0` to
+`github.com/iskorotkov/avro/v2 v2.33.0`, which requires Go 1.24.13 or newer.
+Inherited fixes can affect existing applications: comma-separated struct-tag
+options are now parsed correctly; decimals exceeding schema precision or fixed
+size now fail encoding; enum compatibility and local-timestamp resolution are
+corrected. Malformed lengths/indices and truncated skipped collections fail
+earlier, and array allocation checks now accumulate across blocks without changing
+the configured default limit. Audit decimal schemas and tagged structs before
+upgrading. See the upstream
+[v2.30.0](https://github.com/hamba/avro/releases/tag/v2.30.0),
+[v2.32.0](https://github.com/iskorotkov/avro/releases/tag/v2.32.0) and
+[v2.33.0](https://github.com/iskorotkov/avro/releases/tag/v2.33.0) release notes.
+
+The fork reuses existing map values: decoding nested maps into a reused destination
+merges nested entries rather than replacing them. An incoming empty nested map
+preserves existing entries, and duplicate wire keys can merge nested map contents.
+This nested-map merge behaviour is explicitly accepted for this upgrade. Fresh
+decode destinations avoid stale entries between decodes; duplicate wire keys
+still merge nested maps even when the destination starts empty.
+
+Global configuration, named-type registrations and type converters continue to
+configure stream encoding through the fork's default codec. Consumers that
+previously configured Hamba must migrate those imports and registrations to
+`github.com/iskorotkov/avro/v2`; the two module paths do not share global state.
+No Gosoline-specific registration API is introduced.
+
+`encoding_test.go` pins the historical wire format and checks truncated huge
+skipped map/array blocks, minimum block-count overflow and negative block sizes
+in a bounded subprocess. These fixtures omit collections from the destination
+and do not materialize huge allocations. Header-only EOF acceptance is inherited
+from the previous codec and is not hardened here.
+
 ## Transport types
 | Input | Output | Config prefix |
 |-------|--------|---------------|
