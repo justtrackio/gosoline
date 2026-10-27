@@ -12,7 +12,7 @@ A pinned OpenTelemetry Collector runs in Docker. It receives OTLP/gRPC metrics o
 
 ## Prerequisites
 
-- Go 1.24 or newer
+- Go 1.26.10 or newer; Go 1.27 users need at least 1.27.3
 - Docker Desktop or another running Docker daemon
 - Port `4317` available on localhost
 
