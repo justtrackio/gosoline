@@ -135,6 +135,11 @@ The exported `pkg/httpserver` constants `MetricHttpRequestCount`, `MetricHttpReq
 | `limit.attempted.takes`, `limit.takes`, `limit.throttled.takes` | `attempted.takes` counts at `OnTake`; `takes` carries only mutually exclusive terminal `outcome="allowed"` or `"error"`; `throttled.takes` counts at `OnThrottle`. All are keyed by `name` and `prefix` and have no zero defaults. Do not sum them as outcomes or use a throttled terminal outcome; `outcome="throttled"` and the exported `OutcomeThrottled` symbol are removed without an alias. |
 | `kafka.produced.records`, `kafka.produced.batch.size`, `kafka.produced.batch.compressed.size`, `kafka.fetched.records`, `kafka.fetched.batch.size`, `kafka.fetched.batch.compressed.size` | High-priority Counters at `OnProduceBatchWritten`/`OnFetchBatchRead`, keyed by `client.type`, `client.name`, `topic.name`, and `partition.id`. Record counters add `NumRecords`; `.batch.size` adds `UncompressedBytes`; `.batch.compressed.size` adds `CompressedBytes`. They have no zero defaults. Use them for hook-level volume; existing batch histograms remain distributions, and application `sent.messages`/`consumed.messages` count at different boundaries. |
 
+`ddb.operation.duration` measures elapsed time from immediately before the wrapped DynamoDB save
+call until it returns, in milliseconds for both successful and failed calls. This fixes a
+zero-valued timer; the metric name, dimensions, instrument kind, unit, and database-duration bucket
+boundaries are unchanged.
+
 For restored counter volumes, query the Counter instrument rather than using a histogram's `_count` or `_sum`; a histogram remains the distribution of its observations. `error.type="{{default}}"` is rendered as Prometheus `error_type=""`, as an absent OTEL attribute, and as an omitted CloudWatch dimension.
 
 ## Canonical name migrations

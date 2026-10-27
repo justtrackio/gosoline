@@ -38,7 +38,7 @@ func NewMetricRepository(config cfg.Config, logger log.Logger, repo Repository) 
 }
 
 func (r metricRepository) PutItem(ctx context.Context, _ PutItemBuilder, item any) (*PutItemResult, error) {
-	start := time.Time{}
+	start := time.Now()
 	saved, err := r.Repository.PutItem(ctx, nil, item)
 	r.writeMetric(ctx, OpSave, err, start)
 

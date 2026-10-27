@@ -369,8 +369,13 @@ the pool's current `used` and `idle` connection counts as separate series keyed 
 `db.repo.operations` increments after each SQL repository call returns for `Create`, `Read`, `Update`,
 `Delete`, and `Query`; `ddb.operations` increments after the wrapped DynamoDB save (`operation.name="save"`)
 returns. Both use `error.type="{{default}}"` on success and `"operation_failed"` on failure, with
-high-priority zero defaults for both series per model and operation. The existing duration histograms
-remain unchanged and are not replacements for these operation counters.
+high-priority zero defaults for both series per model and operation. The `db.repo.operation.duration`
+and `ddb.operation.duration` metrics remain separate latency histograms, not replacements for these
+operation counters.
+
+`ddb.operation.duration` records the elapsed time from immediately before the wrapped DynamoDB save
+call until it returns, for successful and failed calls. It is authored in milliseconds and retains
+the database operation histogram buckets; `error.type` distinguishes failures.
 
 ### `mdlsub` — `pkg/mdlsub`
 
