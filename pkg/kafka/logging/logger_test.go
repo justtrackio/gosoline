@@ -1,10 +1,15 @@
 package logging_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net"
 	"testing"
+	"time"
 
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/kafka/logging"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
@@ -32,9 +37,27 @@ func (s *LoggerTestSuite) SetupTest() {
 
 func (s *LoggerTestSuite) TestError() {
 	s.baseLogger.EXPECT().WithFields(log.Fields{}).Return(s.baseLogger).Once()
-	s.baseLogger.EXPECT().Error(matcher.Context, "some error")
+	s.baseLogger.EXPECT().Error(matcher.Context, "%s", "some error")
 
 	s.logger.Log(kgo.LogLevelError, "some error")
+}
+
+func (s *LoggerTestSuite) TestErrorPreservesPercentSigns() {
+	buf := &bytes.Buffer{}
+	handler := log.NewHandlerIoWriter(cfg.New(map[string]any{}), log.PriorityError, log.FormatterJson, "main", time.RFC3339, buf)
+	baseLogger := log.NewLoggerWithInterfaces(clock.NewFakeClock(), []log.Handler{handler})
+	logger := logging.NewKafkaLogger(s.T().Context(), baseLogger)
+	message := "request 100% failed: %s %w %%"
+
+	logger.Log(kgo.LogLevelError, message)
+
+	var entry struct {
+		Message string `json:"message"`
+		Err     string `json:"err"`
+	}
+	s.Require().NoError(json.Unmarshal(buf.Bytes(), &entry))
+	s.Equal(message, entry.Message)
+	s.Equal(message, entry.Err)
 }
 
 func (s *LoggerTestSuite) TestWarn() {
@@ -64,7 +87,7 @@ func (s *LoggerTestSuite) TestFields() {
 		"field_2": "2",
 		"field_3": 3.0,
 	}).Return(s.baseLogger).Once()
-	s.baseLogger.EXPECT().Error(matcher.Context, "some error")
+	s.baseLogger.EXPECT().Error(matcher.Context, "%s", "some error")
 
 	s.logger.Log(kgo.LogLevelError, "some error", "field_1", 1, "field_2", "2", "field_3", 3.0)
 }
@@ -75,14 +98,14 @@ func (s *LoggerTestSuite) TestFields_DropTrailingFieldWithoutValue() {
 		"field_2": "2",
 		"field_3": 3.0,
 	}).Return(s.baseLogger).Once()
-	s.baseLogger.EXPECT().Error(matcher.Context, "some error")
+	s.baseLogger.EXPECT().Error(matcher.Context, "%s", "some error")
 
 	s.logger.Log(kgo.LogLevelError, "some error", "field_1", 1, "field_2", "2", "field_3", 3.0, "field_4")
 }
 
 func (s *LoggerTestSuite) TestFields_OneKeyNoValue() {
 	s.baseLogger.EXPECT().WithFields(log.Fields{}).Return(s.baseLogger).Once()
-	s.baseLogger.EXPECT().Error(matcher.Context, "some error")
+	s.baseLogger.EXPECT().Error(matcher.Context, "%s", "some error")
 
 	s.logger.Log(kgo.LogLevelError, "some error", "field_1")
 }

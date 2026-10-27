@@ -27,7 +27,7 @@ func RecoveryWithSentry(logger log.Logger) gin.HandlerFunc {
 
 				logger.Error(ctx, "%w", rval)
 			case string:
-				logger.Error(ctx, rval)
+				logger.Error(ctx, "%s", rval)
 			default:
 			}
 

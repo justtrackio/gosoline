@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	otellog "go.opentelemetry.io/otel/log"
+	"go.opentelemetry.io/otel/attribute"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 )
 
@@ -35,8 +35,8 @@ func TestHandlerOtelNamespacesAttributesBySource(t *testing.T) {
 	require.NoError(t, provider.Shutdown(context.Background()))
 
 	attributes := make(map[string]string, processor.record.AttributesLen())
-	processor.record.WalkAttributes(func(attribute otellog.KeyValue) bool {
-		attributes[attribute.Key] = attribute.Value.AsString()
+	processor.record.WalkAttributes(func(kv attribute.KeyValue) bool {
+		attributes[string(kv.Key)] = kv.Value.AsString()
 
 		return true
 	})
