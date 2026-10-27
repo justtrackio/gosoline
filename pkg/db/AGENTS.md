@@ -2,7 +2,7 @@
 
 ## Scope
 - SQL connectivity layer: connection pooling, DSN generation, migrations, and fixtures.
-- Supports MySQL/MariaDB, Redshift, TiDB, CrateDB, and custom drivers via `driver_factory.go`.
+- Supports MySQL/MariaDB, Redshift, TiDB, and custom drivers via `driver_factory.go`.
 - Provides lifecycle management hooks for gosoline modules.
 
 ## Key files
@@ -25,7 +25,6 @@
 |--------|------|-------|
 | MySQL/MariaDB | `driver_mysql.go` | Default, most common |
 | Redshift | `driver_redshift.go` | AWS data warehouse |
-| CrateDB | `driver_cratedb.go` | Distributed SQL |
 | TiDB | `tidb/` | TiDB specific error checkers for retries |
 
 ## Common config keys
