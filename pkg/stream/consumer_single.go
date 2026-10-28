@@ -56,7 +56,10 @@ func NewUntypedConsumer(name string, callbackFactory UntypedConsumerCallbackFact
 }
 
 func NewUntypedConsumerWithInterfaces(base *consumerBase, callback UntypedConsumerCallback) *Consumer {
-	consumer := &Consumer{consumerBase: base, callback: callback}
+	consumer := &Consumer{
+		consumerBase: base,
+		callback:     callback,
+	}
 	base.init, base.run, base.inputsFinished = nil, nil, nil
 
 	if initializeable, ok := callback.(InitializeableCallback); ok {
@@ -247,8 +250,6 @@ func (c *Consumer) process(gracedCtx context.Context, msg *Message, hasNativeRet
 
 	if ack, err = c.callback.Consume(gracedCtx, model, attributes); err != nil {
 		c.handleError(gracedCtx, err, "an error occurred during the consume operation")
-	} else if !ack {
-		c.writeMetricProcessingFailed(gracedCtx, 1)
 	}
 
 	if !ack && !hasNativeRetry {

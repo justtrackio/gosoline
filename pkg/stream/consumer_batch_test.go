@@ -186,6 +186,9 @@ func (s *BatchConsumerTestSuite) TestFlushesOnTimerAndOnInputCompletion() {
 // the failed record, even when the callback also returns an error.
 func (s *BatchConsumerTestSuite) TestRetriesOnlyFailedRecords() {
 	t := s.T()
+	registry := prometheus.NewRegistry()
+	s.metricWriter = metric.NewPrometheusWriterWithInterfaces(s.logger, registry, 1000, time.Second)
+
 	var calls atomic.Int32
 	retried := make(chan int, 1)
 	s.startConsumer(2, 5*time.Millisecond, func(_ context.Context, models []any, _ []map[string]string) ([]bool, error) {
@@ -211,6 +214,9 @@ func (s *BatchConsumerTestSuite) TestRetriesOnlyFailedRecords() {
 	waitBatchTest(t, s.done)
 	require.NoError(t, s.err)
 	require.EqualValues(t, 2, calls.Load())
+	requirePrometheusCounter(t, registry, "gosoline_consumed_messages_total", map[string]string{
+		"consumer_name": "test", "error_type": "processing_failed",
+	}, 1)
 }
 
 // TestUsesRetryInputRedeliveryAndRecoversPanics covers callback errors and panics:
@@ -1131,9 +1137,11 @@ func (s *BatchConsumerTestSuite) TestIgnoredModelAndFailedRetryPutDiagnosticsAre
 	requirePrometheusCounter(t, registry, "gosoline_consumed_messages_total", map[string]string{
 		"consumer_name": "test", "error_type": "model_lookup_failed",
 	}, 1)
-	requirePrometheusCounter(t, registry, "gosoline_consumed_messages_total", map[string]string{
+	_, processingFailedFound, err := findPrometheusCounter(registry, "gosoline_consumed_messages_total", map[string]string{
 		"consumer_name": "test", "error_type": "processing_failed",
-	}, 1)
+	})
+	require.NoError(t, err)
+	require.False(t, processingFailedFound, "false batch acknowledgement with no callback error is not a processing failure")
 	requirePrometheusCounter(t, registry, "gosoline_retry_operations_total", map[string]string{
 		"consumer_name": "test", "operation": "put", "error_type": "",
 	}, 1)

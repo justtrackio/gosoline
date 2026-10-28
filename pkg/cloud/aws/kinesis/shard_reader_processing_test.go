@@ -522,7 +522,10 @@ func TestShardReaderEmitsStandardProcessDurationHistogram(t *testing.T) {
 	reader.kinesisClient = getRecordsTestClient{
 		output: &awsKinesis.GetRecordsOutput{
 			Records: []types.Record{
-				{Data: []byte("record"), SequenceNumber: aws.String("seq-1")},
+				{
+					Data:           []byte("record"),
+					SequenceNumber: aws.String("seq-1"),
+				},
 			},
 			NextShardIterator:  aws.String("next"),
 			MillisBehindLatest: aws.Int64(0),

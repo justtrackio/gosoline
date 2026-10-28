@@ -99,7 +99,10 @@ func TestMetricStore_GetBatchCountsFailedDelegatedKeysAndNotConversionFailures(t
 	registry := prometheus.NewRegistry()
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	exporter := metric.NewPrometheusWriterWithInterfaces(logger, registry, 1000, time.Second)
-	writer := namespacedMetricWriter{Writer: exporter, namespace: metricNamespace}
+	writer := namespacedMetricWriter{
+		Writer:    exporter,
+		namespace: metricNamespace,
+	}
 	writer.Write(t.Context(), getDefaultMetrics(model, storeName))
 
 	storeErr := errors.New("read failed")
@@ -115,7 +118,12 @@ func TestMetricStore_GetBatchCountsFailedDelegatedKeysAndNotConversionFailures(t
 	require.Error(t, err)
 	require.Zero(t, store.calls)
 	attemptedValues := gatherKvCounters(t, registry, "gosoline_kvstore_attempted_reads_total")
-	require.Equal(t, map[kvCounterKey]float64{{model: model, store: storeName}: 0.0}, attemptedValues)
+	require.Equal(t, map[kvCounterKey]float64{
+		{
+			model: model,
+			store: storeName,
+		}: 0.0,
+	}, attemptedValues)
 
 	_, err = wrapped.GetBatch(t.Context(), []any{"a", "b", "c"}, nil)
 	require.ErrorIs(t, err, storeErr)
@@ -123,10 +131,21 @@ func TestMetricStore_GetBatchCountsFailedDelegatedKeysAndNotConversionFailures(t
 	require.Equal(t, []any{"a", "b", "c"}, store.keys)
 
 	attemptedValues = gatherKvCounters(t, registry, "gosoline_kvstore_attempted_reads_total")
-	require.Equal(t, 3.0, attemptedValues[kvCounterKey{model: model, store: storeName}])
+	require.Equal(t, 3.0, attemptedValues[kvCounterKey{
+		model: model,
+		store: storeName,
+	}])
 	readValues := gatherKvCounters(t, registry, "gosoline_kvstore_reads_total")
 	require.Equal(t, map[kvCounterKey]float64{
-		{model: model, store: storeName, hit: "true"}:  0.0,
-		{model: model, store: storeName, hit: "false"}: 0.0,
+		{
+			model: model,
+			store: storeName,
+			hit:   "true",
+		}: 0.0,
+		{
+			model: model,
+			store: storeName,
+			hit:   "false",
+		}: 0.0,
 	}, readValues)
 }

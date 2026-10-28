@@ -30,20 +30,59 @@ func TestToUcumUnitAndScale(t *testing.T) {
 		unit  string
 		scale float64
 	}{
-		types.StandardUnitCount:        {unit: "1", scale: 1},
-		types.StandardUnitSeconds:      {unit: "s", scale: 1},
-		types.StandardUnitMilliseconds: {unit: "s", scale: 1e-3},
-		types.StandardUnitMicroseconds: {unit: "s", scale: 1e-6},
-		types.StandardUnitBytes:        {unit: "By", scale: 1},
-		types.StandardUnitKilobytes:    {unit: "By", scale: 1024},
-		types.StandardUnitPercent:      {unit: "%", scale: 1},
-		types.StandardUnitBitsSecond:   {unit: "bit/s", scale: 1},
-		types.StandardUnitNone:         {unit: "1", scale: 1},
+		types.StandardUnitCount: {
+			unit:  "1",
+			scale: 1,
+		},
+		types.StandardUnitSeconds: {
+			unit:  "s",
+			scale: 1,
+		},
+		types.StandardUnitMilliseconds: {
+			unit:  "s",
+			scale: 1e-3,
+		},
+		types.StandardUnitMicroseconds: {
+			unit:  "s",
+			scale: 1e-6,
+		},
+		types.StandardUnitBytes: {
+			unit:  "By",
+			scale: 1,
+		},
+		types.StandardUnitKilobytes: {
+			unit:  "By",
+			scale: 1024,
+		},
+		types.StandardUnitPercent: {
+			unit:  "%",
+			scale: 1,
+		},
+		types.StandardUnitBitsSecond: {
+			unit:  "bit/s",
+			scale: 1,
+		},
+		types.StandardUnitNone: {
+			unit:  "1",
+			scale: 1,
+		},
 		// a custom aggregation unit resolves to its base unit rather than falling through to 1
-		UnitMillisecondsAverage: {unit: "s", scale: 1e-3},
-		UnitMillisecondsMaximum: {unit: "s", scale: 1e-3},
-		UnitCountAverage:        {unit: "1", scale: 1},
-		UnitSecondsMinimum:      {unit: "s", scale: 1},
+		UnitMillisecondsAverage: {
+			unit:  "s",
+			scale: 1e-3,
+		},
+		UnitMillisecondsMaximum: {
+			unit:  "s",
+			scale: 1e-3,
+		},
+		UnitCountAverage: {
+			unit:  "1",
+			scale: 1,
+		},
+		UnitSecondsMinimum: {
+			unit:  "s",
+			scale: 1,
+		},
 	}
 
 	for unit, expected := range cases {
@@ -142,7 +181,10 @@ func TestInferKindIsConsistentAcrossWriters(t *testing.T) {
 	}
 
 	for unit, expected := range tests {
-		datum := &Datum{MetricName: "leaf", Unit: unit}
+		datum := &Datum{
+			MetricName: "leaf",
+			Unit:       unit,
+		}
 
 		assert.Equal(t, expected, inferKind(unit), "unit %q", unit)
 		assert.Equal(t, expected, effectiveKind(datum), "unit %q", unit)

@@ -257,7 +257,15 @@ func (s *ConsumerTestSuite) TestIgnoredModelAndFailedRetryPutDiagnosticsAreOverl
 	failed := stream.NewJsonMessage(`"failed"`)
 
 	s.expectRetryInputRun()
-	s.expectInputRun(ignored, failed)
+	s.input.EXPECT().
+		Run(matcher.Context, mock.Anything).
+		RunAndReturn(func(ctx context.Context, process stream.InputProcess) error {
+			s.True(process(ctx, ignored), "ignorable model errors are acknowledged")
+			s.False(process(ctx, failed), "callback(false, nil) should request retry")
+
+			return nil
+		}).
+		Once()
 	s.callback.EXPECT().GetModel(mock.Anything).RunAndReturn(func(attributes map[string]string) (any, error) {
 		if attributes["ignore"] == "true" {
 			return nil, ignorableUnknownModelError{}
@@ -280,9 +288,11 @@ func (s *ConsumerTestSuite) TestIgnoredModelAndFailedRetryPutDiagnosticsAreOverl
 	requirePrometheusCounter(s.T(), registry, "gosoline_consumed_messages_total", map[string]string{
 		"consumer_name": "test", "error_type": "model_lookup_failed",
 	}, 1)
-	requirePrometheusCounter(s.T(), registry, "gosoline_consumed_messages_total", map[string]string{
+	_, processingFailedFound, err := findPrometheusCounter(registry, "gosoline_consumed_messages_total", map[string]string{
 		"consumer_name": "test", "error_type": "processing_failed",
-	}, 1)
+	})
+	s.NoError(err)
+	s.False(processingFailedFound, "callback(false, nil) is a retry signal, not a processing failure")
 	requirePrometheusCounter(s.T(), registry, "gosoline_retry_operations_total", map[string]string{
 		"consumer_name": "test", "operation": "put", "error_type": "",
 	}, 1)

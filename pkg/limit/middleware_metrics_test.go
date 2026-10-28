@@ -40,9 +40,16 @@ func TestMetricMiddlewareCountsThrottledAttemptOnceAtCompletion(t *testing.T) {
 	builder, err := newInvocationBuilder("orders")
 	require.NoError(t, err)
 	limiter := NewFixedWindowLimiter(
-		testIncrementer{increment: 2, ttl: time.Second},
+		testIncrementer{
+			increment: 2,
+			ttl:       time.Second,
+		},
 		fakeClock,
-		FixedWindowConfig{Name: "orders", Cap: 1, Window: time.Minute},
+		FixedWindowConfig{
+			Name:   "orders",
+			Cap:    1,
+			Window: time.Minute,
+		},
 		builder,
 	)
 	limiter.WithMiddleware(middlewareFactory)
@@ -60,14 +67,24 @@ func TestMetricMiddlewareCountsThrottledAttemptOnceAtCompletion(t *testing.T) {
 	failingLimiter := NewFixedWindowLimiter(
 		testIncrementer{err: errors.New("increment failed")},
 		fakeClock,
-		FixedWindowConfig{Name: "orders", Cap: 1, Window: time.Minute},
+		FixedWindowConfig{
+			Name:   "orders",
+			Cap:    1,
+			Window: time.Minute,
+		},
 		errorBuilder,
 	)
 	failingLimiter.WithMiddleware(middlewareFactory)
 	require.Error(t, failingLimiter.Wait(t.Context(), "tenant-a"))
 	require.Equal(t, []terminalTakeObservation{
-		{outcome: OutcomeAllowed, errorType: metric.DimensionDefault},
-		{outcome: OutcomeError, errorType: errorTypeRateLimit},
+		{
+			outcome:   OutcomeAllowed,
+			errorType: metric.DimensionDefault,
+		},
+		{
+			outcome:   OutcomeError,
+			errorType: errorTypeRateLimit,
+		},
 	}, terminalInputs)
 
 	families, err := registry.Gather()

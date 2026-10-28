@@ -27,7 +27,12 @@ func TestStatsHandlerCountsCompletedRPCWithError(t *testing.T) {
 	handler := &statsHandler{
 		logger:       logger,
 		metricWriter: writer,
-		settings:     &Settings{Stats: Stats{Channel: "grpc_stats", LogLevel: "disabled"}},
+		settings: &Settings{
+			Stats: Stats{
+				Channel:  "grpc_stats",
+				LogLevel: "disabled",
+			},
+		},
 	}
 
 	ctx := handler.TagRPC(handler.TagConn(t.Context(), nil), nil)

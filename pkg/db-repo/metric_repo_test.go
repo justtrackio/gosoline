@@ -96,7 +96,10 @@ func TestMetricRepository_CreateFailureEmitsCounterAndSeedsOutcomes(t *testing.T
 	registry := prometheus.NewRegistry()
 	logger := mocks.NewLoggerMock(mocks.WithMockAll, mocks.WithTestingT(t))
 	exporter := metric.NewPrometheusWriterWithInterfaces(logger, registry, 1000, time.Second)
-	writer := namespacedMetricWriter{Writer: exporter, namespace: metricNamespace}
+	writer := namespacedMetricWriter{
+		Writer:    exporter,
+		namespace: metricNamespace,
+	}
 	defaults := getDefaultRepositoryMetrics(modelId)
 	for _, datum := range defaults {
 		if datum.MetricName == metricNameDbOperations {
@@ -110,16 +113,36 @@ func TestMetricRepository_CreateFailureEmitsCounterAndSeedsOutcomes(t *testing.T
 	values := gatherOperationCounters(t, registry)
 	require.Len(t, values, len(operations)*2)
 	for _, operation := range operations {
-		require.Equal(t, 0.0, values[operationCounterKey{operation: operation, modelId: modelId}])
-		require.Equal(t, 0.0, values[operationCounterKey{operation: operation, modelId: modelId, errorType: errorTypeOperationFailed}])
+		require.Equal(t, 0.0, values[operationCounterKey{
+			operation: operation,
+			modelId:   modelId,
+		}])
+		require.Equal(t, 0.0, values[operationCounterKey{
+			operation: operation,
+			modelId:   modelId,
+			errorType: errorTypeOperationFailed,
+		}])
 	}
 
 	operationErr := errors.New("database operation failed")
-	repo := metricTestRepository{modelId: modelId, err: operationErr}
-	wrapped := metricRepository{Repository: repo, output: writer}
+	repo := metricTestRepository{
+		modelId: modelId,
+		err:     operationErr,
+	}
+	wrapped := metricRepository{
+		Repository: repo,
+		output:     writer,
+	}
 	require.ErrorIs(t, wrapped.Create(t.Context(), nil), operationErr)
 
 	values = gatherOperationCounters(t, registry)
-	require.Equal(t, 1.0, values[operationCounterKey{operation: Create, modelId: modelId, errorType: errorTypeOperationFailed}])
-	require.Equal(t, 0.0, values[operationCounterKey{operation: Create, modelId: modelId}])
+	require.Equal(t, 1.0, values[operationCounterKey{
+		operation: Create,
+		modelId:   modelId,
+		errorType: errorTypeOperationFailed,
+	}])
+	require.Equal(t, 0.0, values[operationCounterKey{
+		operation: Create,
+		modelId:   modelId,
+	}])
 }

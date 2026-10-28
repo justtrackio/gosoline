@@ -40,11 +40,31 @@ func TestMetricMiddlewareExportsRequestAndResponseCountersForServerGates(t *test
 	capture := &metricMiddlewareGateCapture{}
 	writer, prometheusRegistry := newMetricMiddlewareGateWriter(t, provider, capture)
 	definitions := []Definition{
-		{group: &Definitions{}, httpMethod: http.MethodGet, relativePath: "/widgets/:id"},
-		{group: &Definitions{}, httpMethod: http.MethodGet, relativePath: "/auth"},
-		{group: &Definitions{}, httpMethod: http.MethodGet, relativePath: "/chaos"},
-		{group: &Definitions{}, httpMethod: http.MethodGet, relativePath: "/idle"},
-		{group: &Definitions{}, httpMethod: http.MethodGet, relativePath: "/server-error"},
+		{
+			group:        &Definitions{},
+			httpMethod:   http.MethodGet,
+			relativePath: "/widgets/:id",
+		},
+		{
+			group:        &Definitions{},
+			httpMethod:   http.MethodGet,
+			relativePath: "/auth",
+		},
+		{
+			group:        &Definitions{},
+			httpMethod:   http.MethodGet,
+			relativePath: "/chaos",
+		},
+		{
+			group:        &Definitions{},
+			httpMethod:   http.MethodGet,
+			relativePath: "/idle",
+		},
+		{
+			group:        &Definitions{},
+			httpMethod:   http.MethodGet,
+			relativePath: "/server-error",
+		},
 	}
 	writer.Write(t.Context(), getMetricMiddlewareDefaults("api", definitions...))
 
@@ -101,7 +121,10 @@ func TestMetricMiddlewareExportsRequestAndResponseCountersForServerGates(t *test
 		firstResponse <- struct {
 			response *http.Response
 			err      error
-		}{response: response, err: err}
+		}{
+			response: response,
+			err:      err,
+		}
 	}()
 
 	select {

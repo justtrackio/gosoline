@@ -312,7 +312,6 @@ func getRecordWriterDefaultMetrics(streamName string) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			Namespace:  metricNamespaceCloudAwsKinesis,
 			MetricName: metricNamePutRecords,
 			Dimensions: sentMessagesDimensions(streamName, metric.DimensionDefault),
 			Unit:       metric.UnitCount,
@@ -321,14 +320,11 @@ func getRecordWriterDefaultMetrics(streamName string) metric.Data {
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			Namespace:  metricNamespaceCloudAwsKinesis,
 			MetricName: metricNamePutRecordsBatchSize,
-			Dimensions: map[string]string{
-				dimensionStream: streamName,
-			},
-			Unit:  metric.UnitCountAverage,
-			Value: 0.0,
-			Kind:  metric.KindHistogram.Build(),
+			Dimensions: map[string]string{dimensionStream: streamName},
+			Unit:       metric.UnitCountAverage,
+			Value:      0.0,
+			Kind:       metric.KindHistogram.Build(),
 		},
 	}
 }

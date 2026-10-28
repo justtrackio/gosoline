@@ -113,8 +113,14 @@ func TestWriterStampsTimestamp(t *testing.T) {
 // TestDatumIdSeparatesNamespaces pins down that the datum id distinguishes the same leaf in two
 // namespaces, so metric defaults and daemon batching never merge two different metrics.
 func TestDatumIdSeparatesNamespaces(t *testing.T) {
-	consumer := &Datum{Namespace: "stream", MetricName: "errors"}
-	producer := &Datum{Namespace: "kafka.producer", MetricName: "errors"}
+	consumer := &Datum{
+		Namespace:  "stream",
+		MetricName: "errors",
+	}
+	producer := &Datum{
+		Namespace:  "kafka.producer",
+		MetricName: "errors",
+	}
 
 	assert.NotEqual(t, consumer.Id(), producer.Id())
 }

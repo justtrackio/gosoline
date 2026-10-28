@@ -312,7 +312,10 @@ func (c *BatchConsumer) collect(ctx context.Context, message batchMessage) int {
 			attributes := maps.Clone(message.message.Attributes)
 			attributes[AttributeEncoding] = EncodingJson.String()
 			delete(attributes, AttributeCompression)
-			retryMessage = Message{Body: string(body), Attributes: attributes}
+			retryMessage = Message{
+				Body:       string(body),
+				Attributes: attributes,
+			}
 		}
 
 		c.batch = append(c.batch, batchMessage{
@@ -403,7 +406,7 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context) (failed int) {
 			failedRecords++
 		}
 	}
-	if failedRecords > 0 && !cancelledFailure {
+	if failedRecords > 0 && err != nil && !cancelledFailure {
 		c.writeMetricProcessingFailed(ctx, failedRecords)
 	}
 	for i, message := range decoded.messages {

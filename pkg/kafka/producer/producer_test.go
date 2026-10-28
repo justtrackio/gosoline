@@ -24,8 +24,14 @@ func TestProducerProduceSyncSuccess(t *testing.T) {
 
 	records := []*kgo.Record{{Value: []byte("test1")}, {Value: []byte("test2")}}
 	results := kgo.ProduceResults{
-		{Record: records[0], Err: nil},
-		{Record: records[1], Err: nil},
+		{
+			Record: records[0],
+			Err:    nil,
+		},
+		{
+			Record: records[1],
+			Err:    nil,
+		},
 	}
 
 	writer.EXPECT().ProduceSync(mock.Anything, records[0], records[1]).Return(results)
@@ -51,8 +57,14 @@ func TestProducerProduceSyncFailure(t *testing.T) {
 
 	records := []*kgo.Record{{Value: []byte("test1")}, {Value: []byte("test2")}}
 	results := kgo.ProduceResults{
-		{Record: records[0], Err: nil},
-		{Record: records[1], Err: errors.New("produce error")},
+		{
+			Record: records[0],
+			Err:    nil,
+		},
+		{
+			Record: records[1],
+			Err:    errors.New("produce error"),
+		},
 	}
 
 	writer.EXPECT().ProduceSync(mock.Anything, records[0], records[1]).Return(results)
@@ -81,9 +93,18 @@ func TestProducerProduceSyncBatchSize(t *testing.T) {
 
 	records := []*kgo.Record{{Value: []byte("a")}, {Value: []byte("b")}, {Value: []byte("c")}}
 	results := kgo.ProduceResults{
-		{Record: records[0], Err: nil},
-		{Record: records[1], Err: nil},
-		{Record: records[2], Err: nil},
+		{
+			Record: records[0],
+			Err:    nil,
+		},
+		{
+			Record: records[1],
+			Err:    nil,
+		},
+		{
+			Record: records[2],
+			Err:    nil,
+		},
 	}
 
 	writer.EXPECT().ProduceSync(mock.Anything, records[0], records[1], records[2]).Return(results)

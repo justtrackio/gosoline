@@ -649,7 +649,12 @@ func (c *consumer) writeMetric(ctx context.Context, metricName string, value flo
 	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClient: c.name, kafka.DimensionTopic: c.fullTopicName}
 
 	c.metricWriter.Write(ctx, metric.Data{
-		{Priority: metric.PriorityHigh, MetricName: metricName, Dimensions: dims, Value: value},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricName,
+			Dimensions: dims,
+			Value:      value,
+		},
 	})
 }
 
@@ -657,9 +662,24 @@ func (c *consumer) writeProcessingMetrics(ctx context.Context, pollDurationMs fl
 	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClient: c.name, kafka.DimensionTopic: c.fullTopicName}
 
 	c.metricWriter.Write(ctx, metric.Data{
-		{Priority: metric.PriorityHigh, MetricName: metricNamePollCount, Dimensions: dims, Value: 1.0},
-		{Priority: metric.PriorityHigh, MetricName: metricNamePollDuration, Dimensions: dims, Value: pollDurationMs},
-		{Priority: metric.PriorityHigh, MetricName: metricNameProcessDuration, Dimensions: dims, Value: processDuration},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNamePollCount,
+			Dimensions: dims,
+			Value:      1.0,
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNamePollDuration,
+			Dimensions: dims,
+			Value:      pollDurationMs,
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameProcessDuration,
+			Dimensions: dims,
+			Value:      processDuration,
+		},
 	})
 }
 
@@ -696,12 +716,48 @@ func getConsumerDefaultMetrics(name, topicName string) metric.Data {
 
 	return metric.Data{
 		consumedMessagesDatum(name, topicName, metric.DimensionDefault, 0.0),
-		{Priority: metric.PriorityHigh, MetricName: metricNamePollCount, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
-		{Priority: metric.PriorityHigh, MetricName: metricNamePollDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.WithMessagingDurationBuckets().Build()},
-		{Priority: metric.PriorityHigh, MetricName: metricNameProcessDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.WithMessagingDurationBuckets().Build()},
-		{Priority: metric.PriorityHigh, MetricName: metricNameCommitDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.WithMessagingDurationBuckets().Build()},
-		{Priority: metric.PriorityHigh, MetricName: metricNameRebalanceCount, Dimensions: dims, Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
-		{Priority: metric.PriorityHigh, MetricName: metricNameSleepDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.Build()},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNamePollCount,
+			Dimensions: dims,
+			Unit:       metric.UnitCount,
+			Kind:       metric.KindCounter.Build(),
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNamePollDuration,
+			Dimensions: dims,
+			Unit:       metric.UnitMillisecondsAverage,
+			Kind:       metric.KindHistogram.WithMessagingDurationBuckets().Build(),
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameProcessDuration,
+			Dimensions: dims,
+			Unit:       metric.UnitMillisecondsAverage,
+			Kind:       metric.KindHistogram.WithMessagingDurationBuckets().Build(),
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameCommitDuration,
+			Dimensions: dims,
+			Unit:       metric.UnitMillisecondsAverage,
+			Kind:       metric.KindHistogram.WithMessagingDurationBuckets().Build(),
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameRebalanceCount,
+			Dimensions: dims,
+			Unit:       metric.UnitCount,
+			Kind:       metric.KindCounter.Build(),
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameSleepDuration,
+			Dimensions: dims,
+			Unit:       metric.UnitMillisecondsAverage,
+			Kind:       metric.KindHistogram.Build(),
+		},
 	}
 }
 

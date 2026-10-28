@@ -16,7 +16,10 @@ import (
 func TestMetricsHookExportsBatchVolumesAsCountersAlongsideHistograms(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	prometheusWriter := metric.NewPrometheusWriterWithInterfaces(log.NewLogger(), registry, 1000, time.Second)
-	hook := NewMetricsHook(namespaceMetricWriter{namespace: metricNamespace, delegate: prometheusWriter}, ClientTypeProducer, "producer-a")
+	hook := NewMetricsHook(namespaceMetricWriter{
+		namespace: metricNamespace,
+		delegate:  prometheusWriter,
+	}, ClientTypeProducer, "producer-a")
 
 	hook.OnProduceBatchWritten(kgo.BrokerMetadata{}, "orders", 3, kgo.ProduceBatchMetrics{
 		NumRecords:        5,
@@ -29,7 +32,10 @@ func TestMetricsHookExportsBatchVolumesAsCountersAlongsideHistograms(t *testing.
 		CompressedBytes:   30,
 	})
 
-	fetchHook := NewMetricsHook(namespaceMetricWriter{namespace: metricNamespace, delegate: prometheusWriter}, ClientTypeConsumer, "consumer-a")
+	fetchHook := NewMetricsHook(namespaceMetricWriter{
+		namespace: metricNamespace,
+		delegate:  prometheusWriter,
+	}, ClientTypeConsumer, "consumer-a")
 	fetchHook.OnFetchBatchRead(kgo.BrokerMetadata{}, "orders", 4, kgo.FetchBatchMetrics{
 		NumRecords:        3,
 		UncompressedBytes: 500,

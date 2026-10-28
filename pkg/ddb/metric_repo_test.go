@@ -126,13 +126,19 @@ func gatherOperationDurations(t *testing.T, registry *prometheus.Registry) map[o
 }
 
 func TestMetricRepository_PutItemFailureEmitsDurationAndSeedsOutcomeCounters(t *testing.T) {
-	modelId := mdl.ModelId{Name: "users", DomainPattern: "storage"}
+	modelId := mdl.ModelId{
+		Name:          "users",
+		DomainPattern: "storage",
+	}
 	modelIdString := modelId.String()
 
 	registry := prometheus.NewRegistry()
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	exporter := metric.NewPrometheusWriterWithInterfaces(logger, registry, 1000, time.Second)
-	writer := namespacedMetricWriter{Writer: exporter, namespace: metricNamespace}
+	writer := namespacedMetricWriter{
+		Writer:    exporter,
+		namespace: metricNamespace,
+	}
 	defaults := getDefaultMetrics(modelId)
 	for _, datum := range defaults {
 		if datum.MetricName == metricNameOperations {
@@ -145,23 +151,47 @@ func TestMetricRepository_PutItemFailureEmitsDurationAndSeedsOutcomeCounters(t *
 
 	values := gatherOperationCounters(t, registry)
 	require.Len(t, values, 2)
-	require.Equal(t, 0.0, values[operationMetricKey{operation: OpSave, modelId: modelIdString}])
-	require.Equal(t, 0.0, values[operationMetricKey{operation: OpSave, modelId: modelIdString, errorType: errorTypeOperationFailed}])
+	require.Equal(t, 0.0, values[operationMetricKey{
+		operation: OpSave,
+		modelId:   modelIdString,
+	}])
+	require.Equal(t, 0.0, values[operationMetricKey{
+		operation: OpSave,
+		modelId:   modelIdString,
+		errorType: errorTypeOperationFailed,
+	}])
 
 	operationErr := errors.New("DynamoDB operation failed")
-	repo := metricTestRepository{modelId: modelId, err: operationErr}
-	wrapped := metricRepository{Repository: repo, metric: writer}
+	repo := metricTestRepository{
+		modelId: modelId,
+		err:     operationErr,
+	}
+	wrapped := metricRepository{
+		Repository: repo,
+		metric:     writer,
+	}
 	putItemStartedAt := time.Now()
 	_, err := wrapped.PutItem(t.Context(), nil, nil)
 	putItemElapsed := time.Since(putItemStartedAt)
 	require.ErrorIs(t, err, operationErr)
 
 	values = gatherOperationCounters(t, registry)
-	require.Equal(t, 1.0, values[operationMetricKey{operation: OpSave, modelId: modelIdString, errorType: errorTypeOperationFailed}])
-	require.Equal(t, 0.0, values[operationMetricKey{operation: OpSave, modelId: modelIdString}])
+	require.Equal(t, 1.0, values[operationMetricKey{
+		operation: OpSave,
+		modelId:   modelIdString,
+		errorType: errorTypeOperationFailed,
+	}])
+	require.Equal(t, 0.0, values[operationMetricKey{
+		operation: OpSave,
+		modelId:   modelIdString,
+	}])
 
 	durations := gatherOperationDurations(t, registry)
-	duration, ok := durations[operationMetricKey{operation: OpSave, modelId: modelIdString, errorType: errorTypeOperationFailed}]
+	duration, ok := durations[operationMetricKey{
+		operation: OpSave,
+		modelId:   modelIdString,
+		errorType: errorTypeOperationFailed,
+	}]
 	require.True(t, ok)
 	require.Greater(t, duration, 0.0)
 	require.LessOrEqual(t, duration, putItemElapsed.Seconds())

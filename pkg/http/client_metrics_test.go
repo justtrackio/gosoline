@@ -50,7 +50,10 @@ func TestClientRequestCountersTrackStartsAndCompletedOutcomes(t *testing.T) {
 	responseResult := make(chan result, 1)
 	go func() {
 		response, err := client.Get(t.Context(), client.NewRequest().WithUrl(responseServer.URL))
-		responseResult <- result{response: response, err: err}
+		responseResult <- result{
+			response: response,
+			err:      err,
+		}
 	}()
 
 	select {

@@ -81,7 +81,13 @@ func NewWriter(namespace string, defaults ...*Datum) Writer
 func NewWriterWithInterfaces(clock clock.Clock, channel *metricChannel, namespace string) Writer
 ```
 
-`metric.Datum` also has a `Namespace` field. An empty namespace omits only the canonical namespace from the datum; it does not preserve backend names. Writers still apply their own rendering rules:
+`metric.NewWriter(namespace)` supplies its namespace to defaults and written datums whose
+`Datum.Namespace` is empty. Omit the datum namespace when it matches the writer; set it only for an
+intentional override or when using an injected backend writer directly. The Kafka producer and Kinesis
+record-writer defaults now use this inheritance instead of repeating their writer namespace.
+
+An empty effective namespace (for example, through `metric.NewWriter("")`) omits only the canonical
+namespace; it does not preserve backend names. Writers still apply their own rendering rules:
 
 | Writer | A custom counter leaf `my.custom.metric` with an empty namespace |
 |---|---|
@@ -103,6 +109,11 @@ func NewPrometheusWriterWithInterfaces(
 It uses the fixed `gosoline` prefix. Remove the former `metric.writer_settings.prometheus.naming.namespace_pattern` and `namespace_delimiter` settings and update direct constructor calls to the current signature.
 
 The Kafka helper API also changed: `kafka.MetricPair` now takes one `kafka.MetricSpec` instead of positional arguments; its current package signature is `func MetricPair(spec MetricSpec) metric.Data`. `MetricSpec` carries client type/name, namespace, metric name, topic, partition, error type, value, unit, and kind. The former `kafka.DimensionConsumer` and `kafka.DimensionProducer` constants are removed; use `kafka.DimensionClientType` with `kafka.ClientTypeConsumer` or `kafka.ClientTypeProducer`.
+
+Kafka producer datums now carry complete namespace, unit and histogram-kind metadata for direct
+backend-writer injection. This prevents batch-size and produce-duration observations from becoming
+unnamespaced or incorrectly named gauges when no zero defaults were registered. The regular writer
+path retains its metric identities, units and standard messaging duration boundaries.
 
 ## HTTP metric migrations
 
@@ -192,7 +203,18 @@ Sum exclusive outcome series only within the same metric's event domain. Do not 
 Single-message and batch stream consumers share the v2 metrics `stream.process.duration`, `stream.consumed.messages`, and `stream.retry.operations`:
 
 - `stream.process.duration` records one observation per processing invocation, including a batch invocation; it is not one duration observation per message.
-- `stream.consumed.messages` records the all-processed per-invocation message total with the internal default marker: a single-message invocation counts one, and a batch invocation counts its messages. Failed, unacknowledged records emit `error.type="processing_failed"` as an overlapping subset. Every `GetModel` failure also emits the bounded `error.type="model_lookup_failed"` diagnostic, including failures configured to be ignored. Non-ignored lookup failures overlap `processing_failed`; ignored ones do not. Both diagnostics overlap the all-processed default total. Filter `error_type="processing_failed"` for Prometheus processing-error totals rather than summing every nondefault series; the default selector remains empty `error_type=""` in Prometheus, absent `error.type` in OTEL, and an omitted CloudWatch dimension. |
+- `stream.consumed.messages` records the all-processed per-invocation message total with the internal
+  default marker: a single-message invocation counts one, and a batch invocation counts its messages.
+  Actual non-canceled processing errors emit `error.type="processing_failed"` as an overlapping
+  subset; batch callback errors count only records with false or missing acknowledgements. A false
+  or missing acknowledgement with a nil callback error can request deferred processing or retry and
+  no longer counts as a processing failure. Acknowledgement and retry behavior is unchanged.
+  Every `GetModel` failure also emits the bounded `error.type="model_lookup_failed"` diagnostic,
+  including failures configured to be ignored. Non-ignored lookup failures overlap `processing_failed`;
+  ignored ones do not. Both diagnostics overlap the all-processed default total. Filter
+  `error_type="processing_failed"` for Prometheus processing-error totals rather than summing every
+  nondefault series; the default selector remains empty `error_type=""` in Prometheus, absent
+  `error.type` in OTEL, and an omitted CloudWatch dimension.
 - `stream.retry.operations` records retry-handler get/put operations by attempt, with `operation="get"` or `"put"` and `error.type="{{default}}"` on normal attempts. A failed retry-handler put also emits `error.type="retry_handler_put_failed"` on the same put series; this is an overlapping diagnostic subset, not another attempt. Filter the default error type for total attempts. |
 
 The Kinesis record writer reports each `PutRecords` attempt. `cloud.aws.kinesis.sent.messages` counts successful records on the default series and failed records by the error reason Kinesis returned. `cloud.aws.kinesis.batch.records` is a histogram of records in each attempt; a retried record is counted again in the subsequent attempt, so this is attempt-level work rather than a unique-record total. The failed-record subset and retry behavior remain part of the producer contract. The shard reader retains its detailed stream-and-shard metrics and restores same-name CloudWatch-only `KindTotal` projections that remove only `partition.id`:

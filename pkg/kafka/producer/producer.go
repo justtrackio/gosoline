@@ -26,6 +26,11 @@ const (
 	errorTypeSendFailed = "send_failed"
 )
 
+var (
+	producerBatchSizeKind = metric.KindHistogram.Build()
+	producerDurationKind  = metric.KindHistogram.WithMessagingDurationBuckets().Build()
+)
+
 func init() {
 	metric.RegisterHelp(metricNamespaceKafkaProducer, metricNameProduceBatchSize, "records a kafka producer sent per batch")
 	metric.RegisterHelp(metricNamespaceKafkaProducer, metricNameRecordsSent, "records a kafka producer handed to the broker, by error type")
@@ -89,8 +94,24 @@ func (p *producer) ProduceSync(ctx context.Context, records ...*kgo.Record) erro
 	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeProducer, kafka.DimensionClient: p.name, kafka.DimensionTopic: p.topicName}
 
 	data := metric.Data{
-		{Priority: metric.PriorityHigh, MetricName: metricNameProduceBatchSize, Dimensions: dims, Value: float64(len(records))},
-		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaProducer, MetricName: metricNameProduceDuration, Dimensions: dims, Value: durationMs},
+		{
+			Priority:   metric.PriorityHigh,
+			Namespace:  metricNamespaceKafkaProducer,
+			MetricName: metricNameProduceBatchSize,
+			Dimensions: dims,
+			Unit:       metric.UnitCountAverage,
+			Value:      float64(len(records)),
+			Kind:       producerBatchSizeKind,
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			Namespace:  metricNamespaceKafkaProducer,
+			MetricName: metricNameProduceDuration,
+			Dimensions: dims,
+			Unit:       metric.UnitMillisecondsAverage,
+			Value:      durationMs,
+			Kind:       producerDurationKind,
+		},
 	}
 
 	if err := results.FirstErr(); err != nil {
@@ -147,8 +168,26 @@ func getProducerDefaultMetrics(name, topicName string) metric.Data {
 	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeProducer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName}
 
 	return metric.Data{
-		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaProducer, MetricName: metricNameRecordsSent, Dimensions: withErrorType(dims, metric.DimensionDefault), Unit: metric.UnitCount, Kind: metric.KindCounter.Build()},
-		{Priority: metric.PriorityHigh, MetricName: metricNameProduceBatchSize, Dimensions: dims, Unit: metric.UnitCountAverage, Kind: metric.KindHistogram.Build()},
-		{Priority: metric.PriorityHigh, Namespace: metricNamespaceKafkaProducer, MetricName: metricNameProduceDuration, Dimensions: dims, Unit: metric.UnitMillisecondsAverage, Kind: metric.KindHistogram.WithMessagingDurationBuckets().Build()},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameRecordsSent,
+			Dimensions: withErrorType(dims, metric.DimensionDefault),
+			Unit:       metric.UnitCount,
+			Kind:       metric.KindCounter.Build(),
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameProduceBatchSize,
+			Dimensions: dims,
+			Unit:       metric.UnitCountAverage,
+			Kind:       metric.KindHistogram.Build(),
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameProduceDuration,
+			Dimensions: dims,
+			Unit:       metric.UnitMillisecondsAverage,
+			Kind:       metric.KindHistogram.WithMessagingDurationBuckets().Build(),
+		},
 	}
 }

@@ -42,6 +42,9 @@ A datum's canonical name consists of an optional namespace and a metric leaf, su
 `Datum.Namespace` and `Datum.MetricName`. Gosoline-owned metrics use the grammar above.
 `metric.NewWriter(namespace)` stamps its namespace onto datums whose `Namespace` is empty; an
 explicit datum namespace takes precedence. An empty writer namespace leaves the metric unnamespaced.
+Leave `Datum.Namespace` unset when it matches the owning writer's namespace. Set it only for an
+intentional override or when passing datums directly to an injected backend writer, which does not
+supply a canonical namespace.
 An application can choose its own namespace and leaf for custom metrics; the same writer-specific
 rendering rules below apply to them.
 
@@ -209,12 +212,15 @@ consumer. It is not a per-message duration when emitted by a batch consumer.
 
 The default `consumed.messages` series remains the all-processed total, including callback failures; a
 batch contributes its record count, not one. `error.type="processing_failed"` is an overlapping
-record-based failure series, including false or missing acknowledgements. Canceled processing does
-not emit that failure series. Every `GetModel` failure also emits `error.type="model_lookup_failed"`,
-including failures configured to be ignored. A non-ignored lookup failure overlaps
-`processing_failed`; an ignored one does not. Both diagnostic series overlap the default total and must
-not be summed with it or subtracted to infer successes. For processing-error totals, filter
-`error.type="processing_failed"` rather than summing all diagnostic values.
+record-based series for non-canceled processing errors, including preparation errors and panics.
+For a batch callback error, it counts records with false or missing acknowledgements, not the whole
+batch. A false or missing acknowledgement with a nil callback error can request deferred processing
+or retry; it does not emit `processing_failed`. Acknowledgement and retry behavior is unchanged.
+Canceled processing does not emit that failure series. Every `GetModel` failure also emits
+`error.type="model_lookup_failed"`, including failures configured to be ignored. A non-ignored lookup
+failure overlaps `processing_failed`; an ignored one does not. Both diagnostic series overlap the
+default total and must not be summed with it or subtracted to infer successes. For processing-error
+totals, filter `error.type="processing_failed"` rather than summing all diagnostic values.
 
 `retry.operations` counts retry-handler operations with `operation="get"` or `operation="put"`, not
 records. Normal attempts carry `error.type="{{default}}"`; a failed retry-handler put also emits
@@ -243,6 +249,11 @@ overlapping diagnostic subset, not an extra attempt. Select the default error ty
 
 `sent.messages` records successful records on the default series and failed records with `error.type="send_failed"`.
 Both outcomes use a count-valued counter.
+
+Producer datums carry their canonical namespace, unit and instrument kind when written to an injected
+backend writer directly. `batch.records` remains a count-valued histogram; `produce.duration` remains
+a millisecond-authored histogram with the standard messaging duration boundaries, exported in seconds
+by OpenTelemetry and Prometheus. These types and boundaries do not depend on registered zero defaults.
 
 ### `kafka` — `pkg/kafka`
 
