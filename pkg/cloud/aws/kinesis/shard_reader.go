@@ -38,6 +38,12 @@ const (
 	errorTypeProcessingFailed = "processing_failed"
 )
 
+// Build each bucket profile once so Kinesis reuses it across every shard-reader observation.
+var (
+	kinesisDurationHistogramKindMilliseconds = metric.KindHistogram.WithMessagingDurationBuckets().Build()
+	kinesisDurationHistogramKindSeconds      = metric.KindHistogram.WithMessagingDurationBucketsInSeconds().Build()
+)
+
 func init() {
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameConsumedMessages, "records a kinesis shard reader processed; the {{default}} error.type series is the batch total and processing_failed is an overlapping per-record subset")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameReadCount, "GetRecords calls a kinesis shard reader performed")
@@ -220,7 +226,7 @@ func (s *shardReader) acquireShard(ctx context.Context) (bool, error) {
 		}
 
 		tookSoFar := s.clock.Since(start)
-		s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameAcquireShardDuration, tookSoFar.Seconds(), metric.UnitSecondsMaximum, metric.KindHistogram.Build())
+		s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameAcquireShardDuration, tookSoFar.Seconds(), metric.UnitSecondsMaximum, kinesisDurationHistogramKindSeconds)
 
 		timer := s.clock.NewTimer(s.settings.WaitTime)
 
@@ -425,7 +431,7 @@ func (s *shardReader) getAndProcessRecords(
 	}
 
 	processDuration := s.clock.Since(processStart)
-	s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameProcessDuration, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.WithMessagingDurationBuckets().Build())
+	s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameProcessDuration, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage, kinesisDurationHistogramKindMilliseconds)
 	// The {{default}} series is the batch total, including failures counted per record above.
 	s.writeConsumedMessages(ctx, metric.DimensionDefault, float64(processedSize))
 
@@ -436,7 +442,7 @@ func (s *shardReader) getAndProcessRecords(
 
 	// if the results are older than our wait time, continue immediately
 	if time.Duration(millisecondsBehind) > (s.settings.WaitTime + s.settings.ConsumeDelay) {
-		s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameWaitDuration, 0.0, metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
+		s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameWaitDuration, 0.0, metric.UnitMillisecondsAverage, kinesisDurationHistogramKindMilliseconds)
 
 		return 0, nil
 	}
@@ -444,7 +450,7 @@ func (s *shardReader) getAndProcessRecords(
 	durationSinceLastGetRecordsCall := s.clock.Since(getRecordsStart)
 	waitTime := max(0, s.settings.WaitTime-durationSinceLastGetRecordsCall)
 
-	s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameWaitDuration, float64(waitTime.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
+	s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameWaitDuration, float64(waitTime.Milliseconds()), metric.UnitMillisecondsAverage, kinesisDurationHistogramKindMilliseconds)
 
 	return waitTime, nil
 }
@@ -685,7 +691,7 @@ func (s *shardReader) delayConsume(ctx context.Context, record types.Record) {
 		case <-ctx.Done():
 			return
 		case <-timer.Chan():
-			s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameSleepDuration, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage, metric.KindHistogram.Build())
+			s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameSleepDuration, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage, kinesisDurationHistogramKindMilliseconds)
 
 			return
 		case <-ticker.Chan():
@@ -702,12 +708,12 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 	defer ticker.Stop()
 
 	currentMillisecondsBehind := 0.0
-	s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindHistogram.Build())
+	s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, kinesisDurationHistogramKindMilliseconds)
 
 	for {
 		select {
 		case <-ticker.Chan():
-			s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindHistogram.Build())
+			s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, kinesisDurationHistogramKindMilliseconds)
 		case newMillisecondsBehind, ok := <-millisecondsBehindChan:
 			if !ok {
 				// the producer stopped, so we also need to stop
@@ -715,7 +721,7 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 			}
 
 			currentMillisecondsBehind = newMillisecondsBehind
-			s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, metric.KindHistogram.Build())
+			s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, kinesisDurationHistogramKindMilliseconds)
 		}
 	}
 }

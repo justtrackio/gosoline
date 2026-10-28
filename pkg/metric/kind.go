@@ -37,8 +37,9 @@ var (
 
 // Standard duration histogram boundaries are authored in milliseconds.
 var (
-	standardHttpRpcMessagingDurationBuckets = []float64{5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000}
-	standardDatabaseDurationBuckets         = []float64{1, 5, 10, 50, 100, 500, 1000, 5000, 10000}
+	standardHttpRpcMessagingDurationBuckets        = []float64{5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000}
+	standardHttpRpcMessagingDurationBucketsSeconds = scaleHistogramBuckets(types.StandardUnitMilliseconds, standardHttpRpcMessagingDurationBuckets)
+	standardDatabaseDurationBuckets                = []float64{1, 5, 10, 50, 100, 500, 1000, 5000, 10000}
 )
 
 type (
@@ -193,6 +194,12 @@ func (k HistogramKindBuilder) WithRpcDurationBuckets() HistogramKindBuilder {
 // See https://opentelemetry.io/docs/specs/semconv/messaging/messaging-metrics/.
 func (k HistogramKindBuilder) WithMessagingDurationBuckets() HistogramKindBuilder {
 	return k.WithBuckets(standardHttpRpcMessagingDurationBuckets)
+}
+
+// WithMessagingDurationBucketsInSeconds sets the standard explicit bounds for messaging duration metrics authored in seconds.
+// It derives the bounds from the shared millisecond profile and caches the converted slice for reuse.
+func (k HistogramKindBuilder) WithMessagingDurationBucketsInSeconds() HistogramKindBuilder {
+	return k.WithBuckets(standardHttpRpcMessagingDurationBucketsSeconds)
 }
 
 // WithDatabaseDurationBuckets sets standard explicit bounds for applicable database semantic-convention duration metrics.

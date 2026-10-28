@@ -19,6 +19,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -498,13 +499,12 @@ func TestShardReaderDefaultMetricsSeedOnlyMissingStreamProjection(t *testing.T) 
 	}, seen)
 }
 
-func TestShardReaderEmitsStandardProcessDurationHistogram(t *testing.T) {
+func TestShardReaderEmitsStandardMessagingHistograms(t *testing.T) {
 	checkpoint := &recordingCheckpoint{}
 	reader := newProcessingTestShardReader(t, ProcessingModeOrdered, 1, checkpoint)
 	reader.stream = Stream("events")
 	reader.shardId = ShardId("shard-1")
 	reader.settings.MaxBatchSize = 1
-	reader.settings.WaitTime = 0
 
 	testClock := clock.NewFakeClockAt(time.Unix(0, 0))
 	reader.clock = testClock
@@ -517,8 +517,31 @@ func TestShardReaderEmitsStandardProcessDurationHistogram(t *testing.T) {
 		require.NoError(t, provider.Shutdown(t.Context()))
 	})
 
-	exportingWriter := metric.NewOtelWriterWithInterfaces(logger, provider.Meter("kinesis-process-duration-test"))
-	reader.metricWriter = exportingWriter
+	otelWriter := metric.NewOtelWriterWithInterfaces(logger, provider.Meter("kinesis-messaging-duration-test"))
+	prometheusRegistry := prometheus.NewRegistry()
+	prometheusWriter := metric.NewPrometheusWriterWithInterfaces(logger, prometheusRegistry, 100, time.Second)
+	reader.metricWriter = multiExporterMetricWriter{
+		writers: []metric.Writer{otelWriter, prometheusWriter},
+	}
+	var acquisitionAttempts int
+	reader.metadataRepository = metadataRepositoryFunc{
+		acquireShardFunc: func(_ context.Context, _ ShardId) (Checkpoint, error) {
+			acquisitionAttempts++
+			if acquisitionAttempts == 1 {
+				testClock.Advance(250 * time.Millisecond)
+
+				return nil, nil
+			}
+
+			return checkpoint, nil
+		},
+	}
+
+	acquired, err := reader.acquireShard(t.Context())
+	require.NoError(t, err)
+	require.True(t, acquired)
+
+	reader.settings.WaitTime = time.Second
 	reader.kinesisClient = getRecordsTestClient{
 		output: &awsKinesis.GetRecordsOutput{
 			Records: []types.Record{
@@ -528,14 +551,14 @@ func TestShardReaderEmitsStandardProcessDurationHistogram(t *testing.T) {
 				},
 			},
 			NextShardIterator:  aws.String("next"),
-			MillisBehindLatest: aws.Int64(0),
+			MillisBehindLatest: aws.Int64(250),
 		},
 	}
 
 	millisecondsBehind := make(chan float64, 1)
 	iterator := ShardIterator("iterator")
 	lastSequenceNumber := SequenceNumber("")
-	_, err := reader.getAndProcessRecords(
+	waitDuration, err := reader.getAndProcessRecords(
 		t.Context(),
 		t.Context(),
 		millisecondsBehind,
@@ -548,40 +571,163 @@ func TestShardReaderEmitsStandardProcessDurationHistogram(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	require.Equal(t, 0.0, <-millisecondsBehind)
+	require.Equal(t, 750*time.Millisecond, waitDuration)
 	require.Equal(t, []SequenceNumber{"seq-1"}, checkpoint.sequenceNumbers())
+
+	close(millisecondsBehind)
+	reader.reportMillisecondsBehind(millisecondsBehind)
+
+	reader.settings.ConsumeDelay = 125 * time.Millisecond
+	reader.settings.Healthcheck.Timeout = time.Second
+	arrivalTime := testClock.Now()
+	sleepFinished := make(chan struct{})
+	go func() {
+		reader.delayConsume(t.Context(), types.Record{
+			ApproximateArrivalTimestamp: &arrivalTime,
+		})
+		close(sleepFinished)
+	}()
+	testClock.BlockUntilTimers(1)
+	testClock.Advance(125 * time.Millisecond)
+	<-sleepFinished
 
 	var exported metricdata.ResourceMetrics
 	require.NoError(t, exportReader.Collect(t.Context(), &exported))
 
-	var processHistogram *metricdata.Histogram[float64]
+	expectedBounds := []float64{0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10}
+	expectedHistograms := []kinesisMessagingHistogramExpectation{
+		{
+			otelName:       "gosoline.cloud.aws.kinesis.acquire.duration",
+			prometheusName: "gosoline_cloud_aws_kinesis_acquire_duration_seconds",
+			count:          1,
+			sum:            0.25,
+		},
+		{
+			otelName:       "gosoline.cloud.aws.kinesis.lag",
+			prometheusName: "gosoline_cloud_aws_kinesis_lag_seconds",
+			count:          2,
+			sum:            0.25,
+		},
+		{
+			otelName:       "gosoline.cloud.aws.kinesis.process.duration",
+			prometheusName: "gosoline_cloud_aws_kinesis_process_duration_seconds",
+			count:          1,
+			sum:            0.25,
+		},
+		{
+			otelName:       "gosoline.cloud.aws.kinesis.sleep.duration",
+			prometheusName: "gosoline_cloud_aws_kinesis_sleep_duration_seconds",
+			count:          1,
+			sum:            0.125,
+		},
+		{
+			otelName:       "gosoline.cloud.aws.kinesis.wait.duration",
+			prometheusName: "gosoline_cloud_aws_kinesis_wait_duration_seconds",
+			count:          1,
+			sum:            0.75,
+		},
+	}
+
+	otelHistograms := make(map[string]metricdata.Histogram[float64], len(expectedHistograms))
+	otelHistogramFound := make(map[string]bool, len(expectedHistograms))
 	for _, scope := range exported.ScopeMetrics {
 		for i := range scope.Metrics {
 			exportedMetric := &scope.Metrics[i]
-			if exportedMetric.Name != "gosoline.cloud.aws.kinesis.process.duration" {
+			for _, expected := range expectedHistograms {
+				if exportedMetric.Name != expected.otelName {
+					continue
+				}
+
+				require.False(t, otelHistogramFound[expected.otelName], "%s must be exported as one histogram instrument", expected.otelName)
+				otelHistogramFound[expected.otelName] = true
+				require.Equal(t, "s", exportedMetric.Unit, "OTEL unit for %s", expected.otelName)
+				histogram, ok := exportedMetric.Data.(metricdata.Histogram[float64])
+				require.True(t, ok, "OTEL histogram type for %s", expected.otelName)
+				otelHistograms[expected.otelName] = histogram
+			}
+		}
+	}
+	require.Len(t, otelHistograms, len(expectedHistograms))
+
+	assertKinesisMessagingHistogramExport(t, prometheusRegistry, expectedBounds, expectedHistograms, otelHistograms)
+}
+
+type kinesisMessagingHistogramExpectation struct {
+	otelName       string
+	prometheusName string
+	count          uint64
+	sum            float64
+}
+
+func assertKinesisMessagingHistogramExport(
+	t *testing.T,
+	registry prometheus.Gatherer,
+	expectedBounds []float64,
+	expectedHistograms []kinesisMessagingHistogramExpectation,
+	otelHistograms map[string]metricdata.Histogram[float64],
+) {
+	prometheusFamilies, err := registry.Gather()
+	require.NoError(t, err)
+
+	for _, expected := range expectedHistograms {
+		histogram, ok := otelHistograms[expected.otelName]
+		require.True(t, ok, "missing OTEL histogram %s", expected.otelName)
+		require.Len(t, histogram.DataPoints, 1, "the stream-only KindTotal projection must be skipped by OTEL for %s", expected.otelName)
+		point := histogram.DataPoints[0]
+		require.Equal(t, expectedBounds, point.Bounds, "OTEL bounds for %s", expected.otelName)
+		require.Len(t, point.BucketCounts, len(expectedBounds)+1, "OTEL includes an implicit +Inf bucket for %s", expected.otelName)
+		require.Equal(t, expected.count, point.Count, "OTEL count for %s", expected.otelName)
+		require.InDelta(t, expected.sum, point.Sum, 1e-12, "OTEL sum for %s", expected.otelName)
+
+		foundPrometheusHistogram := false
+		for _, family := range prometheusFamilies {
+			if family.GetName() != expected.prometheusName {
 				continue
 			}
 
-			require.Nil(t, processHistogram, "process.duration must be exported as one histogram instrument")
-			require.Equal(t, "s", exportedMetric.Unit)
-			histogram, ok := exportedMetric.Data.(metricdata.Histogram[float64])
-			require.True(t, ok)
-			processHistogram = &histogram
+			require.False(t, foundPrometheusHistogram, "duplicate Prometheus histogram %s", expected.prometheusName)
+			foundPrometheusHistogram = true
+			require.Len(t, family.GetMetric(), 1, "the stream-only KindTotal projection must be skipped by Prometheus for %s", expected.prometheusName)
+			prometheusHistogram := family.GetMetric()[0].GetHistogram()
+			require.NotNil(t, prometheusHistogram, "Prometheus histogram for %s", expected.prometheusName)
+			require.Equal(t, expected.count, prometheusHistogram.GetSampleCount(), "Prometheus count for %s", expected.prometheusName)
+			require.InDelta(t, expected.sum, prometheusHistogram.GetSampleSum(), 1e-12, "Prometheus sum for %s", expected.prometheusName)
+
+			prometheusBounds := make([]float64, len(prometheusHistogram.GetBucket()))
+			for i, bucket := range prometheusHistogram.GetBucket() {
+				prometheusBounds[i] = bucket.GetUpperBound()
+			}
+			require.Equal(t, expectedBounds, prometheusBounds, "Prometheus bounds for %s", expected.prometheusName)
 		}
+		require.True(t, foundPrometheusHistogram, "missing Prometheus histogram %s", expected.prometheusName)
 	}
+}
 
-	require.NotNil(t, processHistogram)
-	require.Len(t, processHistogram.DataPoints, 1, "the stream-only KindTotal projection must be skipped by OTEL")
-	point := processHistogram.DataPoints[0]
-	require.Equal(t, []float64{0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10}, point.Bounds)
-	require.Equal(t, uint64(1), point.Count)
-	require.InDelta(t, 0.25, point.Sum, 1e-12)
+type multiExporterMetricWriter struct {
+	writers []metric.Writer
+}
 
-	dimensions := make(metric.Dimensions, len(point.Attributes.ToSlice()))
-	for _, attribute := range point.Attributes.ToSlice() {
-		dimensions[string(attribute.Key)] = attribute.Value.AsString()
+func (w multiExporterMetricWriter) GetPriority() int {
+	return metric.PriorityLow
+}
+
+func (w multiExporterMetricWriter) Write(ctx context.Context, batch metric.Data) {
+	for _, writer := range w.writers {
+		writer.Write(ctx, batch)
 	}
-	require.Equal(t, metric.Dimensions{dimensionStream: "events", dimensionShard: "shard-1"}, dimensions)
+}
+
+func (w multiExporterMetricWriter) WriteOne(ctx context.Context, datum *metric.Datum) {
+	w.Write(ctx, metric.Data{datum})
+}
+
+type metadataRepositoryFunc struct {
+	MetadataRepository
+	acquireShardFunc func(context.Context, ShardId) (Checkpoint, error)
+}
+
+func (m metadataRepositoryFunc) AcquireShard(ctx context.Context, shardId ShardId) (Checkpoint, error) {
+	return m.acquireShardFunc(ctx, shardId)
 }
 
 type getRecordsTestClient struct {

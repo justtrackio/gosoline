@@ -298,7 +298,11 @@ func (l *loggerMockState) mockLoggerMethod(on func(string, ...any) *mock.Call, r
 func (l *loggerMockState) inspectLogFunction(level string, allowed bool) func(args mock.Arguments) {
 	return func(args mock.Arguments) {
 		msg := args.Get(1).(string)
-		msg = fmt.Sprintf(msg, args[2:]...)
+		if level == log.LevelError {
+			msg = fmt.Errorf(msg, args[2:]...).Error()
+		} else {
+			msg = fmt.Sprintf(msg, args[2:]...)
+		}
 
 		if l.t != nil {
 			testName := l.t.Name()

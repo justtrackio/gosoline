@@ -32,7 +32,8 @@ observations to their base unit; for example, 1, 5, and 10 milliseconds become 0
 ### Histogram bucket policies
 
 `HistogramKindBuilder` now provides `WithHttpDurationBuckets()`, `WithRpcDurationBuckets()`,
-`WithMessagingDurationBuckets()`, and `WithDatabaseDurationBuckets()`. The HTTP request
+`WithMessagingDurationBuckets()`, `WithMessagingDurationBucketsInSeconds()`, and
+`WithDatabaseDurationBuckets()`. The HTTP request
 (`http.server.request.duration`, `http.client.request.duration`), RPC
 (`rpc.server.request.duration`), and messaging (`stream.process.duration`,
 `kafka.consumer.process.duration`, `cloud.aws.kinesis.process.duration`,
@@ -48,7 +49,14 @@ and offset-commit measurement boundaries; processing duration remains separate. 
 attributes, instrument kinds, and counting behavior are unchanged. The schema remains `v2.0`; no
 bucket-policy flag or migration mode is added.
 
-The other 19 histograms retain their generic exporter defaults; their bounds are in exported base
+Kinesis `cloud.aws.kinesis.lag`, `acquire.duration`, `sleep.duration`, and `wait.duration` now reuse
+the messaging duration profile, alongside the existing `process.duration` histogram. All five export
+the same 14 second-valued boundaries listed above. `acquire.duration` remains authored in seconds
+and receives equivalent second-valued bounds; the other four remain authored in milliseconds.
+CloudWatch observation units, values and reducers, detailed attributes and stream-only projections
+are unchanged.
+
+The other 15 histograms retain their generic exporter defaults; their bounds are in exported base
 units, not authored units. These defaults are not evidence of fit to observed workloads: values
 above 10 overflow Prometheus' finite count/byte buckets, while OpenTelemetry has no positive
 default boundary below 5 seconds for short custom-duration distributions. No claim is made that
@@ -217,6 +225,10 @@ Single-message and batch stream consumers share the v2 metrics `stream.process.d
   `error.type` in OTEL, and an omitted CloudWatch dimension.
 - `stream.retry.operations` records retry-handler get/put operations by attempt, with `operation="get"` or `"put"` and `error.type="{{default}}"` on normal attempts. A failed retry-handler put also emits `error.type="retry_handler_put_failed"` on the same put series; this is an overlapping diagnostic subset, not another attempt. Filter the default error type for total attempts. |
 
+The test logger's error diagnostics now support `%w` wrapping like the production logger, instead of
+printing `%!w(...)`. This corrects captured failure logs, including stream retry-handler failures;
+production error formatting, error identity, severity and cancellation behavior are unchanged.
+
 The Kinesis record writer reports each `PutRecords` attempt. `cloud.aws.kinesis.sent.messages` counts successful records on the default series and failed records by the error reason Kinesis returned. `cloud.aws.kinesis.batch.records` is a histogram of records in each attempt; a retried record is counted again in the subsequent attempt, so this is attempt-level work rather than a unique-record total. The failed-record subset and retry behavior remain part of the producer contract. The shard reader retains its detailed stream-and-shard metrics and restores same-name CloudWatch-only `KindTotal` projections that remove only `partition.id`:
 
 | Metric | Projection dimensions | Unit | CloudWatch statistic |
@@ -232,7 +244,7 @@ The Kinesis record writer reports each `PutRecords` attempt. `cloud.aws.kinesis.
 
 The default `consumed.messages` series is the all-processed batch total, including failures; `processing_failed` is an overlapping per-record subset, not an exclusive outcome. Do not sum it with the default total or subtract it to infer successes. Both outcomes retain their `error.type` in the projection datum; CloudWatch omits only the default marker. The detailed Counter remains stream-and-shard scoped for every exporter. OpenTelemetry and Prometheus filter `KindTotal`, so neither double-counts the stream projection. Existing raw count defaults for `reads` and the default consumed total already seed the corresponding CloudWatch stream series after default-valued dimensions are omitted; avoid duplicate projection zeros. The failed projection has a zero default, with no raw failed default, and lag has no zero default.
 
-Kinsumer no longer emits `ShardTaskRatio` per stream or the application-wide `ShardTaskRatioMax`. The former ratio was `shardCount / clientCount * 100`; the v2 `cloud.aws.kinesis.shard.count` and `cloud.aws.kinesis.client.count` gauges are raw per-stream counts, each dimensioned by `stream.name`. Derive `shard.count / client.count` per stream (ideal ratio `1`, not `100`), then take the maximum across streams when global scaling needs one value; update thresholds rather than carrying forward the old ×100 scale. These are stream gauges, not calculator output. `cloud.aws.kinesis.lag` remains a per-stream/per-shard cumulative histogram in OTEL, with millisecond observations; CloudWatch uses the existing Maximum reducer for detailed and stream-only lag series.
+Kinsumer no longer emits `ShardTaskRatio` per stream or the application-wide `ShardTaskRatioMax`. The former ratio was `shardCount / clientCount * 100`; the v2 `cloud.aws.kinesis.shard.count` and `cloud.aws.kinesis.client.count` gauges are raw per-stream counts, each dimensioned by `stream.name`. Derive `shard.count / client.count` per stream (ideal ratio `1`, not `100`), then take the maximum across streams when global scaling needs one value; update thresholds rather than carrying forward the old ×100 scale. These are stream gauges, not calculator output. `cloud.aws.kinesis.lag` remains a per-stream/per-shard cumulative histogram in OTEL, with millisecond-authored observations exported in seconds; CloudWatch retains milliseconds and the existing Maximum reducer for detailed and stream-only lag series.
 
 ## Calculator and per-runner removals
 

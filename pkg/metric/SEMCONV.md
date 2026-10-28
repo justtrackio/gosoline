@@ -99,6 +99,8 @@ boundaries. The convenience methods on `HistogramKindBuilder` apply these polici
 | `WithRpcDurationBuckets()` | `rpc.server.request.duration` | RPC call duration |
 | `WithMessagingDurationBuckets()` | `stream.process.duration`, `kafka.consumer.process.duration`, `cloud.aws.kinesis.process.duration` | Messaging process duration |
 | `WithMessagingDurationBuckets()` | `kafka.producer.produce.duration`, `kafka.consumer.poll.duration`, `kafka.consumer.commit.duration` | Messaging client-operation duration |
+| `WithMessagingDurationBuckets()` | `cloud.aws.kinesis.lag`, `cloud.aws.kinesis.sleep.duration`, `cloud.aws.kinesis.wait.duration` | Kinesis reader timing and lag reuse the messaging duration profile |
+| `WithMessagingDurationBucketsInSeconds()` | `cloud.aws.kinesis.acquire.duration` | Equivalent messaging duration profile for second-authored observations |
 | `WithDatabaseDurationBuckets()` | `db.repo.operation.duration`, `ddb.operation.duration` | Database client-operation duration |
 
 The Kafka consumer poll and commit histograms measure the executor/client poll operation and client
@@ -106,22 +108,24 @@ offset commit, respectively; process duration remains separate. Poll and commit 
 the messaging client-operation recommendation for receive/settle operations. Their names,
 attributes, and measurement boundaries do not change.
 
-Both sets below are authored in milliseconds. Prometheus and OpenTelemetry scale the explicit
-bounds and observations together once, so exported duration values and bounds are in seconds;
-CloudWatch retains the authored observation unit.
+The reference profiles below are expressed in milliseconds. Kinesis `acquire.duration` is authored
+in seconds and uses the equivalent second-valued boundaries; the other listed duration and lag
+histograms are authored in milliseconds. Prometheus and OpenTelemetry scale bounds and observations
+together once, so exported values and bounds are in seconds. CloudWatch retains the authored
+observation unit. Selecting the messaging profile for Kinesis timing and lag changes only bucket
+resolution, not the measured event or its unit.
 
-| Recommendation | Authored bounds (ms) | Exported bounds (s) |
+| Recommendation | Reference bounds (ms) | Exported bounds (s) |
 |---|---|---|
 | HTTP, RPC, and messaging | `[5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000]` | `[0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]` |
 | Database | `[1, 5, 10, 50, 100, 500, 1000, 5000, 10000]` | `[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10]` |
 
-The 19 histograms below have no directly applicable standard bucket recommendation identified in
-this policy and retain their existing generic exporter defaults:
+The other 15 histograms retain their existing generic exporter defaults:
 
 | Group | Histograms |
 |---|---|
 | Count and byte batches | `stream.batch.messages`, `stream.aggregate.messages`, `kafka.producer.batch.records`, `kafka.produce.batch.records`, `kafka.produce.batch.size`, `kafka.produce.batch.compressed.size`, `kafka.fetch.batch.records`, `kafka.fetch.batch.size`, `kafka.fetch.batch.compressed.size`, `cloud.aws.kinesis.batch.records`, `conc.scheduler.batch.tasks` |
-| Custom durations and lag | `stream.idle.duration`, `kafka.consumer.sleep.duration`, `kafka.throttle.duration`, `cloud.aws.kinesis.acquire.duration`, `cloud.aws.kinesis.lag`, `cloud.aws.kinesis.sleep.duration`, `cloud.aws.kinesis.wait.duration`, `conc.scheduler.task.queue.duration` |
+| Custom durations | `stream.idle.duration`, `kafka.consumer.sleep.duration`, `kafka.throttle.duration`, `conc.scheduler.task.queue.duration` |
 
 Generic histogram defaults are in the exported base unit, not the authored unit. For duration
 histograms that means seconds; for count and byte histograms it means counts and bytes:

@@ -815,11 +815,24 @@ func (s *shardReaderTestSuite) mockMetricCall(namespace string, metricName strin
 			Kind:  metric.KindTotal,
 		},
 	}
-	compareKind := namespace != "cloud.aws.kinesis" || metricName != "process.duration"
+	compareKind := !isKinesisShardReaderHistogram(namespace, metricName)
 
 	return s.metricWriter.EXPECT().Write(matcher.Context, mock.MatchedBy(func(actual metric.Data) bool {
 		return shardReaderMetricDataMatches(actual, expected, compareKind)
 	}))
+}
+
+func isKinesisShardReaderHistogram(namespace, metricName string) bool {
+	if namespace != "cloud.aws.kinesis" {
+		return false
+	}
+
+	switch metricName {
+	case "acquire.duration", "lag", "process.duration", "sleep.duration", "wait.duration":
+		return true
+	default:
+		return false
+	}
 }
 
 func shardReaderMetricDataMatches(actual metric.Data, expected metric.Data, compareKind bool) bool {
