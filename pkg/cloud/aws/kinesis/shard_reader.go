@@ -22,18 +22,18 @@ import (
 const (
 	metricNamespaceCloudAwsKinesis = "cloud.aws.kinesis"
 
-	dimensionStream = "stream.name"
-	dimensionShard  = "partition.id"
+	dimensionStreamName  = "stream.name"
+	dimensionPartitionId = "partition.id"
 
-	metricNameAcquireShardDuration = "acquire.duration"
-	metricNameSleepDuration        = "sleep.duration"
-	metricNameMillisecondsBehind   = "lag"
-	metricNameProcessDuration      = "process.duration"
-	metricNameReadCount            = "reads"
-	metricNameConsumedMessages     = "consumed.messages"
-	metricNameWaitDuration         = "wait.duration"
-	metricNameShardCount           = "shard.count"
-	metricNameClientCount          = "client.count"
+	metricNameAcquireDuration  = "acquire.duration"
+	metricNameSleepDuration    = "sleep.duration"
+	metricNameLag              = "lag"
+	metricNameProcessDuration  = "process.duration"
+	metricNameReads            = "reads"
+	metricNameConsumedMessages = "consumed.messages"
+	metricNameWaitDuration     = "wait.duration"
+	metricNameShardCount       = "shard.count"
+	metricNameClientCount      = "client.count"
 
 	errorTypeProcessingFailed = "processing_failed"
 )
@@ -46,9 +46,9 @@ var (
 
 func init() {
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameConsumedMessages, "records a kinesis shard reader processed; the {{default}} error.type series is the batch total and processing_failed is an overlapping per-record subset")
-	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameReadCount, "GetRecords calls a kinesis shard reader performed")
-	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, "age of the last record a kinesis shard reader processed")
-	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameAcquireShardDuration, "time a kinesis shard reader waited to acquire a shard")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameReads, "GetRecords calls a kinesis shard reader performed")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameLag, "age of the last record a kinesis shard reader processed")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameAcquireDuration, "time a kinesis shard reader waited to acquire a shard")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameSleepDuration, "time a kinesis shard reader slept before polling again")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameProcessDuration, "duration of processing one batch of kinesis records")
 	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameWaitDuration, "time a kinesis shard reader waited for records to process")
@@ -226,7 +226,7 @@ func (s *shardReader) acquireShard(ctx context.Context) (bool, error) {
 		}
 
 		tookSoFar := s.clock.Since(start)
-		s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameAcquireShardDuration, tookSoFar.Seconds(), metric.UnitSecondsMaximum, kinesisDurationHistogramKindSeconds)
+		s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameAcquireDuration, tookSoFar.Seconds(), metric.UnitSecondsMaximum, kinesisDurationHistogramKindSeconds)
 
 		timer := s.clock.NewTimer(s.settings.WaitTime)
 
@@ -466,7 +466,7 @@ func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (r
 		return nil, "", 0, fmt.Errorf("failed to get records from shard: %w", err)
 	}
 
-	s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameReadCount, 1.0, metric.UnitCount, metric.KindCounter.Build())
+	s.writeMetric(ctx, metricNamespaceCloudAwsKinesis, metricNameReads, 1.0, metric.UnitCount, metric.KindCounter.Build())
 
 	records = output.Records
 	nextIterator = ShardIterator(mdl.EmptyIfNil(output.NextShardIterator))
@@ -708,12 +708,12 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 	defer ticker.Stop()
 
 	currentMillisecondsBehind := 0.0
-	s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, kinesisDurationHistogramKindMilliseconds)
+	s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameLag, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, kinesisDurationHistogramKindMilliseconds)
 
 	for {
 		select {
 		case <-ticker.Chan():
-			s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, kinesisDurationHistogramKindMilliseconds)
+			s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameLag, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, kinesisDurationHistogramKindMilliseconds)
 		case newMillisecondsBehind, ok := <-millisecondsBehindChan:
 			if !ok {
 				// the producer stopped, so we also need to stop
@@ -721,7 +721,7 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 			}
 
 			currentMillisecondsBehind = newMillisecondsBehind
-			s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, kinesisDurationHistogramKindMilliseconds)
+			s.writeMetric(context.Background(), metricNamespaceCloudAwsKinesis, metricNameLag, currentMillisecondsBehind, metric.UnitMillisecondsMaximum, kinesisDurationHistogramKindMilliseconds)
 		}
 	}
 }
@@ -733,8 +733,8 @@ func (s *shardReader) writeMetric(ctx context.Context, namespace string, metricN
 			Namespace:  namespace,
 			MetricName: metricName,
 			Dimensions: metric.Dimensions{
-				dimensionStream: string(s.stream),
-				dimensionShard:  string(s.shardId),
+				dimensionStreamName:  string(s.stream),
+				dimensionPartitionId: string(s.shardId),
 			},
 			Value: value,
 			Unit:  unit,
@@ -745,7 +745,7 @@ func (s *shardReader) writeMetric(ctx context.Context, namespace string, metricN
 			Namespace:  namespace,
 			MetricName: metricName,
 			Dimensions: metric.Dimensions{
-				dimensionStream: string(s.stream),
+				dimensionStreamName: string(s.stream),
 			},
 			Value: value,
 			Unit:  unit,
@@ -763,8 +763,8 @@ func (s *shardReader) writeConsumedMessages(ctx context.Context, errorType strin
 			Namespace:  metricNamespaceCloudAwsKinesis,
 			MetricName: metricNameConsumedMessages,
 			Dimensions: metric.Dimensions{
-				dimensionStream:           string(s.stream),
-				dimensionShard:            string(s.shardId),
+				dimensionStreamName:       string(s.stream),
+				dimensionPartitionId:      string(s.shardId),
 				metric.DimensionErrorType: errorType,
 			},
 			Value: value,
@@ -776,7 +776,7 @@ func (s *shardReader) writeConsumedMessages(ctx context.Context, errorType strin
 			Namespace:  metricNamespaceCloudAwsKinesis,
 			MetricName: metricNameConsumedMessages,
 			Dimensions: metric.Dimensions{
-				dimensionStream:           string(s.stream),
+				dimensionStreamName:       string(s.stream),
 				metric.DimensionErrorType: errorType,
 			},
 			Value: value,
@@ -796,10 +796,10 @@ func getShardReaderDefaultMetrics(stream Stream) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameReadCount,
+			MetricName: metricNameReads,
 			Dimensions: map[string]string{
-				dimensionStream: string(stream),
-				dimensionShard:  metric.DimensionDefault,
+				dimensionStreamName:  string(stream),
+				dimensionPartitionId: metric.DimensionDefault,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
@@ -809,8 +809,8 @@ func getShardReaderDefaultMetrics(stream Stream) metric.Data {
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumedMessages,
 			Dimensions: map[string]string{
-				dimensionStream:           string(stream),
-				dimensionShard:            metric.DimensionDefault,
+				dimensionStreamName:       string(stream),
+				dimensionPartitionId:      metric.DimensionDefault,
 				metric.DimensionErrorType: metric.DimensionDefault,
 			},
 			Unit:  metric.UnitCount,
@@ -821,7 +821,7 @@ func getShardReaderDefaultMetrics(stream Stream) metric.Data {
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumedMessages,
 			Dimensions: map[string]string{
-				dimensionStream:           string(stream),
+				dimensionStreamName:       string(stream),
 				metric.DimensionErrorType: errorTypeProcessingFailed,
 			},
 			Unit:  metric.UnitCount,

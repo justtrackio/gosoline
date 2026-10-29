@@ -19,9 +19,9 @@ const (
 	metricNamespaceKafka         = "kafka"
 	metricNamespaceKafkaProducer = "kafka.producer"
 
-	metricNameRecordsSent      = "sent.messages"
-	metricNameProduceBatchSize = "batch.records"
-	metricNameProduceDuration  = "produce.duration"
+	metricNameSentMessages    = "sent.messages"
+	metricNameBatchRecords    = "batch.records"
+	metricNameProduceDuration = "produce.duration"
 
 	errorTypeSendFailed = "send_failed"
 )
@@ -32,8 +32,8 @@ var (
 )
 
 func init() {
-	metric.RegisterHelp(metricNamespaceKafkaProducer, metricNameProduceBatchSize, "records a kafka producer sent per batch")
-	metric.RegisterHelp(metricNamespaceKafkaProducer, metricNameRecordsSent, "records a kafka producer handed to the broker, by error type")
+	metric.RegisterHelp(metricNamespaceKafkaProducer, metricNameBatchRecords, "records a kafka producer sent per batch")
+	metric.RegisterHelp(metricNamespaceKafkaProducer, metricNameSentMessages, "records a kafka producer handed to the broker, by error type")
 	metric.RegisterHelp(metricNamespaceKafkaProducer, metricNameProduceDuration, "duration of a kafka producer send")
 }
 
@@ -91,13 +91,13 @@ func (p *producer) ProduceSync(ctx context.Context, records ...*kgo.Record) erro
 	results := p.writer.ProduceSync(ctx, records...)
 	durationMs := float64(p.clock.Since(start).Milliseconds())
 
-	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeProducer, kafka.DimensionClient: p.name, kafka.DimensionTopic: p.topicName}
+	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeProducer, kafka.DimensionClientName: p.name, kafka.DimensionTopicName: p.topicName}
 
 	data := metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
 			Namespace:  metricNamespaceKafkaProducer,
-			MetricName: metricNameProduceBatchSize,
+			MetricName: metricNameBatchRecords,
 			Dimensions: dims,
 			Unit:       metric.UnitCountAverage,
 			Value:      float64(len(records)),
@@ -147,7 +147,7 @@ func recordsSentDatum(dims metric.Dimensions, errorType string, value float64) *
 	return &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Namespace:  metricNamespaceKafkaProducer,
-		MetricName: metricNameRecordsSent,
+		MetricName: metricNameSentMessages,
 		Dimensions: withErrorType(dims, errorType),
 		Unit:       metric.UnitCount,
 		Kind:       metric.KindCounter.Build(),
@@ -165,19 +165,19 @@ func withErrorType(dims metric.Dimensions, errorType string) metric.Dimensions {
 }
 
 func getProducerDefaultMetrics(name, topicName string) metric.Data {
-	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeProducer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName}
+	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeProducer, kafka.DimensionClientName: name, kafka.DimensionTopicName: topicName}
 
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameRecordsSent,
+			MetricName: metricNameSentMessages,
 			Dimensions: withErrorType(dims, metric.DimensionDefault),
 			Unit:       metric.UnitCount,
 			Kind:       metric.KindCounter.Build(),
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameProduceBatchSize,
+			MetricName: metricNameBatchRecords,
 			Dimensions: dims,
 			Unit:       metric.UnitCountAverage,
 			Kind:       metric.KindHistogram.Build(),

@@ -22,13 +22,13 @@ import (
 const (
 	kinesisBatchSizeMax = 500
 
-	metricNamePutRecords          = "sent.messages"
-	metricNamePutRecordsBatchSize = "batch.records"
+	metricNameSentMessages = "sent.messages"
+	metricNameBatchRecords = "batch.records"
 )
 
 func init() {
-	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNamePutRecords, "records sent to a Kinesis stream per PutRecords attempt, by Kinesis error reason")
-	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNamePutRecordsBatchSize, "records included in one PutRecords request attempt")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameSentMessages, "records sent to a Kinesis stream per PutRecords attempt, by Kinesis error reason")
+	metric.RegisterHelp(metricNamespaceCloudAwsKinesis, metricNameBatchRecords, "records included in one PutRecords request attempt")
 }
 
 type Record struct {
@@ -261,14 +261,14 @@ func (w *recordWriter) putRecordsAndCollectFailed(
 // no metric of its own.
 func (w *recordWriter) writeMetrics(ctx context.Context, records int, failed int, reason string) {
 	dimensions := map[string]string{
-		dimensionStream: w.fullStreamName,
+		dimensionStreamName: w.fullStreamName,
 	}
 
 	data := metric.Data{
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
 			Namespace:  metricNamespaceCloudAwsKinesis,
-			MetricName: metricNamePutRecords,
+			MetricName: metricNameSentMessages,
 			Dimensions: sentMessagesDimensions(w.fullStreamName, metric.DimensionDefault),
 			Value:      float64(records - failed),
 			Unit:       metric.UnitCount,
@@ -277,7 +277,7 @@ func (w *recordWriter) writeMetrics(ctx context.Context, records int, failed int
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
 			Namespace:  metricNamespaceCloudAwsKinesis,
-			MetricName: metricNamePutRecordsBatchSize,
+			MetricName: metricNameBatchRecords,
 			Dimensions: dimensions,
 			Value:      float64(records),
 			Unit:       metric.UnitCountAverage,
@@ -289,7 +289,7 @@ func (w *recordWriter) writeMetrics(ctx context.Context, records int, failed int
 		data = append(data, &metric.Datum{
 			Priority:   metric.PriorityHigh,
 			Namespace:  metricNamespaceCloudAwsKinesis,
-			MetricName: metricNamePutRecords,
+			MetricName: metricNameSentMessages,
 			Dimensions: sentMessagesDimensions(w.fullStreamName, reason),
 			Value:      float64(failed),
 			Unit:       metric.UnitCount,
@@ -303,7 +303,7 @@ func (w *recordWriter) writeMetrics(ctx context.Context, records int, failed int
 // sentMessagesDimensions builds the dimensions of one `sent.messages` series.
 func sentMessagesDimensions(streamName string, errorType string) metric.Dimensions {
 	return metric.Dimensions{
-		dimensionStream:           streamName,
+		dimensionStreamName:       streamName,
 		metric.DimensionErrorType: errorType,
 	}
 }
@@ -312,7 +312,7 @@ func getRecordWriterDefaultMetrics(streamName string) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNamePutRecords,
+			MetricName: metricNameSentMessages,
 			Dimensions: sentMessagesDimensions(streamName, metric.DimensionDefault),
 			Unit:       metric.UnitCount,
 			Value:      0.0,
@@ -320,8 +320,8 @@ func getRecordWriterDefaultMetrics(streamName string) metric.Data {
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNamePutRecordsBatchSize,
-			Dimensions: map[string]string{dimensionStream: streamName},
+			MetricName: metricNameBatchRecords,
+			Dimensions: map[string]string{dimensionStreamName: streamName},
 			Unit:       metric.UnitCountAverage,
 			Value:      0.0,
 			Kind:       metric.KindHistogram.Build(),

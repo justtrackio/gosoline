@@ -28,8 +28,8 @@ const (
 	// of its own.
 	MetricNameOperationDuration = "operation.duration"
 
-	// dimensionOperation is the semantic-convention attribute naming the database operation.
-	dimensionOperation = "operation.name"
+	// dimensionOperationName is the semantic-convention attribute naming the database operation.
+	dimensionOperationName = "operation.name"
 
 	OpSave = "save"
 

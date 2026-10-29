@@ -13,42 +13,42 @@ import (
 const (
 	metricNamespace = "kafka"
 
-	MetricNameBrokerConnects       = "connects"
-	MetricNameBrokerThrottleCount  = "throttles"
-	MetricNameBrokerThrottleTime   = "throttle.duration"
-	MetricNameProduceBatchRecords  = "produce.batch.records"
-	MetricNameProduceBatchBytes    = "produce.batch.size"
-	MetricNameProduceBatchBytesCmp = "produce.batch.compressed.size"
-	MetricNameFetchBatchRecords    = "fetch.batch.records"
-	MetricNameFetchBatchBytes      = "fetch.batch.size"
-	MetricNameFetchBatchBytesCmp   = "fetch.batch.compressed.size"
+	MetricNameBrokerConnects             = "connects"
+	MetricNameBrokerThrottles            = "throttles"
+	MetricNameBrokerThrottleDuration     = "throttle.duration"
+	MetricNameProduceBatchRecords        = "produce.batch.records"
+	MetricNameProduceBatchSize           = "produce.batch.size"
+	MetricNameProduceBatchCompressedSize = "produce.batch.compressed.size"
+	MetricNameFetchBatchRecords          = "fetch.batch.records"
+	MetricNameFetchBatchSize             = "fetch.batch.size"
+	MetricNameFetchBatchCompressedSize   = "fetch.batch.compressed.size"
 
-	metricNameProducedRecords       = "produced.records"
-	metricNameProducedBatchBytes    = "produced.batch.size"
-	metricNameProducedBatchBytesCmp = "produced.batch.compressed.size"
-	metricNameFetchedRecords        = "fetched.records"
-	metricNameFetchedBatchBytes     = "fetched.batch.size"
-	metricNameFetchedBatchBytesCmp  = "fetched.batch.compressed.size"
+	metricNameProducedRecords             = "produced.records"
+	metricNameProducedBatchSize           = "produced.batch.size"
+	metricNameProducedBatchCompressedSize = "produced.batch.compressed.size"
+	metricNameFetchedRecords              = "fetched.records"
+	metricNameFetchedBatchSize            = "fetched.batch.size"
+	metricNameFetchedBatchCompressedSize  = "fetched.batch.compressed.size"
 
 	errorTypeConnectFailed = "connect_failed"
 )
 
 func init() {
 	metric.RegisterHelp(metricNamespace, MetricNameBrokerConnects, "connections a kafka client opened to a broker")
-	metric.RegisterHelp(metricNamespace, MetricNameBrokerThrottleCount, "requests a broker throttled")
-	metric.RegisterHelp(metricNamespace, MetricNameBrokerThrottleTime, "time a broker throttled a kafka client for")
+	metric.RegisterHelp(metricNamespace, MetricNameBrokerThrottles, "requests a broker throttled")
+	metric.RegisterHelp(metricNamespace, MetricNameBrokerThrottleDuration, "time a broker throttled a kafka client for")
 	metric.RegisterHelp(metricNamespace, MetricNameProduceBatchRecords, "records a kafka client produced per batch")
-	metric.RegisterHelp(metricNamespace, MetricNameProduceBatchBytes, "uncompressed size of a batch a kafka client produced")
-	metric.RegisterHelp(metricNamespace, MetricNameProduceBatchBytesCmp, "compressed size of a batch a kafka client produced")
+	metric.RegisterHelp(metricNamespace, MetricNameProduceBatchSize, "uncompressed size of a batch a kafka client produced")
+	metric.RegisterHelp(metricNamespace, MetricNameProduceBatchCompressedSize, "compressed size of a batch a kafka client produced")
 	metric.RegisterHelp(metricNamespace, MetricNameFetchBatchRecords, "records a kafka client fetched per batch")
-	metric.RegisterHelp(metricNamespace, MetricNameFetchBatchBytes, "uncompressed size of a batch a kafka client fetched")
-	metric.RegisterHelp(metricNamespace, MetricNameFetchBatchBytesCmp, "compressed size of a batch a kafka client fetched")
+	metric.RegisterHelp(metricNamespace, MetricNameFetchBatchSize, "uncompressed size of a batch a kafka client fetched")
+	metric.RegisterHelp(metricNamespace, MetricNameFetchBatchCompressedSize, "compressed size of a batch a kafka client fetched")
 	metric.RegisterHelp(metricNamespace, metricNameProducedRecords, "records a kafka client produced")
-	metric.RegisterHelp(metricNamespace, metricNameProducedBatchBytes, "uncompressed bytes a kafka client produced")
-	metric.RegisterHelp(metricNamespace, metricNameProducedBatchBytesCmp, "compressed bytes a kafka client produced")
+	metric.RegisterHelp(metricNamespace, metricNameProducedBatchSize, "uncompressed bytes a kafka client produced")
+	metric.RegisterHelp(metricNamespace, metricNameProducedBatchCompressedSize, "compressed bytes a kafka client produced")
 	metric.RegisterHelp(metricNamespace, metricNameFetchedRecords, "records a kafka client fetched")
-	metric.RegisterHelp(metricNamespace, metricNameFetchedBatchBytes, "uncompressed bytes a kafka client fetched")
-	metric.RegisterHelp(metricNamespace, metricNameFetchedBatchBytesCmp, "compressed bytes a kafka client fetched")
+	metric.RegisterHelp(metricNamespace, metricNameFetchedBatchSize, "uncompressed bytes a kafka client fetched")
+	metric.RegisterHelp(metricNamespace, metricNameFetchedBatchCompressedSize, "compressed bytes a kafka client fetched")
 }
 
 // MetricsHook implements franz-go hook interfaces to emit metrics for broker
@@ -96,7 +96,7 @@ func (h *MetricsHook) OnBrokerThrottle(meta kgo.BrokerMetadata, throttleInterval
 	h.metricWriter.Write(context.Background(), metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: MetricNameBrokerThrottleCount,
+			MetricName: MetricNameBrokerThrottles,
 			Dimensions: dims,
 			Value:      1.0,
 			Unit:       metric.UnitCount,
@@ -104,7 +104,7 @@ func (h *MetricsHook) OnBrokerThrottle(meta kgo.BrokerMetadata, throttleInterval
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: MetricNameBrokerThrottleTime,
+			MetricName: MetricNameBrokerThrottleDuration,
 			Dimensions: dims,
 			Value:      float64(throttleInterval.Milliseconds()),
 			Unit:       metric.UnitMillisecondsMaximum,
@@ -116,30 +116,30 @@ func (h *MetricsHook) OnBrokerThrottle(meta kgo.BrokerMetadata, throttleInterval
 func (h *MetricsHook) OnProduceBatchWritten(_ kgo.BrokerMetadata, topic string, partition int32, metrics kgo.ProduceBatchMetrics) {
 	h.metricWriter.Write(context.Background(), metric.Data{
 		h.batchDatum(MetricNameProduceBatchRecords, topic, partition, float64(metrics.NumRecords), metric.UnitCount, metric.KindHistogram.Build()),
-		h.batchDatum(MetricNameProduceBatchBytes, topic, partition, float64(metrics.UncompressedBytes), metric.UnitBytes, metric.KindHistogram.Build()),
-		h.batchDatum(MetricNameProduceBatchBytesCmp, topic, partition, float64(metrics.CompressedBytes), metric.UnitBytes, metric.KindHistogram.Build()),
+		h.batchDatum(MetricNameProduceBatchSize, topic, partition, float64(metrics.UncompressedBytes), metric.UnitBytes, metric.KindHistogram.Build()),
+		h.batchDatum(MetricNameProduceBatchCompressedSize, topic, partition, float64(metrics.CompressedBytes), metric.UnitBytes, metric.KindHistogram.Build()),
 		h.batchDatum(metricNameProducedRecords, topic, partition, float64(metrics.NumRecords), metric.UnitCount, metric.KindCounter.Build()),
-		h.batchDatum(metricNameProducedBatchBytes, topic, partition, float64(metrics.UncompressedBytes), metric.UnitBytes, metric.KindCounter.Build()),
-		h.batchDatum(metricNameProducedBatchBytesCmp, topic, partition, float64(metrics.CompressedBytes), metric.UnitBytes, metric.KindCounter.Build()),
+		h.batchDatum(metricNameProducedBatchSize, topic, partition, float64(metrics.UncompressedBytes), metric.UnitBytes, metric.KindCounter.Build()),
+		h.batchDatum(metricNameProducedBatchCompressedSize, topic, partition, float64(metrics.CompressedBytes), metric.UnitBytes, metric.KindCounter.Build()),
 	})
 }
 
 func (h *MetricsHook) OnFetchBatchRead(_ kgo.BrokerMetadata, topic string, partition int32, metrics kgo.FetchBatchMetrics) {
 	h.metricWriter.Write(context.Background(), metric.Data{
 		h.batchDatum(MetricNameFetchBatchRecords, topic, partition, float64(metrics.NumRecords), metric.UnitCount, metric.KindHistogram.Build()),
-		h.batchDatum(MetricNameFetchBatchBytes, topic, partition, float64(metrics.UncompressedBytes), metric.UnitBytes, metric.KindHistogram.Build()),
-		h.batchDatum(MetricNameFetchBatchBytesCmp, topic, partition, float64(metrics.CompressedBytes), metric.UnitBytes, metric.KindHistogram.Build()),
+		h.batchDatum(MetricNameFetchBatchSize, topic, partition, float64(metrics.UncompressedBytes), metric.UnitBytes, metric.KindHistogram.Build()),
+		h.batchDatum(MetricNameFetchBatchCompressedSize, topic, partition, float64(metrics.CompressedBytes), metric.UnitBytes, metric.KindHistogram.Build()),
 		h.batchDatum(metricNameFetchedRecords, topic, partition, float64(metrics.NumRecords), metric.UnitCount, metric.KindCounter.Build()),
-		h.batchDatum(metricNameFetchedBatchBytes, topic, partition, float64(metrics.UncompressedBytes), metric.UnitBytes, metric.KindCounter.Build()),
-		h.batchDatum(metricNameFetchedBatchBytesCmp, topic, partition, float64(metrics.CompressedBytes), metric.UnitBytes, metric.KindCounter.Build()),
+		h.batchDatum(metricNameFetchedBatchSize, topic, partition, float64(metrics.UncompressedBytes), metric.UnitBytes, metric.KindCounter.Build()),
+		h.batchDatum(metricNameFetchedBatchCompressedSize, topic, partition, float64(metrics.CompressedBytes), metric.UnitBytes, metric.KindCounter.Build()),
 	})
 }
 
 func (h *MetricsHook) brokerDimensions(meta kgo.BrokerMetadata) metric.Dimensions {
 	return metric.Dimensions{
-		DimensionClientType: h.clientType,
-		DimensionClient:     h.clientName,
-		DimensionBroker:     fmt.Sprintf("%s:%d", meta.Host, meta.Port),
+		DimensionClientType:    h.clientType,
+		DimensionClientName:    h.clientName,
+		DimensionBrokerAddress: fmt.Sprintf("%s:%d", meta.Host, meta.Port),
 	}
 }
 
@@ -148,10 +148,10 @@ func (h *MetricsHook) batchDatum(name string, topic string, partition int32, val
 		Priority:   metric.PriorityHigh,
 		MetricName: name,
 		Dimensions: metric.Dimensions{
-			DimensionClientType: h.clientType,
-			DimensionClient:     h.clientName,
-			DimensionTopic:      topic,
-			DimensionPartition:  fmt.Sprintf("%d", partition),
+			DimensionClientType:  h.clientType,
+			DimensionClientName:  h.clientName,
+			DimensionTopicName:   topic,
+			DimensionPartitionId: fmt.Sprintf("%d", partition),
 		},
 		Value: value,
 		Unit:  unit,

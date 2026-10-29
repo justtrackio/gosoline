@@ -10,15 +10,15 @@ import (
 )
 
 const (
-	metricNamespace         = "db.repo"
-	metricNameNotifications = "model_event.notifications"
+	metricNamespace                   = "db.repo"
+	metricNameModelEventNotifications = "model_event.notifications"
 
 	errorTypeNotifyFailed    = "notify_failed"
 	errorTypeOperationFailed = "operation_failed"
 )
 
 func init() {
-	metric.RegisterHelp(metricNamespace, metricNameNotifications, "model event notifications a repository published, by error type")
+	metric.RegisterHelp(metricNamespace, metricNameModelEventNotifications, "model event notifications a repository published, by error type")
 	metric.RegisterHelp(metricNamespace, MetricNameDbOperationDuration, "duration of a SQL repository operation")
 }
 
@@ -57,7 +57,7 @@ func (n *notifier) writeMetric(ctx context.Context, err error) {
 	datum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
-		MetricName: metricNameNotifications,
+		MetricName: metricNameModelEventNotifications,
 		Dimensions: map[string]string{
 			metric.DimensionModelId:   n.modelId.String(),
 			metric.DimensionErrorType: metric.DimensionDefault,
@@ -78,7 +78,7 @@ func getDefaultNotifierMetrics(modelId mdl.ModelId) []*metric.Datum {
 	return []*metric.Datum{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameNotifications,
+			MetricName: metricNameModelEventNotifications,
 			Dimensions: map[string]string{
 				metric.DimensionModelId:   modelId.String(),
 				metric.DimensionErrorType: metric.DimensionDefault,

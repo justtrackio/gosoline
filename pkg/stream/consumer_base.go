@@ -429,9 +429,9 @@ func (c *consumerBase) writeMetricDurationAndProcessedCount(ctx context.Context,
 	c.metricWriter.Write(ctx, metric.Data{
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameConsumerDuration,
+			MetricName: metricNameConsumerProcessDuration,
 			Dimensions: map[string]string{
-				dimensionConsumer: c.name,
+				dimensionConsumerName: c.name,
 			},
 			Unit:  metric.UnitMillisecondsAverage,
 			Value: float64(duration.Milliseconds()),

@@ -123,6 +123,32 @@ backend-writer injection. This prevents batch-size and produce-duration observat
 unnamespaced or incorrectly named gauges when no zero defaults were registered. The regular writer
 path retains its metric identities, units and standard messaging duration boundaries.
 
+### Metric and dimension constant names
+
+Go constant identifiers now follow their canonical values, including plural event names, duration
+and size suffixes, and attribute qualifiers. This source-only correction does not change emitted
+metric names, dimensions, units, histogram boundaries, or schema `v2.0`.
+
+Update callers of these exported constants; the old identifiers have no compatibility aliases:
+
+| Package | Previous identifier | Current identifier | Unchanged value |
+|---|---|---|---|
+| `pkg/httpserver` | `MetricHttpConcurrentRequests` | `MetricHttpActiveRequestCount` | `active_request.count` |
+| `pkg/httpserver` | `MetricHttpOpenConnections` | `MetricHttpConnectionCount` | `connection.count` |
+| `pkg/httpserver` | `MetricHttpRequestsRejected` | `MetricHttpRejectedRequests` | `rejected.requests` |
+| `pkg/grpcserver` | `MetricRpcServerDuration` | `MetricRpcServerRequestDuration` | `request.duration` |
+| `pkg/kafka` | `DimensionBroker` | `DimensionBrokerAddress` | `broker.address` |
+| `pkg/kafka` | `DimensionClient` | `DimensionClientName` | `client.name` |
+| `pkg/kafka` | `DimensionTopic` | `DimensionTopicName` | `topic.name` |
+| `pkg/kafka` | `DimensionPartition` | `DimensionPartitionId` | `partition.id` |
+| `pkg/kafka` | `MetricNameBrokerThrottleTime` | `MetricNameBrokerThrottleDuration` | `throttle.duration` |
+| `pkg/kafka` | `MetricNameBrokerThrottleCount` | `MetricNameBrokerThrottles` | `throttles` |
+| `pkg/kafka` | `MetricNameProduceBatchBytes` | `MetricNameProduceBatchSize` | `produce.batch.size` |
+| `pkg/kafka` | `MetricNameProduceBatchBytesCmp` | `MetricNameProduceBatchCompressedSize` | `produce.batch.compressed.size` |
+| `pkg/kafka` | `MetricNameFetchBatchBytes` | `MetricNameFetchBatchSize` | `fetch.batch.size` |
+| `pkg/kafka` | `MetricNameFetchBatchBytesCmp` | `MetricNameFetchBatchCompressedSize` | `fetch.batch.compressed.size` |
+| `pkg/limit` | `MetricNameRateLimitTake` | `MetricNameRateLimitTakes` | `takes` |
+
 ## HTTP metric migrations
 
 HTTP client request-start, completion, and server response volumes are restored as independent Counter instruments; the duration histograms remain latency distributions. The previous entries below are source-level metric-family identifiers, not literal v1 exporter names; the old exported names depended on the writer and, for some writers, application identity.
@@ -139,7 +165,7 @@ For CloudWatch only, every matched routed response Counter observation emits exa
 
 For CloudWatch only, each matched rejected request also emits exactly one same-name `KindTotal` datum with the same value, unit, priority, and event boundary, dimensioned by exactly `name`. This server-level `UnitCount` projection uses `Sum` and has one zero default per server; the detailed route/method Counter and its existing route/method zero defaults remain unchanged. OpenTelemetry and Prometheus skip `KindTotal` and export only the detailed Counter, so the projection does not double-count in those exporters.
 
-The exported `pkg/httpserver` constants `MetricHttpRequestCount`, `MetricHttpRequestCountPerRoute`, `MetricHttpRequestResponseTime`, and `MetricHttpStatus` remain removed; no v1 Go aliases are restored. The current `MetricHttpRequestsRejected` constant names the leaf `rejected.requests`.
+The exported `pkg/httpserver` constants `MetricHttpRequestCount`, `MetricHttpRequestCountPerRoute`, `MetricHttpRequestResponseTime`, and `MetricHttpStatus` remain removed; no v1 Go aliases are restored. The current `MetricHttpRejectedRequests` constant names the leaf `rejected.requests`.
 
 `http.client.requests` and `http.client.completed.requests` have no zero defaults. A successful response carries the numeric code and class with the default `error.type`; a transport failure or cancellation carries `response.status_code="{{default}}"` and `response.status_class="{{default}}"`, with `error.type="request_failed"` or `"request_canceled"`, respectively. In Prometheus, the default `error.type` label is `error_type=""`; OTEL omits the attribute and CloudWatch omits the default dimension. A 5xx-response volume query can use the rendered counter `sum(gosoline_http_client_completed_requests_total{response_status_class="5xx"})`. The duration histogram continues to record latency separately.
 

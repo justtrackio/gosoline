@@ -10,8 +10,8 @@ import (
 const (
 	metricNamespace = "limit"
 
-	MetricNameRateLimitTake           = "takes"
-	metricNameRateLimitAttemptedTake  = "attempted.takes"
+	MetricNameRateLimitTakes          = "takes"
+	metricNameRateLimitAttemptedTakes = "attempted.takes"
 	metricNameRateLimitThrottledTakes = "throttled.takes"
 
 	// dimensionOutcome distinguishes the mutually exclusive terminal result of a take.
@@ -26,8 +26,8 @@ const (
 )
 
 func init() {
-	metric.RegisterHelp(metricNamespace, MetricNameRateLimitTake, "rate limiter token takes that completed, by outcome and error type")
-	metric.RegisterHelp(metricNamespace, metricNameRateLimitAttemptedTake, "attempts to take a rate limiter token")
+	metric.RegisterHelp(metricNamespace, MetricNameRateLimitTakes, "rate limiter token takes that completed, by outcome and error type")
+	metric.RegisterHelp(metricNamespace, metricNameRateLimitAttemptedTakes, "attempts to take a rate limiter token")
 	metric.RegisterHelp(metricNamespace, metricNameRateLimitThrottledTakes, "rate limiter token takes throttled while waiting")
 }
 
@@ -49,7 +49,7 @@ func NewMetricMiddlewareWithInterfaces(metricWriter metric.Writer) *metricMiddle
 
 // OnTake records an attempt as soon as the limiter starts processing it.
 func (m metricMiddleware) OnTake(ctx context.Context, i Invocation) {
-	m.write(ctx, m.buildMetric(metricNameRateLimitAttemptedTake, i))
+	m.write(ctx, m.buildMetric(metricNameRateLimitAttemptedTakes, i))
 }
 
 func (m metricMiddleware) OnRelease(ctx context.Context, i Invocation) {
@@ -66,7 +66,7 @@ func (m metricMiddleware) OnError(ctx context.Context, i Invocation) {
 
 // buildTake reports one mutually exclusive terminal result of a take.
 func (m metricMiddleware) buildTake(i Invocation, outcome string, errorType string) *metric.Datum {
-	datum := m.buildMetric(MetricNameRateLimitTake, i)
+	datum := m.buildMetric(MetricNameRateLimitTakes, i)
 	datum.Dimensions[dimensionOutcome] = outcome
 	datum.Dimensions[metric.DimensionErrorType] = errorType
 

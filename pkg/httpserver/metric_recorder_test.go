@@ -16,7 +16,7 @@ import (
 
 func TestServerMetricRecorder_ConcurrentRequests(t *testing.T) {
 	writer := metricMocks.NewWriter(t)
-	expectWriteOne(writer, MetricHttpConcurrentRequests, []float64{1, 2, 1, 0})
+	expectWriteOne(writer, MetricHttpActiveRequestCount, []float64{1, 2, 1, 0})
 	recorder := newServerMetricRecorderWithInterfaces("api", clock.NewFakeClock(), writer, time.Hour)
 
 	recorder.TrackRequestStarted(t.Context())
@@ -27,7 +27,7 @@ func TestServerMetricRecorder_ConcurrentRequests(t *testing.T) {
 
 func TestServerMetricRecorder_OpenConnections(t *testing.T) {
 	writer := metricMocks.NewWriter(t)
-	expectWriteOne(writer, MetricHttpOpenConnections, []float64{1, 2, 1, 0})
+	expectWriteOne(writer, MetricHttpConnectionCount, []float64{1, 2, 1, 0})
 	recorder := newServerMetricRecorderWithInterfaces("api", clock.NewFakeClock(), writer, time.Hour)
 
 	recorder.TrackConnectionOpened(t.Context())
@@ -38,11 +38,11 @@ func TestServerMetricRecorder_OpenConnections(t *testing.T) {
 
 func TestServerMetricRecorder_RunSamplesCurrentValues(t *testing.T) {
 	writer := metricMocks.NewWriter(t)
-	writer.EXPECT().WriteOne(matcher.Context, matchMetricDatum(MetricHttpConcurrentRequests, 1)).Return()
-	writer.EXPECT().WriteOne(matcher.Context, matchMetricDatum(MetricHttpOpenConnections, 1)).Return()
+	writer.EXPECT().WriteOne(matcher.Context, matchMetricDatum(MetricHttpActiveRequestCount, 1)).Return()
+	writer.EXPECT().WriteOne(matcher.Context, matchMetricDatum(MetricHttpConnectionCount, 1)).Return()
 	writer.EXPECT().Write(matcher.Context, matchMetricData(t, map[string]float64{
-		MetricHttpConcurrentRequests: 1,
-		MetricHttpOpenConnections:    1,
+		MetricHttpActiveRequestCount: 1,
+		MetricHttpConnectionCount:    1,
 	})).Return().Twice()
 
 	recorder := newServerMetricRecorderWithInterfaces("api", clock.NewFakeClock(), writer, time.Hour)

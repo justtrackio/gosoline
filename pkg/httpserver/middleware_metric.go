@@ -12,12 +12,12 @@ const (
 	// MetricHttpRequestDuration records an HTTP server request's latency with response status.
 	// Statusless counters report request totals; response counters report status by route and server.
 	MetricHttpRequestDuration  = "request.duration"
-	MetricHttpRequestsRejected = "rejected.requests"
+	MetricHttpRejectedRequests = "rejected.requests"
 
-	metricRequests       = "requests"
-	metricRouteRequests  = "routed.requests"
-	metricResponses      = "responses"
-	metricRouteResponses = "routed.responses"
+	metricRequests        = "requests"
+	metricRoutedRequests  = "routed.requests"
+	metricResponses       = "responses"
+	metricRoutedResponses = "routed.responses"
 
 	dimensionServerName  = "name"
 	dimensionRoute       = "route"
@@ -120,7 +120,7 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 		},
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricRouteResponses,
+			MetricName: metricRoutedResponses,
 			Dimensions: routedResponseDimensions,
 			Unit:       metric.UnitCount,
 			Value:      1.0,
@@ -128,7 +128,7 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 		},
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricRouteResponses,
+			MetricName: metricRoutedResponses,
 			Dimensions: routedResponseTotalDimensions,
 			Unit:       metric.UnitCount,
 			Value:      1.0,
@@ -144,7 +144,7 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 		},
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricRouteRequests,
+			MetricName: metricRoutedRequests,
 			Dimensions: routeDimensions,
 			Unit:       metric.UnitCount,
 			Value:      1.0,
@@ -156,7 +156,7 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 		data = append(data,
 			&metric.Datum{
 				Priority:   metric.PriorityHigh,
-				MetricName: MetricHttpRequestsRejected,
+				MetricName: MetricHttpRejectedRequests,
 				Dimensions: routeDimensions,
 				Unit:       metric.UnitCount,
 				Value:      1.0,
@@ -164,7 +164,7 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 			},
 			&metric.Datum{
 				Priority:   metric.PriorityHigh,
-				MetricName: MetricHttpRequestsRejected,
+				MetricName: MetricHttpRejectedRequests,
 				Dimensions: serverDimensions,
 				Unit:       metric.UnitCount,
 				Value:      1.0,
@@ -191,7 +191,7 @@ func getMetricMiddlewareDefaults(name string, definitions ...Definition) metric.
 		Kind:       metric.KindCounter.Build(),
 	}, &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		MetricName: MetricHttpRequestsRejected,
+		MetricName: MetricHttpRejectedRequests,
 		Dimensions: serverDimensions,
 		Unit:       metric.UnitCount,
 		Value:      0.0,
@@ -206,7 +206,7 @@ func getMetricMiddlewareDefaults(name string, definitions ...Definition) metric.
 		defaults = append(defaults,
 			&metric.Datum{
 				Priority:   metric.PriorityHigh,
-				MetricName: metricRouteRequests,
+				MetricName: metricRoutedRequests,
 				Dimensions: routeDimensions,
 				Unit:       metric.UnitCount,
 				Value:      0.0,
@@ -214,7 +214,7 @@ func getMetricMiddlewareDefaults(name string, definitions ...Definition) metric.
 			},
 			&metric.Datum{
 				Priority:   metric.PriorityHigh,
-				MetricName: MetricHttpRequestsRejected,
+				MetricName: MetricHttpRejectedRequests,
 				Dimensions: routeDimensions,
 				Unit:       metric.UnitCount,
 				Value:      0.0,

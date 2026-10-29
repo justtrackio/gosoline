@@ -1146,8 +1146,8 @@ func (s *ConsumerTestSuite) TestConsumerRunIgnoresRetryableFetchError() {
 
 	dims := metric.Dimensions{
 		kafka.DimensionClientType: kafka.ClientTypeConsumer,
-		kafka.DimensionClient:     "test-consumer",
-		kafka.DimensionTopic:      "test-topic",
+		kafka.DimensionClientName: "test-consumer",
+		kafka.DimensionTopicName:  "test-topic",
 	}
 	expectedMetrics := metric.Data{
 		{

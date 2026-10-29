@@ -15,15 +15,15 @@ import (
 const (
 	metricNamespace = "conc.scheduler"
 
-	metricNameBatchSize = "batch.tasks"
-	metricNameTaskDelay = "task.queue.duration"
+	metricNameBatchTasks        = "batch.tasks"
+	metricNameTaskQueueDuration = "task.queue.duration"
 
-	dimensionScheduler = "name"
+	dimensionSchedulerName = "name"
 )
 
 func init() {
-	metric.RegisterHelp(metricNamespace, metricNameBatchSize, "tasks the scheduler ran per batch")
-	metric.RegisterHelp(metricNamespace, metricNameTaskDelay, "time a task waited before the scheduler ran it")
+	metric.RegisterHelp(metricNamespace, metricNameBatchTasks, "tasks the scheduler ran per batch")
+	metric.RegisterHelp(metricNamespace, metricNameTaskQueueDuration, "time a task waited before the scheduler ran it")
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Scheduler
@@ -209,9 +209,9 @@ func (s scheduler[T]) executeBatches(ctx context.Context, batchQueue chan jobBat
 func (s scheduler[T]) writeTaskDelayMetric(ctx context.Context, took time.Duration) {
 	s.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		MetricName: metricNameTaskDelay,
+		MetricName: metricNameTaskQueueDuration,
 		Dimensions: map[string]string{
-			dimensionScheduler: s.name,
+			dimensionSchedulerName: s.name,
 		},
 		Value: float64(took.Milliseconds()),
 	})
@@ -220,9 +220,9 @@ func (s scheduler[T]) writeTaskDelayMetric(ctx context.Context, took time.Durati
 func (s scheduler[T]) writeBatchSizeMetric(ctx context.Context, batchSize int) {
 	s.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		MetricName: metricNameBatchSize,
+		MetricName: metricNameBatchTasks,
 		Dimensions: map[string]string{
-			dimensionScheduler: s.name,
+			dimensionSchedulerName: s.name,
 		},
 		Value: float64(batchSize),
 	})
@@ -232,9 +232,9 @@ func getDefaultMetrics(name string) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameTaskDelay,
+			MetricName: metricNameTaskQueueDuration,
 			Dimensions: map[string]string{
-				dimensionScheduler: name,
+				dimensionSchedulerName: name,
 			},
 			Value: 0,
 			Unit:  metric.UnitMillisecondsAverage,
@@ -242,9 +242,9 @@ func getDefaultMetrics(name string) metric.Data {
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameBatchSize,
+			MetricName: metricNameBatchTasks,
 			Dimensions: map[string]string{
-				dimensionScheduler: name,
+				dimensionSchedulerName: name,
 			},
 			Value: 0,
 			Unit:  metric.UnitCountAverage,

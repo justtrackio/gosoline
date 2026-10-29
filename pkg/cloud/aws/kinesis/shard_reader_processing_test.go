@@ -276,8 +276,8 @@ func testShardReaderRecoversHandlerPanic(t *testing.T, mode ProcessingMode) {
 			Namespace:  metricNamespaceCloudAwsKinesis,
 			MetricName: metricNameConsumedMessages,
 			Dimensions: metric.Dimensions{
-				dimensionStream:           "",
-				dimensionShard:            "",
+				dimensionStreamName:       "",
+				dimensionPartitionId:      "",
 				metric.DimensionErrorType: errorTypeProcessingFailed,
 			},
 			Value: 1,
@@ -289,7 +289,7 @@ func testShardReaderRecoversHandlerPanic(t *testing.T, mode ProcessingMode) {
 			Namespace:  metricNamespaceCloudAwsKinesis,
 			MetricName: metricNameConsumedMessages,
 			Dimensions: metric.Dimensions{
-				dimensionStream:           "",
+				dimensionStreamName:       "",
 				metric.DimensionErrorType: errorTypeProcessingFailed,
 			},
 			Value: 1,

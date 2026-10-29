@@ -14,8 +14,8 @@ const (
 	MetricNameDbOperationDuration = "operation.duration"
 	metricNameDbOperations        = "operations"
 
-	// dimensionOperation is the semantic-convention attribute naming the database operation.
-	dimensionOperation = "operation.name"
+	// dimensionOperationName is the semantic-convention attribute naming the database operation.
+	dimensionOperationName = "operation.name"
 )
 
 func init() {
@@ -118,7 +118,7 @@ func dbOperationDimensions(op string, modelId string, errorType string) map[stri
 	}
 
 	return map[string]string{
-		dimensionOperation:        op,
+		dimensionOperationName:    op,
 		metric.DimensionModelId:   modelId,
 		metric.DimensionErrorType: errorType,
 	}

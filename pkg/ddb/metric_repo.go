@@ -85,7 +85,7 @@ func operationDimensions(op string, modelId string, errorType string) map[string
 	}
 
 	return map[string]string{
-		dimensionOperation:        op,
+		dimensionOperationName:    op,
 		metric.DimensionModelId:   modelId,
 		metric.DimensionErrorType: errorType,
 	}

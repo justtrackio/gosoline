@@ -35,6 +35,8 @@ The authored names follow the grammar defined here:
    except for explicitly documented all-processed totals.
 7. Components lowercase, words joined by `_`, hierarchy by `.`.
 8. An attribute key never repeats its metric's namespace.
+9. Keep Go constant identifiers aligned with their canonical values. When a metric or attribute value
+   changes, update its identifier and all references together; do not keep misleading names or aliases.
 
 ## Authored names and writer rendering
 

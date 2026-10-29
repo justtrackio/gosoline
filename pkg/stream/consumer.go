@@ -9,11 +9,11 @@ import (
 const (
 	metricNamespace = "stream"
 
-	metricNameConsumerDuration        = "process.duration"
-	metricNameConsumerProcessedCount  = "consumed.messages"
+	metricNameConsumerProcessDuration = "process.duration"
+	metricNameConsumedMessages        = "consumed.messages"
 	metricNameConsumerRetryOperations = "retry.operations"
 
-	dimensionConsumer       = "consumer.name"
+	dimensionConsumerName   = "consumer.name"
 	dimensionRetryOperation = "operation"
 
 	retryOperationGet = "get"
@@ -27,14 +27,14 @@ const (
 )
 
 func init() {
-	metric.RegisterHelp(metricNamespace, metricNameConsumerDuration, "duration of a consumer processing operation, including batch operations")
-	metric.RegisterHelp(metricNamespace, metricNameConsumerProcessedCount, "messages a consumer processed, including overlapping error-type diagnostics")
+	metric.RegisterHelp(metricNamespace, metricNameConsumerProcessDuration, "duration of a consumer processing operation, including batch operations")
+	metric.RegisterHelp(metricNamespace, metricNameConsumedMessages, "messages a consumer processed, including overlapping error-type diagnostics")
 	metric.RegisterHelp(metricNamespace, metricNameConsumerRetryOperations, "retry queue operations a consumer performed, including overlapping error diagnostics")
-	metric.RegisterHelp(metricNamespace, metricNameMessageCount, "messages a producer daemon accepted for delivery")
-	metric.RegisterHelp(metricNamespace, metricNameBatchSize, "messages a producer daemon wrote per batch")
-	metric.RegisterHelp(metricNamespace, metricNameAggregateSize, "messages a producer daemon combined into one aggregate")
+	metric.RegisterHelp(metricNamespace, metricNameProducedMessages, "messages a producer daemon accepted for delivery")
+	metric.RegisterHelp(metricNamespace, metricNameBatchMessages, "messages a producer daemon wrote per batch")
+	metric.RegisterHelp(metricNamespace, metricNameAggregateMessages, "messages a producer daemon combined into one aggregate")
 	metric.RegisterHelp(metricNamespace, metricNameIdleDuration, "time a producer daemon waited before flushing a partial batch")
-	metric.RegisterHelp(metricNamespace, metricNameRedisListInputLength, "messages a redis list input currently holds")
+	metric.RegisterHelp(metricNamespace, metricNameRedisListInputMessageCount, "messages a redis list input currently holds")
 	metric.RegisterHelp(metricNamespace, metricNameRedisListInputReads, "read operations a redis list input performed")
 	metric.RegisterHelp(metricNamespace, metricNameRedisListOutputWrites, "write operations a redis list output performed")
 }
@@ -65,9 +65,9 @@ type IgnorableGetModelError interface {
 func consumedMessagesDatum(consumer string, errorType string, value float64) *metric.Datum {
 	return &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		MetricName: metricNameConsumerProcessedCount,
+		MetricName: metricNameConsumedMessages,
 		Dimensions: map[string]string{
-			dimensionConsumer:         consumer,
+			dimensionConsumerName:     consumer,
 			metric.DimensionErrorType: errorType,
 		},
 		Value: value,
@@ -81,7 +81,7 @@ func retryOperationsDatum(consumer, operation, errorType string, value float64) 
 		Priority:   metric.PriorityHigh,
 		MetricName: metricNameConsumerRetryOperations,
 		Dimensions: map[string]string{
-			dimensionConsumer:         consumer,
+			dimensionConsumerName:     consumer,
 			dimensionRetryOperation:   operation,
 			metric.DimensionErrorType: errorType,
 		},

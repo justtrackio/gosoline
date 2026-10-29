@@ -9,11 +9,11 @@ import (
 // Dimension keys for all Kafka metrics. A key an OpenTelemetry semantic convention defines is spelled
 // the way the convention spells it.
 const (
-	DimensionClientType = "client.type"
-	DimensionClient     = "client.name"
-	DimensionTopic      = "topic.name"
-	DimensionPartition  = "partition.id"
-	DimensionBroker     = "broker.address"
+	DimensionClientType    = "client.type"
+	DimensionClientName    = "client.name"
+	DimensionTopicName     = "topic.name"
+	DimensionPartitionId   = "partition.id"
+	DimensionBrokerAddress = "broker.address"
 )
 
 // The values DimensionClientType takes, naming which side of the connection reported the metric.
@@ -43,10 +43,10 @@ type MetricSpec struct {
 // carried, so the Prometheus label set is the same whatever the caller reports.
 func MetricPair(spec MetricSpec) metric.Data {
 	partitionDimensions := metric.Dimensions{
-		DimensionClientType: spec.ClientType,
-		DimensionClient:     spec.ClientName,
-		DimensionTopic:      spec.Topic,
-		DimensionPartition:  fmt.Sprintf("%d", spec.Partition),
+		DimensionClientType:  spec.ClientType,
+		DimensionClientName:  spec.ClientName,
+		DimensionTopicName:   spec.Topic,
+		DimensionPartitionId: fmt.Sprintf("%d", spec.Partition),
 	}
 
 	if spec.ErrorType != "" {

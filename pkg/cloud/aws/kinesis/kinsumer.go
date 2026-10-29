@@ -554,7 +554,7 @@ func (k *kinsumer) shardDistributionDatum(name string, value float64) *metric.Da
 		Namespace:  metricNamespaceCloudAwsKinesis,
 		MetricName: name,
 		Dimensions: metric.Dimensions{
-			dimensionStream: string(k.fullStreamName),
+			dimensionStreamName: string(k.fullStreamName),
 		},
 		Value: value,
 		Unit:  metric.UnitCountMaximum,

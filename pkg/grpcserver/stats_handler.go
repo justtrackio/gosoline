@@ -14,7 +14,7 @@ import (
 const metricNamespace = "rpc.server"
 
 func init() {
-	metric.RegisterHelp(metricNamespace, MetricRpcServerDuration, "duration of a gRPC server call")
+	metric.RegisterHelp(metricNamespace, MetricRpcServerRequestDuration, "duration of a gRPC server call")
 	metric.RegisterHelp(metricNamespace, metricRpcServerRequests, "gRPC server calls completed by service and method")
 }
 
@@ -23,9 +23,9 @@ type key int
 const (
 	contextKey key = 0
 
-	// MetricRpcServerDuration records the latency distribution of a gRPC server call.
-	MetricRpcServerDuration = "request.duration"
-	metricRpcServerRequests = "requests"
+	// MetricRpcServerRequestDuration records the latency distribution of a gRPC server call.
+	MetricRpcServerRequestDuration = "request.duration"
+	metricRpcServerRequests        = "requests"
 
 	// The semantic-convention attributes identifying the RPC that was served.
 	MetricDimensionRpcService = "service"
@@ -156,7 +156,7 @@ func (s *statsHandler) writeMetrics(ctx context.Context, holder *statsHolder) {
 		},
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
-			MetricName: MetricRpcServerDuration,
+			MetricName: MetricRpcServerRequestDuration,
 			Dimensions: metric.Dimensions{
 				MetricDimensionRpcService: service,
 				MetricDimensionRpcMethod:  method,

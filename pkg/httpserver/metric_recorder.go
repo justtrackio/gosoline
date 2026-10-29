@@ -13,19 +13,19 @@ const (
 	metricNamespace = "http.server"
 
 	concurrencyMetricSampleInterval = 10 * time.Second
-	MetricHttpConcurrentRequests    = "active_request.count"
-	MetricHttpOpenConnections       = "connection.count"
+	MetricHttpActiveRequestCount    = "active_request.count"
+	MetricHttpConnectionCount       = "connection.count"
 )
 
 func init() {
-	metric.RegisterHelp(metricNamespace, MetricHttpConcurrentRequests, "HTTP requests the server is currently handling")
-	metric.RegisterHelp(metricNamespace, MetricHttpOpenConnections, "connections the HTTP server currently holds open")
+	metric.RegisterHelp(metricNamespace, MetricHttpActiveRequestCount, "HTTP requests the server is currently handling")
+	metric.RegisterHelp(metricNamespace, MetricHttpConnectionCount, "connections the HTTP server currently holds open")
 	metric.RegisterHelp(metricNamespace, MetricHttpRequestDuration, "duration of an HTTP server request")
-	metric.RegisterHelp(metricNamespace, MetricHttpRequestsRejected, "HTTP requests the server rejected before handling them")
+	metric.RegisterHelp(metricNamespace, MetricHttpRejectedRequests, "HTTP requests the server rejected before handling them")
 	metric.RegisterHelp(metricNamespace, metricRequests, "HTTP requests received by the server")
-	metric.RegisterHelp(metricNamespace, metricRouteRequests, "HTTP server requests by route and method")
+	metric.RegisterHelp(metricNamespace, metricRoutedRequests, "HTTP server requests by route and method")
 	metric.RegisterHelp(metricNamespace, metricResponses, "HTTP responses returned by the server, by status code and class")
-	metric.RegisterHelp(metricNamespace, metricRouteResponses, "HTTP responses returned by the server by route, method, status code and class")
+	metric.RegisterHelp(metricNamespace, metricRoutedResponses, "HTTP responses returned by the server by route, method, status code and class")
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name ServerMetricRecorder
@@ -97,17 +97,17 @@ func (r *serverMetricRecorder) Run(ctx context.Context) error {
 
 func (r *serverMetricRecorder) writeCurrent(ctx context.Context) {
 	r.writer.Write(ctx, metric.Data{
-		r.buildGaugeDatum(MetricHttpConcurrentRequests, r.activeRequests.Load()),
-		r.buildGaugeDatum(MetricHttpOpenConnections, r.openConnections.Load()),
+		r.buildGaugeDatum(MetricHttpActiveRequestCount, r.activeRequests.Load()),
+		r.buildGaugeDatum(MetricHttpConnectionCount, r.openConnections.Load()),
 	})
 }
 
 func (r *serverMetricRecorder) writeConcurrentRequests(ctx context.Context, value int64) {
-	r.writer.WriteOne(ctx, r.buildGaugeDatum(MetricHttpConcurrentRequests, value))
+	r.writer.WriteOne(ctx, r.buildGaugeDatum(MetricHttpActiveRequestCount, value))
 }
 
 func (r *serverMetricRecorder) writeOpenConnections(ctx context.Context, value int64) {
-	r.writer.WriteOne(ctx, r.buildGaugeDatum(MetricHttpOpenConnections, value))
+	r.writer.WriteOne(ctx, r.buildGaugeDatum(MetricHttpConnectionCount, value))
 }
 
 func (r *serverMetricRecorder) buildGaugeDatum(metricName string, value int64) *metric.Datum {
@@ -125,7 +125,7 @@ func getMetricRecorderDefaults(name string) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: MetricHttpConcurrentRequests,
+			MetricName: MetricHttpActiveRequestCount,
 			Dimensions: metric.Dimensions{
 				dimensionServerName: name,
 			},
@@ -135,7 +135,7 @@ func getMetricRecorderDefaults(name string) metric.Data {
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: MetricHttpOpenConnections,
+			MetricName: MetricHttpConnectionCount,
 			Dimensions: metric.Dimensions{
 				dimensionServerName: name,
 			},

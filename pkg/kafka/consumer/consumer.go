@@ -27,7 +27,7 @@ const (
 	metricNamespaceKafkaConsumer = "kafka.consumer"
 
 	metricNameConsumedMessages = "consumed.messages"
-	metricNamePollCount        = "polls"
+	metricNamePolls            = "polls"
 	metricNamePollDuration     = "poll.duration"
 	metricNameProcessDuration  = "process.duration"
 	metricNameCommitDuration   = "commit.duration"
@@ -41,12 +41,12 @@ const (
 
 func init() {
 	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameConsumedMessages, "records a kafka consumer took in from its topic, by error type")
-	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNamePollCount, "poll requests a kafka consumer issued")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNamePolls, "poll requests a kafka consumer issued")
 	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNamePollDuration, "duration of a kafka consumer poll request")
 	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameProcessDuration, "duration of processing one record batch in a kafka consumer callback")
 	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameCommitDuration, "duration of a kafka consumer offset commit")
 	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameSleepDuration, "time a kafka consumer waited to honour a configured consume delay")
-	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameRebalanceCount, "consumer group rebalances a kafka consumer took part in")
+	metric.RegisterHelp(metricNamespaceKafkaConsumer, metricNameRebalances, "consumer group rebalances a kafka consumer took part in")
 }
 
 // healthCheckKeepAliveFallback is the keep alive interval used while waiting out a consume delay if no health check
@@ -646,7 +646,7 @@ func (c *consumer) runnerCount() int {
 }
 
 func (c *consumer) writeMetric(ctx context.Context, metricName string, value float64) {
-	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClient: c.name, kafka.DimensionTopic: c.fullTopicName}
+	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClientName: c.name, kafka.DimensionTopicName: c.fullTopicName}
 
 	c.metricWriter.Write(ctx, metric.Data{
 		{
@@ -659,12 +659,12 @@ func (c *consumer) writeMetric(ctx context.Context, metricName string, value flo
 }
 
 func (c *consumer) writeProcessingMetrics(ctx context.Context, pollDurationMs float64, processDuration float64) {
-	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClient: c.name, kafka.DimensionTopic: c.fullTopicName}
+	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClientName: c.name, kafka.DimensionTopicName: c.fullTopicName}
 
 	c.metricWriter.Write(ctx, metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNamePollCount,
+			MetricName: metricNamePolls,
 			Dimensions: dims,
 			Value:      1.0,
 		},
@@ -701,8 +701,8 @@ func consumedMessagesDatum(name, topicName, errorType string, value float64) *me
 		MetricName: metricNameConsumedMessages,
 		Dimensions: metric.Dimensions{
 			kafka.DimensionClientType: kafka.ClientTypeConsumer,
-			kafka.DimensionClient:     name,
-			kafka.DimensionTopic:      topicName,
+			kafka.DimensionClientName: name,
+			kafka.DimensionTopicName:  topicName,
 			metric.DimensionErrorType: errorType,
 		},
 		Value: value,
@@ -712,13 +712,13 @@ func consumedMessagesDatum(name, topicName, errorType string, value float64) *me
 }
 
 func getConsumerDefaultMetrics(name, topicName string) metric.Data {
-	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClient: name, kafka.DimensionTopic: topicName}
+	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClientName: name, kafka.DimensionTopicName: topicName}
 
 	return metric.Data{
 		consumedMessagesDatum(name, topicName, metric.DimensionDefault, 0.0),
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNamePollCount,
+			MetricName: metricNamePolls,
 			Dimensions: dims,
 			Unit:       metric.UnitCount,
 			Kind:       metric.KindCounter.Build(),
@@ -746,7 +746,7 @@ func getConsumerDefaultMetrics(name, topicName string) metric.Data {
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameRebalanceCount,
+			MetricName: metricNameRebalances,
 			Dimensions: dims,
 			Unit:       metric.UnitCount,
 			Kind:       metric.KindCounter.Build(),

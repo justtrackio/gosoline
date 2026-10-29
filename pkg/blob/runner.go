@@ -20,12 +20,12 @@ import (
 const (
 	metricNamespace = "blob"
 
-	metricName      = "batch.operations"
-	dimensionOp     = "operation"
-	operationCopy   = "Copy"
-	operationDelete = "Delete"
-	operationRead   = "Read"
-	operationWrite  = "Write"
+	metricName         = "batch.operations"
+	dimensionOperation = "operation"
+	operationCopy      = "Copy"
+	operationDelete    = "Delete"
+	operationRead      = "Read"
+	operationWrite     = "Write"
 )
 
 func init() {
@@ -263,7 +263,7 @@ func (r *batchRunner) writeMetric(ctx context.Context, operation string) {
 		MetricName: metricName,
 		Priority:   metric.PriorityHigh,
 		Dimensions: map[string]string{
-			dimensionOp: operation,
+			dimensionOperation: operation,
 		},
 		Value: 1.0,
 	})
@@ -278,7 +278,7 @@ func getDefaultRunnerMetrics() []*metric.Datum {
 			MetricName: metricName,
 			Priority:   metric.PriorityHigh,
 			Dimensions: map[string]string{
-				dimensionOp: operation,
+				dimensionOperation: operation,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,

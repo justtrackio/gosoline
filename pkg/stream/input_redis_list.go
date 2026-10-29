@@ -17,11 +17,11 @@ import (
 )
 
 const (
-	metricNameRedisListInputLength = "message.count"
-	metricNameRedisListInputReads  = "reads"
+	metricNameRedisListInputMessageCount = "message.count"
+	metricNameRedisListInputReads        = "reads"
 
-	// dimensionList names the redis list a message is read from or written to.
-	dimensionList = "list.name"
+	// dimensionListName names the redis list a message is read from or written to.
+	dimensionListName = "list.name"
 )
 
 type RedisListInputSettings struct {
@@ -187,9 +187,9 @@ func (i *redisListInput) writeListLengthMetric(ctx context.Context) {
 
 	data := metric.Data{{
 		Priority:   metric.PriorityHigh,
-		MetricName: metricNameRedisListInputLength,
+		MetricName: metricNameRedisListInputMessageCount,
 		Dimensions: map[string]string{
-			dimensionList: redisListDestination(i.settings.ServerName, i.settings.Key),
+			dimensionListName: redisListDestination(i.settings.ServerName, i.settings.Key),
 		},
 		Unit:  metric.UnitCountAverage,
 		Value: float64(llen),
@@ -204,7 +204,7 @@ func (i *redisListInput) writeListReadMetric(ctx context.Context) {
 		Priority:   metric.PriorityHigh,
 		MetricName: metricNameRedisListInputReads,
 		Dimensions: map[string]string{
-			dimensionList: redisListDestination(i.settings.ServerName, i.settings.Key),
+			dimensionListName: redisListDestination(i.settings.ServerName, i.settings.Key),
 		},
 		Value: 1.0,
 	}}
@@ -218,7 +218,7 @@ func getRedisListInputDefaultMetrics(settings *RedisListInputSettings) metric.Da
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameRedisListInputReads,
 			Dimensions: map[string]string{
-				dimensionList: redisListDestination(settings.ServerName, settings.Key),
+				dimensionListName: redisListDestination(settings.ServerName, settings.Key),
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,

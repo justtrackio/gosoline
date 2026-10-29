@@ -14,29 +14,29 @@ const (
 	metricNamespace = "kvstore"
 
 	// number of items currently stored in the store (if available)
-	metricNameKvStoreSize = "item.count"
+	metricNameKvStoreItemCount = "item.count"
 	// number of successful read items, separated by whether the store served them itself
-	metricNameKvStoreRead = "reads"
+	metricNameKvStoreReads = "reads"
 	// number of read items requested from the store, including failed calls
-	metricNameKvStoreAttemptedRead = "attempted.reads"
+	metricNameKvStoreAttemptedReads = "attempted.reads"
 	// number of items written to the store
-	metricNameKvStoreWrite = "writes"
+	metricNameKvStoreWrites = "writes"
 	// number of items deleted from the store
-	metricNameKvStoreDelete = "deletes"
+	metricNameKvStoreDeletes = "deletes"
 
-	dimensionModel = "model.id"
-	dimensionStore = "store.type"
+	dimensionModelId   = "model.id"
+	dimensionStoreType = "store.type"
 
 	// dimensionHit tells apart a read the store served from its own data from one it did not.
 	dimensionHit = "hit"
 )
 
 func init() {
-	metric.RegisterHelp(metricNamespace, metricNameKvStoreRead, "successful read operations performed against a key-value store, by whether the store served them itself")
-	metric.RegisterHelp(metricNamespace, metricNameKvStoreAttemptedRead, "read operations attempted against a key-value store")
-	metric.RegisterHelp(metricNamespace, metricNameKvStoreWrite, "write operations performed against a key-value store")
-	metric.RegisterHelp(metricNamespace, metricNameKvStoreDelete, "delete operations performed against a key-value store")
-	metric.RegisterHelp(metricNamespace, metricNameKvStoreSize, "items a key-value store currently holds")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreReads, "successful read operations performed against a key-value store, by whether the store served them itself")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreAttemptedReads, "read operations attempted against a key-value store")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreWrites, "write operations performed against a key-value store")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreDeletes, "delete operations performed against a key-value store")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreItemCount, "items a key-value store currently holds")
 }
 
 type MetricStore[T any] struct {
@@ -172,7 +172,7 @@ func (s *MetricStore[T]) recordSize(sizedStore SizedStore[T]) {
 func (s *MetricStore[T]) recordSizeValue(ctx context.Context, size int64) {
 	s.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		MetricName: metricNameKvStoreSize,
+		MetricName: metricNameKvStoreItemCount,
 		Dimensions: s.dimensions(),
 		Value:      float64(size),
 		Unit:       metric.UnitCount,
@@ -183,7 +183,7 @@ func (s *MetricStore[T]) recordSizeValue(ctx context.Context, size int64) {
 func (s *MetricStore[T]) recordAttemptedReads(ctx context.Context, reads int) {
 	s.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		MetricName: metricNameKvStoreAttemptedRead,
+		MetricName: metricNameKvStoreAttemptedReads,
 		Dimensions: s.dimensions(),
 		Value:      float64(reads),
 		Unit:       metric.UnitCount,
@@ -205,7 +205,7 @@ func (s *MetricStore[T]) recordHit(ctx context.Context, hit bool, value int64) {
 
 	s.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		MetricName: metricNameKvStoreRead,
+		MetricName: metricNameKvStoreReads,
 		Dimensions: dimensions,
 		Value:      float64(value),
 		Unit:       metric.UnitCount,
@@ -214,11 +214,11 @@ func (s *MetricStore[T]) recordHit(ctx context.Context, hit bool, value int64) {
 }
 
 func (s *MetricStore[T]) recordWrites(ctx context.Context, count int) {
-	s.record(ctx, metricNameKvStoreWrite, int64(count))
+	s.record(ctx, metricNameKvStoreWrites, int64(count))
 }
 
 func (s *MetricStore[T]) recordDeletes(ctx context.Context, count int) {
-	s.record(ctx, metricNameKvStoreDelete, int64(count))
+	s.record(ctx, metricNameKvStoreDeletes, int64(count))
 }
 
 func (s *MetricStore[T]) record(ctx context.Context, name string, value int64) {
@@ -232,8 +232,8 @@ func (s *MetricStore[T]) record(ctx context.Context, name string, value int64) {
 
 func (s *MetricStore[T]) dimensions() metric.Dimensions {
 	return metric.Dimensions{
-		dimensionModel: s.model,
-		dimensionStore: s.store,
+		dimensionModelId:   s.model,
+		dimensionStoreType: s.store,
 	}
 }
 
@@ -249,11 +249,11 @@ func boolToInt(b bool) int {
 func readDefault(model string, store string, hit bool) *metric.Datum {
 	return &metric.Datum{
 		Priority:   metric.PriorityHigh,
-		MetricName: metricNameKvStoreRead,
+		MetricName: metricNameKvStoreReads,
 		Dimensions: metric.Dimensions{
-			dimensionModel: model,
-			dimensionStore: store,
-			dimensionHit:   strconv.FormatBool(hit),
+			dimensionModelId:   model,
+			dimensionStoreType: store,
+			dimensionHit:       strconv.FormatBool(hit),
 		},
 		Unit:  metric.UnitCount,
 		Value: 0.0,
@@ -264,8 +264,8 @@ func readDefault(model string, store string, hit bool) *metric.Datum {
 func getDefaultMetrics(model string, store string) metric.Data {
 	// no default for the item count, if we don't know the size, it is not 0
 	names := []string{
-		metricNameKvStoreWrite,
-		metricNameKvStoreDelete,
+		metricNameKvStoreWrites,
+		metricNameKvStoreDeletes,
 	}
 
 	defaults := metric.Data{
@@ -273,10 +273,10 @@ func getDefaultMetrics(model string, store string) metric.Data {
 		readDefault(model, store, false),
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameKvStoreAttemptedRead,
+			MetricName: metricNameKvStoreAttemptedReads,
 			Dimensions: metric.Dimensions{
-				dimensionModel: model,
-				dimensionStore: store,
+				dimensionModelId:   model,
+				dimensionStoreType: store,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
@@ -288,8 +288,8 @@ func getDefaultMetrics(model string, store string) metric.Data {
 			Priority:   metric.PriorityHigh,
 			MetricName: name,
 			Dimensions: map[string]string{
-				dimensionModel: model,
-				dimensionStore: store,
+				dimensionModelId:   model,
+				dimensionStoreType: store,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
