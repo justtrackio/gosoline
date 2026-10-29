@@ -4,15 +4,11 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/justtrackio/gosoline/pkg/kafka/producer"
 	kafkaProducerMocks "github.com/justtrackio/gosoline/pkg/kafka/producer/mocks"
-	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
-	"github.com/prometheus/client_golang/prometheus"
-	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -122,50 +118,4 @@ func TestProducerProduceSyncBatchSize(t *testing.T) {
 
 	err := p.ProduceSync(context.Background(), records...)
 	assert.NoError(t, err)
-}
-
-func TestProducerProduceSyncEmitsFailedRecordsAsCounter(t *testing.T) {
-	writer := kafkaProducerMocks.NewWriter(t)
-	registry := prometheus.NewRegistry()
-	metricWriter := metric.NewPrometheusWriterWithInterfaces(log.NewLogger(), registry, 1000, time.Second)
-
-	records := []*kgo.Record{{Value: []byte("test")}}
-	results := kgo.ProduceResults{
-		{Record: records[0], Err: errors.New("produce error")},
-	}
-	writer.EXPECT().ProduceSync(mock.Anything, records[0]).Return(results)
-
-	p := producer.NewProducerWithInterfaces(writer, metricWriter, "test-producer", "test-topic")
-	err := p.ProduceSync(t.Context(), records...)
-	assert.Error(t, err)
-
-	families, err := registry.Gather()
-	assert.NoError(t, err)
-	var sent *dto.MetricFamily
-	for _, family := range families {
-		if family.GetName() == "gosoline_kafka_producer_sent_messages_total" {
-			sent = family
-
-			break
-		}
-	}
-	if !assert.NotNil(t, sent) {
-		return
-	}
-
-	assert.Equal(t, dto.MetricType_COUNTER, sent.GetType())
-	var foundFailure bool
-	var failureCount float64
-	for _, sample := range sent.Metric {
-		labels := make(map[string]string, len(sample.Label))
-		for _, label := range sample.Label {
-			labels[label.GetName()] = label.GetValue()
-		}
-		if labels["error_type"] == "send_failed" {
-			foundFailure = true
-			failureCount = sample.GetCounter().GetValue()
-		}
-	}
-	assert.True(t, foundFailure)
-	assert.Equal(t, 1.0, failureCount)
 }

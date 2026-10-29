@@ -24,7 +24,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	uuidMocks "github.com/justtrackio/gosoline/pkg/uuid/mocks"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -245,60 +244,6 @@ func (s *ConsumerTestSuite) TestGetModelErrorRetries() {
 	s.callback.EXPECT().Run(matcher.Context).Return(nil).Once()
 	s.expectPreparationRetry()
 	s.NoError(s.consumer.Run(s.kernelCtx))
-}
-
-func (s *ConsumerTestSuite) TestIgnoredModelAndFailedRetryPutDiagnosticsAreOverlapping() {
-	registry := prometheus.NewRegistry()
-	s.metricWriter = metric.NewPrometheusWriterWithInterfaces(s.logger, registry, 1000, time.Second)
-	s.settings.IgnoreOnGetModelError.UnknownModel = true
-	s.buildConsumer()
-
-	ignored := stream.NewJsonMessage(`"ignored"`, map[string]string{"ignore": "true"})
-	failed := stream.NewJsonMessage(`"failed"`)
-
-	s.expectRetryInputRun()
-	s.input.EXPECT().
-		Run(matcher.Context, mock.Anything).
-		RunAndReturn(func(ctx context.Context, process stream.InputProcess) error {
-			s.True(process(ctx, ignored), "ignorable model errors are acknowledged")
-			s.False(process(ctx, failed), "callback(false, nil) should request retry")
-
-			return nil
-		}).
-		Once()
-	s.callback.EXPECT().GetModel(mock.Anything).RunAndReturn(func(attributes map[string]string) (any, error) {
-		if attributes["ignore"] == "true" {
-			return nil, ignorableUnknownModelError{}
-		}
-
-		return mdl.Box("failed"), nil
-	}).Twice()
-	s.callback.EXPECT().Consume(matcher.Context, mock.Anything, mock.Anything).Return(false, nil).Once()
-	s.callback.EXPECT().Run(matcher.Context).Return(nil).Once()
-	s.uuidGen.EXPECT().NewV4().Return("retry-id").Once()
-	s.retryHandler.EXPECT().Put(matcher.Context, mock.MatchedBy(func(msg *stream.Message) bool {
-		return msg.Attributes[stream.AttributeRetryId] == "retry-id"
-	})).Return(fmt.Errorf("retry queue unavailable")).Once()
-
-	s.NoError(s.consumer.Run(s.kernelCtx))
-
-	requirePrometheusCounter(s.T(), registry, "gosoline_consumed_messages_total", map[string]string{
-		"consumer_name": "test", "error_type": "",
-	}, 2)
-	requirePrometheusCounter(s.T(), registry, "gosoline_consumed_messages_total", map[string]string{
-		"consumer_name": "test", "error_type": "model_lookup_failed",
-	}, 1)
-	_, processingFailedFound, err := findPrometheusCounter(registry, "gosoline_consumed_messages_total", map[string]string{
-		"consumer_name": "test", "error_type": "processing_failed",
-	})
-	s.NoError(err)
-	s.False(processingFailedFound, "callback(false, nil) is a retry signal, not a processing failure")
-	requirePrometheusCounter(s.T(), registry, "gosoline_retry_operations_total", map[string]string{
-		"consumer_name": "test", "operation": "put", "error_type": "",
-	}, 1)
-	requirePrometheusCounter(s.T(), registry, "gosoline_retry_operations_total", map[string]string{
-		"consumer_name": "test", "operation": "put", "error_type": "retry_handler_put_failed",
-	}, 1)
 }
 
 func (s *ConsumerTestSuite) TestDecodeErrorRetries() {

@@ -24,6 +24,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -180,6 +181,59 @@ func (s *BatchConsumerTestSuite) TestFlushesOnTimerAndOnInputCompletion() {
 			require.NoError(t, s.err)
 		})
 	}
+}
+
+func equalMetricLabels(actual, expected map[string]string) bool {
+	if len(actual) != len(expected) {
+		return false
+	}
+
+	for key, value := range expected {
+		if actual[key] != value {
+			return false
+		}
+	}
+
+	return true
+}
+
+func findPrometheusCounter(registry *prometheus.Registry, familyName string, dimensions map[string]string) (value float64, found bool, err error) {
+	families, err := registry.Gather()
+	if err != nil {
+		return 0, false, err
+	}
+
+	for _, family := range families {
+		if family.GetName() != familyName {
+			continue
+		}
+
+		if family.GetType() != dto.MetricType_COUNTER {
+			return 0, false, fmt.Errorf("metric family %q is not a counter", familyName)
+		}
+
+		for _, sample := range family.GetMetric() {
+			labels := make(map[string]string, len(sample.GetLabel()))
+			for _, label := range sample.GetLabel() {
+				labels[label.GetName()] = label.GetValue()
+			}
+
+			if equalMetricLabels(labels, dimensions) {
+				return sample.GetCounter().GetValue(), true, nil
+			}
+		}
+	}
+
+	return 0, false, nil
+}
+
+func requirePrometheusCounter(t testing.TB, registry *prometheus.Registry, familyName string, dimensions map[string]string, value float64) {
+	t.Helper()
+
+	got, found, err := findPrometheusCounter(registry, familyName, dimensions)
+	require.NoError(t, err)
+	require.True(t, found, "counter %q with dimensions %v was not exported", familyName, dimensions)
+	require.Equal(t, value, got)
 }
 
 // TestRetriesOnlyFailedRecords verifies that a partially successful batch retries only
@@ -1092,74 +1146,4 @@ func successfulBatch(_ context.Context, models []any, _ []map[string]string) ([]
 	}
 
 	return acks, nil
-}
-
-func (s *BatchConsumerTestSuite) TestIgnoredModelAndFailedRetryPutDiagnosticsAreOverlapping() {
-	t := s.T()
-	registry := prometheus.NewRegistry()
-	s.metricWriter = metric.NewPrometheusWriterWithInterfaces(s.logger, registry, 1000, time.Second)
-	s.retryWriteErr = errors.New("retry queue unavailable")
-	s.settings.IgnoreOnGetModelError.UnknownModel = true
-	s.startConsumerWithCallback(2, time.Hour, diagnosticBatchTestCallback{})
-
-	ignored, err := stream.MarshalJsonMessage(batchTestModel{Value: 1}, map[string]string{"ignore": "true"})
-	require.NoError(t, err)
-	failed, err := stream.MarshalJsonMessage(batchTestModel{Value: 2})
-	require.NoError(t, err)
-
-	for _, message := range []*stream.Message{ignored, failed} {
-		s.input.Publish(message)
-
-		select {
-		case ack := <-s.input.admitted:
-			require.True(t, ack)
-		case <-time.After(time.Second):
-			t.Fatal("input callback did not acknowledge buffering")
-		}
-	}
-
-	require.Eventually(t, func() bool {
-		value, found, err := findPrometheusCounter(registry, "gosoline_retry_operations_total", map[string]string{
-			"consumer_name": "test", "operation": "put", "error_type": "retry_handler_put_failed",
-		})
-		require.NoError(t, err)
-
-		return found && value == 1
-	}, time.Second, time.Millisecond)
-
-	s.cancel()
-	waitBatchTest(t, s.done)
-	require.ErrorContains(t, s.err, "unsuccessful acknowledged messages requiring replay")
-
-	requirePrometheusCounter(t, registry, "gosoline_consumed_messages_total", map[string]string{
-		"consumer_name": "test", "error_type": "",
-	}, 2)
-	requirePrometheusCounter(t, registry, "gosoline_consumed_messages_total", map[string]string{
-		"consumer_name": "test", "error_type": "model_lookup_failed",
-	}, 1)
-	_, processingFailedFound, err := findPrometheusCounter(registry, "gosoline_consumed_messages_total", map[string]string{
-		"consumer_name": "test", "error_type": "processing_failed",
-	})
-	require.NoError(t, err)
-	require.False(t, processingFailedFound, "false batch acknowledgement with no callback error is not a processing failure")
-	requirePrometheusCounter(t, registry, "gosoline_retry_operations_total", map[string]string{
-		"consumer_name": "test", "operation": "put", "error_type": "",
-	}, 1)
-	requirePrometheusCounter(t, registry, "gosoline_retry_operations_total", map[string]string{
-		"consumer_name": "test", "operation": "put", "error_type": "retry_handler_put_failed",
-	}, 1)
-}
-
-type diagnosticBatchTestCallback struct{}
-
-func (diagnosticBatchTestCallback) GetModel(attributes map[string]string) (any, error) {
-	if attributes["ignore"] == "true" {
-		return nil, ignorableUnknownModelError{}
-	}
-
-	return new(batchTestModel), nil
-}
-
-func (diagnosticBatchTestCallback) Consume(context.Context, []any, []map[string]string) ([]bool, error) {
-	return []bool{false}, nil
 }

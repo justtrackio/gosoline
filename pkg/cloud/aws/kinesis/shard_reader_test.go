@@ -815,57 +815,51 @@ func (s *shardReaderTestSuite) mockMetricCall(namespace string, metricName strin
 			Kind:  metric.KindTotal,
 		},
 	}
-	compareKind := !isKinesisShardReaderHistogram(namespace, metricName)
 
 	return s.metricWriter.EXPECT().Write(matcher.Context, mock.MatchedBy(func(actual metric.Data) bool {
-		return shardReaderMetricDataMatches(actual, expected, compareKind)
+		return metricDataMatches(expected, actual)
 	}))
 }
 
-func isKinesisShardReaderHistogram(namespace, metricName string) bool {
-	if namespace != "cloud.aws.kinesis" {
+func metricDataMatches(expected metric.Data, actual metric.Data) bool {
+	if len(expected) != len(actual) {
 		return false
 	}
 
-	switch metricName {
-	case "acquire.duration", "lag", "process.duration", "sleep.duration", "wait.duration":
-		return true
-	default:
-		return false
-	}
-}
-
-func shardReaderMetricDataMatches(actual metric.Data, expected metric.Data, compareKind bool) bool {
-	if len(actual) != len(expected) {
-		return false
-	}
-
-	for i, actualDatum := range actual {
-		expectedDatum := expected[i]
-		if actualDatum == nil || expectedDatum == nil {
-			if actualDatum != expectedDatum {
+	for i, expectedDatum := range expected {
+		actualDatum := actual[i]
+		if expectedDatum == nil || actualDatum == nil {
+			if expectedDatum != actualDatum {
 				return false
 			}
 
 			continue
 		}
 
-		if actualDatum.Priority != expectedDatum.Priority ||
-			actualDatum.Timestamp != expectedDatum.Timestamp ||
-			actualDatum.Namespace != expectedDatum.Namespace ||
-			actualDatum.MetricName != expectedDatum.MetricName ||
-			!reflect.DeepEqual(actualDatum.Dimensions, expectedDatum.Dimensions) ||
-			actualDatum.Value != expectedDatum.Value ||
-			actualDatum.Unit != expectedDatum.Unit {
-			return false
-		}
-
-		// process.duration's histogram uses explicit messaging buckets; the real OTEL exporter assertion
-		// verifies that instrument while this matcher focuses on the emitted batch's public data fields.
-		if (compareKind || i != 0) && !reflect.DeepEqual(actualDatum.Kind, expectedDatum.Kind) {
+		if expectedDatum.Priority != actualDatum.Priority ||
+			expectedDatum.Timestamp != actualDatum.Timestamp ||
+			expectedDatum.Namespace != actualDatum.Namespace ||
+			expectedDatum.MetricName != actualDatum.MetricName ||
+			!reflect.DeepEqual(expectedDatum.Dimensions, actualDatum.Dimensions) ||
+			expectedDatum.Value != actualDatum.Value ||
+			expectedDatum.Unit != actualDatum.Unit ||
+			!metricKindMatches(expectedDatum.Kind, actualDatum.Kind) {
 			return false
 		}
 	}
 
 	return true
+}
+
+func metricKindMatches(expected, actual metric.Kind) bool {
+	// Kind has no public discriminator, so compare only its semantic instrument type.
+	// Histogram bucket configuration is intentionally excluded from these datum expectations.
+	expectedKind := reflect.ValueOf(expected).FieldByName("kind")
+	actualKind := reflect.ValueOf(actual).FieldByName("kind")
+	if !expectedKind.IsValid() || !actualKind.IsValid() ||
+		expectedKind.Kind() != reflect.String || actualKind.Kind() != reflect.String {
+		return false
+	}
+
+	return expectedKind.String() == actualKind.String()
 }

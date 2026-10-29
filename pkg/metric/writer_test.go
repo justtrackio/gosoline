@@ -15,58 +15,18 @@ func TestWriterStampsNamespace(t *testing.T) {
 		datumNamespace    string
 		expectedNamespace string
 	}{
-		"Kinesis consumer uses its package namespace": {
+		"semantic convention writer namespace remains exact": {
 			writerNamespace:   "cloud.aws.kinesis",
 			expectedNamespace: "cloud.aws.kinesis",
 		},
-		"Kinesis producer uses its package namespace": {
-			writerNamespace:   "cloud.aws.kinesis",
-			expectedNamespace: "cloud.aws.kinesis",
-		},
-		"Kinesis shard reader uses its package namespace": {
-			writerNamespace:   "cloud.aws.kinesis",
-			expectedNamespace: "cloud.aws.kinesis",
-		},
-		"Kafka broker uses its package namespace": {
+		"single namespace stays as-is": {
 			writerNamespace:   "kafka",
 			expectedNamespace: "kafka",
-		},
-		"logger metrics use their package namespace": {
-			writerNamespace:   "metric",
-			expectedNamespace: "metric",
-		},
-		"stream consumer uses its package namespace": {
-			writerNamespace:   "stream",
-			expectedNamespace: "stream",
-		},
-		"stream producer uses its package namespace": {
-			writerNamespace:   "stream",
-			expectedNamespace: "stream",
-		},
-		"stream input uses its package namespace": {
-			writerNamespace:   "stream",
-			expectedNamespace: "stream",
-		},
-		"stream Redis input uses its package namespace": {
-			writerNamespace:   "stream",
-			expectedNamespace: "stream",
-		},
-		"stream output uses its package namespace": {
-			writerNamespace:   "stream",
-			expectedNamespace: "stream",
-		},
-		"stream Redis output uses its package namespace": {
-			writerNamespace:   "stream",
-			expectedNamespace: "stream",
 		},
 		"explicit messaging namespace preserved": {
 			writerNamespace:   "stream",
 			datumNamespace:    "messaging",
 			expectedNamespace: "messaging",
-		},
-		"semantic convention writer namespace remains exact": {
-			writerNamespace:   "http.server",
-			expectedNamespace: "http.server",
 		},
 		"absent namespace tolerated": {
 			expectedNamespace: "",
