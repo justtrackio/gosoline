@@ -56,12 +56,17 @@ and receives equivalent second-valued bounds; the other four remain authored in 
 CloudWatch observation units, values and reducers, detailed attributes and stream-only projections
 are unchanged.
 
-The other 15 histograms retain their generic exporter defaults; their bounds are in exported base
-units, not authored units. These defaults are not evidence of fit to observed workloads: values
-above 10 overflow Prometheus' finite count/byte buckets, while OpenTelemetry has no positive
-default boundary below 5 seconds for short custom-duration distributions. No claim is made that
-all histograms now have workload-ideal precision. See `pkg/metric/SEMCONV.md` for the complete
-unchanged-family list, default bounds, and primary recommendations.
+The other 15 histograms have no explicit semantic-convention profile. For unspecified bounds,
+OpenTelemetry and Prometheus both use the OpenTelemetry standard boundaries `[0, 5, 10, 25, 50,
+75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000]` in exported base units. This changes
+Prometheus's previous generic `DefBuckets` layout for implicit histograms; explicit profiles, including
+the messaging profile above, remain unchanged. Metric names, dimensions, units, recorded values, and
+routing remain unchanged; only implicit Prometheus bucket boundaries are aligned. These defaults
+are not evidence of fit to observed
+workloads: for custom durations, neither writer has a positive boundary below 5 seconds; the finite
+buckets end at 10000 in exported base units. No claim is made that all histograms now have
+workload-ideal precision. See `pkg/metric/SEMCONV.md` for the complete unchanged-family list, default
+bounds, and primary recommendations.
 
 Histogram changes do not rebucket stored data, so historical coarser distributions cannot recover
 finer percentile detail. HTTP percentile aggregation rejects mixed explicit-bound layouts rather

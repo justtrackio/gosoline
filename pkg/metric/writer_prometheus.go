@@ -18,6 +18,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 )
 
 func init() {
@@ -33,6 +34,10 @@ const prometheusNamespace = "gosoline"
 var (
 	_            Writer = &prometheusWriter{}
 	promReplacer        = strings.NewReplacer("-", "_")
+	// Use the SDK's aggregation choice to keep implicit Prometheus buckets aligned with OTEL.
+	prometheusDefaultHistogramBuckets = sdkmetric.DefaultAggregationSelector(
+		sdkmetric.InstrumentKindHistogram,
+	).(sdkmetric.AggregationExplicitBucketHistogram).Boundaries
 )
 
 type (
@@ -329,6 +334,8 @@ func (w *prometheusWriter) histogram(ctx context.Context, subsystem string, datu
 		} else {
 			buckets = scaleHistogramBuckets(datum.Unit, buckets)
 		}
+	} else {
+		buckets = prometheusDefaultHistogramBuckets
 	}
 
 	metric := w.createHistogram(subsystem, datum, buckets)

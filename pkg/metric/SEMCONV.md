@@ -122,7 +122,9 @@ resolution, not the measured event or its unit.
 | HTTP, RPC, and messaging | `[5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000]` | `[0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]` |
 | Database | `[1, 5, 10, 50, 100, 500, 1000, 5000, 10000]` | `[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10]` |
 
-The other 15 histograms retain their existing generic exporter defaults:
+The other 15 histograms have no semantic-specific explicit profile. For unspecified bounds, both
+exporters now use OpenTelemetry's standard default boundaries in the instrument's exported base
+unit:
 
 | Group | Histograms |
 |---|---|
@@ -135,12 +137,12 @@ histograms that means seconds; for count and byte histograms it means counts and
 | Exporter | Generic bounds in exported base units |
 |---|---|
 | OpenTelemetry | `[0, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000]` |
-| Prometheus (`DefBuckets`) | `[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]` |
+| Prometheus | `[0, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000]` |
 
-These generic defaults are not evidence of fit to observed workloads. In particular, Prometheus'
-finite buckets end at 10, so larger count or byte observations overflow them; OpenTelemetry has no
-positive default boundary below 5 seconds, giving short custom-duration distributions poor
-resolution. No custom bounds are inferred for these families, and no claim is made that every
+These shared defaults are not evidence of fit to observed workloads. Their first positive boundary is
+5 in the exported base unit (5 seconds for duration histograms), and their last finite boundary is
+10000. Short custom-duration distributions still have poor resolution; larger observations remain in
+the overflow bucket. No custom bounds are inferred for these families, and no claim is made that every
 histogram now has workload-ideal precision. Historical histogram data is not rebucketed: an older,
 coarser distribution cannot reconstruct finer percentile detail.
 

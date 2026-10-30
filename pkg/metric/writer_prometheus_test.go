@@ -508,3 +508,74 @@ func Test_promWriter_ScalesHistogramBucketsToBaseUnits(t *testing.T) {
 		assert.Equal(t, expectedCounts[i], bucket.GetCumulativeCount())
 	}
 }
+
+func Test_promWriter_DefaultAndExplicitHistogramBuckets(t *testing.T) {
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+
+	tests := []struct {
+		name       string
+		metricName string
+		kind       metric.Kind
+		value      float64
+		wantBounds []float64
+		wantCounts []uint64
+	}{
+		{
+			name:       "implicit OpenTelemetry defaults",
+			metricName: "record.duration",
+			kind:       metric.KindHistogram.Build(),
+			value:      7,
+			wantBounds: []float64{0, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000},
+			wantCounts: []uint64{0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+		},
+		{
+			name:       "explicit messaging profile",
+			metricName: "messaging.duration",
+			kind:       metric.KindHistogram.WithMessagingDurationBucketsInSeconds().Build(),
+			value:      0.06,
+			wantBounds: []float64{0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10},
+			wantCounts: []uint64{0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			registry := prometheus.NewRegistry()
+			writer := metric.NewPrometheusWriterWithInterfaces(logger, registry, 1000, writeGraceTime)
+			writer.WriteOne(t.Context(), &metric.Datum{
+				Priority:   metric.PriorityHigh,
+				Namespace:  "stream",
+				MetricName: test.metricName,
+				Value:      test.value,
+				Unit:       metric.UnitSeconds,
+				Kind:       test.kind,
+			})
+
+			families, err := registry.Gather()
+			assert.NoError(t, err)
+			if !assert.Len(t, families, 1) {
+				return
+			}
+
+			family := families[0]
+			assert.Equal(t, dto.MetricType_HISTOGRAM, family.GetType())
+			if !assert.Len(t, family.Metric, 1) {
+				return
+			}
+
+			histogram := family.Metric[0].GetHistogram()
+			if !assert.NotNil(t, histogram) {
+				return
+			}
+			assert.Equal(t, uint64(1), histogram.GetSampleCount())
+			if !assert.Len(t, histogram.Bucket, len(test.wantBounds)) {
+				return
+			}
+
+			for i, bucket := range histogram.Bucket {
+				assert.InDelta(t, test.wantBounds[i], bucket.GetUpperBound(), 1e-12)
+				assert.Equal(t, test.wantCounts[i], bucket.GetCumulativeCount())
+			}
+		})
+	}
+}
