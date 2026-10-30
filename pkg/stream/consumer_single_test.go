@@ -14,6 +14,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/metric"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
 	"github.com/justtrackio/gosoline/pkg/smpl"
 	smplMocks "github.com/justtrackio/gosoline/pkg/smpl/mocks"
@@ -66,7 +67,7 @@ type ConsumerTestSuite struct {
 	settings        stream.ConsumerSettings
 	logger          log.Logger
 	tracer          tracing.Tracer
-	metricWriter    *metricMocks.Writer
+	metricWriter    metric.Writer
 	encoder         stream.MessageEncoder
 	samplingDecider *smplMocks.Decider
 }
@@ -107,8 +108,9 @@ func (s *ConsumerTestSuite) SetupTest() {
 
 	s.logger = logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	s.tracer = tracing.NewLocalTracer()
-	s.metricWriter = metricMocks.NewWriter(s.T())
-	s.metricWriter.EXPECT().Write(matcher.Context, mock.Anything).Return().Maybe()
+	metricWriter := metricMocks.NewWriter(s.T())
+	metricWriter.EXPECT().Write(matcher.Context, mock.Anything).Return().Maybe()
+	s.metricWriter = metricWriter
 	s.encoder = stream.NewMessageEncoder(&stream.MessageEncoderSettings{})
 
 	s.settings = stream.ConsumerSettings{

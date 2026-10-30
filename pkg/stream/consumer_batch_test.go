@@ -13,6 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/metric"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
 	"github.com/justtrackio/gosoline/pkg/smpl"
 	"github.com/justtrackio/gosoline/pkg/smpl/smplctx"
@@ -22,6 +23,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/justtrackio/gosoline/pkg/uuid"
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -47,6 +50,7 @@ type BatchConsumerTestSuite struct {
 	output          *streamMocks.Output
 	logger          log.Logger
 	metrics         *metricMocks.Writer
+	metricWriter    metric.Writer
 	settings        stream.ConsumerSettings
 	batchSettings   stream.BatchConsumerSettings
 	samplingDecider smpl.Decider
@@ -94,6 +98,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 	s.logger = logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	s.metrics = metricMocks.NewWriter(t)
 	s.metrics.EXPECT().Write(matcher.Context, mock.Anything).Maybe()
+	s.metricWriter = s.metrics
 	s.settings = stream.ConsumerSettings{
 		Input: "consumer", IdleTimeout: time.Hour, GraceTime: 100 * time.Millisecond,
 		Retry:       stream.ConsumerRetrySettings{Enabled: true, Type: "sqs", GraceTime: 10 * time.Millisecond},
@@ -178,10 +183,66 @@ func (s *BatchConsumerTestSuite) TestFlushesOnTimerAndOnInputCompletion() {
 	}
 }
 
+func equalMetricLabels(actual, expected map[string]string) bool {
+	if len(actual) != len(expected) {
+		return false
+	}
+
+	for key, value := range expected {
+		if actual[key] != value {
+			return false
+		}
+	}
+
+	return true
+}
+
+func findPrometheusCounter(registry *prometheus.Registry, familyName string, dimensions map[string]string) (value float64, found bool, err error) {
+	families, err := registry.Gather()
+	if err != nil {
+		return 0, false, err
+	}
+
+	for _, family := range families {
+		if family.GetName() != familyName {
+			continue
+		}
+
+		if family.GetType() != dto.MetricType_COUNTER {
+			return 0, false, fmt.Errorf("metric family %q is not a counter", familyName)
+		}
+
+		for _, sample := range family.GetMetric() {
+			labels := make(map[string]string, len(sample.GetLabel()))
+			for _, label := range sample.GetLabel() {
+				labels[label.GetName()] = label.GetValue()
+			}
+
+			if equalMetricLabels(labels, dimensions) {
+				return sample.GetCounter().GetValue(), true, nil
+			}
+		}
+	}
+
+	return 0, false, nil
+}
+
+func requirePrometheusCounter(t testing.TB, registry *prometheus.Registry, familyName string, dimensions map[string]string, value float64) {
+	t.Helper()
+
+	got, found, err := findPrometheusCounter(registry, familyName, dimensions)
+	require.NoError(t, err)
+	require.True(t, found, "counter %q with dimensions %v was not exported", familyName, dimensions)
+	require.Equal(t, value, got)
+}
+
 // TestRetriesOnlyFailedRecords verifies that a partially successful batch retries only
 // the failed record, even when the callback also returns an error.
 func (s *BatchConsumerTestSuite) TestRetriesOnlyFailedRecords() {
 	t := s.T()
+	registry := prometheus.NewRegistry()
+	s.metricWriter = metric.NewPrometheusWriterWithInterfaces(s.logger, registry, 1000, time.Second)
+
 	var calls atomic.Int32
 	retried := make(chan int, 1)
 	s.startConsumer(2, 5*time.Millisecond, func(_ context.Context, models []any, _ []map[string]string) ([]bool, error) {
@@ -207,6 +268,9 @@ func (s *BatchConsumerTestSuite) TestRetriesOnlyFailedRecords() {
 	waitBatchTest(t, s.done)
 	require.NoError(t, s.err)
 	require.EqualValues(t, 2, calls.Load())
+	requirePrometheusCounter(t, registry, "gosoline_consumed_messages_total", map[string]string{
+		"consumer_name": "test", "error_type": "processing_failed",
+	}, 1)
 }
 
 // TestUsesRetryInputRedeliveryAndRecoversPanics covers callback errors and panics:
@@ -897,7 +961,7 @@ func (s *BatchConsumerTestSuite) startConsumerWithCallback(size int, interval ti
 	base := stream.NewConsumerBaseWithInterfaces(
 		uuid.New(),
 		s.logger,
-		s.metrics,
+		s.metricWriter,
 		tracing.NewLocalTracer(),
 		s.input,
 		stream.NewMessageEncoder(&stream.MessageEncoderSettings{Encoding: stream.EncodingJson, EncodeHandlers: handlers}),

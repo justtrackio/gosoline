@@ -3,6 +3,7 @@ package kvstore
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -10,17 +11,33 @@ import (
 )
 
 const (
-	// number of items stored in the store (if available)
-	metricNameKvStoreSize = "kvStoreSize"
-	// number of items we try to read from the store
-	metricNameKvStoreRead = "kvStoreRead"
-	// number of items found and read from the store
-	metricNameKvStoreHit = "kvStoreHit"
+	metricNamespace = "kvstore"
+
+	// number of items currently stored in the store (if available)
+	metricNameKvStoreItemCount = "item.count"
+	// number of successful read items, separated by whether the store served them itself
+	metricNameKvStoreReads = "reads"
+	// number of read items requested from the store, including failed calls
+	metricNameKvStoreAttemptedReads = "attempted.reads"
 	// number of items written to the store
-	metricNameKvStoreWrite = "kvStoreWrite"
+	metricNameKvStoreWrites = "writes"
 	// number of items deleted from the store
-	metricNameKvStoreDelete = "kvStoreDelete"
+	metricNameKvStoreDeletes = "deletes"
+
+	dimensionModelId   = "model.id"
+	dimensionStoreType = "store.type"
+
+	// dimensionHit tells apart a read the store served from its own data from one it did not.
+	dimensionHit = "hit"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreReads, "successful read operations performed against a key-value store, by whether the store served them itself")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreAttemptedReads, "read operations attempted against a key-value store")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreWrites, "write operations performed against a key-value store")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreDeletes, "delete operations performed against a key-value store")
+	metric.RegisterHelp(metricNamespace, metricNameKvStoreItemCount, "items a key-value store currently holds")
+}
 
 type MetricStore[T any] struct {
 	KvStore[T]
@@ -40,7 +57,7 @@ func NewMetricStoreWithInterfaces[T any](store KvStore[T], settings *Settings) K
 
 	s := &MetricStore[T]{
 		KvStore:      store,
-		metricWriter: metric.NewWriter(defaults...),
+		metricWriter: metric.NewWriter(metricNamespace, defaults...),
 		model:        modelIdString,
 		store:        storeName,
 	}
@@ -53,24 +70,22 @@ func NewMetricStoreWithInterfaces[T any](store KvStore[T], settings *Settings) K
 }
 
 func (s *MetricStore[T]) Contains(ctx context.Context, key any) (bool, error) {
-	s.recordReads(ctx, 1)
-
+	s.recordAttemptedReads(ctx, 1)
 	found, err := s.KvStore.Contains(ctx, key)
 
-	if found && err == nil {
-		s.recordHits(ctx, 1)
+	if err == nil {
+		s.recordReads(ctx, 1, boolToInt(found))
 	}
 
 	return found, err
 }
 
 func (s *MetricStore[T]) Get(ctx context.Context, key any, value *T) (bool, error) {
-	s.recordReads(ctx, 1)
-
+	s.recordAttemptedReads(ctx, 1)
 	found, err := s.KvStore.Get(ctx, key, value)
 
-	if found && err == nil {
-		s.recordHits(ctx, 1)
+	if err == nil {
+		s.recordReads(ctx, 1, boolToInt(found))
 	}
 
 	return found, err
@@ -82,12 +97,11 @@ func (s *MetricStore[T]) GetBatch(ctx context.Context, keys any, result any) ([]
 		return nil, fmt.Errorf("can not morph keys to slice of interfaces: %w", err)
 	}
 
-	s.recordReads(ctx, len(keySlice))
-
+	s.recordAttemptedReads(ctx, len(keySlice))
 	missing, err := s.KvStore.GetBatch(ctx, keySlice, result)
 
 	if err == nil {
-		s.recordHits(ctx, len(keySlice)-len(missing))
+		s.recordReads(ctx, len(keySlice), len(keySlice)-len(missing))
 	}
 
 	return missing, err
@@ -150,83 +164,138 @@ func (s *MetricStore[T]) recordSize(sizedStore SizedStore[T]) {
 		size := sizedStore.EstimateSize()
 
 		if size != nil {
-			s.record(context.Background(), metricNameKvStoreSize, *size)
+			s.recordSizeValue(context.Background(), *size)
 		}
 	}
 }
 
-func (s *MetricStore[T]) recordReads(ctx context.Context, count int) {
-	s.record(ctx, metricNameKvStoreRead, int64(count))
+func (s *MetricStore[T]) recordSizeValue(ctx context.Context, size int64) {
+	s.metricWriter.WriteOne(ctx, &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: metricNameKvStoreItemCount,
+		Dimensions: s.dimensions(),
+		Value:      float64(size),
+		Unit:       metric.UnitCount,
+		Kind:       metric.KindGauge.Build(),
+	})
 }
 
-func (s *MetricStore[T]) recordHits(ctx context.Context, count int) {
-	s.record(ctx, metricNameKvStoreHit, int64(count))
+func (s *MetricStore[T]) recordAttemptedReads(ctx context.Context, reads int) {
+	s.metricWriter.WriteOne(ctx, &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: metricNameKvStoreAttemptedReads,
+		Dimensions: s.dimensions(),
+		Value:      float64(reads),
+		Unit:       metric.UnitCount,
+		Kind:       metric.KindCounter.Build(),
+	})
+}
+
+// recordReads counts successful reads. A read the store served from its own data is the same metric
+// told apart by its hit attribute: hits are `reads{hit="true"}`, misses are `reads{hit="false"}`,
+// and the total successful read volume is the sum over both.
+func (s *MetricStore[T]) recordReads(ctx context.Context, reads int, hits int) {
+	s.recordHit(ctx, true, int64(hits))
+	s.recordHit(ctx, false, int64(reads-hits))
+}
+
+func (s *MetricStore[T]) recordHit(ctx context.Context, hit bool, value int64) {
+	dimensions := s.dimensions()
+	dimensions[dimensionHit] = strconv.FormatBool(hit)
+
+	s.metricWriter.WriteOne(ctx, &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: metricNameKvStoreReads,
+		Dimensions: dimensions,
+		Value:      float64(value),
+		Unit:       metric.UnitCount,
+		Kind:       metric.KindCounter.Build(),
+	})
 }
 
 func (s *MetricStore[T]) recordWrites(ctx context.Context, count int) {
-	s.record(ctx, metricNameKvStoreWrite, int64(count))
+	s.record(ctx, metricNameKvStoreWrites, int64(count))
 }
 
 func (s *MetricStore[T]) recordDeletes(ctx context.Context, count int) {
-	s.record(ctx, metricNameKvStoreDelete, int64(count))
+	s.record(ctx, metricNameKvStoreDeletes, int64(count))
 }
 
 func (s *MetricStore[T]) record(ctx context.Context, name string, value int64) {
 	s.metricWriter.WriteOne(ctx, &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: name,
-		Dimensions: map[string]string{
-			"model": s.model,
-			"store": s.store,
-		},
-		Value: float64(value),
-		Unit:  metric.UnitCount,
+		Dimensions: s.dimensions(),
+		Value:      float64(value),
 	})
 }
 
-func getDefaultMetrics(model string, store string) metric.Data {
-	// no default for the size, if we don't know the size, it is not 0
+func (s *MetricStore[T]) dimensions() metric.Dimensions {
+	return metric.Dimensions{
+		dimensionModelId:   s.model,
+		dimensionStoreType: s.store,
+	}
+}
 
-	return metric.Data{
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameKvStoreRead,
-			Dimensions: map[string]string{
-				"model": model,
-				"store": store,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+
+	return 0
+}
+
+// readDefault pre-registers one `reads` series so a dashboard has a line before the first read.
+func readDefault(model string, store string, hit bool) *metric.Datum {
+	return &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: metricNameKvStoreReads,
+		Dimensions: metric.Dimensions{
+			dimensionModelId:   model,
+			dimensionStoreType: store,
+			dimensionHit:       strconv.FormatBool(hit),
 		},
+		Unit:  metric.UnitCount,
+		Value: 0.0,
+		Kind:  metric.KindCounter.Build(),
+	}
+}
+
+func getDefaultMetrics(model string, store string) metric.Data {
+	// no default for the item count, if we don't know the size, it is not 0
+	names := []string{
+		metricNameKvStoreWrites,
+		metricNameKvStoreDeletes,
+	}
+
+	defaults := metric.Data{
+		readDefault(model, store, true),
+		readDefault(model, store, false),
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameKvStoreHit,
-			Dimensions: map[string]string{
-				"model": model,
-				"store": store,
+			MetricName: metricNameKvStoreAttemptedReads,
+			Dimensions: metric.Dimensions{
+				dimensionModelId:   model,
+				dimensionStoreType: store,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameKvStoreWrite,
-			Dimensions: map[string]string{
-				"model": model,
-				"store": store,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameKvStoreDelete,
-			Dimensions: map[string]string{
-				"model": model,
-				"store": store,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
 		},
 	}
+	for _, name := range names {
+		defaults = append(defaults, &metric.Datum{
+			Priority:   metric.PriorityHigh,
+			MetricName: name,
+			Dimensions: map[string]string{
+				dimensionModelId:   model,
+				dimensionStoreType: store,
+			},
+			Unit:  metric.UnitCount,
+			Value: 0.0,
+			Kind:  metric.KindCounter.Build(),
+		})
+	}
+
+	return defaults
 }

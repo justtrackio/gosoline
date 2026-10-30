@@ -10,10 +10,23 @@ import (
 )
 
 const (
+	metricNamespace = "http.server"
+
 	concurrencyMetricSampleInterval = 10 * time.Second
-	MetricHttpConcurrentRequests    = "HttpConcurrentRequests"
-	MetricHttpOpenConnections       = "HttpOpenConnections"
+	MetricHttpActiveRequestCount    = "active_request.count"
+	MetricHttpConnectionCount       = "connection.count"
 )
+
+func init() {
+	metric.RegisterHelp(metricNamespace, MetricHttpActiveRequestCount, "HTTP requests the server is currently handling")
+	metric.RegisterHelp(metricNamespace, MetricHttpConnectionCount, "connections the HTTP server currently holds open")
+	metric.RegisterHelp(metricNamespace, MetricHttpRequestDuration, "duration of an HTTP server request")
+	metric.RegisterHelp(metricNamespace, MetricHttpRejectedRequests, "HTTP requests the server rejected before handling them")
+	metric.RegisterHelp(metricNamespace, metricRequests, "HTTP requests received by the server")
+	metric.RegisterHelp(metricNamespace, metricRoutedRequests, "HTTP server requests by route and method")
+	metric.RegisterHelp(metricNamespace, metricResponses, "HTTP responses returned by the server, by status code and class")
+	metric.RegisterHelp(metricNamespace, metricRoutedResponses, "HTTP responses returned by the server by route, method, status code and class")
+}
 
 //go:generate go run github.com/vektra/mockery/v2 --name ServerMetricRecorder
 type ServerMetricRecorder interface {
@@ -36,7 +49,7 @@ type serverMetricRecorder struct {
 func newServerMetricRecorder(name string) ServerMetricRecorder {
 	defaults := getMetricRecorderDefaults(name)
 
-	return newServerMetricRecorderWithInterfaces(name, clock.Provider, metric.NewWriter(defaults...), concurrencyMetricSampleInterval)
+	return newServerMetricRecorderWithInterfaces(name, clock.Provider, metric.NewWriter(metricNamespace, defaults...), concurrencyMetricSampleInterval)
 }
 
 func newServerMetricRecorderWithInterfaces(name string, clock clock.Clock, writer metric.Writer, sampleInterval time.Duration) ServerMetricRecorder {
@@ -84,17 +97,17 @@ func (r *serverMetricRecorder) Run(ctx context.Context) error {
 
 func (r *serverMetricRecorder) writeCurrent(ctx context.Context) {
 	r.writer.Write(ctx, metric.Data{
-		r.buildGaugeDatum(MetricHttpConcurrentRequests, r.activeRequests.Load()),
-		r.buildGaugeDatum(MetricHttpOpenConnections, r.openConnections.Load()),
+		r.buildGaugeDatum(MetricHttpActiveRequestCount, r.activeRequests.Load()),
+		r.buildGaugeDatum(MetricHttpConnectionCount, r.openConnections.Load()),
 	})
 }
 
 func (r *serverMetricRecorder) writeConcurrentRequests(ctx context.Context, value int64) {
-	r.writer.WriteOne(ctx, r.buildGaugeDatum(MetricHttpConcurrentRequests, value))
+	r.writer.WriteOne(ctx, r.buildGaugeDatum(MetricHttpActiveRequestCount, value))
 }
 
 func (r *serverMetricRecorder) writeOpenConnections(ctx context.Context, value int64) {
-	r.writer.WriteOne(ctx, r.buildGaugeDatum(MetricHttpOpenConnections, value))
+	r.writer.WriteOne(ctx, r.buildGaugeDatum(MetricHttpConnectionCount, value))
 }
 
 func (r *serverMetricRecorder) buildGaugeDatum(metricName string, value int64) *metric.Datum {
@@ -102,10 +115,8 @@ func (r *serverMetricRecorder) buildGaugeDatum(metricName string, value int64) *
 		Priority:   metric.PriorityHigh,
 		MetricName: metricName,
 		Dimensions: metric.Dimensions{
-			"ServerName": r.name,
+			dimensionServerName: r.name,
 		},
-		Unit:  metric.UnitCountMaximum,
-		Kind:  metric.KindGauge.Build(),
 		Value: float64(value),
 	}
 }
@@ -114,9 +125,9 @@ func getMetricRecorderDefaults(name string) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: MetricHttpConcurrentRequests,
+			MetricName: MetricHttpActiveRequestCount,
 			Dimensions: metric.Dimensions{
-				"ServerName": name,
+				dimensionServerName: name,
 			},
 			Unit:  metric.UnitCountMaximum,
 			Kind:  metric.KindGauge.Build(),
@@ -124,9 +135,9 @@ func getMetricRecorderDefaults(name string) metric.Data {
 		},
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: MetricHttpOpenConnections,
+			MetricName: MetricHttpConnectionCount,
 			Dimensions: metric.Dimensions{
-				"ServerName": name,
+				dimensionServerName: name,
 			},
 			Unit:  metric.UnitCountMaximum,
 			Kind:  metric.KindGauge.Build(),
