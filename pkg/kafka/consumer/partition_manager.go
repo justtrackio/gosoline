@@ -46,6 +46,8 @@ func (p *PartitionManager) OnPartitionsLostOrRevoked(ctx context.Context, _ *kgo
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameRebalances,
 			Dimensions: dims,
+			Unit:       metric.UnitCount,
+			Kind:       metric.KindCounter.Build(),
 			Value:      1.0,
 		})
 	}

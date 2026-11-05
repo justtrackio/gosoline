@@ -52,8 +52,7 @@ func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 
-	defaultMetrics := getRedisListInputDefaultMetrics(settings)
-	mw := metric.NewWriter(metricNamespace, defaultMetrics...)
+	mw := metric.NewWriter(metricNamespace)
 
 	healthCheckTimer, err := clock.NewHealthCheckTimer(settings.HealthcheckTimeout)
 	if err != nil {
@@ -207,24 +206,11 @@ func (i *redisListInput) writeListReadMetric(ctx context.Context) {
 			dimensionListName: redisListDestination(i.settings.ServerName, i.settings.Key),
 		},
 		Value: 1.0,
+		Unit:  metric.UnitCount,
+		Kind:  metric.KindCounter.Build(),
 	}}
 
 	i.mw.Write(ctx, data)
-}
-
-func getRedisListInputDefaultMetrics(settings *RedisListInputSettings) metric.Data {
-	return metric.Data{
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameRedisListInputReads,
-			Dimensions: map[string]string{
-				dimensionListName: redisListDestination(settings.ServerName, settings.Key),
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
-		},
-	}
 }
 
 // redisListDestination names the redis list a stream reads from or writes to.

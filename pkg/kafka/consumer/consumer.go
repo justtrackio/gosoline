@@ -100,9 +100,6 @@ func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		return nil, fmt.Errorf("failed to create healthcheck timer: %w", err)
 	}
 
-	defaults := getConsumerDefaultMetrics(name, fullTopicName)
-	metricWriter := metric.NewWriter(metricNamespaceKafkaConsumer, defaults...)
-
 	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManagerConsumer(name, fullTopicName, conn.Brokers)); err != nil {
 		return nil, fmt.Errorf("failed to add kafka consumer lifecycle manager: %w", err)
 	}
@@ -110,6 +107,7 @@ func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	readerFactory := func(ctx context.Context, partitionManager *PartitionManager) (Reader, error) {
 		return NewReader(ctx, config, logger, settings, partitionManager, name)
 	}
+	metricWriter := metric.NewWriter(metricNamespaceKafkaConsumer)
 
 	return NewConsumerWithInterfaces(logger, clock.Provider, healthCheckTimer, readerFactory, settings, metricWriter, fullTopicName, name), nil
 }
@@ -647,12 +645,18 @@ func (c *consumer) runnerCount() int {
 
 func (c *consumer) writeMetric(ctx context.Context, metricName string, value float64) {
 	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClientName: c.name, kafka.DimensionTopicName: c.fullTopicName}
+	kind := metric.KindHistogram.Build()
+	if metricName == metricNameCommitDuration {
+		kind = metric.KindHistogram.WithMessagingDurationBuckets().Build()
+	}
 
 	c.metricWriter.Write(ctx, metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricName,
 			Dimensions: dims,
+			Unit:       metric.UnitMillisecondsAverage,
+			Kind:       kind,
 			Value:      value,
 		},
 	})
@@ -666,18 +670,24 @@ func (c *consumer) writeProcessingMetrics(ctx context.Context, pollDurationMs fl
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNamePolls,
 			Dimensions: dims,
+			Unit:       metric.UnitCount,
+			Kind:       metric.KindCounter.Build(),
 			Value:      1.0,
 		},
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNamePollDuration,
 			Dimensions: dims,
+			Unit:       metric.UnitMillisecondsAverage,
+			Kind:       metric.KindHistogram.WithMessagingDurationBuckets().Build(),
 			Value:      pollDurationMs,
 		},
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameProcessDuration,
 			Dimensions: dims,
+			Unit:       metric.UnitMillisecondsAverage,
+			Kind:       metric.KindHistogram.WithMessagingDurationBuckets().Build(),
 			Value:      processDuration,
 		},
 	})
@@ -708,56 +718,6 @@ func consumedMessagesDatum(name, topicName, errorType string, value float64) *me
 		Value: value,
 		Unit:  metric.UnitCount,
 		Kind:  metric.KindCounter.Build(),
-	}
-}
-
-func getConsumerDefaultMetrics(name, topicName string) metric.Data {
-	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeConsumer, kafka.DimensionClientName: name, kafka.DimensionTopicName: topicName}
-
-	return metric.Data{
-		consumedMessagesDatum(name, topicName, metric.DimensionDefault, 0.0),
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNamePolls,
-			Dimensions: dims,
-			Unit:       metric.UnitCount,
-			Kind:       metric.KindCounter.Build(),
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNamePollDuration,
-			Dimensions: dims,
-			Unit:       metric.UnitMillisecondsAverage,
-			Kind:       metric.KindHistogram.WithMessagingDurationBuckets().Build(),
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameProcessDuration,
-			Dimensions: dims,
-			Unit:       metric.UnitMillisecondsAverage,
-			Kind:       metric.KindHistogram.WithMessagingDurationBuckets().Build(),
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameCommitDuration,
-			Dimensions: dims,
-			Unit:       metric.UnitMillisecondsAverage,
-			Kind:       metric.KindHistogram.WithMessagingDurationBuckets().Build(),
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameRebalances,
-			Dimensions: dims,
-			Unit:       metric.UnitCount,
-			Kind:       metric.KindCounter.Build(),
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameSleepDuration,
-			Dimensions: dims,
-			Unit:       metric.UnitMillisecondsAverage,
-			Kind:       metric.KindHistogram.Build(),
-		},
 	}
 }
 

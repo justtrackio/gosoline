@@ -36,8 +36,7 @@ func NewRedisListOutput(ctx context.Context, config cfg.Config, logger log.Logge
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 
-	defaultMetrics := getRedisListOutputDefaultMetrics(settings)
-	mw := metric.NewWriter(metricNamespace, defaultMetrics...)
+	mw := metric.NewWriter(metricNamespace)
 
 	return NewRedisListOutputWithInterfaces(config, logger, mw, client, settings), nil
 }
@@ -83,22 +82,9 @@ func (o *redisListOutput) writeListWriteMetric(ctx context.Context, length int) 
 			dimensionListName: redisListDestination(o.settings.ServerName, o.settings.Key),
 		},
 		Value: float64(length),
+		Unit:  metric.UnitCount,
+		Kind:  metric.KindCounter.Build(),
 	}}
 
 	o.metricWriter.Write(ctx, data)
-}
-
-func getRedisListOutputDefaultMetrics(settings *RedisListOutputSettings) metric.Data {
-	return metric.Data{
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameRedisListOutputWrites,
-			Dimensions: map[string]string{
-				dimensionListName: redisListDestination(settings.ServerName, settings.Key),
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
-		},
-	}
 }

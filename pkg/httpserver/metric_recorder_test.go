@@ -85,15 +85,6 @@ func matchMetricData(t *testing.T, valuesByMetricName map[string]float64) any {
 	})
 }
 
-func TestGetMetricRecorderDefaults(t *testing.T) {
-	defaults := getMetricRecorderDefaults("api")
-
-	assert.Len(t, defaults, 2)
-	for _, datum := range defaults {
-		assertMetricDatum(t, datum, datum.MetricName, 0)
-	}
-}
-
 func isMetricDatum(datum *metric.Datum, metricName string, value float64) bool {
 	if datum == nil {
 		return false
@@ -103,16 +94,7 @@ func isMetricDatum(datum *metric.Datum, metricName string, value float64) bool {
 		datum.MetricName == metricName &&
 		datum.Dimensions[dimensionServerName] == "api" &&
 		len(datum.Dimensions) == 1 &&
-		datum.Unit == "" &&
-		reflect.DeepEqual(datum.Kind, metric.Kind{}) &&
+		datum.Unit == metric.UnitCountMaximum &&
+		reflect.DeepEqual(datum.Kind, metric.KindGauge.Build()) &&
 		datum.Value == value
-}
-
-func assertMetricDatum(t *testing.T, datum *metric.Datum, metricName string, value float64) {
-	assert.Equal(t, metric.PriorityHigh, datum.Priority)
-	assert.Equal(t, metricName, datum.MetricName)
-	assert.Equal(t, metric.Dimensions{dimensionServerName: "api"}, datum.Dimensions)
-	assert.Equal(t, metric.UnitCountMaximum, datum.Unit)
-	assert.Equal(t, metric.KindGauge.Build(), datum.Kind)
-	assert.Equal(t, value, datum.Value)
 }

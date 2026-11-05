@@ -26,20 +26,12 @@ const (
 	dimensionStatusClass = "response.status_class"
 )
 
-func NewMetricMiddleware(name string, metricRecorder ServerMetricRecorder) (middleware gin.HandlerFunc, setupHandler func(definitions []Definition)) {
-	// writer without any defaults until we initialize some defaults and overwrite it
+func NewMetricMiddleware(name string, metricRecorder ServerMetricRecorder) gin.HandlerFunc {
 	writer := metric.NewWriter(metricNamespace)
 
-	middleware = func(ginCtx *gin.Context) {
+	return func(ginCtx *gin.Context) {
 		metricMiddleware(name, ginCtx, writer, metricRecorder)
 	}
-
-	setupHandler = func(definitions []Definition) {
-		defaults := getMetricMiddlewareDefaults(name, definitions...)
-		writer = metric.NewWriter(metricNamespace, defaults...)
-	}
-
-	return middleware, setupHandler
 }
 
 func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, metricRecorder ServerMetricRecorder) {
@@ -96,7 +88,8 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 	}
 
 	data := make(metric.Data, 0, 8)
-	data = append(data,
+	data = append(
+		data,
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
 			MetricName: MetricHttpRequestDuration,
@@ -153,7 +146,8 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 	)
 
 	if wasRequestRejected(ginCtx.Request) {
-		data = append(data,
+		data = append(
+			data,
 			&metric.Datum{
 				Priority:   metric.PriorityHigh,
 				MetricName: MetricHttpRejectedRequests,
@@ -174,56 +168,6 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer, me
 	}
 
 	writer.Write(ginCtx.Request.Context(), data)
-}
-
-// getMetricMiddlewareDefaults reports zero for request and rejected-request counters.
-func getMetricMiddlewareDefaults(name string, definitions ...Definition) metric.Data {
-	serverDimensions := metric.Dimensions{
-		dimensionServerName: name,
-	}
-	defaults := make(metric.Data, 0, 2+2*len(definitions))
-	defaults = append(defaults, &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: metricRequests,
-		Dimensions: serverDimensions,
-		Unit:       metric.UnitCount,
-		Value:      0.0,
-		Kind:       metric.KindCounter.Build(),
-	}, &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: MetricHttpRejectedRequests,
-		Dimensions: serverDimensions,
-		Unit:       metric.UnitCount,
-		Value:      0.0,
-		Kind:       metric.KindTotal,
-	})
-	for _, definition := range definitions {
-		routeDimensions := metric.Dimensions{
-			dimensionServerName: name,
-			dimensionRoute:      definition.getAbsolutePath(),
-			dimensionMethod:     definition.httpMethod,
-		}
-		defaults = append(defaults,
-			&metric.Datum{
-				Priority:   metric.PriorityHigh,
-				MetricName: metricRoutedRequests,
-				Dimensions: routeDimensions,
-				Unit:       metric.UnitCount,
-				Value:      0.0,
-				Kind:       metric.KindCounter.Build(),
-			},
-			&metric.Datum{
-				Priority:   metric.PriorityHigh,
-				MetricName: MetricHttpRejectedRequests,
-				Dimensions: routeDimensions,
-				Unit:       metric.UnitCount,
-				Value:      0.0,
-				Kind:       metric.KindCounter.Build(),
-			},
-		)
-	}
-
-	return defaults
 }
 
 func httpStatusClass(statusCode int) string {

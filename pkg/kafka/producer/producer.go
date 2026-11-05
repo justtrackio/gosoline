@@ -70,8 +70,7 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		return nil, fmt.Errorf("failed to add kafka producer lifecycle manager: %w", err)
 	}
 
-	defaults := getProducerDefaultMetrics(name, fullTopicName)
-	metricWriter := metric.NewWriter(metricNamespaceKafkaProducer, defaults...)
+	metricWriter := metric.NewWriter(metricNamespaceKafkaProducer)
 
 	return NewProducerWithInterfaces(writer, metricWriter, name, fullTopicName), nil
 }
@@ -124,7 +123,8 @@ func (p *producer) ProduceSync(ctx context.Context, records ...*kgo.Record) erro
 			}
 		}
 
-		data = append(data,
+		data = append(
+			data,
 			recordsSentDatum(dims, metric.DimensionDefault, float64(sent)),
 			recordsSentDatum(dims, errorTypeSendFailed, float64(failed)),
 		)
@@ -162,32 +162,4 @@ func withErrorType(dims metric.Dimensions, errorType string) metric.Dimensions {
 	out[metric.DimensionErrorType] = errorType
 
 	return out
-}
-
-func getProducerDefaultMetrics(name, topicName string) metric.Data {
-	dims := metric.Dimensions{kafka.DimensionClientType: kafka.ClientTypeProducer, kafka.DimensionClientName: name, kafka.DimensionTopicName: topicName}
-
-	return metric.Data{
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameSentMessages,
-			Dimensions: withErrorType(dims, metric.DimensionDefault),
-			Unit:       metric.UnitCount,
-			Kind:       metric.KindCounter.Build(),
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameBatchRecords,
-			Dimensions: dims,
-			Unit:       metric.UnitCountAverage,
-			Kind:       metric.KindHistogram.Build(),
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameProduceDuration,
-			Dimensions: dims,
-			Unit:       metric.UnitMillisecondsAverage,
-			Kind:       metric.KindHistogram.WithMessagingDurationBuckets().Build(),
-		},
-	}
 }

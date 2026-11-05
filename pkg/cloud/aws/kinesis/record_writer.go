@@ -81,8 +81,7 @@ func NewRecordWriter(ctx context.Context, config cfg.Config, logger log.Logger, 
 		return nil, fmt.Errorf("can not get full stream name: %w", err)
 	}
 
-	defaultMetrics := getRecordWriterDefaultMetrics(string(fullStreamName))
-	metricWriter := metric.NewWriter(metricNamespaceCloudAwsKinesis, defaultMetrics...)
+	metricWriter := metric.NewWriter(metricNamespaceCloudAwsKinesis)
 
 	if client, err = ProvideClient(ctx, config, logger, settings.ClientName); err != nil {
 		return nil, fmt.Errorf("failed to provide kinesis client: %w", err)
@@ -305,26 +304,5 @@ func sentMessagesDimensions(streamName string, errorType string) metric.Dimensio
 	return metric.Dimensions{
 		dimensionStreamName:       streamName,
 		metric.DimensionErrorType: errorType,
-	}
-}
-
-func getRecordWriterDefaultMetrics(streamName string) metric.Data {
-	return metric.Data{
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameSentMessages,
-			Dimensions: sentMessagesDimensions(streamName, metric.DimensionDefault),
-			Unit:       metric.UnitCount,
-			Value:      0.0,
-			Kind:       metric.KindCounter.Build(),
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameBatchRecords,
-			Dimensions: map[string]string{dimensionStreamName: streamName},
-			Unit:       metric.UnitCountAverage,
-			Value:      0.0,
-			Kind:       metric.KindHistogram.Build(),
-		},
 	}
 }

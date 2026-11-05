@@ -51,8 +51,7 @@ func NewSubscriberCallbackFactory(
 	persistGraceTime time.Duration,
 ) stream.UntypedConsumerCallbackFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.UntypedConsumerCallback, error) {
-		defaultMetrics := getSubscriberCallbackDefaultMetrics(core.GetModelIds())
-		metricWriter := metric.NewWriter(metricNamespace, defaultMetrics...)
+		metricWriter := metric.NewWriter(metricNamespace)
 
 		callback := &SubscriberCallback{
 			logger:           logger,
@@ -72,8 +71,7 @@ func NewSubscriberCallbackWithInterfaces(
 	core SubscriberCore,
 	sourceModel SubscriberModel,
 ) *SubscriberCallback {
-	defaultMetrics := getSubscriberCallbackDefaultMetrics(core.GetModelIds())
-	metricWriter := metric.NewWriter(metricNamespace, defaultMetrics...)
+	metricWriter := metric.NewWriter(metricNamespace)
 
 	return &SubscriberCallback{
 		logger:           logger,
@@ -229,17 +227,4 @@ func eventDatum(modelId string, outcome string, errorType string, value float64)
 		Value: value,
 		Kind:  metric.KindCounter.Build(),
 	}
-}
-
-func getSubscriberCallbackDefaultMetrics(modelIds []string) []*metric.Datum {
-	defaults := make([]*metric.Datum, 0, len(modelIds)*2)
-
-	for _, modelId := range modelIds {
-		defaults = append(defaults,
-			eventDatum(modelId, OutcomeApplied, metric.DimensionDefault, 0.0),
-			eventDatum(modelId, OutcomeSkipped, metric.DimensionDefault, 0.0),
-		)
-	}
-
-	return defaults
 }

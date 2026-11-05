@@ -44,8 +44,6 @@ func (s *SubscriberCallbackTestSuite) SetupTest() {
 		ModelId: s.modelId,
 	}
 
-	s.core.EXPECT().GetModelIds().Return([]string{"justtrack.gosoline.mdlsub.testModel"}).Once()
-
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	s.callback = mdlsub.NewSubscriberCallbackWithInterfaces(
 		logger,
