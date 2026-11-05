@@ -71,7 +71,6 @@ func NewWithSettings(ctx context.Context, name string, definer Definer, settings
 			err                            error
 			tracingInstrumentor            tracing.Instrumentor
 			definitions                    *Definitions
-			definitionList                 []Definition
 			samplingMiddleware             gin.HandlerFunc
 			compressionMiddlewares         []gin.HandlerFunc
 			healthChecker                  kernel.HealthChecker
@@ -87,7 +86,7 @@ func NewWithSettings(ctx context.Context, name string, definer Definer, settings
 		}
 
 		metricRecorder := newServerMetricRecorder(name)
-		metricMiddleware, setupMetricMiddleware := NewMetricMiddleware(name, metricRecorder)
+		metricMiddleware := NewMetricMiddleware(name, metricRecorder)
 
 		if compressionMiddlewares, err = configureCompression(settings.Compression); err != nil {
 			return nil, fmt.Errorf("could not configure compression: %w", err)
@@ -118,11 +117,9 @@ func NewWithSettings(ctx context.Context, name string, definer Definer, settings
 			return nil, fmt.Errorf("could not define routes: %w", err)
 		}
 
-		if definitionList, err = buildRouter(definitions, router); err != nil {
+		if err = buildRouter(definitions, router); err != nil {
 			return nil, fmt.Errorf("could not build router: %w", err)
 		}
-
-		setupMetricMiddleware(definitionList)
 
 		if err = appendMetadata(ctx, name, router); err != nil {
 			return nil, fmt.Errorf("can not append metadata: %w", err)

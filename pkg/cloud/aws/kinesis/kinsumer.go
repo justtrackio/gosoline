@@ -172,8 +172,7 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		return nil, fmt.Errorf("failed to create healthcheck timer: %w", err)
 	}
 
-	shardReaderDefaults := getShardReaderDefaultMetrics(fullStreamName)
-	metricWriter := metric.NewWriter(metricNamespaceCloudAwsKinesis, shardReaderDefaults...)
+	metricWriter := metric.NewWriter(metricNamespaceCloudAwsKinesis)
 
 	shardReaderFactory := func(logger log.Logger, shardId ShardId) ShardReader {
 		return NewShardReaderWithInterfaces(

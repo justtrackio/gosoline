@@ -76,7 +76,7 @@ func NewScheduler[T any](config cfg.Config, batchRunner BatchRunner[T], name str
 		return nil, fmt.Errorf("failed to unmarshal scheduler settings for %s: %w", name, err)
 	}
 
-	metricWriter := metric.NewWriter(metricNamespace, getDefaultMetrics(name)...)
+	metricWriter := metric.NewWriter(metricNamespace)
 
 	return NewSchedulerWithSettings[T](batchRunner, metricWriter, name, settings), nil
 }
@@ -214,6 +214,8 @@ func (s scheduler[T]) writeTaskDelayMetric(ctx context.Context, took time.Durati
 			dimensionSchedulerName: s.name,
 		},
 		Value: float64(took.Milliseconds()),
+		Unit:  metric.UnitMillisecondsAverage,
+		Kind:  metric.KindHistogram.Build(),
 	})
 }
 
@@ -225,30 +227,7 @@ func (s scheduler[T]) writeBatchSizeMetric(ctx context.Context, batchSize int) {
 			dimensionSchedulerName: s.name,
 		},
 		Value: float64(batchSize),
+		Unit:  metric.UnitCountAverage,
+		Kind:  metric.KindHistogram.Build(),
 	})
-}
-
-func getDefaultMetrics(name string) metric.Data {
-	return metric.Data{
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameTaskQueueDuration,
-			Dimensions: map[string]string{
-				dimensionSchedulerName: name,
-			},
-			Value: 0,
-			Unit:  metric.UnitMillisecondsAverage,
-			Kind:  metric.KindHistogram.Build(),
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameBatchTasks,
-			Dimensions: map[string]string{
-				dimensionSchedulerName: name,
-			},
-			Value: 0,
-			Unit:  metric.UnitCountAverage,
-			Kind:  metric.KindHistogram.Build(),
-		},
-	}
 }

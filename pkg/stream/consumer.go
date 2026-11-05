@@ -90,11 +90,3 @@ func retryOperationsDatum(consumer, operation, errorType string, value float64) 
 		Kind:  metric.KindCounter.Build(),
 	}
 }
-
-func getConsumerDefaultMetrics(name string) metric.Data {
-	return metric.Data{
-		consumedMessagesDatum(name, metric.DimensionDefault, 0.0),
-		retryOperationsDatum(name, retryOperationPut, metric.DimensionDefault, 0.0),
-		retryOperationsDatum(name, retryOperationGet, metric.DimensionDefault, 0.0),
-	}
-}
