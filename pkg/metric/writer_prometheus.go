@@ -381,8 +381,6 @@ func (w *prometheusWriter) DatumDimensionKeys(datum *Datum) []string {
 // rejected at registration.
 func preprocessPrometheusMetric(datum *Datum) Datum {
 	d := *datum
-	// Default IDs use canonical dimension keys and values; resolve before rendering labels.
-	amendFromDefault(&d)
 	d.Dimensions = make(Dimensions, len(datum.Dimensions))
 
 	for dimension, value := range datum.Dimensions {

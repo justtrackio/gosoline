@@ -27,7 +27,6 @@ const (
 )
 
 var (
-	operations     = []string{Create, Read, Update, Delete, Query}
 	ErrCrossQuery  = fmt.Errorf("cross querying wrong model from repo")
 	ErrCrossCreate = fmt.Errorf("cross creating wrong model from repo")
 	ErrCrossRead   = fmt.Errorf("cross reading wrong model from repo")

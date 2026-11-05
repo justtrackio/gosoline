@@ -53,11 +53,10 @@ func NewMetricStoreWithInterfaces[T any](store KvStore[T], settings *Settings) K
 
 	modelIdString := settings.String()
 	storeName := fmt.Sprintf("%T", store)
-	defaults := getDefaultMetrics(modelIdString, storeName)
 
 	s := &MetricStore[T]{
 		KvStore:      store,
-		metricWriter: metric.NewWriter(metricNamespace, defaults...),
+		metricWriter: metric.NewWriter(metricNamespace),
 		model:        modelIdString,
 		store:        storeName,
 	}
@@ -227,6 +226,8 @@ func (s *MetricStore[T]) record(ctx context.Context, name string, value int64) {
 		MetricName: name,
 		Dimensions: s.dimensions(),
 		Value:      float64(value),
+		Unit:       metric.UnitCount,
+		Kind:       metric.KindCounter.Build(),
 	})
 }
 
@@ -243,59 +244,4 @@ func boolToInt(b bool) int {
 	}
 
 	return 0
-}
-
-// readDefault pre-registers one `reads` series so a dashboard has a line before the first read.
-func readDefault(model string, store string, hit bool) *metric.Datum {
-	return &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: metricNameKvStoreReads,
-		Dimensions: metric.Dimensions{
-			dimensionModelId:   model,
-			dimensionStoreType: store,
-			dimensionHit:       strconv.FormatBool(hit),
-		},
-		Unit:  metric.UnitCount,
-		Value: 0.0,
-		Kind:  metric.KindCounter.Build(),
-	}
-}
-
-func getDefaultMetrics(model string, store string) metric.Data {
-	// no default for the item count, if we don't know the size, it is not 0
-	names := []string{
-		metricNameKvStoreWrites,
-		metricNameKvStoreDeletes,
-	}
-
-	defaults := metric.Data{
-		readDefault(model, store, true),
-		readDefault(model, store, false),
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameKvStoreAttemptedReads,
-			Dimensions: metric.Dimensions{
-				dimensionModelId:   model,
-				dimensionStoreType: store,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
-		},
-	}
-	for _, name := range names {
-		defaults = append(defaults, &metric.Datum{
-			Priority:   metric.PriorityHigh,
-			MetricName: name,
-			Dimensions: map[string]string{
-				dimensionModelId:   model,
-				dimensionStoreType: store,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
-		})
-	}
-
-	return defaults
 }

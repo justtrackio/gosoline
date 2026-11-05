@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
-	"github.com/justtrackio/gosoline/pkg/funk"
+
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/kernel/common"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -137,14 +137,7 @@ func (d *Daemon) GetStage() int {
 }
 
 func (d *Daemon) Run(ctx context.Context) error {
-	d.resetBatch(ctx)
-
-	// initialize the default metrics upon daemon module Run for raw writers
-	metricDefaultsLock.RLock()
-	defaults := funk.Values(metricDefaults)
-	metricDefaultsLock.RUnlock()
-
-	d.rawFanout(ctx, defaults)
+	d.resetBatch()
 
 	for {
 		select {
@@ -196,8 +189,6 @@ func (d *Daemon) append(ctx context.Context, datum *Datum) {
 	key := fmt.Sprintf("%s-%s-%s-%s", datum.Namespace, datum.MetricName, dimKV, timeKey)
 
 	if _, ok := d.batch[key]; !ok {
-		amendFromDefault(datum)
-
 		if err := datum.IsValid(); err != nil {
 			if d.throttleError(ctx, err.Error()) {
 				d.logger.Error(ctx, "invalid metric: %s", err.Error())
@@ -224,22 +215,9 @@ func (d *Daemon) append(ctx context.Context, datum *Datum) {
 	existing.Values = append(existing.Values, datum.Value)
 }
 
-func (d *Daemon) resetBatch(ctx context.Context) {
+func (d *Daemon) resetBatch() {
 	d.batch = make(map[string]*BatchedMetricDatum)
 	d.dataPointCount = 0
-
-	metricDefaultsLock.RLock()
-	defs := make([]*Datum, 0, len(metricDefaults))
-	for _, def := range metricDefaults {
-		cpy := *def
-		cpy.Timestamp = time.Now()
-		defs = append(defs, &cpy)
-	}
-	metricDefaultsLock.RUnlock()
-
-	for _, cpy := range defs {
-		d.append(ctx, cpy)
-	}
 }
 
 func (d *Daemon) publish(ctx context.Context) {
@@ -256,7 +234,7 @@ func (d *Daemon) publish(ctx context.Context) {
 	}
 
 	d.logger.Info(ctx, "published %d data points in %d metrics", d.dataPointCount, size)
-	d.resetBatch(ctx)
+	d.resetBatch()
 }
 
 func (d *Daemon) buildMetricData() Data {
@@ -287,6 +265,7 @@ func (d *Daemon) throttleError(ctx context.Context, err string) bool {
 	d.errorThrottlesLck.Lock()
 	if d.errorThrottles[err] {
 		d.errorThrottlesLck.Unlock()
+
 		return false
 	}
 	d.errorThrottles[err] = true

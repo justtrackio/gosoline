@@ -7,10 +7,10 @@ semantic-convention metrics. A custom metric without a namespace is normalized f
 that prefix; application authors should avoid canonical semantic-convention names.
 
 This file is the human-facing metric specification. **Any change to a metric name, attribute key, unit
-or instrument type updates this file in the same commit.** The emitting packages and their registered
-defaults are the source of what is written; the inventory below is maintained manually from that
-source and the writer behavior. Focused behavioral tests verify runtime emission and rendering, not
-this document, so keep the inventory and exceptions current alongside the source changes.
+or instrument type updates this file in the same commit.** The emitting packages and their actual
+samples define what is written; the inventory below is maintained manually from that source and the
+writer behavior. Focused behavioral tests verify runtime emission and rendering, not this document,
+so keep the inventory and exceptions current alongside source changes.
 
 ## Why the names diverge
 
@@ -42,11 +42,17 @@ The authored names follow the grammar defined here:
 
 A datum's canonical name consists of an optional namespace and a metric leaf, supplied through
 `Datum.Namespace` and `Datum.MetricName`. Gosoline-owned metrics use the grammar above.
-`metric.NewWriter(namespace)` stamps its namespace onto datums whose `Namespace` is empty; an
-explicit datum namespace takes precedence. An empty writer namespace leaves the metric unnamespaced.
+`metric.NewWriter(namespace)` stamps its namespace onto written datums whose `Namespace` is empty;
+an explicit datum namespace takes precedence. The writer does not register or amend definitions.
+Every actual datum carries its own `Priority`, `Unit`, and `Kind`. Framework histograms retain their
+existing explicit bucket profile where applicable; otherwise they use the standard implicit exporter
+bounds. No synthetic sample is emitted at startup or on an empty flush. Absence of a series means no
+sample was observed, not that a measured value was zero. A genuine zero-valued gauge observation is
+still emitted as a sample.
 Leave `Datum.Namespace` unset when it matches the owning writer's namespace. Set it only for an
 intentional override or when passing datums directly to an injected backend writer, which does not
-supply a canonical namespace.
+supply a canonical namespace. `NewMetricMiddleware` returns only a `gin.HandlerFunc`; it has no
+setup callback or route-default registration phase.
 An application can choose its own namespace and leaf for custom metrics; the same writer-specific
 rendering rules below apply to them.
 
@@ -73,8 +79,8 @@ Prometheus dimension keys become label names by replacing dots with underscores;
 prefixed by the metric namespace. For example, `request.method` becomes `request_method`, while
 `route` and `name` remain unchanged. A value of `{{default}}` becomes the empty label value.
 
-Registered defaults are matched using canonical names and dimensions before this label rendering, so translating dotted
-keys and the internal `{{default}}` marker does not change which metadata applies to a datum.
+Writers render each datum's explicit metadata without a default-definition lookup. The internal
+`{{default}}` marker remains a dimension-value sentinel and is rendered according to the backend rules below.
 
 OpenTelemetry preserves canonical dots between namespace and leaf and prefixes the name with
 `gosoline.` when a namespace is present. Without a namespace, it normalizes and exports only the
@@ -258,10 +264,11 @@ overlapping diagnostic subset, not an extra attempt. Select the default error ty
 `sent.messages` records successful records on the default series and failed records with `error.type="send_failed"`.
 Both outcomes use a count-valued counter.
 
-Producer datums carry their canonical namespace, unit and instrument kind when written to an injected
+Producer datums carry their canonical namespace, unit, and instrument kind when written to an injected
 backend writer directly. `batch.records` remains a count-valued histogram; `produce.duration` remains
 a millisecond-authored histogram with the standard messaging duration boundaries, exported in seconds
-by OpenTelemetry and Prometheus. These types and boundaries do not depend on registered zero defaults.
+by OpenTelemetry and Prometheus. Each sample carries its own metadata; none of these types or
+boundaries depends on implicit metadata lookup.
 
 ### `kafka` — `pkg/kafka`
 
@@ -291,8 +298,8 @@ The six new high-priority counters use the same `OnProduceBatchWritten` and `OnF
 as the existing batch histograms, with `client.type`, `client.name`, `topic.name`, and `partition.id`.
 Produced/fetched record counters add `NumRecords`; `.batch.size` adds `UncompressedBytes`; and
 `.batch.compressed.size` adds `CompressedBytes`. The histograms remain per-batch distributions; the
-counters are independent volume instruments, have no zero defaults, and are the source for total
-record/byte volume. Do not use a histogram's `_count` or `_sum` as a substitute for these counters.
+counters are independent volume instruments and are the source for total record/byte volume. Do not
+use a histogram's `_count` or `_sum` as a substitute for these counters.
 These hook boundaries are distinct from the application-level
 `kafka.producer.sent.messages` and `kafka.consumer.consumed.messages` metrics.
 
@@ -327,10 +334,11 @@ The metric pipeline applies the existing unit reducers for these CloudWatch stat
 
 The detailed metrics keep their original `partition.id` dimensions and instrument kinds. These
 projections are not new metric names: OpenTelemetry and Prometheus filter `KindTotal` and continue
-exporting only the detailed stream-and-shard series. Existing raw count defaults for `reads` and the
-all-processed `consumed.messages` series already seed their CloudWatch stream series when default
-dimensions are omitted; do not register a duplicate projection zero. The `processing_failed`
-projection has no corresponding raw default, so it has its own zero default. There is no lag default.
+exporting only the detailed stream-and-shard series. Each projection is emitted only alongside its
+corresponding real observation; default-valued dimensions are omitted by CloudWatch. No synthetic
+projection sample is emitted, including for `processing_failed` or lag. `sent.messages` carries the
+reason Kinesis gave as its `error.type`, not a Go type, because the API reports a per-record error code
+rather than an error value.
 `sent.messages` carries the reason Kinesis gave as its `error.type`, not a Go type, because the API
 reports a per-record error code rather than an error value.
 
@@ -364,9 +372,9 @@ maximum to OpenTelemetry for each stream-and-shard series.
 
 `attempted.reads` counts requested read items before delegation: `Contains` and `Get` add one each;
 `GetBatch` adds the number of keys after successful key conversion and before delegation. Delegated
-failures count, but key-conversion failures do not. It has a high-priority zero default per model and
-store. Existing `reads{hit="true"}` and `reads{hit="false"}` count only successful reads and remain
-unchanged; their sum is successful read volume, not attempted volume.
+failures count, but key-conversion failures do not. Existing `reads{hit="true"}` and
+`reads{hit="false"}` count only successful reads and remain unchanged; their sum is successful read
+volume, not attempted volume.
 
 ### `db.client`, `db.repo`, `ddb` — `pkg/db`, `pkg/db-repo`, `pkg/ddb`
 
@@ -387,10 +395,9 @@ the pool's current `used` and `idle` connection counts as separate series keyed 
 
 `db.repo.operations` increments after each SQL repository call returns for `Create`, `Read`, `Update`,
 `Delete`, and `Query`; `ddb.operations` increments after the wrapped DynamoDB save (`operation.name="save"`)
-returns. Both use `error.type="{{default}}"` on success and `"operation_failed"` on failure, with
-high-priority zero defaults for both series per model and operation. The `db.repo.operation.duration`
-and `ddb.operation.duration` metrics remain separate latency histograms, not replacements for these
-operation counters.
+returns. Both use `error.type="{{default}}"` on success and `"operation_failed"` on failure. The
+`db.repo.operation.duration` and `ddb.operation.duration` metrics remain separate latency histograms,
+not replacements for these operation counters.
 
 `ddb.operation.duration` records the elapsed time from immediately before the wrapped DynamoDB save
 call until it returns, for successful and failed calls. It is authored in milliseconds and retains
@@ -420,34 +427,33 @@ the database operation histogram buckets; `error.type` distinguishes failures.
 | `rpc.server.requests` | count | counter | `service`, `method` | none |
 | `rpc.server.request.duration` | ms | histogram | `service`, `method` | `rpc.server.duration` |
 
-The statusless HTTP server counters remain high-priority `UnitCount` monotonic counters with their
-existing zero defaults: `requests` has one series keyed only by `name`, and `routed.requests` has one
-per application route definition and method. Both still count each matched request once after the
-metric middleware runs, including requests aborted by downstream middleware. Matched built-in health
-routes count; unmatched Gin routes (an empty route template) remain excluded. `/health` still has no
-zero default because it is registered outside the route definitions.
+The statusless HTTP server counters are high-priority `UnitCount` monotonic counters emitted for
+matched requests: `requests` is keyed only by `name`, and `routed.requests` also includes each
+application route definition and method. Both count each matched request once after the metric
+middleware runs, including requests aborted by downstream middleware. Matched built-in health routes
+count; unmatched Gin routes (an empty route template) remain excluded. Idle servers and routes produce
+no series until an actual request is observed.
 
-The new `responses` and `routed.responses` counters are high-priority `UnitCount` counters with the
+The `responses` and `routed.responses` counters are high-priority `UnitCount` counters with the
 full numeric status code and bounded `response.status_class` values `1xx` through `5xx`. They count
 each matched response, including responses from aborted downstream requests and matched built-in
-health routes; unmatched Gin routes remain excluded. Neither has a zero default. `responses` is keyed
-by `name`, status code, and class; `routed.responses` adds `route` and `request.method`. The duration
-histogram remains a separate latency measurement with the full status code and no status class.
+health routes; unmatched Gin routes remain excluded. `responses` is keyed by `name`, status code,
+and class; `routed.responses` adds `route` and `request.method`. The duration histogram remains a
+separate latency measurement with the full status code and no status class.
 
 For CloudWatch only, each matched routed response Counter observation emits exactly one additional
 same-name `KindTotal` datum with the same event boundary, value, unit, and priority. The projection
 retains `name`, `route`, `request.method`, and the observed `response.status_class`, and sets
 `response.status_code` to `metric.DimensionDefault`, which CloudWatch omits. Each observed
-name/route/method/class tuple therefore has one active four-dimension class series; no zero default
-creates a series for an unobserved class. This is not a separate canonical metric. OpenTelemetry
-skips `KindTotal` before instrument lookup and Prometheus before registry registration, so both
-continue to export only the raw five-dimension Counter and do not double-count it.
+name/route/method/class tuple therefore has one active four-dimension class series only after an
+observation. This is not a separate canonical metric. OpenTelemetry skips `KindTotal` before
+instrument lookup and Prometheus before registry registration, so both continue to export only the
+raw five-dimension Counter and do not double-count it.
 
 For CloudWatch only, each matched rejected request also emits one same-name `KindTotal` datum for
 `http.server.rejected.requests`, dimensioned by exactly `name`. The detailed Counter remains
 dimensioned by `name`, `route`, and `request.method` and is unchanged for every exporter. The
-server-level projection is `UnitCount`/Sum and has a zero default per server; existing detailed
-route/method rejection zero defaults remain. OpenTelemetry and Prometheus skip `KindTotal`, so they
+server-level projection is `UnitCount`/Sum. OpenTelemetry and Prometheus skip `KindTotal`, so they
 export only the detailed rejection Counter.
 
 CloudWatch consumers must choose one series shape. Metrics Insights queries that read raw response
@@ -464,11 +470,11 @@ with `request.method`. `http.client.completed.requests` increments once after `E
 response, transport-error, and cancellation branches. A valid response carries the numeric status
 code, its `1xx`–`5xx` class, and `error.type="{{default}}"`; a transport error or cancellation carries
 `response.status_code="{{default}}"` and `response.status_class="{{default}}"`, with
-`error.type="request_failed"` or `"request_canceled"`, respectively. These counters have no zero
-defaults; the duration histogram remains a separate latency instrument.
+`error.type="request_failed"` or `"request_canceled"`, respectively. The duration histogram remains
+a separate latency instrument. No zero samples are emitted for unobserved request classes or outcomes.
 
 `rpc.server.requests` increments once at each gRPC `stats.End`, alongside the duration histogram,
-for successful and failed calls. It is keyed by `service` and `method` and has no zero defaults.
+for successful and failed calls. It is keyed by `service` and `method`.
 
 ### Remaining namespaces
 
@@ -487,8 +493,8 @@ for successful and failed calls. It is keyed by `service` and `method` and has n
 
 **Limiter counters separate attempt, terminal result, and throttling.** `limit.attempted.takes` records
 one take at `OnTake`; `limit.takes` records only mutually exclusive terminal `allowed` or `error`
-outcomes; `limit.throttled.takes` records throttling at `OnThrottle`. All use `name` and `prefix`,
-with no zero defaults. Do not sum them as outcomes or count throttled takes through `limit.takes`.
+outcomes; `limit.throttled.takes` records throttling at `OnThrottle`. All use `name` and `prefix`.
+Do not sum them as outcomes or count throttled takes through `limit.takes`.
 `outcome="throttled"` and the exported `OutcomeThrottled` symbol are removed, with no alias.
 
 **`cloud.aws.kinesis.acquire.duration` is in seconds**, the only duration that is not milliseconds.
@@ -510,8 +516,7 @@ failures overlap the `processing_failed` subset. Never sum or subtract those ser
 
 ## Changing a metric
 
-1. Change the emitting package's name and attribute declarations, emission sites, and registered
-   defaults as needed.
+1. Change the emitting package's name and attribute declarations and sample producers as needed.
 2. Manually update this inventory and the deliberate exceptions below to reflect the emitted names,
    units, instrument types, and attributes.
 3. Register or update the help text with `metric.RegisterHelp` in the emitting package.

@@ -10,7 +10,7 @@
 - `daemon.go` - `NewDaemonModule` factory, `RegisterWriterFactory`, aggregation and flush loop.
 - `channel.go` - buffered channel every `Write`/`WriteOne` call feeds into.
 - `writer_*.go` - backend writers selected through `metric.writers`.
-- `naming.go` - the three per-writer renderers plus the semantic-convention registry.
+- `naming.go` - the three per-writer renderers and semantic-convention mappings.
 - `contract.go` - shared public dimension keys and error-type normalization helpers; it deliberately
   contains no namespace catalog.
 - `conformance_test.go` - the literal authored-name and dimension-key inventory, asserted against
@@ -31,10 +31,15 @@ dimension.
 Namespaces belong to the package that emits them. Each emitting package declares an unexported
 `metricNamespace`-style constant **in the same const block as the metric names it owns**, never in a
 file of its own; `pkg/metric` must not restore exported `metric.Namespace*` constants or
-compatibility aliases. A package passes its namespace once to
-`metric.NewWriter(namespace, defaults...)`, which stamps it onto every datum that does not already
-carry one. A package emitting into two namespaces, such as a Kafka consumer reporting both
-`kafka.consumer.*` and `kafka.*`, overrides the datum namespace explicitly.
+compatibility aliases.
+
+A package passes its namespace once to `metric.NewWriter(namespace)`, which stamps it onto every
+datum whose `Namespace` is empty. Each written datum must explicitly carry `Priority` and `Unit`;
+framework datums must also specify `Kind`. Framework histograms retain their existing explicit
+bucket profile where applicable; otherwise they use the standard implicit exporter bounds. No metric
+definitions are registered or amended, and no synthetic startup or empty-flush samples are emitted.
+A package emitting into two namespaces, such as a Kafka consumer reporting both `kafka.consumer.*`
+and `kafka.*`, overrides the datum namespace explicitly.
 
 ### Naming grammar
 
@@ -130,8 +135,8 @@ and the semantic-convention metric it derives from or deliberately diverges from
 the grammar and why each exists.
 
 ### CloudWatch-only dimension projections
-`KindTotal` materializes CloudWatch-specific aggregation beside unchanged detailed metrics. Keep all
-of these projections:
+`KindTotal` materializes CloudWatch-specific aggregation alongside unchanged detailed metrics. Keep
+these projections:
 
 - `http.server.routed.responses` emits the same namespace, name, value, unit, priority, and event
   boundary as its raw five-dimension Counter, with `response.status_code=metric.DimensionDefault`.
@@ -139,7 +144,7 @@ of these projections:
   `response.status_class`.
 - `http.server.rejected.requests` retains its raw Counter dimensions `name`, `route`, and
   `request.method`; each matched rejection also emits the same-name `KindTotal` Count with exactly
-  `name`. The server projection has a zero default; retain the detailed route/method defaults.
+  `name`.
 - The Kinesis shard reader emits same-name projections for `acquire.duration`,
   `sleep.duration`, `lag`, `process.duration`, `reads`, and `wait.duration`, removing only
   `partition.id` so each projection has `stream.name`. Its `consumed.messages` projections also
@@ -147,14 +152,13 @@ of these projections:
   total and `processing_failed` is an overlapping subset.
 
 These are not separate canonical metric names. OpenTelemetry skips `KindTotal` before instrument
-lookup and Prometheus before registration, so both continue exporting only detailed data. Retain
-the existing Count/Sum, `UnitSecondsMaximum`, `UnitMillisecondsMaximum`, and
-`UnitMillisecondsAverage` reducers; do not substitute histogram counts or sums. Existing raw count
-defaults already seed the CloudWatch stream series for Kinesis `reads` and default
-`consumed.messages` when default-valued dimensions are omitted, so avoid duplicate projection
-defaults. Keep a zero default for the `processing_failed` projection, but do not add a raw failed
-default or a lag default. CloudWatch consumers must select a single dimension shape. The former
-topic-only Kafka projection remains removed; do not remove the Kinesis stream projections.
+lookup and Prometheus before registration, so both continue exporting only detailed data. Retain the
+existing Count/Sum, `UnitSecondsMaximum`, `UnitMillisecondsMaximum`, and
+`UnitMillisecondsAverage` reducers; do not substitute histogram counts or sums. Projections occur
+only with corresponding real observations: no synthetic startup/flush samples or registered zero
+defaults are used. Keep the `metric.DimensionDefault` sentinel for dimensions intentionally omitted
+by CloudWatch. CloudWatch consumers must select a single dimension shape. The former topic-only
+Kafka projection remains removed; do not remove the Kinesis stream projections.
 
 ### Dimension-key policy
 OpenTelemetry semantic-convention attributes may be added where a convention defines the relevant
@@ -228,7 +232,7 @@ is the intended signal that the application emits no metrics.
 - Add or change an emitted metric: declare the namespace in the emitting package, update the literal
   `authoredNames` inventory, and apply the future increment rules unless maintainers direct an
   exception.
-- Adjust default metrics: see `defaults.go` and the per-package `metric.Datum` producers.
+- Adjust metric emission at its package-owned sample producer.
 
 ## Testing
 - `go test ./pkg/metric/...` before pushing changes.

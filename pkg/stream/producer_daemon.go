@@ -135,8 +135,7 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("failed to read producer settings for producer daemon %q: %w", name, err)
 	}
 
-	defaultMetrics := getProducerDaemonDefaultMetrics(name)
-	metricWriter := metric.NewWriter(metricNamespace, defaultMetrics...)
+	metricWriter := metric.NewWriter(metricNamespace)
 
 	output, outputCapabilities, err := NewConfigurableOutput(ctx, config, logger, settings.Output)
 	if err != nil {
@@ -479,6 +478,8 @@ func (d *producerDaemon) writeMetricMessageCount(ctx context.Context, count int)
 			dimensionProducerName: d.name,
 		},
 		Value: float64(count),
+		Unit:  metric.UnitCount,
+		Kind:  metric.KindCounter.Build(),
 	})
 }
 
@@ -490,6 +491,8 @@ func (d *producerDaemon) writeMetricBatchSize(ctx context.Context, size int) {
 			dimensionProducerName: d.name,
 		},
 		Value: float64(size),
+		Unit:  metric.UnitCountAverage,
+		Kind:  metric.KindHistogram.Build(),
 	})
 }
 
@@ -501,6 +504,8 @@ func (d *producerDaemon) writeMetricAggregateSize(ctx context.Context, size int)
 			dimensionProducerName: d.name,
 		},
 		Value: float64(size),
+		Unit:  metric.UnitCountAverage,
+		Kind:  metric.KindHistogram.Build(),
 	})
 }
 
@@ -519,41 +524,6 @@ func (d *producerDaemon) writeMetricIdleDuration(ctx context.Context, idleDurati
 		Value: float64(idleDuration.Milliseconds()),
 		Kind:  metric.KindHistogram.Build(),
 	})
-}
-
-func getProducerDaemonDefaultMetrics(name string) metric.Data {
-	return metric.Data{
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameProducedMessages,
-			Dimensions: map[string]string{
-				dimensionProducerName: name,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameBatchMessages,
-			Dimensions: map[string]string{
-				dimensionProducerName: name,
-			},
-			Unit:  metric.UnitCountAverage,
-			Value: 0.0,
-			Kind:  metric.KindHistogram.Build(),
-		},
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameAggregateMessages,
-			Dimensions: map[string]string{
-				dimensionProducerName: name,
-			},
-			Unit:  metric.UnitCountAverage,
-			Value: 0.0,
-			Kind:  metric.KindHistogram.Build(),
-		},
-	}
 }
 
 func BuildAggregateMessage(aggregateBody string, attributes ...map[string]string) *Message {

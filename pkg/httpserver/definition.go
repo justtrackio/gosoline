@@ -14,19 +14,9 @@ import (
 type Definer func(ctx context.Context, config cfg.Config, logger log.Logger) (*Definitions, error)
 
 type Definition struct {
-	group        *Definitions
 	httpMethod   string
 	relativePath string
 	handlers     []gin.HandlerFunc
-}
-
-func (d *Definition) getAbsolutePath() string {
-	groupPath := d.group.getAbsolutePath()
-
-	absolutePath := fmt.Sprintf("%s/%s", groupPath, d.relativePath)
-	absolutePath = trimRightPath(absolutePath)
-
-	return removeDuplicates(absolutePath)
 }
 
 type Definitions struct {
@@ -36,18 +26,6 @@ type Definitions struct {
 
 	children []*Definitions
 	parent   *Definitions
-}
-
-func (d *Definitions) getAbsolutePath() string {
-	parentPath := "/"
-
-	if d.parent != nil {
-		parentPath = d.parent.getAbsolutePath()
-	}
-
-	absolutePath := fmt.Sprintf("%s/%s", parentPath, d.basePath)
-
-	return removeDuplicates(absolutePath)
 }
 
 func (d *Definitions) Group(relativePath string) *Definitions {
@@ -70,7 +48,6 @@ func (d *Definitions) Handle(httpMethod, relativePath string, handlers ...gin.Ha
 	relativePath = trimRightPath(relativePath)
 
 	d.routes = append(d.routes, Definition{
-		group:        d,
 		httpMethod:   httpMethod,
 		relativePath: relativePath,
 		handlers:     handlers,
@@ -101,12 +78,11 @@ func (d *Definitions) OPTIONS(relativePath string, handlers ...gin.HandlerFunc) 
 	d.Handle(http.OptionsRequest, relativePath, handlers...)
 }
 
-func buildRouter(definitions *Definitions, router gin.IRouter) ([]Definition, error) {
+func buildRouter(definitions *Definitions, router gin.IRouter) error {
 	if definitions == nil {
-		return nil, fmt.Errorf("route definitions should not be nil")
+		return fmt.Errorf("route definitions should not be nil")
 	}
 
-	var definitionList []Definition
 	grp := router
 
 	if definitions.parent != nil {
@@ -124,19 +100,14 @@ func buildRouter(definitions *Definitions, router gin.IRouter) ([]Definition, er
 		grp.Handle(d.httpMethod, d.relativePath, handlers...)
 	}
 
-	definitionList = append(definitionList, definitions.routes...)
-
 	var err error
-	var childDefinitions []Definition
 	for _, c := range definitions.children {
-		if childDefinitions, err = buildRouter(c, grp); err != nil {
-			return nil, fmt.Errorf("error building children: %w", err)
+		if err = buildRouter(c, grp); err != nil {
+			return fmt.Errorf("error building children: %w", err)
 		}
-
-		definitionList = append(definitionList, childDefinitions...)
 	}
 
-	return definitionList, nil
+	return nil
 }
 
 func removeDuplicates(s string) string {
