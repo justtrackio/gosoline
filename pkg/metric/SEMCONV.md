@@ -83,9 +83,15 @@ as `api_request`, without a `gosoline.` prefix. Its unit is expressed on the ins
 concatenates the canonical namespace and leaf in PascalCase and does not add a metric-name prefix; its
 CloudWatch namespace identifies the application.
 
-Explicit bounds set with `KindHistogram.WithBuckets` are authored in the datum's unit. Prometheus and OpenTelemetry
-scale them with observations when registering the histogram, so duration bucket bounds in milliseconds are converted
-to seconds along with the observed values.
+For a custom datum whose `Kind` is unset, writers infer the instrument kind consistently from its
+unit: `UnitCount` becomes a counter; seconds, milliseconds, and microseconds become histograms; other
+units become gauges. An explicit `KindSummary` remains a summary.
+
+Explicit bounds set with `KindHistogram.WithBuckets` are authored in the datum's unit. Prometheus and
+OpenTelemetry scale observations and bounds to the base unit: durations use seconds, and kilobytes,
+megabytes, gigabytes, and terabytes use binary factors of 2^10, 2^20, 2^30, and 2^40 to become bytes.
+OpenTelemetry reports `By`, and Prometheus uses `_bytes`; CloudWatch retains authored standard units
+and values.
 
 ## Histogram bucket policy
 
@@ -485,6 +491,11 @@ for successful and failed calls. It is keyed by `service` and `method` and has n
 
 ## Deliberate exceptions
 
+**Help registration is name-scoped.** `RegisterHelp` requires non-empty text; an empty help string or
+a different help string for an already-registered canonical namespace and metric name panics.
+Registering identical help repeatedly is accepted as a no-op. `Kind.WithHelp` remains a per-datum
+override.
+
 **Limiter counters separate attempt, terminal result, and throttling.** `limit.attempted.takes` records
 one take at `OnTake`; `limit.takes` records only mutually exclusive terminal `allowed` or `error`
 outcomes; `limit.throttled.takes` records throttling at `OnThrottle`. All use `name` and `prefix`,
@@ -517,6 +528,6 @@ failures overlap the `processing_failed` subset. Never sum or subtract those ser
 3. Register or update the help text with `metric.RegisterHelp` in the emitting package.
 4. Run focused behavioral tests for any affected renderer, writer, unit, or emitting path. Existing
    naming and writer tests in `pkg/metric` cover backend rendering; they do not check this inventory.
-5. Record the observable change in `RELEASE_NOTES.md`.
+5. Record observable changes in the owning PR description and GitHub release notes.
 6. Removing the last emitter of a metric means removing its inventory entry in the same change, so the
    inventory never claims a metric nothing writes.
