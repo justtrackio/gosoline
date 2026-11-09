@@ -85,7 +85,7 @@ CloudWatch namespace identifies the application.
 
 For a custom datum whose `Kind` is unset, writers infer the instrument kind consistently from its
 unit: `UnitCount` becomes a counter; seconds, milliseconds, and microseconds become histograms; other
-units become gauges. An explicit `KindSummary` remains a summary.
+units become gauges. Explicit `KindSummary` preserves Prometheus Summary behavior; OpenTelemetry records it as a Histogram.
 
 Explicit bounds set with `KindHistogram.WithBuckets` are authored in the datum's unit. Prometheus and
 OpenTelemetry scale observations and bounds to the base unit: durations use seconds, and kilobytes,
@@ -224,17 +224,9 @@ Single and batch consumers use the same instruments and attributes. `process.dur
 observation per processing invocation: one message for a single consumer, the whole batch for a batch
 consumer. It is not a per-message duration when emitted by a batch consumer.
 
-The default `consumed.messages` series remains the all-processed total, including callback failures; a
-batch contributes its record count, not one. `error.type="processing_failed"` is an overlapping
-record-based series for non-canceled processing errors, including preparation errors and panics.
-For a batch callback error, it counts records with false or missing acknowledgements, not the whole
-batch. A false or missing acknowledgement with a nil callback error can request deferred processing
-or retry; it does not emit `processing_failed`. Acknowledgement and retry behavior is unchanged.
-Canceled processing does not emit that failure series. Every `GetModel` failure also emits
-`error.type="model_lookup_failed"`, including failures configured to be ignored. A non-ignored lookup
-failure overlaps `processing_failed`; an ignored one does not. Both diagnostic series overlap the
-default total and must not be summed with it or subtracted to infer successes. For processing-error
-totals, filter `error.type="processing_failed"` rather than summing all diagnostic values.
+The `consumed.messages` default for a single-message invocation is one collected message. A batch contributes its collected record count before decoding, not only decoded or callback-delivered records. It includes entries skipped by ignored model lookup and entries whose lookup or decoding fails; an empty decoded batch can still emit the collected total.
+`error.type="processing_failed"` is an overlapping record-based series for non-canceled processing errors, including preparation errors and panics. For a batch callback error, it counts decoded records with false or missing acknowledgements, not the whole collected batch. A false or missing acknowledgement with a nil callback error can request deferred processing or retry; it does not emit `processing_failed`. Acknowledgement and retry behavior is unchanged.
+Canceled processing does not emit that failure series. Every `GetModel` failure also emits `error.type="model_lookup_failed"`, including failures configured to be ignored. A non-ignored lookup failure overlaps `processing_failed`; an ignored one does not. Both diagnostic series overlap the collected-message default and must not be summed with it or subtracted to infer successes. For processing-error totals, filter `error.type="processing_failed"` rather than summing all diagnostic values.
 
 `retry.operations` counts retry-handler operations with `operation="get"` or `operation="put"`, not
 records. Normal attempts carry `error.type="{{default}}"`; a failed retry-handler put also emits
@@ -334,15 +326,12 @@ The metric pipeline applies the existing unit reducers for these CloudWatch stat
 The detailed metrics keep their original `partition.id` dimensions and instrument kinds. These
 projections are not new metric names: OpenTelemetry and Prometheus filter `KindTotal` and continue
 exporting only the detailed stream-and-shard series. Existing raw count defaults for `reads` and the
-all-processed `consumed.messages` series already seed their CloudWatch stream series when default
+Kinesis all-processed `consumed.messages` series already seed their CloudWatch stream series when default
 dimensions are omitted; do not register a duplicate projection zero. The `processing_failed`
 projection has no corresponding raw default, so it has its own zero default. There is no lag default.
-`sent.messages` carries the reason Kinesis gave as its `error.type`, not a Go type, because the API
-reports a per-record error code rather than an error value.
+`sent.messages` carries a generated per-response summary of per-record Kinesis `ErrorCode` counts as its failure `error.type`, for example `"<count> <ErrorCode> errors"`; the summary may combine multiple codes. This is not a raw Go error type or a fixed marker. A request-level `PutRecords` API error returns before record metrics are written.
 
-RecordWriter explicitly emits `sent.messages` as a counter in this namespace for both successful
-and failed records, including failure-only attempts. `batch.records` is a histogram of each
-write attempt's batch size, including retries; it is not a Kinsumer read-batch metric.
+The record writer emits `sent.messages` Counters and the `batch.records` Histogram only after a `PutRecords` call returns a normal response, including responses with per-record failures. Retries are measured as separate response-returning attempts, so a retried record may be counted again. Request-level API errors emit neither metric; `batch.records` is not a Kinsumer read-batch metric.
 
 `consumed.messages` is an exception to the usual success meaning of `error.type="{{default}}"`: for Kinesis,
 that series is the full batch total emitted when processing completes, including failed records. Each failed
@@ -500,24 +489,16 @@ override.
 one take at `OnTake`; `limit.takes` records only mutually exclusive terminal `allowed` or `error`
 outcomes; `limit.throttled.takes` records throttling at `OnThrottle`. All use `name` and `prefix`,
 with no zero defaults. Do not sum them as outcomes or count throttled takes through `limit.takes`.
-`outcome="throttled"` and the exported `OutcomeThrottled` symbol are removed, with no alias.
+The v0.68.3 `rate_limit_take`, `rate_limit_release`, `rate_limit_error`, and `rate_limit_throttle`
+families map to those attempt, terminal, and throttle metrics. The v2 terminal `takes` metric has
+no `throttled` outcome.
 
 **`cloud.aws.kinesis.acquire.duration` is in seconds**, the only duration that is not milliseconds.
 Prometheus and OTEL are unaffected — both scale durations to seconds — but a CloudWatch consumer sees
 `Seconds`.
 
-**`error.type` names the action that failed, never a Go error type.** A folded metric's failed share
-carries a stable, bounded-cardinality marker — `send_failed`, `connect_failed`, `request_failed`,
-`request_canceled`, `operation_failed`, `notify_failed`, `apply_failed`, `processing_failed`,
-`model_lookup_failed`, `retry_handler_put_failed`, or `rate_limit_error` — not the Go error's type
-(which would carry unbounded cardinality) or its message. The successful share usually carries
-`{{default}}`. For Prometheus this is an empty label value, for OTEL the attribute is absent, and for
-CloudWatch the dimension is omitted. On HTTP client completion counters, missing response code/class
-also use the internal `{{default}}` marker. `stream.consumed.messages` and
-`cloud.aws.kinesis.consumed.messages` are exceptions: their `{{default}}` series is the total of all
-processed records, while `processing_failed` is a per-record subset that overlaps that total. Stream
-`model_lookup_failed` diagnostics also overlap the default total; only non-ignored model lookup
-failures overlap the `processing_failed` subset. Never sum or subtract those series to derive success.
+**Most `error.type` values are stable, bounded action markers, never Go error types.** The fixed markers include `send_failed`, `connect_failed`, `request_failed`, `request_canceled`, `operation_failed`, `notify_failed`, `apply_failed`, `processing_failed`, `model_lookup_failed`, `retry_handler_put_failed`, and `rate_limit_error`. A successful share usually carries `{{default}}`. For Prometheus the default is an empty label value, for OTEL the attribute is absent, and for CloudWatch the dimension is omitted. On HTTP client completion counters, missing response code/class also use the internal `{{default}}` marker.
+Kinesis writer failures are an exception to the fixed-marker rule: `error.type` contains a generated summary of per-response Kinesis `ErrorCode` counts, such as `"<count> <ErrorCode> errors"`, potentially with multiple codes. Request-level `PutRecords` API errors produce no record-metric samples. Kinesis and stream consumer `processing_failed` samples overlap their respective totals. `stream.consumed.messages` defaults to the collected-message count, including records not decoded or delivered to the callback; `cloud.aws.kinesis.consumed.messages` defaults to the processed GetRecords batch total. Stream `model_lookup_failed` diagnostics also overlap the collected-message total; only non-ignored model lookup failures overlap `processing_failed`. Never sum or subtract these subsets to infer success.
 
 ## Changing a metric
 
