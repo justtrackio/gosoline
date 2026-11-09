@@ -20,8 +20,14 @@ func TestProducerProduceSyncSuccess(t *testing.T) {
 
 	records := []*kgo.Record{{Value: []byte("test1")}, {Value: []byte("test2")}}
 	results := kgo.ProduceResults{
-		{Record: records[0], Err: nil},
-		{Record: records[1], Err: nil},
+		{
+			Record: records[0],
+			Err:    nil,
+		},
+		{
+			Record: records[1],
+			Err:    nil,
+		},
 	}
 
 	writer.EXPECT().ProduceSync(mock.Anything, records[0], records[1]).Return(results)
@@ -30,9 +36,9 @@ func TestProducerProduceSyncSuccess(t *testing.T) {
 			return false
 		}
 
-		return data[0].MetricName == "ProduceBatchSize" && data[0].Value == 2.0 &&
-			data[1].MetricName == "ProduceDuration" &&
-			data[2].MetricName == "RecordsSent" && data[2].Value == 2.0
+		return data[0].MetricName == "batch.records" && data[0].Value == 2.0 &&
+			data[1].MetricName == "produce.duration" &&
+			data[2].MetricName == "sent.messages" && data[2].Value == 2.0
 	})).Once()
 
 	p := producer.NewProducerWithInterfaces(writer, metricWriter, "test-producer", "test-topic")
@@ -47,8 +53,14 @@ func TestProducerProduceSyncFailure(t *testing.T) {
 
 	records := []*kgo.Record{{Value: []byte("test1")}, {Value: []byte("test2")}}
 	results := kgo.ProduceResults{
-		{Record: records[0], Err: nil},
-		{Record: records[1], Err: errors.New("produce error")},
+		{
+			Record: records[0],
+			Err:    nil,
+		},
+		{
+			Record: records[1],
+			Err:    errors.New("produce error"),
+		},
 	}
 
 	writer.EXPECT().ProduceSync(mock.Anything, records[0], records[1]).Return(results)
@@ -57,10 +69,12 @@ func TestProducerProduceSyncFailure(t *testing.T) {
 			return false
 		}
 
-		return data[0].MetricName == "ProduceBatchSize" && data[0].Value == 2.0 &&
-			data[1].MetricName == "ProduceDuration" &&
-			data[2].MetricName == "RecordsSent" && data[2].Value == 1.0 &&
-			data[3].MetricName == "RecordsSentFailed" && data[3].Value == 1.0
+		return data[0].MetricName == "batch.records" && data[0].Value == 2.0 &&
+			data[1].MetricName == "produce.duration" &&
+			data[2].MetricName == "sent.messages" && data[2].Value == 1.0 &&
+			data[2].Dimensions["error.type"] == "{{default}}" &&
+			data[3].MetricName == "sent.messages" && data[3].Value == 1.0 &&
+			data[3].Dimensions["error.type"] != "{{default}}"
 	})).Once()
 
 	p := producer.NewProducerWithInterfaces(writer, metricWriter, "test-producer", "test-topic")
@@ -75,9 +89,18 @@ func TestProducerProduceSyncBatchSize(t *testing.T) {
 
 	records := []*kgo.Record{{Value: []byte("a")}, {Value: []byte("b")}, {Value: []byte("c")}}
 	results := kgo.ProduceResults{
-		{Record: records[0], Err: nil},
-		{Record: records[1], Err: nil},
-		{Record: records[2], Err: nil},
+		{
+			Record: records[0],
+			Err:    nil,
+		},
+		{
+			Record: records[1],
+			Err:    nil,
+		},
+		{
+			Record: records[2],
+			Err:    nil,
+		},
 	}
 
 	writer.EXPECT().ProduceSync(mock.Anything, records[0], records[1], records[2]).Return(results)
@@ -86,9 +109,9 @@ func TestProducerProduceSyncBatchSize(t *testing.T) {
 			return false
 		}
 
-		return data[0].MetricName == "ProduceBatchSize" && data[0].Value == 3.0 && data[0].Unit == metric.UnitCountAverage &&
-			data[1].MetricName == "ProduceDuration" &&
-			data[2].MetricName == "RecordsSent" && data[2].Value == 3.0
+		return data[0].MetricName == "batch.records" && data[0].Value == 3.0 &&
+			data[1].MetricName == "produce.duration" &&
+			data[2].MetricName == "sent.messages" && data[2].Value == 3.0
 	})).Once()
 
 	p := producer.NewProducerWithInterfaces(writer, metricWriter, "test-producer", "test-topic")

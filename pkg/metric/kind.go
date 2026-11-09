@@ -2,6 +2,8 @@ package metric
 
 import (
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 )
 
 const (
@@ -31,6 +33,13 @@ var (
 	KindHistogram = HistogramKindBuilder{}
 	// KindSummary is the starting builder instance for summary metrics in prometheus (see also https://prometheus.io/docs/concepts/metric_types/).
 	KindSummary = SummaryKindBuilder{}
+)
+
+// Standard duration histogram boundaries are authored in milliseconds.
+var (
+	standardHttpRpcMessagingDurationBuckets        = []float64{5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000}
+	standardHttpRpcMessagingDurationBucketsSeconds = scaleHistogramBuckets(types.StandardUnitMilliseconds, standardHttpRpcMessagingDurationBuckets)
+	standardDatabaseDurationBuckets                = []float64{1, 5, 10, 50, 100, 500, 1000, 5000, 10000}
 )
 
 type (
@@ -159,10 +168,45 @@ func (k SummaryKindBuilder) Build() Kind {
 // otherwise the default is no buckets. (In other words, if you want to
 // use both regular buckets and buckets for a native histogram, you have
 // to define the regular buckets here explicitly.)
+// Bucket values use the datum's authored unit; Prometheus and OTEL scale explicit bounds with observations.
 func (k HistogramKindBuilder) WithBuckets(buckets []float64) HistogramKindBuilder {
 	k.buckets = buckets
 
 	return k
+}
+
+// WithHttpDurationBuckets sets standard explicit bounds for applicable HTTP semantic-convention duration metrics.
+// The bounds are authored in milliseconds; do not use this preset for arbitrary or custom duration metrics.
+// See https://opentelemetry.io/docs/specs/semconv/http/http-metrics/.
+func (k HistogramKindBuilder) WithHttpDurationBuckets() HistogramKindBuilder {
+	return k.WithBuckets(standardHttpRpcMessagingDurationBuckets)
+}
+
+// WithRpcDurationBuckets sets standard explicit bounds for applicable RPC semantic-convention duration metrics.
+// The bounds are authored in milliseconds; do not use this preset for arbitrary or custom duration metrics.
+// See https://opentelemetry.io/docs/specs/semconv/rpc/rpc-metrics/.
+func (k HistogramKindBuilder) WithRpcDurationBuckets() HistogramKindBuilder {
+	return k.WithBuckets(standardHttpRpcMessagingDurationBuckets)
+}
+
+// WithMessagingDurationBuckets sets standard explicit bounds for applicable messaging semantic-convention duration metrics.
+// The bounds are authored in milliseconds; do not use this preset for arbitrary or custom duration metrics.
+// See https://opentelemetry.io/docs/specs/semconv/messaging/messaging-metrics/.
+func (k HistogramKindBuilder) WithMessagingDurationBuckets() HistogramKindBuilder {
+	return k.WithBuckets(standardHttpRpcMessagingDurationBuckets)
+}
+
+// WithMessagingDurationBucketsInSeconds sets the standard explicit bounds for messaging duration metrics authored in seconds.
+// It derives the bounds from the shared millisecond profile and caches the converted slice for reuse.
+func (k HistogramKindBuilder) WithMessagingDurationBucketsInSeconds() HistogramKindBuilder {
+	return k.WithBuckets(standardHttpRpcMessagingDurationBucketsSeconds)
+}
+
+// WithDatabaseDurationBuckets sets standard explicit bounds for applicable database semantic-convention duration metrics.
+// The bounds are authored in milliseconds; do not use this preset for arbitrary or custom duration metrics.
+// See https://opentelemetry.io/docs/specs/semconv/db/database-metrics/.
+func (k HistogramKindBuilder) WithDatabaseDurationBuckets() HistogramKindBuilder {
+	return k.WithBuckets(standardDatabaseDurationBuckets)
 }
 
 // WithObjectives sets the objectives your summary will contain. From the Prometheus documentation:
@@ -216,4 +260,29 @@ func (k SummaryKindBuilder) WithBufCap(bufCap uint32) SummaryKindBuilder {
 	k.bufCap = bufCap
 
 	return k
+}
+
+// effectiveKind returns the instrument type a datum declares, or the type inferred from its unit if
+// it declares none. Every gosoline metric declares its type; inference is the fallback for metrics
+// authored outside gosoline.
+func effectiveKind(datum *Datum) kind {
+	switch datum.Kind.kind {
+	case kindCounter, kindGauge, kindHistogram, kindSummary:
+		return datum.Kind.kind
+	}
+
+	return inferKind(datum.Unit)
+}
+
+// inferKind classifies a unit into an instrument type. Every writer that distinguishes instrument
+// types infers through this function, so no two writers classify the same datum differently.
+func inferKind(unit types.StandardUnit) kind {
+	switch resolveBaseUnit(unit) {
+	case types.StandardUnitCount:
+		return kindCounter
+	case types.StandardUnitSeconds, types.StandardUnitMilliseconds, types.StandardUnitMicroseconds:
+		return kindHistogram
+	default:
+		return kindGauge
+	}
 }

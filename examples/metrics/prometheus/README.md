@@ -19,45 +19,91 @@ metric:
 
 ### Run instructions
 
-run `go run main.go`
+From the repository root, run the example. It reads `config.dist.yml` from its own directory:
 
-The application exposes the prometheus metrics on `http://localhost:8092/metrics`
-Additionally there is a basic api server running on port `:8088` with the following endpoints
+```sh
+cd examples/metrics/prometheus
+go run .
+```
+
+The example uses only local HTTP servers; no environment variables or external services are required.
+It serves the Prometheus scrape at `http://localhost:8092/metrics` and the example API on port 8088.
+
+In a second terminal, make the requests below and scrape the metrics:
+
+```sh
+for path in current-value increase increase 1k my-summary; do
+  curl --fail --silent --show-error "http://localhost:8088/${path}"
+done
+curl --fail --silent --show-error http://localhost:8092/metrics
+```
+
+The example API on port `:8088` exposes these endpoints:
 
 ### `GET http://localhost:8088/current-value`
-return the current value of the counter
+Returns the current value of the counter.
+
 ### `GET http://localhost:8088/increase`
-increases the counter by one and returns the current value
-### `GET http://localhost:8088/decrease`
-decreases the counter by one and returns the current value
+Increases the counter by one and returns the current value.
 
-all the above endpoints also have a custom metric `api_request` which increments
-every time an endpoint is called (the handler name is used as a label)
+### `GET http://localhost:8088/1k`
+Increases the counter by a thousand and returns the current value.
 
+### `GET http://localhost:8088/my-summary`
+Observes 1.1 times the current counter value in a summary, then increases the counter by one.
 
-example output of custom metrics when requesting the `/metrics` endpoint
+`/current-value`, `/increase` and `/1k` each write the custom counter `api_request`, using the
+`handler` label values `cur`, `incr` and `1k`, respectively. `/increase` and `/1k` also add their
+increments to `important_counter`. `/my-summary` observes the current value multiplied by 1.1 in
+`my_summary`.
+
+### Metric names
+
+Metric names are authored as an optional namespace plus a leaf, then rendered according to the
+writer's convention. In this example, `controllers.NewMetricController` gives custom metrics the
+namespace `example`; this is explicitly set on `metric.NewWriter`, not derived from `app.namespace`
+(which happens to have the same value in the config). The Prometheus writer adds its fixed `gosoline`
+prefix to every metric; it does not derive a prefix from `app.namespace` or `app.name` (`prometheus`).
+Dots in the namespace and leaf become underscores, and units and counter type determine the suffix:
+for example, `example.api_request` is exported as
+`gosoline_example_api_request_total`.
+
+Prometheus dimension keys become labels with dots replaced by underscores: `request.method` becomes
+`request_method`, while `route` and `name` remain unchanged. They are not prefixed by the metric
+namespace. The complete naming, units and attributes contract is in the
+[Gosoline metric specification](../../../pkg/metric/SEMCONV.md).
+
+### Example output
+
+After the requests above, the example's custom metrics have these series. Their values are
+deterministic for that request sequence:
+
+```text
+# HELP gosoline_example_api_request_total unit: Count
+# TYPE gosoline_example_api_request_total counter
+gosoline_example_api_request_total{handler="1k"} 1
+gosoline_example_api_request_total{handler="cur"} 1
+gosoline_example_api_request_total{handler="incr"} 2
+# HELP gosoline_example_important_counter_total unit: Count
+# TYPE gosoline_example_important_counter_total counter
+gosoline_example_important_counter_total 1002
+# HELP gosoline_example_my_summary unit: Count
+# TYPE gosoline_example_my_summary summary
+gosoline_example_my_summary_sum 1102.2
+gosoline_example_my_summary_count 1
 ```
-# HELP gosoline:dev:metrics:prometheus_ApiRequestCount unit: Count
-# TYPE gosoline:dev:metrics:prometheus_ApiRequestCount counter
-gosoline:dev:metrics:prometheus_ApiRequestCount{path="/current-value"} 4
-gosoline:dev:metrics:prometheus_ApiRequestCount{path="/decrease"} 4
-gosoline:dev:metrics:prometheus_ApiRequestCount{path="/increase"} 5
-# HELP gosoline:dev:metrics:prometheus_ApiRequestResponseTime unit: UnitMillisecondsAverage
-# TYPE gosoline:dev:metrics:prometheus_ApiRequestResponseTime gauge
-gosoline:dev:metrics:prometheus_ApiRequestResponseTime{path="/current-value"} 0.042044
-gosoline:dev:metrics:prometheus_ApiRequestResponseTime{path="/decrease"} 0.040718
-gosoline:dev:metrics:prometheus_ApiRequestResponseTime{path="/increase"} 0.044629
-# HELP gosoline:dev:metrics:prometheus_ApiStatus2XX unit: Count
-# TYPE gosoline:dev:metrics:prometheus_ApiStatus2XX counter
-gosoline:dev:metrics:prometheus_ApiStatus2XX{path="/current-value"} 4
-gosoline:dev:metrics:prometheus_ApiStatus2XX{path="/decrease"} 4
-gosoline:dev:metrics:prometheus_ApiStatus2XX{path="/increase"} 5
-# HELP gosoline:dev:metrics:prometheus_api_request unit: prom-counter
-# TYPE gosoline:dev:metrics:prometheus_api_request counter
-gosoline:dev:metrics:prometheus_api_request{handler="cur"} 4
-gosoline:dev:metrics:prometheus_api_request{handler="decr"} 4
-gosoline:dev:metrics:prometheus_api_request{handler="incr"} 5
-# HELP gosoline:dev:metrics:prometheus_important_counter unit: Count
-# TYPE gosoline:dev:metrics:prometheus_important_counter counter
-gosoline:dev:metrics:prometheus_important_counter 25
-```
+
+The summary observes 1.1 times the counter value before `/my-summary` increments it. Its fractional
+observation still has unit `Count`.
+
+The same scrape also contains the HTTP server's built-in metrics (shown with their rendered names):
+
+| Metric | Prometheus name | Authored unit, rendered unit and labels |
+|---|---|---|
+| Request duration | `gosoline_http_server_request_duration_seconds` (`_bucket`, `_sum`, `_count` series) | `UnitMillisecondsAverage`, rendered to seconds; labels `name`, `route`, `request_method`, `response_status_code` |
+| Rejected requests | `gosoline_http_server_rejected_requests_total` | `Count`; labels `name`, `route`, `request_method` |
+| Active requests | `gosoline_http_server_active_request_count` | `UnitCountMaximum` count gauge; label `name` |
+| Open connections | `gosoline_http_server_connection_count` | `UnitCountMaximum` count gauge; label `name` |
+
+Duration observations depend on request timing. The scrape also includes Go runtime and process
+collector metrics.

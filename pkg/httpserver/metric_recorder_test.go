@@ -16,7 +16,7 @@ import (
 
 func TestServerMetricRecorder_ConcurrentRequests(t *testing.T) {
 	writer := metricMocks.NewWriter(t)
-	expectWriteOne(writer, MetricHttpConcurrentRequests, []float64{1, 2, 1, 0})
+	expectWriteOne(writer, MetricHttpActiveRequestCount, []float64{1, 2, 1, 0})
 	recorder := newServerMetricRecorderWithInterfaces("api", clock.NewFakeClock(), writer, time.Hour)
 
 	recorder.TrackRequestStarted(t.Context())
@@ -27,7 +27,7 @@ func TestServerMetricRecorder_ConcurrentRequests(t *testing.T) {
 
 func TestServerMetricRecorder_OpenConnections(t *testing.T) {
 	writer := metricMocks.NewWriter(t)
-	expectWriteOne(writer, MetricHttpOpenConnections, []float64{1, 2, 1, 0})
+	expectWriteOne(writer, MetricHttpConnectionCount, []float64{1, 2, 1, 0})
 	recorder := newServerMetricRecorderWithInterfaces("api", clock.NewFakeClock(), writer, time.Hour)
 
 	recorder.TrackConnectionOpened(t.Context())
@@ -38,11 +38,11 @@ func TestServerMetricRecorder_OpenConnections(t *testing.T) {
 
 func TestServerMetricRecorder_RunSamplesCurrentValues(t *testing.T) {
 	writer := metricMocks.NewWriter(t)
-	writer.EXPECT().WriteOne(matcher.Context, matchMetricDatum(MetricHttpConcurrentRequests, 1)).Return()
-	writer.EXPECT().WriteOne(matcher.Context, matchMetricDatum(MetricHttpOpenConnections, 1)).Return()
+	writer.EXPECT().WriteOne(matcher.Context, matchMetricDatum(MetricHttpActiveRequestCount, 1)).Return()
+	writer.EXPECT().WriteOne(matcher.Context, matchMetricDatum(MetricHttpConnectionCount, 1)).Return()
 	writer.EXPECT().Write(matcher.Context, matchMetricData(t, map[string]float64{
-		MetricHttpConcurrentRequests: 1,
-		MetricHttpOpenConnections:    1,
+		MetricHttpActiveRequestCount: 1,
+		MetricHttpConnectionCount:    1,
 	})).Return().Twice()
 
 	recorder := newServerMetricRecorderWithInterfaces("api", clock.NewFakeClock(), writer, time.Hour)
@@ -101,17 +101,17 @@ func isMetricDatum(datum *metric.Datum, metricName string, value float64) bool {
 
 	return datum.Priority == metric.PriorityHigh &&
 		datum.MetricName == metricName &&
-		datum.Dimensions["ServerName"] == "api" &&
+		datum.Dimensions[dimensionServerName] == "api" &&
 		len(datum.Dimensions) == 1 &&
-		datum.Unit == metric.UnitCountMaximum &&
-		reflect.DeepEqual(datum.Kind, metric.KindGauge.Build()) &&
+		datum.Unit == "" &&
+		reflect.DeepEqual(datum.Kind, metric.Kind{}) &&
 		datum.Value == value
 }
 
 func assertMetricDatum(t *testing.T, datum *metric.Datum, metricName string, value float64) {
 	assert.Equal(t, metric.PriorityHigh, datum.Priority)
 	assert.Equal(t, metricName, datum.MetricName)
-	assert.Equal(t, metric.Dimensions{"ServerName": "api"}, datum.Dimensions)
+	assert.Equal(t, metric.Dimensions{dimensionServerName: "api"}, datum.Dimensions)
 	assert.Equal(t, metric.UnitCountMaximum, datum.Unit)
 	assert.Equal(t, metric.KindGauge.Build(), datum.Kind)
 	assert.Equal(t, value, datum.Value)

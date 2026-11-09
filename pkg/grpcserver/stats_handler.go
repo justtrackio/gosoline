@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -10,14 +11,25 @@ import (
 	"google.golang.org/grpc/stats"
 )
 
+const metricNamespace = "rpc.server"
+
+func init() {
+	metric.RegisterHelp(metricNamespace, MetricRpcServerRequestDuration, "duration of a gRPC server call")
+	metric.RegisterHelp(metricNamespace, metricRpcServerRequests, "gRPC server calls completed by service and method")
+}
+
 type key int
 
 const (
 	contextKey key = 0
 
-	MetricApiRequestCount        = "ApiRequestCount"
-	MetricApiRequestResponseTime = "ApiRequestResponseTime"
-	MetricDimensionFullMethod    = "full_method"
+	// MetricRpcServerRequestDuration records the latency distribution of a gRPC server call.
+	MetricRpcServerRequestDuration = "request.duration"
+	metricRpcServerRequests        = "requests"
+
+	// The semantic-convention attributes identifying the RPC that was served.
+	MetricDimensionRpcService = "service"
+	MetricDimensionRpcMethod  = "method"
 )
 
 type statsHandler struct {
@@ -27,7 +39,7 @@ type statsHandler struct {
 }
 
 func NewStatsHandler(logger log.Logger, settings *Settings) *statsHandler {
-	writer := metric.NewWriter()
+	writer := metric.NewWriter(metricNamespace)
 
 	return &statsHandler{
 		logger:       logger,
@@ -128,23 +140,44 @@ func (s *statsHandler) writeLog(ctx context.Context, holder *statsHolder) {
 }
 
 func (s *statsHandler) writeMetrics(ctx context.Context, holder *statsHolder) {
-	s.metricWriter.WriteOne(ctx, &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: MetricApiRequestResponseTime,
-		Dimensions: metric.Dimensions{
-			MetricDimensionFullMethod: holder.FullMethod,
-		},
-		Value: float64(holder.TotalTime) / float64(time.Millisecond),
-		Unit:  metric.UnitMillisecondsAverage,
-	})
+	service, method := splitFullMethod(holder.FullMethod)
 
-	s.metricWriter.WriteOne(ctx, &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: MetricApiRequestCount,
-		Dimensions: metric.Dimensions{
-			MetricDimensionFullMethod: holder.FullMethod,
+	s.metricWriter.Write(ctx, metric.Data{
+		&metric.Datum{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricRpcServerRequests,
+			Dimensions: metric.Dimensions{
+				MetricDimensionRpcService: service,
+				MetricDimensionRpcMethod:  method,
+			},
+			Value: 1.0,
+			Unit:  metric.UnitCount,
+			Kind:  metric.KindCounter.Build(),
 		},
-		Value: 1.0,
-		Unit:  metric.UnitCount,
+		&metric.Datum{
+			Priority:   metric.PriorityHigh,
+			MetricName: MetricRpcServerRequestDuration,
+			Dimensions: metric.Dimensions{
+				MetricDimensionRpcService: service,
+				MetricDimensionRpcMethod:  method,
+			},
+			Value: float64(holder.TotalTime) / float64(time.Millisecond),
+			Unit:  metric.UnitMillisecondsAverage,
+			Kind:  metric.KindHistogram.WithRpcDurationBuckets().Build(),
+		},
 	})
+}
+
+// splitFullMethod splits a gRPC full method of the form /service/method into the semantic-convention
+// service and method attributes. A full method that does not have that shape is reported as the
+// service alone, because guessing a method out of it would be worse than reporting none.
+func splitFullMethod(fullMethod string) (service string, method string) {
+	trimmed := strings.TrimPrefix(fullMethod, "/")
+
+	service, method, found := strings.Cut(trimmed, "/")
+	if !found {
+		return trimmed, metric.DimensionDefault
+	}
+
+	return service, method
 }
