@@ -3,6 +3,8 @@ package dynamodb
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
@@ -107,9 +109,25 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 		options.BaseEndpoint = gosoAws.NilIfEmpty(clientCfg.Settings.Endpoint)
 		options.DisableValidateResponseChecksum = clientCfg.Settings.DisableValidateResponseChecksum
 		options.EnableAcceptEncodingGzip = clientCfg.Settings.EnableAcceptEncodingGzip
+		options.HTTPClient = &httpClient{client: options.HTTPClient}
 	})
 
 	gosoAws.LogNewClientCreated(ctx, logger, "dynamodb", name, clientCfg.Settings.ClientSettings)
 
 	return client, nil
+}
+
+type httpClient struct {
+	client aws.HTTPClient
+}
+
+func (c *httpClient) Do(request *http.Request) (*http.Response, error) {
+	if request.Body != nil && request.Body != http.NoBody {
+		request = request.Clone(request.Context())
+		// Hide WriterTo so net/http can drain the body after Smithy closes it.
+		// See https://github.com/aws/smithy-go/issues/719.
+		request.Body = struct{ io.ReadCloser }{request.Body}
+	}
+
+	return c.client.Do(request)
 }
