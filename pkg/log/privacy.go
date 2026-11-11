@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"sort"
 	"strconv"
@@ -56,6 +57,30 @@ func IsSensitiveField(name string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// RequestHeaderForLog returns only explicitly selected diagnostic headers.
+// Unknown headers are masked because applications can use arbitrary auth names.
+// Referer is excluded; use the separate sanitized, opt-in referer capture.
+func RequestHeaderForLog(headers http.Header, name string) string {
+	switch http.CanonicalHeaderKey(name) {
+	case "Accept":
+		return headers.Get("Accept")
+	case "Accept-Encoding":
+		return headers.Get("Accept-Encoding")
+	case "Content-Type":
+		return headers.Get("Content-Type")
+	case "Content-Encoding":
+		return headers.Get("Content-Encoding")
+	case "User-Agent":
+		return headers.Get("User-Agent")
+	case "X-Frontend-Version":
+		return headers.Get("X-Frontend-Version")
+	case "X-Request-Id":
+		return headers.Get("X-Request-Id")
+	default:
+		return Redacted
 	}
 }
 

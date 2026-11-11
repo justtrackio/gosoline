@@ -67,7 +67,14 @@ httpserver:
 Credential-named keys stay masked even if allowlisted. Body capture requires
 both `request_body` and `request_body_fields`; non-JSON or malformed bodies have
 no raw fallback. `request_body_base64` encodes only the sanitized projection.
-An opted-in referer is sanitized. Request parsing and handler input are unchanged.
+Header capture accepts only `Accept`, `Accept-Encoding`, `Content-Type`,
+`Content-Encoding`, `User-Agent`, `X-Frontend-Version` and `X-Request-Id`, with
+case-insensitive names. Every other selected header is masked, including arbitrary
+custom authentication headers and `Referer`. The automatically enriched
+`session_id` context field is also masked; `X-Session-Id` stays unchanged in the
+request received by handlers. Use `request_referer` for the separate
+sanitized opt-in referer capture. Protected errors retain their redaction when
+logged through canceled, connection, render and validation branches. Request parsing and handler input are unchanged.
 Choose allowlisted fields whose values and paths cannot carry credentials.
 
 This changes existing diagnostic output: raw path/query fields disappear and

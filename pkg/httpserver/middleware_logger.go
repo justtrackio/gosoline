@@ -24,6 +24,9 @@ type logCall struct {
 	logger   log.Logger
 	settings LoggingSettings
 	fields   log.Fields
+	method   string
+	path     string
+	proto    string
 }
 
 func LoggingMiddleware(logger log.Logger, settings LoggingSettings) gin.HandlerFunc {
@@ -46,9 +49,9 @@ func NewLoggingMiddlewareWithInterfaces(logger log.Logger, settings LoggingSetti
 			})
 		}
 
-		if sessionId := ginCtx.Request.Header.Get("X-Session-Id"); sessionId != "" {
+		if ginCtx.Request.Header.Get("X-Session-Id") != "" {
 			reqCtx = log.MutateGlobalContextFields(reqCtx, map[string]any{
-				"session_id": sessionId,
+				"session_id": log.Redacted,
 			})
 		}
 
@@ -84,12 +87,13 @@ func (lc *logCall) prepare(ginCtx *gin.Context) {
 	lc.fields["bytes"] = ginCtx.Writer.Size()
 	lc.fields["client_ip"] = ginCtx.ClientIP()
 	lc.fields["host"] = req.Host
-	lc.fields["protocol"] = req.Proto
-	lc.fields["request_method"] = req.Method
-	lc.fields["request_path"] = ginCtx.FullPath()
-	if ginCtx.FullPath() == "" {
-		lc.fields["request_path"] = "[unmatched]"
+	lc.method, lc.path, lc.proto = req.Method, ginCtx.FullPath(), req.Proto
+	if lc.path == "" {
+		lc.path = "[unmatched]"
 	}
+	lc.fields["protocol"] = lc.proto
+	lc.fields["request_method"] = lc.method
+	lc.fields["request_path"] = lc.path
 	if lc.settings.RequestReferer {
 		lc.fields["request_referer"] = log.SanitizeURL(req.Referer())
 	}
@@ -98,11 +102,7 @@ func (lc *logCall) prepare(ginCtx *gin.Context) {
 
 	headers := make(map[string]string)
 	for _, key := range lc.settings.RequestHeaders {
-		if log.IsSensitiveField(key) {
-			headers[key] = log.Redacted
-		} else {
-			headers[key] = req.Header.Get(key)
-		}
+		headers[key] = log.RequestHeaderForLog(req.Header, key)
 	}
 
 	if len(headers) > 0 {
@@ -115,7 +115,7 @@ func (lc *logCall) prepare(ginCtx *gin.Context) {
 
 	buf, err := io.ReadAll(req.Body)
 	if err != nil {
-		lc.logger.Warn(req.Context(), "can not read request body: %s", err.Error())
+		lc.logger.Warn(req.Context(), "can not read request body: %s", log.SafeError(err).Error())
 
 		return
 	}
@@ -175,7 +175,7 @@ func (lc *logCall) finalize(ginCtx *gin.Context, requestTimeSecond float64) {
 
 	ctx := ginCtx.Request.Context()
 	logger := lc.logger.WithFields(lc.fields)
-	method, path, proto := lc.fields["request_method"], lc.fields["request_path"], lc.fields["protocol"]
+	method, path, proto := lc.method, lc.path, lc.proto
 
 	if len(ginCtx.Errors) == 0 {
 		logger.Info(ctx, "%s %s %s", method, path, proto)
@@ -186,17 +186,17 @@ func (lc *logCall) finalize(ginCtx *gin.Context, requestTimeSecond float64) {
 	for _, e := range ginCtx.Errors {
 		switch {
 		case exec.IsRequestCanceled(e):
-			logger.Info(ctx, "%s %s %s - request canceled: %s", method, path, proto, e.Error())
+			logger.Info(ctx, "%s %s %s - request canceled: %s", method, path, proto, log.SafeError(e.Err).Error())
 		case exec.IsConnectionError(e):
-			logger.Info(ctx, "%s %s %s - connection error: %s", method, path, proto, e.Error())
+			logger.Info(ctx, "%s %s %s - connection error: %s", method, path, proto, log.SafeError(e.Err).Error())
 		case e.IsType(gin.ErrorTypeBind):
 			logger.Warn(ctx, "%s %s %s - bind error: %s", method, path, proto, formatBindError(e.Err))
 		case e.IsType(gin.ErrorTypeRender):
-			logger.Warn(ctx, "%s %s %s - render error: %s", method, path, proto, e.Err.Error())
+			logger.Warn(ctx, "%s %s %s - render error: %s", method, path, proto, log.SafeError(e.Err).Error())
 		case validation.IsValidationError(e):
-			logger.Warn(ctx, "%s %s %s - validation error: %s", method, path, proto, e.Err.Error())
+			logger.Warn(ctx, "%s %s %s - validation error: %s", method, path, proto, log.SafeError(e.Err).Error())
 		default:
-			logger.Error(ctx, "%s %s %s: %w", method, path, proto, e.Err)
+			logger.Error(ctx, "%s %s %s: %w", method, path, proto, log.SafeError(e.Err))
 		}
 	}
 }

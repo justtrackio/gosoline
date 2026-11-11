@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -73,6 +75,7 @@ func TestLoggerPrivacyAtSerializedBoundary(t *testing.T) {
 			handler := log.NewHandlerIoWriter(cfg.New(), log.PriorityDebug, formatter, "main", time.RFC3339, buf)
 			logger := log.NewLoggerWithInterfaces(clock.NewFakeClock(), []log.Handler{handler})
 			err := log.RedactError(errors.New("rejected api-key-473"), "api-key-473")
+			//nolint:nosecrets // Deliberately inject raw credentials to verify masking in serialized output.
 			logger.WithFields(log.Fields{"password": "password-473", "headers": map[string]string{"Authorization": "Bearer bearer-473"}}).
 				Error(t.Context(), "api-key-473 operation failed: %w", err)
 			for _, secret := range []string{"password-473", "bearer-473", "api-key-473"} {
@@ -94,4 +97,19 @@ func TestErrorPrivacyDepthFailsClosed(t *testing.T) {
 		err = fmt.Errorf("operation: %w", err)
 	}
 	assert.Equal(t, "error chain omitted: privacy depth limit", log.SafeError(err).Error())
+}
+
+func TestRequestHeaderForLog(t *testing.T) {
+	headers := http.Header{}
+	for _, name := range []string{"Accept", "Accept-Encoding", "Content-Type", "Content-Encoding", "User-Agent", "X-Frontend-Version", "X-Request-Id"} {
+		headers.Set(name, "safe-diagnostic")
+		assert.Equal(t, "safe-diagnostic", log.RequestHeaderForLog(headers, strings.ToLower(name)))
+	}
+	for _, name := range []string{"Authorization", "Proxy-Authorization", "X-ID-TOKEN", "X-Custom-Auth", "Referer", "Location", "Cookie", "Set-Cookie"} {
+		headers.Set(name, "private-value-473")
+		assert.Equal(t, log.Redacted, log.RequestHeaderForLog(headers, strings.ToLower(name)))
+		assert.Equal(t, "private-value-473", headers.Get(name))
+	}
+	assert.Equal(t, log.Redacted, log.RequestHeaderForLog(headers, "X-Missing"))
+	assert.Empty(t, log.RequestHeaderForLog(nil, "Content-Type"))
 }
