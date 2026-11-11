@@ -1,5 +1,7 @@
 package log
 
+import "fmt"
+
 // Option is a functional option pattern for configuring a GosoLogger.
 type Option func(logger *gosoLogger) error
 
@@ -35,6 +37,21 @@ func WithHandlers(handler ...Handler) Option {
 func WithSamplingEnabled(enabled bool) Option {
 	return func(logger *gosoLogger) error {
 		logger.samplingEnabled = enabled
+
+		return nil
+	}
+}
+
+// WithSamplingPassthroughLevel sets the minimum log level retained for unsampled contexts without a fingers-crossed scope.
+// Only "warn" and "error" are supported. The default is "error".
+func WithSamplingPassthroughLevel(level string) Option {
+	return func(logger *gosoLogger) error {
+		priority, ok := LevelPriority(level)
+		if !ok || (priority != PriorityWarn && priority != PriorityError) {
+			return fmt.Errorf("invalid sampling passthrough level %q: must be warn or error", level)
+		}
+
+		logger.samplingPassthroughPriority = priority
 
 		return nil
 	}

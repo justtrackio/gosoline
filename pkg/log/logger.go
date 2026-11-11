@@ -118,11 +118,12 @@ type HandlerSettings struct {
 var _ GosoLogger = &gosoLogger{}
 
 type gosoLogger struct {
-	clock           clock.Clock
-	data            Data
-	ctxResolvers    []ContextFieldsResolverFunction
-	handlers        []Handler
-	samplingEnabled bool
+	clock                       clock.Clock
+	data                        Data
+	ctxResolvers                []ContextFieldsResolverFunction
+	handlers                    []Handler
+	samplingEnabled             bool
+	samplingPassthroughPriority int
 }
 
 // NewLogger creates a new logger with a real clock and no handlers.
@@ -139,9 +140,10 @@ func NewLoggerWithInterfaces(clock clock.Clock, handlers []Handler) *gosoLogger 
 			ContextFields: make(map[string]any),
 			Fields:        make(map[string]any),
 		},
-		ctxResolvers:    nil,
-		handlers:        handlers,
-		samplingEnabled: false,
+		ctxResolvers:                nil,
+		handlers:                    handlers,
+		samplingEnabled:             false,
+		samplingPassthroughPriority: PriorityError,
 	}
 }
 
@@ -190,11 +192,12 @@ func (l *gosoLogger) WithFields(fields Fields) Logger {
 
 func (l *gosoLogger) copy() *gosoLogger {
 	return &gosoLogger{
-		clock:           l.clock,
-		data:            l.data,
-		ctxResolvers:    l.ctxResolvers,
-		handlers:        l.handlers,
-		samplingEnabled: l.samplingEnabled,
+		clock:                       l.clock,
+		data:                        l.data,
+		ctxResolvers:                l.ctxResolvers,
+		handlers:                    l.handlers,
+		samplingEnabled:             l.samplingEnabled,
+		samplingPassthroughPriority: l.samplingPassthroughPriority,
 	}
 }
 
@@ -234,7 +237,7 @@ func (l *gosoLogger) log(ctx context.Context, level int, msg string, args []any,
 func (l *gosoLogger) executeFingersCrossed(ctx context.Context, timestamp time.Time, level int, msg string, args []any, loggedErr error, data *Data) {
 	scope := getFingersCrossedScope(ctx)
 
-	if scope == nil && level >= PriorityWarn {
+	if scope == nil && level >= l.samplingPassthroughPriority {
 		l.executeHandlers(ctx, timestamp, level, msg, args, loggedErr, data)
 
 		return

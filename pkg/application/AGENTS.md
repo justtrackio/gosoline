@@ -16,6 +16,7 @@
 - Add or adjust default modules: extend `appOptions` in `options.go` and ensure new dependencies are registered before `kernel.Run`.
 - Customize metadata output: update `metadata_server.go` to expose additional metadata from `appctx.Metadata`.
 - Provide new module factories: expose them via `WithModuleFactory` and document required config keys.
+- Enable sampling: use `WithSampling` with `sampling.enabled: true` to configure logging and propagate sampling metadata through streams. `sampling.log_passthrough_level` selects `error` (default) or `warn` for unsampled logs without an explicit scope.
 
 ## Testing
 - Run `go test ./pkg/application` before pushing changes.
