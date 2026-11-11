@@ -389,14 +389,17 @@ func WithProfiling(app *App) {
 
 func WithSampling(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
-		var enabled bool
+		var settings *smpl.Settings
 		var err error
 
-		if enabled, err = smpl.IsEnabled(config); err != nil {
-			return fmt.Errorf("can not determine if sampling is enabled: %w", err)
+		if settings, err = smpl.UnmarshalSettings(config); err != nil {
+			return fmt.Errorf("can not unmarshal sampling settings: %w", err)
 		}
 
-		return logger.Option(log.WithSamplingEnabled(enabled))
+		return logger.Option(
+			log.WithSamplingPassthroughLevel(settings.LogPassthroughLevel),
+			log.WithSamplingEnabled(settings.Enabled),
+		)
 	})
 
 	app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {

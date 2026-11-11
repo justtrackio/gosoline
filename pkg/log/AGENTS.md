@@ -12,7 +12,7 @@
 
 ## Common tasks
 - Add handler or formatter: create new handler file, register via `options.go`, add tests.
-- Extend sampling: adjust `logger_sampling.go` and ensure default config still keeps high-volume services safe.
+- Extend context sampling: adjust `logger.go` and `fingers_crossed.go`; `logger_sampling.go` handles repeated-message rate limiting.
 - Update ECS/Sentry metadata enrichment: edit `ecs_metadata.go` or `sentry.go` modules.
 
 ## Testing
@@ -43,7 +43,10 @@ log.handlers.main.level: info
 log.handlers.main.channels: ["*"]
 log.handlers.sentry.type: sentry # optional
 log.handlers.sentry.dsn: ""
+sampling.log_passthrough_level: error # unsampled contexts without a scope; error or warn
 ```
+
+The passthrough threshold does not change explicit fingers-crossed scopes: warnings stay buffered until an error or manual flush.
 
 ## Related packages
 - `pkg/tracing` - distributed tracing integration
