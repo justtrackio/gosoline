@@ -100,18 +100,23 @@ func (s *FingersCrossedSuite) TestAfterFlushWritesImmediately() {
 	s.JSONEq(`{"channel":"main","context":{"fingers_crossed_flushed":true,"sampled":false},"fields":{},"level":2,"level_name":"info","message":"b","timestamp":"1984-04-04T00:01:00Z"}`, lines[1])
 }
 
-func (s *FingersCrossedSuite) TestWithoutScopeDropsNonError() {
+func (s *FingersCrossedSuite) TestWithoutScopePreservesWarningsAndErrors() {
 	ctx := smplctx.WithSampling(s.T().Context(), smplctx.Sampling{Sampled: false})
 
+	s.logger.Debug(ctx, "debug")
 	s.logger.Info(ctx, "a")
 	s.Empty(s.buf.String())
+
+	s.logger.Warn(ctx, "warning")
+	s.Len(getLogLines(s.buf), 1)
 
 	s.cl.Advance(time.Minute)
 	s.logger.Error(ctx, "boom")
 
 	lines := getLogLines(s.buf)
-	s.Len(lines, 1)
-	s.JSONEq(`{"channel":"main","context":{"sampled":false},"err":"boom","fields":{},"level":4,"level_name":"error","message":"boom","timestamp":"1984-04-04T00:01:00Z"}`, lines[0])
+	s.Require().Len(lines, 2)
+	s.JSONEq(`{"channel":"main","context":{"sampled":false},"fields":{},"level":3,"level_name":"warn","message":"warning","timestamp":"1984-04-04T00:00:00Z"}`, lines[0])
+	s.JSONEq(`{"channel":"main","context":{"sampled":false},"err":"boom","fields":{},"level":4,"level_name":"error","message":"boom","timestamp":"1984-04-04T00:01:00Z"}`, lines[1])
 }
 
 func TestFingersCrossedSuite(t *testing.T) {

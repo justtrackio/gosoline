@@ -394,7 +394,9 @@ func WithProfiling(app *App) {
 	})
 }
 
-func WithSampling(app *App) {
+// WithLoggerSampling applies sampling.enabled to context-based log sampling without
+// propagating sampling decisions through stream messages.
+func WithLoggerSampling(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		var enabled bool
 		var err error
@@ -405,6 +407,12 @@ func WithSampling(app *App) {
 
 		return logger.Option(log.WithSamplingEnabled(enabled))
 	})
+}
+
+// WithSampling enables context-based log sampling and propagates sampling decisions
+// through stream messages when sampling.enabled is true.
+func WithSampling(app *App) {
+	WithLoggerSampling(app)
 
 	app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
 		var enabled bool

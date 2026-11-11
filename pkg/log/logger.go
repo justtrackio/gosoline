@@ -234,7 +234,7 @@ func (l *gosoLogger) log(ctx context.Context, level int, msg string, args []any,
 func (l *gosoLogger) executeFingersCrossed(ctx context.Context, timestamp time.Time, level int, msg string, args []any, loggedErr error, data *Data) {
 	scope := getFingersCrossedScope(ctx)
 
-	if scope == nil && level >= PriorityError {
+	if scope == nil && level >= PriorityWarn {
 		l.executeHandlers(ctx, timestamp, level, msg, args, loggedErr, data)
 
 		return
