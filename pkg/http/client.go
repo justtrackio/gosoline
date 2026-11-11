@@ -545,7 +545,7 @@ func (c *client) AddRetryCondition(f RetryConditionFunc) {
 	c.http.AddRetryCondition(func(r *resty.Response, e error) bool {
 		conditionResult := f(buildResponse(r, nil), e)
 		if conditionResult {
-			c.logger.Warn(r.Request.Context(), "retry attempt %d for request %s", r.Request.Attempt, r.Request.URL)
+			c.logger.Warn(r.Request.Context(), "retry attempt %d for request %s", r.Request.Attempt, log.SanitizeURL(r.Request.URL))
 		}
 
 		return conditionResult
@@ -558,17 +558,17 @@ func (c *client) SetRedirectValidator(allowRequest func(request *http.Request) b
 
 func (c *client) validateRedirect(request *http.Request, _ []*http.Request) error {
 	if !c.redirectValidator(request) {
-		return fmt.Errorf("the redirect to %s is not allowed by the redirect validator", request.URL)
+		return fmt.Errorf("the redirect to %s is not allowed by the redirect validator", log.SanitizeURL(request.URL.String()))
 	}
 
 	fixedEntry, ok := getFixedDialerEntry(request.Context())
 	if !ok {
-		return fmt.Errorf("the redirect to %s is not allowed: no fixed dialer entry in the request context", request.URL)
+		return fmt.Errorf("the redirect to %s is not allowed: no fixed dialer entry in the request context", log.SanitizeURL(request.URL.String()))
 	}
 
 	ips, err := c.urlValidator.Validate(request.Context(), request.URL.String())
 	if err != nil {
-		return fmt.Errorf("the redirect to %s is not allowed: %w", request.URL, err)
+		return log.RedactError(fmt.Errorf("the redirect to %s is not allowed: %w", log.SanitizeURL(request.URL.String()), err), request.URL.String())
 	}
 
 	fixedEntry.set(request.URL.Hostname(), ips)
@@ -602,11 +602,12 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 
 	req, url, err := request.build()
 	logger := c.logger.WithFields(log.Fields{
-		"url":    url,
+		"url":    log.SanitizeURL(url),
 		"method": method,
 	})
 
 	if err != nil {
+		err = request.protectError(err, url)
 		logger.Error(ctx, "failed to assemble request: %w", err)
 
 		return nil, fmt.Errorf("failed to assemble request: %w", err)
@@ -614,7 +615,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 
 	ctx, err = c.validateUrl(ctx, url)
 	if err != nil {
-		return nil, fmt.Errorf("url validation failed for %s: %w", url, err)
+		return nil, request.protectError(fmt.Errorf("url validation failed for %s: %w", log.SanitizeURL(url), err), url)
 	}
 
 	c.prepareRequest(ctx, req, request)
@@ -636,7 +637,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 			metric.DimensionErrorType: errorTypeRequestCanceled,
 		}, float64(totalDuration/time.Millisecond))
 
-		return nil, err
+		return nil, request.protectError(err, url)
 	}
 
 	if err != nil {
@@ -650,7 +651,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 			metric.DimensionErrorType: errorTypeRequestFailed,
 		}, float64(totalDuration/time.Millisecond))
 
-		return nil, fmt.Errorf("failed to perform %s request to %s: %w", request.restyRequest.Method, request.url.String(), err)
+		return nil, request.protectError(fmt.Errorf("failed to perform %s request to %s: %w", request.restyRequest.Method, log.SanitizeURL(url), err), url)
 	}
 
 	response := buildResponse(resp, &totalDuration)
@@ -687,12 +688,12 @@ func (c *client) withRequestTimeout(ctx context.Context) (context.Context, conte
 func (c *client) validateUrl(ctx context.Context, rawUrl string) (context.Context, error) {
 	ips, err := c.urlValidator.Validate(ctx, rawUrl)
 	if err != nil {
-		return ctx, err
+		return ctx, log.RedactError(err, rawUrl)
 	}
 
 	parsed, err := netUrl.Parse(rawUrl)
 	if err != nil {
-		return ctx, fmt.Errorf("parsing the url %q: %w", rawUrl, err)
+		return ctx, log.RedactError(fmt.Errorf("parsing the request URL: %w", err), rawUrl)
 	}
 
 	dialer := &fixedDialerEntry{}
