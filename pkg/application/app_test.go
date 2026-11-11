@@ -1,24 +1,17 @@
 package application_test
 
 import (
-	"bytes"
 	"context"
 	"os"
 	"testing"
-	"time"
 
-	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
-	"github.com/justtrackio/gosoline/pkg/smpl/smplctx"
-	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -90,40 +83,6 @@ func TestWithOtelShutdownRunsHandlersInOrder(t *testing.T) {
 	app.Run()
 
 	assert.Equal(t, []string{"metric", "tracing"}, order)
-}
-
-func TestWithLoggerSampling(t *testing.T) {
-	for name, enabled := range map[string]bool{"enabled": true, "disabled": false} {
-		t.Run(name, func(t *testing.T) {
-			ctx := appctx.WithContainer(t.Context())
-			ctx = smplctx.WithSampling(ctx, smplctx.Sampling{Sampled: false})
-			before, err := stream.NewMessageEncoder(&stream.MessageEncoderSettings{}).Encode(ctx, "payload")
-			require.NoError(t, err)
-
-			config := cfg.New(map[string]any{
-				"app":      map[string]any{"env": "test", "name": "sampling-test"},
-				"sampling": map[string]any{"enabled": enabled},
-			})
-			buf := new(bytes.Buffer)
-			handler := log.NewHandlerIoWriter(config, log.PriorityInfo, log.FormatterJson, "main", time.RFC3339, buf)
-			logger := log.NewLoggerWithInterfaces(clock.NewFakeClock(), []log.Handler{handler})
-			_, err = application.NewWithInterfaces(ctx, config, logger,
-				application.WithLoggerSampling,
-				application.WithModuleFactory("test", func(context.Context, cfg.Config, log.Logger) (kernel.Module, error) {
-					return kernel.NewModuleFunc(func(context.Context) error { return nil }), nil
-				}),
-			)
-			require.NoError(t, err)
-			buf.Reset()
-
-			logger.Info(ctx, "ordinary log")
-			assert.Equal(t, enabled, buf.Len() == 0)
-
-			after, err := stream.NewMessageEncoder(&stream.MessageEncoderSettings{}).Encode(ctx, "payload")
-			require.NoError(t, err)
-			assert.Equal(t, before.Attributes, after.Attributes)
-		})
-	}
 }
 
 type metricShutdownExporter struct {

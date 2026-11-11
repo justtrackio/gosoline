@@ -110,10 +110,6 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 | `kafka/` | Kafka integration (topics, consumer groups) |
 
 ### Observability
-
-Use `application.WithLoggerSampling` for context-based log sampling; `WithSampling`
-also propagates sampling decisions through stream messages.
-
 | Package | Purpose |
 |---------|---------|
 | `metric/` | Metrics collection and export |
