@@ -217,6 +217,8 @@ Tags are only required if the naming pattern uses them. For example:
 - Pattern `{app.tags.region}-{app.tags.team}-{app.env}` requires `region` and `team` tags
 
 ## Conventions & testing patterns
+
+- Credential-bearing logs, propagated transport errors or HTTP capture changes: follow [logging privacy](pkg/log/PRIVACY.md).
 - File naming: `snake_case.go`
 - Exported names: `CamelCase`
 - JSON struct tags: `camelCase`

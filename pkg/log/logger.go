@@ -212,6 +212,20 @@ func (l *gosoLogger) log(ctx context.Context, level int, msg string, args []any,
 		data.ContextFields = mergeFields(data.ContextFields, newContextFields)
 	}
 
+	// Protect data before sampling buffers and every handler, including Sentry.
+	data.Fields = SanitizeFields(data.Fields)
+	data.ContextFields = SanitizeFields(data.ContextFields)
+	loggedErr = SafeError(loggedErr)
+	if loggedErr != nil {
+		msg = "%s"
+		args = []any{loggedErr.Error()}
+	}
+	safeArgs := make([]any, len(args))
+	for i, arg := range args {
+		safeArgs[i] = sanitizeValue(arg, 0)
+	}
+	args = safeArgs
+
 	if !l.samplingEnabled || !smplctx.HasSampling(ctx) {
 		l.executeHandlers(ctx, timestamp, level, msg, args, loggedErr, data)
 
@@ -278,7 +292,7 @@ func (l *gosoLogger) shouldLog(current string, level int, h Handler) (bool, erro
 }
 
 func (l *gosoLogger) err(err error) {
-	_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %s\n", err)
+	_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %s\n", SafeError(err))
 }
 
 func (l *gosoLogger) Close(ctx context.Context) error {

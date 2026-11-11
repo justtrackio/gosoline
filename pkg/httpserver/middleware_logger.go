@@ -2,12 +2,15 @@ package httpserver
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/encoding/base64"
 	"github.com/justtrackio/gosoline/pkg/exec"
@@ -83,23 +86,30 @@ func (lc *logCall) prepare(ginCtx *gin.Context) {
 	lc.fields["host"] = req.Host
 	lc.fields["protocol"] = req.Proto
 	lc.fields["request_method"] = req.Method
-	lc.fields["request_path"] = req.URL.Path
-	lc.fields["request_path_raw"] = getPathRaw(ginCtx)
-	lc.fields["request_query"] = req.URL.RawQuery
-	lc.fields["request_referer"] = req.Referer()
+	lc.fields["request_path"] = ginCtx.FullPath()
+	if ginCtx.FullPath() == "" {
+		lc.fields["request_path"] = "[unmatched]"
+	}
+	if lc.settings.RequestReferer {
+		lc.fields["request_referer"] = log.SanitizeURL(req.Referer())
+	}
 	lc.fields["request_user_agent"] = req.UserAgent()
 	lc.fields["scheme"] = req.URL.Scheme
 
 	headers := make(map[string]string)
 	for _, key := range lc.settings.RequestHeaders {
-		headers[key] = req.Header.Get(key)
+		if log.IsSensitiveField(key) {
+			headers[key] = log.Redacted
+		} else {
+			headers[key] = req.Header.Get(key)
+		}
 	}
 
 	if len(headers) > 0 {
 		lc.fields["request_headers"] = headers
 	}
 
-	if !lc.settings.RequestBody {
+	if !lc.settings.RequestBody || len(lc.settings.RequestBodyFields) == 0 {
 		return
 	}
 
@@ -113,10 +123,25 @@ func (lc *logCall) prepare(ginCtx *gin.Context) {
 	// restore the body so another handler can read it
 	req.Body = io.NopCloser(bytes.NewBuffer(buf))
 
+	var body map[string]any
+	if err := json.Unmarshal(buf, &body); err != nil {
+		// Never fall back to raw payloads on invalid JSON or another content type.
+		return
+	}
+	selected := make(map[string]any)
+	for _, key := range lc.settings.RequestBodyFields {
+		if value, ok := body[key]; ok {
+			selected[key] = value
+		}
+	}
+	safe := log.SanitizeFields(selected)
 	if lc.settings.RequestBodyBase64 {
-		lc.fields["request_body"] = string(base64.Encode(buf))
+		encoded, err := json.Marshal(safe)
+		if err == nil {
+			lc.fields["request_body"] = string(base64.Encode(encoded))
+		}
 	} else {
-		lc.fields["request_body"] = string(buf)
+		lc.fields["request_body"] = safe
 	}
 }
 
@@ -134,8 +159,15 @@ func (lc *logCall) finalize(ginCtx *gin.Context, requestTimeSecond float64) {
 		queryParameters := make(map[string]string)
 		query := ginCtx.Request.URL.Query()
 
-		for k := range query {
-			queryParameters[k] = query.Get(k)
+		for _, key := range lc.settings.RequestQueryParameters {
+			if !query.Has(key) {
+				continue
+			}
+			if log.IsSensitiveField(key) {
+				queryParameters[key] = log.Redacted
+			} else {
+				queryParameters[key] = query.Get(key)
+			}
 		}
 
 		lc.fields["request_query_parameters"] = queryParameters
@@ -158,7 +190,7 @@ func (lc *logCall) finalize(ginCtx *gin.Context, requestTimeSecond float64) {
 		case exec.IsConnectionError(e):
 			logger.Info(ctx, "%s %s %s - connection error: %s", method, path, proto, e.Error())
 		case e.IsType(gin.ErrorTypeBind):
-			logger.Warn(ctx, "%s %s %s - bind error: %s", method, path, proto, e.Err.Error())
+			logger.Warn(ctx, "%s %s %s - bind error: %s", method, path, proto, formatBindError(e.Err))
 		case e.IsType(gin.ErrorTypeRender):
 			logger.Warn(ctx, "%s %s %s - render error: %s", method, path, proto, e.Err.Error())
 		case validation.IsValidationError(e):
@@ -169,14 +201,16 @@ func (lc *logCall) finalize(ginCtx *gin.Context, requestTimeSecond float64) {
 	}
 }
 
-func getPathRaw(ginCtx *gin.Context) string {
-	path := ginCtx.Request.URL.Path
-
-	for i := range ginCtx.Params {
-		p := ginCtx.Params[i]
-		k := fmt.Sprintf(":%s", p.Key)
-		path = strings.Replace(path, p.Value, k, 1)
+func formatBindError(err error) string {
+	var failures validator.ValidationErrors
+	if !errors.As(err, &failures) {
+		// Parser messages may contain rejected input. Keep their type, not the payload.
+		return fmt.Sprintf("%T", err)
+	}
+	details := make([]string, 0, len(failures))
+	for _, failure := range failures {
+		details = append(details, fmt.Sprintf("field=%s tag=%s", failure.Field(), failure.Tag()))
 	}
 
-	return path
+	return strings.Join(details, "; ")
 }

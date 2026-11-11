@@ -11,6 +11,8 @@
 - `config_postprocessor_main_logger.go` - ties logger config into global app settings.
 
 ## Common tasks
+
+- Credential fields, provider errors or sink changes: follow [logging privacy](PRIVACY.md), including detached export errors and serialized-output tests.
 - Add handler or formatter: create new handler file, register via `options.go`, add tests.
 - Extend sampling: adjust `logger_sampling.go` and ensure default config still keeps high-volume services safe.
 - Update ECS/Sentry metadata enrichment: edit `ecs_metadata.go` or `sentry.go` modules.
