@@ -15,20 +15,27 @@ const fetchLimit = 100
 type Guard interface {
 	CreatePolicy(ctx context.Context, pol ladon.Policy) error
 	DeletePolicy(ctx context.Context, pol ladon.Policy) error
+	DeletePolicyIfUnchanged(ctx context.Context, before PolicySnapshot) (bool, error)
 	GetPolicy(ctx context.Context, id string) (ladon.Policy, error)
+	GetPolicySnapshot(ctx context.Context, id string) (*PolicySnapshot, error)
 	GetPolicies(ctx context.Context) (ladon.Policies, error)
 	GetPoliciesBySubject(ctx context.Context, subject string) (ladon.Policies, error)
 	IsAllowed(ctx context.Context, request *ladon.Request) error
 	UpdatePolicy(ctx context.Context, pol ladon.Policy) error
+	UpdatePolicyIfUnchanged(ctx context.Context, before PolicySnapshot, after ladon.Policy) (bool, error)
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Manager
 type Manager interface {
 	ladon.Manager
+	GetSnapshot(ctx context.Context, id string) (*PolicySnapshot, error)
+	UpdateIfUnchanged(ctx context.Context, before PolicySnapshot, after ladon.Policy) (bool, error)
+	DeleteIfUnchanged(ctx context.Context, before PolicySnapshot) (bool, error)
 }
 
 type LadonGuard struct {
-	warden *ladon.Ladon
+	warden  *ladon.Ladon
+	manager Manager
 }
 
 func NewGuard(ctx context.Context, config cfg.Config, logger log.Logger) (*LadonGuard, error) {
@@ -52,8 +59,24 @@ func NewGuardWithInterfaces(manager Manager, logger AuditLogger) *LadonGuard {
 	}
 
 	return &LadonGuard{
-		warden: warden,
+		warden:  warden,
+		manager: manager,
 	}
+}
+
+// GetPolicySnapshot reads an uncached policy and its original stored value. Missing policies return nil.
+func (g LadonGuard) GetPolicySnapshot(ctx context.Context, id string) (*PolicySnapshot, error) {
+	return g.manager.GetSnapshot(ctx, id)
+}
+
+// UpdatePolicyIfUnchanged updates a policy only when its stored value still matches before.
+func (g LadonGuard) UpdatePolicyIfUnchanged(ctx context.Context, before PolicySnapshot, after ladon.Policy) (bool, error) {
+	return g.manager.UpdateIfUnchanged(ctx, before, after)
+}
+
+// DeletePolicyIfUnchanged deletes a policy only when its stored value still matches before.
+func (g LadonGuard) DeletePolicyIfUnchanged(ctx context.Context, before PolicySnapshot) (bool, error) {
+	return g.manager.DeleteIfUnchanged(ctx, before)
 }
 
 func (g LadonGuard) IsAllowed(ctx context.Context, request *ladon.Request) error {
