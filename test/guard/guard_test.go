@@ -101,6 +101,54 @@ func (s *GuardTestSuite) TestGetPolicies() {
 	s.Len(policies, 1)
 }
 
+func (s *GuardTestSuite) TestConditionalWritesPreserveConcurrentChanges() {
+	ctx := s.T().Context()
+	policy := &ladon.DefaultPolicy{ID: "conditional", Subjects: []string{"a:3", "a:4", "a:5"}, Effect: "allow"}
+	s.Require().NoError(s.guard.CreatePolicy(ctx, policy))
+	before, err := s.guard.GetPolicySnapshot(ctx, policy.ID)
+	s.Require().NoError(err)
+	s.Require().NotNil(before)
+
+	// A concurrent editor revokes a:5 after cleanup read its snapshot.
+	policy.Subjects = []string{"a:3", "a:4"}
+	s.Require().NoError(s.guard.UpdatePolicy(ctx, policy))
+	stale := *before.Policy
+	stale.Subjects = []string{"a:4", "a:5"}
+	changed, err := s.guard.UpdatePolicyIfUnchanged(ctx, *before, &stale)
+	s.Require().NoError(err)
+	s.False(changed)
+
+	current, err := s.guard.GetPolicySnapshot(ctx, policy.ID)
+	s.Require().NoError(err)
+	s.Require().NotNil(current)
+	s.Equal([]string{"a:3", "a:4"}, current.Policy.Subjects)
+	after := *current.Policy
+	after.Subjects = []string{"a:4"}
+	changed, err = s.guard.UpdatePolicyIfUnchanged(ctx, *current, &after)
+	s.Require().NoError(err)
+	s.True(changed)
+
+	current, err = s.guard.GetPolicySnapshot(ctx, policy.ID)
+	s.Require().NoError(err)
+	s.Require().NotNil(current)
+	policy.Subjects = []string{"a:4", "a:6"}
+	s.Require().NoError(s.guard.UpdatePolicy(ctx, policy))
+	changed, err = s.guard.DeletePolicyIfUnchanged(ctx, *current)
+	s.Require().NoError(err)
+	s.False(changed)
+
+	current, err = s.guard.GetPolicySnapshot(ctx, policy.ID)
+	s.Require().NoError(err)
+	s.Require().NotNil(current)
+	s.Equal([]string{"a:4", "a:6"}, current.Policy.Subjects)
+	changed, err = s.guard.DeletePolicyIfUnchanged(ctx, *current)
+	s.Require().NoError(err)
+	s.True(changed)
+	current, err = s.guard.GetPolicySnapshot(ctx, policy.ID)
+	s.Require().NoError(err)
+	s.Nil(current)
+}
+
 func (s *GuardTestSuite) TestIsAllowed() {
 	req := ladon.Request{
 		Resource: "gsl:e1",
