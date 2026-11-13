@@ -2,6 +2,7 @@ package guard
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -174,6 +175,82 @@ func (m SqlManager) queryPolicies(ctx context.Context, sel squirrel.SelectBuilde
 	}
 
 	return policies, nil
+}
+
+// GetSnapshot reads the original stored payload without reconstructing it from a policy.
+// Missing policies return nil without an error.
+func (m SqlManager) GetSnapshot(ctx context.Context, id string) (*PolicySnapshot, error) {
+	var err error
+	var rows *db.Result
+	var policy ladon.DefaultPolicy
+
+	if rows, err = m.dbClient.GetResult(ctx, "SELECT id, policy FROM guard_policies WHERE id = ?", id); err != nil {
+		return nil, fmt.Errorf("could not read policy snapshot: %w", err)
+	}
+
+	if len(*rows) == 0 {
+		return nil, nil
+	}
+
+	row := (*rows)[0]
+	if err := json.Unmarshal([]byte(row["policy"]), &policy); err != nil {
+		return nil, fmt.Errorf("could not decode policy snapshot: %w", err)
+	}
+
+	policy.ID = row["id"]
+
+	return &PolicySnapshot{Policy: &policy, id: policy.ID, raw: row["policy"]}, nil
+}
+
+// UpdateIfUnchanged returns false on a changed or missing policy, or an update with no changed values.
+func (m SqlManager) UpdateIfUnchanged(ctx context.Context, before PolicySnapshot, after ladon.Policy) (bool, error) {
+	var err error
+	var payload []byte
+	var result sql.Result
+
+	if before.Policy == nil || before.id == "" || before.raw == "" || before.Policy.ID != before.id || after == nil || after.GetID() != before.id {
+		return false, fmt.Errorf("invalid policy snapshot or changed policy identity")
+	}
+
+	if payload, err = buildPolicy(after); err != nil {
+		return false, fmt.Errorf("could not marshal policy: %w", err)
+	}
+
+	// Binary comparison prevents a case-insensitive table collation from accepting a stale value.
+	query := "UPDATE guard_policies SET policy = ?, updated_at = ? WHERE id = ? AND BINARY policy = BINARY ?"
+	if result, err = m.dbClient.Exec(ctx, query, string(payload), time.Now().Format(db.FormatDateTime), before.id, before.raw); err != nil {
+		return false, fmt.Errorf("could not conditionally update policy: %w", err)
+	}
+
+	return m.policyWriteMatched(result)
+}
+
+// DeleteIfUnchanged returns false on a changed or missing policy.
+func (m SqlManager) DeleteIfUnchanged(ctx context.Context, before PolicySnapshot) (bool, error) {
+	var err error
+	var result sql.Result
+
+	if before.Policy == nil || before.id == "" || before.raw == "" || before.Policy.ID != before.id {
+		return false, fmt.Errorf("invalid policy snapshot")
+	}
+
+	query := "DELETE FROM guard_policies WHERE id = ? AND BINARY policy = BINARY ?"
+	if result, err = m.dbClient.Exec(ctx, query, before.id, before.raw); err != nil {
+		return false, fmt.Errorf("could not conditionally delete policy: %w", err)
+	}
+
+	return m.policyWriteMatched(result)
+}
+
+func (SqlManager) policyWriteMatched(result sql.Result) (bool, error) {
+	var err error
+	var rows int64
+
+	if rows, err = result.RowsAffected(); err != nil {
+		return false, fmt.Errorf("could not get affected policy rows: %w", err)
+	}
+
+	return rows == 1, nil
 }
 
 func buildSelectBuilder(where any) squirrel.SelectBuilder {

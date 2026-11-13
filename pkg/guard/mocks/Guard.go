@@ -5,6 +5,7 @@ package mocks
 import (
 	context "context"
 
+	guard "github.com/justtrackio/gosoline/pkg/guard"
 	ladon "github.com/selm0/ladon"
 
 	mock "github.com/stretchr/testify/mock"
@@ -113,6 +114,63 @@ func (_c *Guard_DeletePolicy_Call) Return(_a0 error) *Guard_DeletePolicy_Call {
 }
 
 func (_c *Guard_DeletePolicy_Call) RunAndReturn(run func(context.Context, ladon.Policy) error) *Guard_DeletePolicy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeletePolicyIfUnchanged provides a mock function with given fields: ctx, before
+func (_m *Guard) DeletePolicyIfUnchanged(ctx context.Context, before guard.PolicySnapshot) (bool, error) {
+	ret := _m.Called(ctx, before)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeletePolicyIfUnchanged")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, guard.PolicySnapshot) (bool, error)); ok {
+		return rf(ctx, before)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, guard.PolicySnapshot) bool); ok {
+		r0 = rf(ctx, before)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, guard.PolicySnapshot) error); ok {
+		r1 = rf(ctx, before)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Guard_DeletePolicyIfUnchanged_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeletePolicyIfUnchanged'
+type Guard_DeletePolicyIfUnchanged_Call struct {
+	*mock.Call
+}
+
+// DeletePolicyIfUnchanged is a helper method to define mock.On call
+//   - ctx context.Context
+//   - before guard.PolicySnapshot
+func (_e *Guard_Expecter) DeletePolicyIfUnchanged(ctx interface{}, before interface{}) *Guard_DeletePolicyIfUnchanged_Call {
+	return &Guard_DeletePolicyIfUnchanged_Call{Call: _e.mock.On("DeletePolicyIfUnchanged", ctx, before)}
+}
+
+func (_c *Guard_DeletePolicyIfUnchanged_Call) Run(run func(ctx context.Context, before guard.PolicySnapshot)) *Guard_DeletePolicyIfUnchanged_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(guard.PolicySnapshot))
+	})
+	return _c
+}
+
+func (_c *Guard_DeletePolicyIfUnchanged_Call) Return(_a0 bool, _a1 error) *Guard_DeletePolicyIfUnchanged_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Guard_DeletePolicyIfUnchanged_Call) RunAndReturn(run func(context.Context, guard.PolicySnapshot) (bool, error)) *Guard_DeletePolicyIfUnchanged_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -293,6 +351,65 @@ func (_c *Guard_GetPolicy_Call) RunAndReturn(run func(context.Context, string) (
 	return _c
 }
 
+// GetPolicySnapshot provides a mock function with given fields: ctx, id
+func (_m *Guard) GetPolicySnapshot(ctx context.Context, id string) (*guard.PolicySnapshot, error) {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPolicySnapshot")
+	}
+
+	var r0 *guard.PolicySnapshot
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*guard.PolicySnapshot, error)); ok {
+		return rf(ctx, id)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *guard.PolicySnapshot); ok {
+		r0 = rf(ctx, id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*guard.PolicySnapshot)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Guard_GetPolicySnapshot_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPolicySnapshot'
+type Guard_GetPolicySnapshot_Call struct {
+	*mock.Call
+}
+
+// GetPolicySnapshot is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *Guard_Expecter) GetPolicySnapshot(ctx interface{}, id interface{}) *Guard_GetPolicySnapshot_Call {
+	return &Guard_GetPolicySnapshot_Call{Call: _e.mock.On("GetPolicySnapshot", ctx, id)}
+}
+
+func (_c *Guard_GetPolicySnapshot_Call) Run(run func(ctx context.Context, id string)) *Guard_GetPolicySnapshot_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Guard_GetPolicySnapshot_Call) Return(_a0 *guard.PolicySnapshot, _a1 error) *Guard_GetPolicySnapshot_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Guard_GetPolicySnapshot_Call) RunAndReturn(run func(context.Context, string) (*guard.PolicySnapshot, error)) *Guard_GetPolicySnapshot_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsAllowed provides a mock function with given fields: ctx, request
 func (_m *Guard) IsAllowed(ctx context.Context, request *ladon.Request) error {
 	ret := _m.Called(ctx, request)
@@ -383,6 +500,64 @@ func (_c *Guard_UpdatePolicy_Call) Return(_a0 error) *Guard_UpdatePolicy_Call {
 }
 
 func (_c *Guard_UpdatePolicy_Call) RunAndReturn(run func(context.Context, ladon.Policy) error) *Guard_UpdatePolicy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdatePolicyIfUnchanged provides a mock function with given fields: ctx, before, after
+func (_m *Guard) UpdatePolicyIfUnchanged(ctx context.Context, before guard.PolicySnapshot, after ladon.Policy) (bool, error) {
+	ret := _m.Called(ctx, before, after)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdatePolicyIfUnchanged")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, guard.PolicySnapshot, ladon.Policy) (bool, error)); ok {
+		return rf(ctx, before, after)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, guard.PolicySnapshot, ladon.Policy) bool); ok {
+		r0 = rf(ctx, before, after)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, guard.PolicySnapshot, ladon.Policy) error); ok {
+		r1 = rf(ctx, before, after)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Guard_UpdatePolicyIfUnchanged_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdatePolicyIfUnchanged'
+type Guard_UpdatePolicyIfUnchanged_Call struct {
+	*mock.Call
+}
+
+// UpdatePolicyIfUnchanged is a helper method to define mock.On call
+//   - ctx context.Context
+//   - before guard.PolicySnapshot
+//   - after ladon.Policy
+func (_e *Guard_Expecter) UpdatePolicyIfUnchanged(ctx interface{}, before interface{}, after interface{}) *Guard_UpdatePolicyIfUnchanged_Call {
+	return &Guard_UpdatePolicyIfUnchanged_Call{Call: _e.mock.On("UpdatePolicyIfUnchanged", ctx, before, after)}
+}
+
+func (_c *Guard_UpdatePolicyIfUnchanged_Call) Run(run func(ctx context.Context, before guard.PolicySnapshot, after ladon.Policy)) *Guard_UpdatePolicyIfUnchanged_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(guard.PolicySnapshot), args[2].(ladon.Policy))
+	})
+	return _c
+}
+
+func (_c *Guard_UpdatePolicyIfUnchanged_Call) Return(_a0 bool, _a1 error) *Guard_UpdatePolicyIfUnchanged_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Guard_UpdatePolicyIfUnchanged_Call) RunAndReturn(run func(context.Context, guard.PolicySnapshot, ladon.Policy) (bool, error)) *Guard_UpdatePolicyIfUnchanged_Call {
 	_c.Call.Return(run)
 	return _c
 }

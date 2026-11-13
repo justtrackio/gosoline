@@ -35,6 +35,25 @@ func (m CachedManager) Update(ctx context.Context, pol ladon.Policy) error {
 	return m.manager.Update(ctx, pol)
 }
 
+// GetSnapshot bypasses request caching so conflict retries read the current policy.
+func (m CachedManager) GetSnapshot(ctx context.Context, id string) (*PolicySnapshot, error) {
+	return m.manager.GetSnapshot(ctx, id)
+}
+
+// UpdateIfUnchanged invalidates cached authorization even when the write conflicts.
+func (m CachedManager) UpdateIfUnchanged(ctx context.Context, before PolicySnapshot, after ladon.Policy) (bool, error) {
+	reqctx.Delete[managerCache](ctx)
+
+	return m.manager.UpdateIfUnchanged(ctx, before, after)
+}
+
+// DeleteIfUnchanged invalidates cached authorization even when the write conflicts.
+func (m CachedManager) DeleteIfUnchanged(ctx context.Context, before PolicySnapshot) (bool, error) {
+	reqctx.Delete[managerCache](ctx)
+
+	return m.manager.DeleteIfUnchanged(ctx, before)
+}
+
 func (m CachedManager) Get(ctx context.Context, id string) (ladon.Policy, error) {
 	return m.findPolicy(ctx, id, func() (ladon.Policy, error) {
 		return m.manager.Get(ctx, id)
