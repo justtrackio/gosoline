@@ -6,6 +6,8 @@ import "github.com/justtrackio/gosoline/pkg/cfg"
 type Settings struct {
 	// Enabled toggles the sampling logic. If false, sampling is assumed to be true but not stored in the context.
 	Enabled bool `cfg:"enabled" default:"false"`
+	// LogPassthroughLevel is the minimum log level retained for unsampled contexts without a fingers-crossed scope.
+	LogPassthroughLevel string `cfg:"log_passthrough_level" default:"error" validate:"oneof=warn error"`
 	// Strategies is a list of strategy names to apply in order.
 	Strategies []string `cfg:"strategies"`
 }
