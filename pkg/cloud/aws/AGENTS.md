@@ -18,6 +18,7 @@
 ## Testing
 - Service-specific: `go test ./pkg/cloud/aws/<service>`.
 - Shared helpers: `go test ./pkg/cloud/aws`.
+- AWS request budgets use wall time, independently of the replaceable application clock; fake-clock advances must not cancel requests or stop real network deadlines.
 - For changes touching naming/macros, also run `go test ./pkg/stream`.
 
 ## Service subpackages

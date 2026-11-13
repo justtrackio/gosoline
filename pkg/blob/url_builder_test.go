@@ -36,7 +36,7 @@ func (s *UrlBuilderTestSuite) SetupTest() {
 	s.NoError(err, "there should be no error on config create")
 }
 
-func (s *UrlBuilderTestSuite) TestLocalstack() {
+func (s *UrlBuilderTestSuite) TestFloci() {
 	builder, err := blob.NewUrlBuilder(s.config, "my_store")
 	s.NoError(err, "there should be no error on builder create")
 

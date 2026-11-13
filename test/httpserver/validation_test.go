@@ -71,7 +71,7 @@ func (s *ValidationTestSuite) SetupSuite() []suite.Option {
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("./config.dist.validation.yml"),
 		suite.WithSharedEnvironment(),
-		suite.WithoutAutoDetectedComponents("localstack"),
+		suite.WithoutAutoDetectedComponents("floci"),
 	}
 }
 

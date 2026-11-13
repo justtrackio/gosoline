@@ -39,14 +39,16 @@ func (s *DynamoDbSuite) TestDynamoDb() {
 	err := s.Env().LoadFixtureSets(s.dynamoDbFixtureSet1())
 	s.NoError(err)
 
-	ddbClient := s.Env().Localstack("default").DdbClient()
+	ddbClient := s.Env().Floci("default").DdbClient()
+	tableName, err := ddb.GetTableName(s.Env().Config(), ddbSettings)
+	s.NoError(err)
 	gio, err := ddbClient.GetItem(s.T().Context(), &dynamodb.GetItemInput{
 		Key: map[string]types.AttributeValue{
 			"Name": &types.AttributeValueMemberS{
 				Value: "Ash",
 			},
 		},
-		TableName: aws.String("gosoline-test-integration-test-grp-testModel"),
+		TableName: aws.String(tableName),
 	})
 
 	// should have created the item
@@ -56,7 +58,7 @@ func (s *DynamoDbSuite) TestDynamoDb() {
 	s.Equal("10", gio.Item["Age"].(*types.AttributeValueMemberN).Value)
 
 	qo, err := ddbClient.Query(s.T().Context(), &dynamodb.QueryInput{
-		TableName:              aws.String("gosoline-test-integration-test-grp-testModel"),
+		TableName:              aws.String(tableName),
 		IndexName:              aws.String("IDX_Age"),
 		KeyConditionExpression: aws.String("Age = :v_age"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
@@ -70,7 +72,7 @@ func (s *DynamoDbSuite) TestDynamoDb() {
 	s.NoError(err)
 	s.Len(qo.Items, 1, "1 item expected")
 
-	_, err = ddbClient.DeleteTable(s.T().Context(), &dynamodb.DeleteTableInput{TableName: aws.String("gosoline-test-integration-test-grp-testModel")})
+	_, err = ddbClient.DeleteTable(s.T().Context(), &dynamodb.DeleteTableInput{TableName: aws.String(tableName)})
 	s.NoError(err)
 }
 
@@ -78,14 +80,18 @@ func (s *DynamoDbSuite) TestDynamoDbKvStore() {
 	err := s.Env().LoadFixtureSets(s.dynamoDbKvStoreFixtureSet1())
 	s.NoError(err)
 
-	ddbClient := s.Env().Localstack("default").DdbClient()
+	ddbClient := s.Env().Floci("default").DdbClient()
+	modelId := *kvStoreSettings
+	modelId.Name = kvstore.DdbBaseName(&kvstore.Settings{ModelId: modelId})
+	tableName, err := ddb.GetTableName(s.Env().Config(), &ddb.Settings{ModelId: modelId})
+	s.NoError(err)
 	gio, err := ddbClient.GetItem(s.T().Context(), &dynamodb.GetItemInput{
 		Key: map[string]types.AttributeValue{
 			"key": &types.AttributeValueMemberS{
 				Value: "Ash",
 			},
 		},
-		TableName: aws.String("gosoline-test-integration-test-grp-kvstore-testModel"),
+		TableName: aws.String(tableName),
 	})
 
 	// should have created the item
@@ -102,7 +108,7 @@ func (s *DynamoDbSuite) TestDynamoDbKvStore() {
 	}
 	s.Equal(expectedValue, gio.Item["value"].(*types.AttributeValueMemberS))
 
-	_, err = ddbClient.DeleteTable(s.T().Context(), &dynamodb.DeleteTableInput{TableName: aws.String("gosoline-test-integration-test-grp-kvstore-testModel")})
+	_, err = ddbClient.DeleteTable(s.T().Context(), &dynamodb.DeleteTableInput{TableName: aws.String(tableName)})
 	s.NoError(err)
 }
 

@@ -55,6 +55,7 @@ type config struct {
 	envProvider    EnvProvider
 	sanitizers     []Sanitizer
 	settings       *mapx.MapX
+	overrides      *mapx.MapX
 	envKeyPrefix   string
 	envKeyReplacer *strings.Replacer
 }
@@ -75,6 +76,7 @@ func NewWithInterfaces(envProvider EnvProvider, msis ...map[string]any) GosoConf
 		envProvider: envProvider,
 		sanitizers:  make([]Sanitizer, 0),
 		settings:    mapx.NewMapX(msis...),
+		overrides:   mapx.NewMapX(),
 	}
 
 	return cfg
@@ -460,6 +462,7 @@ func (c *config) get(key string, optionalDefault ...any) (any, error) {
 	}
 
 	dataMap.Merge(".", environment)
+	dataMap.Merge(".", c.overrides)
 	c.settings.Merge(".", dataMap)
 
 	return dataMap.Get(key).Data(), nil
@@ -762,6 +765,13 @@ func (c *config) unmarshalStruct(key string, output any, additionalDefaults []Un
 
 	finalSettings.Merge(".", environmentKeySettings)
 	finalSettings.Merge(".", environmentValueSettings)
+	if c.overrides.Has(key) {
+		overrides, err := c.overrides.Get(key).Map()
+		if err != nil {
+			return fmt.Errorf("can not read config overrides for key %s: %w", key, err)
+		}
+		finalSettings.Merge(".", overrides)
+	}
 
 	c.settings.Set(key, finalSettings)
 

@@ -66,6 +66,19 @@ func WithConfigSetting(key string, settings any, mergeOptions ...MergeOption) Op
 	}
 }
 
+// WithConfigOverride sets a string value that takes precedence over environment variables.
+// It affects this configuration only; process environment variables remain unchanged.
+func WithConfigOverride(key string, value string) Option {
+	return func(cfg *config) error {
+		if err := cfg.merge(key, value); err != nil {
+			return err
+		}
+		cfg.overrides.Set(key, cfg.settings.Get(key).Data())
+
+		return nil
+	}
+}
+
 func WithEnvKeyPrefix(prefix string) Option {
 	return func(cfg *config) error {
 		cfg.envKeyPrefix = prefix

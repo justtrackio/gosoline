@@ -9,7 +9,9 @@ app:
   model_id:
     domain_pattern: "{app.tags.project}.{app.env}.{app.tags.family}.{app.tags.group}"
 
-cloud:
-  aws:
+test:
+  auto_detect:
+    enabled: false
+  components:
     dynamodb:
-      clients: ~
+      default: {}

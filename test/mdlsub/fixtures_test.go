@@ -39,7 +39,7 @@ func (s *FixturesTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *FixturesTestSuite) SetupTest() (err error) {
-	s.repo, err = s.Env().Localstack("default").DdbRepository(&ddb.Settings{
+	s.repo, err = s.Env().Floci("default").DdbRepository(&ddb.Settings{
 		ModelId: mdl.ModelId{
 			Name: "testModel",
 			Env:  "test",

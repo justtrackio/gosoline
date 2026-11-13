@@ -29,7 +29,7 @@ func (s *CompressedTestSuite) SetupSuite() []suite.Option {
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("./config.dist.compressed.yml"),
 		suite.WithSharedEnvironment(),
-		suite.WithoutAutoDetectedComponents("localstack"),
+		suite.WithoutAutoDetectedComponents("floci"),
 	}
 }
 

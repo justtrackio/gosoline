@@ -21,8 +21,8 @@ const componentWiremock = "wiremock"
 type wiremockSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
+	ContainerBindingSettings
 	Mocks []string `cfg:"mocks"`
-	Port  int      `cfg:"port" default:"0"`
 }
 
 type wiremockFactory struct{}
@@ -46,19 +46,19 @@ func (f *wiremockFactory) DescribeContainers(settings any) ComponentContainerDes
 
 func (f *wiremockFactory) configureContainer(settings any) *ContainerConfig {
 	s := settings.(*wiremockSettings)
+	ports := PortBindings{
+		"main": {ContainerPort: 8080, HostPort: s.Port, Protocol: "tcp"},
+	}
+	if s.isExternal() {
+		return externalContainer(s.Host, ports)
+	}
 
 	return &ContainerConfig{
-		Auth:       s.Image.Auth,
-		Repository: s.Image.Repository,
-		Tag:        s.Image.Tag,
-		PortBindings: PortBindings{
-			"main": {
-				ContainerPort: 8080,
-				HostPort:      s.Port,
-				Protocol:      "tcp",
-			},
-		},
-		Cmd: []string{"--local-response-templating"},
+		Auth:         s.Image.Auth,
+		Repository:   s.Image.Repository,
+		Tag:          s.Image.Tag,
+		PortBindings: ports,
+		Cmd:          []string{"--local-response-templating"},
 	}
 }
 
@@ -68,8 +68,12 @@ func (f *wiremockFactory) healthCheck() ComponentHealthCheck {
 		url := fmt.Sprintf("%s/", f.getUrl(binding))
 
 		resp, err := http.Get(url)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close() //nolint:errcheck // health check only
 
-		if err == nil && resp.StatusCode >= 399 {
+		if resp.StatusCode >= 399 {
 			err = fmt.Errorf("wiremock did return status '%s'", resp.Status)
 		}
 
@@ -114,6 +118,7 @@ func (f *wiremockFactory) importMocks(url string, mockFile string) error {
 	if resp, err = http.Post(url+"/mappings/import", "application/json", bytes.NewBuffer(jsonBytes)); err != nil {
 		return fmt.Errorf("could not send stubs to wiremock: %w", err)
 	}
+	defer resp.Body.Close() //nolint:errcheck // response already read or unused
 
 	if resp.StatusCode < 400 {
 		return nil

@@ -3,6 +3,8 @@ package cfg_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/mapx"
 	"github.com/stretchr/testify/suite"
@@ -83,4 +85,27 @@ func (s *OptionsTestSuite) TestWithConfigSetting() {
 
 func TestOptionsTestSuite(t *testing.T) {
 	suite.Run(t, new(OptionsTestSuite))
+}
+
+func TestWithConfigOverride(t *testing.T) {
+	environment := cfg.NewMemoryEnvProvider(map[string]string{"STORE_BUCKET": "environment", "STORE_REGION": "eu-west-1"})
+	config := cfg.NewWithInterfaces(environment)
+	require.NoError(t, config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
+		cfg.WithConfigMap(map[string]any{"store.bucket": "file"}),
+		cfg.WithConfigOverride("store.bucket", "isolated")))
+	value, err := config.GetString("store.bucket")
+	require.NoError(t, err)
+	require.Equal(t, "isolated", value)
+	settings := struct {
+		Bucket string `cfg:"bucket"`
+		Region string `cfg:"region"`
+	}{}
+	require.NoError(t, config.UnmarshalKey("store", &settings))
+	require.Equal(t, "isolated", settings.Bucket)
+	require.Equal(t, "eu-west-1", settings.Region)
+	other := cfg.NewWithInterfaces(environment)
+	require.NoError(t, other.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer)))
+	value, err = other.GetString("store.bucket")
+	require.NoError(t, err)
+	require.Equal(t, "environment", value)
 }

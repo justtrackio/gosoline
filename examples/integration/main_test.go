@@ -35,7 +35,7 @@ func (s *testSuite) SetupSuite() []suite.Option {
 func (s *testSuite) Test_DynamoDB(app suite.AppUnderTest) {
 	app.WaitDone()
 
-	repository, err := s.Env().Localstack("default").DdbRepository(ddbSettings)
+	repository, err := s.Env().Floci("default").DdbRepository(ddbSettings)
 	if err != nil {
 		s.FailNow("unable to initialize repository: %w", err)
 	}

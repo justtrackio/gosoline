@@ -21,6 +21,7 @@ func TestBaseTestSuite(t *testing.T) {
 func (s *BaseTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithLogLevel("info"),
+		suite.WithoutAutoDetectedComponents("floci"),
 		suite.WithSharedEnvironment(),
 	}
 }

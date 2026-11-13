@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 
@@ -98,7 +99,7 @@ func AttemptLoggerInitMiddleware(logger log.Logger, backoff *exec.BackoffSetting
 		if backoff.MaxElapsedTime > 0 {
 			var stop exec.StopFunc
 			deadline = attempt.start.Add(backoff.MaxElapsedTime)
-			ctx, stop = exec.WithStoppableDeadlineContext(ctx, deadline)
+			ctx, stop = exec.WithStoppableDeadlineContextWithClock(ctx, deadline, clock.NewRealClock())
 
 			defer stop()
 		}

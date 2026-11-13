@@ -18,6 +18,8 @@
 - Update naming patterns: touch `application_identifiers.go` (Format method), ensure downstream packages (sqs, sns, kinesis, kafka, redis) still pass.
 - Enhance sanitization: implement `Sanitizer` and register it via `Option`.
 
+`WithConfigOverride(key, value)` is reserved for settings that must take precedence over environment variables in one configuration instance, such as test-owned resource names. Normal file/map settings keep their existing environment precedence.
+
 ## Testing
 - `go test ./pkg/cfg` is mandatory after any change.
 - For naming work, ensure downstream packages pass: `go test ./pkg/{cloud/aws/sqs,cloud/aws/sns,cloud/aws/kinesis,kafka,redis,...}`.

@@ -34,6 +34,7 @@ require (
 	github.com/aws/smithy-go v1.24.2
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cenkalti/backoff/v4 v4.3.0
+	github.com/distribution/reference v0.6.0
 	github.com/elliotchance/redismock/v9 v9.0.0
 	github.com/emersion/go-smtp v0.21.3
 	github.com/ettle/strcase v0.2.0

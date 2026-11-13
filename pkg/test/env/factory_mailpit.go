@@ -18,7 +18,7 @@ const componentMailpit = "mailpit"
 type mailpitSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	Port    int `cfg:"port" default:"0"`
+	ContainerBindingSettings
 	WebPort int `cfg:"web_port" default:"0"`
 }
 
@@ -84,22 +84,19 @@ func (m mailpitFactory) Component(_ cfg.Config, logger log.Logger, container map
 }
 
 func (m mailpitFactory) configureContainer(settings *mailpitSettings) *ContainerConfig {
+	ports := PortBindings{
+		"main": {ContainerPort: 1025, HostPort: settings.Port, Protocol: "tcp"},
+		"web":  {ContainerPort: 8025, HostPort: settings.WebPort, Protocol: "tcp"},
+	}
+	if settings.isExternal() {
+		return externalContainer(settings.Host, ports)
+	}
+
 	return &ContainerConfig{
-		Auth:       settings.Image.Auth,
-		Repository: settings.Image.Repository,
-		Tag:        settings.Image.Tag,
-		PortBindings: PortBindings{
-			"main": {
-				ContainerPort: 1025,
-				HostPort:      settings.Port,
-				Protocol:      "tcp",
-			},
-			"web": {
-				ContainerPort: 8025,
-				HostPort:      settings.WebPort,
-				Protocol:      "tcp",
-			},
-		},
+		Auth:         settings.Image.Auth,
+		Repository:   settings.Image.Repository,
+		Tag:          settings.Image.Tag,
+		PortBindings: ports,
 	}
 }
 
@@ -127,6 +124,7 @@ func (m mailpitFactory) healthCheck() ComponentHealthCheck {
 		if resp, err = http.Get(url); err != nil {
 			return err
 		}
+		defer resp.Body.Close() //nolint:errcheck // health check only
 
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("status code error: %d %s", resp.StatusCode, resp.Status)

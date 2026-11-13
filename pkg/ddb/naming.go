@@ -1,11 +1,14 @@
 package ddb
 
 import (
+	"crypto/sha256"
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
+
+const maxTableNameLength = 255
 
 type TableNamingSettings struct {
 	TablePattern   string `cfg:"table_pattern,nodecode" default:"{app.namespace}-{name}"`
@@ -34,7 +37,17 @@ func GetTableName(config cfg.Config, settings *Settings) (string, error) {
 		namingSettings.TableDelimiter = settings.TableNamingSettings.TableDelimiter
 	}
 
-	return identity.Format(namingSettings.TablePattern, namingSettings.TableDelimiter, settings.ModelId.ToMap())
+	name, err := identity.Format(namingSettings.TablePattern, namingSettings.TableDelimiter, settings.ModelId.ToMap())
+	if err != nil {
+		return "", err
+	}
+	if len(name) > maxTableNameLength {
+		// Hash the full resolved name so truncation preserves model and environment isolation.
+		digest := sha256.Sum256([]byte(name))
+		name = fmt.Sprintf("%s-%x", name[:maxTableNameLength-1-2*sha256.Size], digest)
+	}
+
+	return name, nil
 }
 
 func GetTableNamingSettings(config cfg.Config, clientName string) (*TableNamingSettings, error) {
