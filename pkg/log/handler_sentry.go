@@ -39,7 +39,7 @@ func NewHandlerSentry(config cfg.Config) (*HandlerSentry, error) {
 // WithContext adds contextual information to the Sentry scope for future errors.
 func (h *HandlerSentry) WithContext(name string, context map[string]any) {
 	h.hub.ConfigureScope(func(scope *sentry.Scope) {
-		scope.SetContext(name, context)
+		scope.SetContext(name, SanitizeFields(context))
 	})
 }
 
@@ -62,12 +62,12 @@ func (h *HandlerSentry) Log(_ context.Context, _ time.Time, _ int, _ string, _ [
 		return nil
 	}
 
-	fields := mergeFields(data.Fields, data.ContextFields)
+	fields := SanitizeFields(mergeFields(data.Fields, data.ContextFields))
 
 	h.hub.WithScope(func(scope *sentry.Scope) {
 		scope.SetContext("fields", fields)
 
-		eventId := h.hub.CaptureException(err)
+		eventId := h.hub.CaptureException(SafeError(err))
 
 		if eventId != nil {
 			data.Fields = mergeFields(data.Fields, map[string]any{
