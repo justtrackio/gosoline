@@ -10,9 +10,9 @@ much more.
 
 ## Requirements and upgrade compatibility
 
-Gosoline requires **Go 1.26.10 or newer**. Upgrade application builders, CI and
+Gosoline requires **Go 1.26.11 or newer**. Upgrade application builders, CI and
 container toolchains together; Go 1.25 is no longer supported. A newer release
-line must also include its security fixes: Go 1.27 users need at least 1.27.3.
+line must also include its security fixes: Go 1.27 users need at least 1.27.4.
 
 The dependency-security update includes intentional compatibility changes:
 
@@ -43,6 +43,14 @@ The dependency-security update includes intentional compatibility changes:
   migrate to `otel/attribute`. Review zero log-attribute limits, environment TLS
   certificates, HTTP `Retry-After` handling and shutdown/flush errors before
   upgrading; these now follow the corrected upstream behavior.
+- **Compression dependencies are updated.** Brotli rejects invalid streams
+  earlier, and Zstandard and related decoders validate malformed frames more
+  strictly. Compressed bytes may change; consumers must not depend on byte-for-byte
+  equality of newly encoded payloads.
+- **HTML parsing and rendering use `golang.org/x/net` v0.62.0.** The parser
+  coalesces text without quadratic copying, and the renderer checks all
+  ancestor namespace transitions before treating text as literal. Applications
+  that parse or render HTML directly should review changed edge-case output.
 
 Security fixes can also reject previously accepted malformed protocol input and
 change compressed bytes, parsing, logging and authentication edge cases. The

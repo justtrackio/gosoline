@@ -41,10 +41,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v7
 
-    - name: Set up Go 1.26.10
+    - name: Set up Go 1.26.11
       uses: actions/setup-go@v7
       with:
-        go-version: "1.26.10"
+        go-version: "1.26.11"
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
