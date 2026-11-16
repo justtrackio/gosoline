@@ -66,7 +66,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/karlseguin/ccache v0.0.0-20181227155450-692cd618b264
-	github.com/klauspost/compress v1.18.7
+	github.com/klauspost/compress v1.20.2
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0
 	github.com/lib/pq v1.10.9
 	github.com/ory/dockertest/v3 v3.11.0
@@ -75,6 +75,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.19.2
 	github.com/prometheus/client_golang v1.20.5
+	github.com/prometheus/client_model v0.6.1
 	github.com/redis/go-redis/v9 v9.17.3
 	github.com/segmentio/go-athena v0.1.0
 	github.com/selm0/ladon v0.0.0-20231114080549-31144de4b38d
@@ -102,8 +103,8 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.45.0
 	go.opentelemetry.io/otel/trace v1.45.0
 	go.uber.org/ratelimit v0.2.0
-	golang.org/x/sync v0.23.0
-	golang.org/x/sys v0.48.0
+	golang.org/x/sync v0.24.0
+	golang.org/x/sys v0.49.0
 	google.golang.org/api v0.264.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.11
@@ -122,7 +123,7 @@ require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
-	github.com/andybalholm/brotli v1.2.1 // indirect
+	github.com/andybalholm/brotli v1.2.7 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.24 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.21 // indirect
@@ -209,7 +210,6 @@ require (
 	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rs/zerolog v1.33.0 // indirect
@@ -241,18 +241,18 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.21.0 // indirect
-	golang.org/x/crypto v0.57.0 // indirect
+	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/mod v0.41.0 // indirect
-	golang.org/x/net v0.60.0 // indirect
+	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/term v0.46.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
-	golang.org/x/tools v0.49.0 // indirect
+	golang.org/x/term v0.47.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
+	golang.org/x/tools v0.51.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260803160001-6ac0973c030d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect
 )
 
-go 1.26.10
+go 1.26.11
 
 tool github.com/vektra/mockery/v2
