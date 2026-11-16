@@ -2,7 +2,7 @@ version: "2"
 
 run:
   concurrency: 4
-  timeout: 5m
+  timeout: 15m
   issues-exit-code: 1
   tests: true
   build-tags:

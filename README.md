@@ -38,9 +38,11 @@ The dependency-security update includes intentional compatibility changes:
   unsupported; their error stage/message can change. Newly recognized invalid
   `AWS_REQUEST_CHECKSUM_CALCULATION` or `AWS_RESPONSE_CHECKSUM_VALIDATION`
   values can fail shared AWS configuration loading.
-- **OpenTelemetry uses core 1.45 and log 0.21.** Resource schema URLs advance
-  from 1.41.0 to 1.43.0. Direct consumers of the log value/attribute API must
-  migrate to `otel/attribute`. Review zero log-attribute limits, environment TLS
+- **OpenTelemetry uses core and OTLP metric exporters 1.45 and log 0.21.**
+  Resource schema URLs advance from 1.41.0 to 1.43.0. The aligned HTTP and
+  gRPC metric exporters preserve map-valued attributes supported by the 1.45
+  SDK. Direct consumers of the log value/attribute API must migrate to
+  `otel/attribute`. Review zero log-attribute limits, environment TLS
   certificates, HTTP `Retry-After` handling and shutdown/flush errors before
   upgrading; these now follow the corrected upstream behavior.
 - **Compression dependencies are updated.** Brotli rejects invalid streams
