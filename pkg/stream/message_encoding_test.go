@@ -1,8 +1,12 @@
 package stream_test
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"testing"
 	"time"
 
@@ -114,7 +118,7 @@ func (s *MessageEncoderSuite) TestEncode() {
 				"attribute1": "5",
 				"attribute2": "test",
 			},
-			expectedBody: `H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAgAA//9Q/bHSPAAAAA==`,
+			expectedBody: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
 			expectedAttributes: map[string]string{
 				"attribute1":                "5",
 				"attribute2":                "test",
@@ -156,8 +160,19 @@ func (s *MessageEncoderSuite) TestEncode() {
 				return
 			}
 
-			s.NoError(err)
-			s.Equal(tt.expectedBody, msg.Body)
+			s.Require().NoError(err)
+			if tt.compression == stream.CompressionGZip {
+				compressed, err := base64.StdEncoding.DecodeString(msg.Body)
+				s.Require().NoError(err)
+				reader, err := gzip.NewReader(bytes.NewReader(compressed))
+				s.Require().NoError(err)
+				body, err := io.ReadAll(reader)
+				s.Require().NoError(err)
+				s.Require().NoError(reader.Close())
+				s.Equal(tt.expectedBody, string(body))
+			} else {
+				s.Equal(tt.expectedBody, msg.Body)
+			}
 			s.Len(msg.Attributes, len(tt.expectedAttributes))
 
 			for k, v := range tt.expectedAttributes {
