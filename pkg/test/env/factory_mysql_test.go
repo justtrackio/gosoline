@@ -15,7 +15,7 @@ func TestMySQLFactoryTmpfs(t *testing.T) {
 	})
 
 	t.Run("explicit settings are preserved", func(t *testing.T) {
-		mounts := []TmpfsSettings{{Path: "/var/lib/mysql", Mode: "0750"}}
+		mounts := []TmpfsSettings{{Path: "/custom/mysql", Mode: "0750"}}
 		settings := &mysqlSettings{ComponentContainerSettings: ComponentContainerSettings{Tmpfs: mounts}}
 		config := factory.configureContainer(settings)
 		assert.Equal(t, mounts, config.Tmpfs)
