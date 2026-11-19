@@ -143,6 +143,7 @@ func (f *mysqlFactory) configureContainer(settings any) *ContainerConfig {
 	if len(s.Tmpfs) == 0 {
 		s.Tmpfs = append(s.Tmpfs, TmpfsSettings{
 			Path: "/var/lib/mysql",
+			Mode: "1777",
 		})
 	}
 
