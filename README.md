@@ -48,8 +48,9 @@ The dependency-security update includes intentional compatibility changes:
   `Retry-After` handling and shutdown/flush errors before upgrading.
 - **Compression dependencies are updated.** Brotli rejects invalid streams
   earlier, and Zstandard and related decoders validate malformed frames more
-  strictly. Compressed bytes may change; consumers must not depend on byte-for-byte
-  equality of newly encoded payloads.
+  strictly. Zstandard limits initial preallocation from a declared frame size,
+  but this is not a complete safety cap for untrusted data. Compressed bytes
+  may change; consumers must not depend on byte-for-byte equality.
 - **HTML parsing and rendering use `golang.org/x/net` v0.62.0.** The parser
   coalesces text without quadratic copying, and the renderer checks all
   ancestor namespace transitions before treating text as literal. Applications

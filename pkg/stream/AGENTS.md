@@ -35,7 +35,7 @@ Schema definitions are passed through unchanged, with the fork's default tag,
 block encoding, string/byte and array allocation settings.
 
 The dependency changes from `github.com/hamba/avro/v2 v2.29.0` to
-`github.com/iskorotkov/avro/v2 v2.33.0`, which requires Go 1.24.13 or newer.
+`github.com/iskorotkov/avro/v2 v2.33.1`, which requires Go 1.24.13 or newer.
 Inherited fixes can affect existing applications: comma-separated struct-tag
 options are now parsed correctly; decimals exceeding schema precision or fixed
 size now fail encoding; enum compatibility and local-timestamp resolution are
@@ -44,8 +44,9 @@ earlier, and array allocation checks now accumulate across blocks without changi
 the configured default limit. Audit decimal schemas and tagged structs before
 upgrading. See the upstream
 [v2.30.0](https://github.com/hamba/avro/releases/tag/v2.30.0),
-[v2.32.0](https://github.com/iskorotkov/avro/releases/tag/v2.32.0) and
-[v2.33.0](https://github.com/iskorotkov/avro/releases/tag/v2.33.0) release notes.
+[v2.32.0](https://github.com/iskorotkov/avro/releases/tag/v2.32.0),
+[v2.33.0](https://github.com/iskorotkov/avro/releases/tag/v2.33.0) and
+[v2.33.1](https://github.com/iskorotkov/avro/releases/tag/v2.33.1) release notes.
 
 The fork reuses existing map values: decoding nested maps into a reused destination
 merges nested entries rather than replacing them. An incoming empty nested map

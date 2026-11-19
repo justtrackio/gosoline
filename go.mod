@@ -58,7 +58,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/iancoleman/strcase v0.3.0
 	github.com/imdario/mergo v0.3.16
-	github.com/iskorotkov/avro/v2 v2.33.0
+	github.com/iskorotkov/avro/v2 v2.33.1
 	github.com/jarcoal/httpmock v1.3.1
 	github.com/jeremywohl/flatten v0.0.0-20190921043622-d936035e55cf
 	github.com/jessevdk/go-flags v1.6.1
@@ -66,7 +66,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/karlseguin/ccache v0.0.0-20181227155450-692cd618b264
-	github.com/klauspost/compress v1.20.2
+	github.com/klauspost/compress v1.20.4
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0
 	github.com/lib/pq v1.10.9
 	github.com/ory/dockertest/v3 v3.11.0
