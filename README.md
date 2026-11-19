@@ -51,6 +51,15 @@ The dependency-security update includes intentional compatibility changes:
   strictly. Zstandard limits initial preallocation from a declared frame size,
   but this is not a complete safety cap for untrusted data. Compressed bytes
   may change; consumers must not depend on byte-for-byte equality.
+  An empty payload now produces a valid Zstandard frame rather than empty
+  bytes. This can affect an opt-in SQS FIFO queue using content-based
+  deduplication without an explicit ID; content-based deduplication defaults
+  to false. In an owned LocalStack test, identical old/old and new/new messages
+  each produced one delivery, while old/new produced two. This is not a live
+  AWS or production-use claim. The normal producer-daemon path does not use
+  this empty-Zstandard encoding. Where deduplication must survive serialization
+  changes, supply a stable explicit logical deduplication ID. No queue or
+  publisher settings are changed automatically.
 - **HTML parsing and rendering use `golang.org/x/net` v0.62.0.** The parser
   coalesces text without quadratic copying, and the renderer checks all
   ancestor namespace transitions before treating text as literal. Applications
