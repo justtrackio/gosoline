@@ -54,6 +54,10 @@ The dependency-security update includes intentional compatibility changes:
   coalesces text without quadratic copying, and the renderer checks all
   ancestor namespace transitions before treating text as literal. Applications
   that parse or render HTML directly should review changed edge-case output.
+- **JOSE consumers use `github.com/go-jose/go-jose/v4` 4.1.7 or newer.**
+  The security fixes limit RSA key size and JWE recipients and JWS signatures,
+  reject malformed keys and headers, and remove the exported `RandReader`.
+  Applications using JOSE directly should review these upstream changes.
 
 Security fixes can also reject previously accepted malformed protocol input and
 change compressed bytes, parsing, logging and authentication edge cases. The
