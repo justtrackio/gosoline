@@ -62,6 +62,7 @@ Operate in this repository as the maintainer of the **gosoline** application fra
 | Package | Purpose |
 |---------|---------|
 | `application/` | Application entry point, lifecycle management |
+| `cli/` | Command routing, typed flag parsing, help, and application startup; see `pkg/cli/README.md` |
 | `kernel/` | Module orchestration, startup/shutdown sequencing |
 | `cfg/` | Configuration management, AppId, macro interpolation |
 | `log/` | Structured logging infrastructure |

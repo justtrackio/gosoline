@@ -5,10 +5,13 @@ import (
 	"strings"
 )
 
+const helpFlagName = "help"
+
 // Input contains the parsed command line arguments and flags.
 type Input struct {
 	Arguments []string
 	Flags     []InputFlag
+	flagKinds map[string]FlagKind
 }
 
 // InputFlag is a parsed command line flag name and value pair.
@@ -18,16 +21,29 @@ type InputFlag struct {
 }
 
 // NewInput parses the current process command line arguments.
-func NewInput() (*Input, error) {
-	return NewInputWithArgs(os.Args[1:])
+func NewInput(flags ...Flag) (*Input, error) {
+	return NewInputWithArgs(os.Args[1:], flags...)
 }
 
-// NewInputWithArgs parses the provided command line arguments into positional arguments and flags.
-func NewInputWithArgs(args []string) (*Input, error) {
+// NewInputWithArgs parses arguments using optional flag definitions. Boolean flags
+// never consume the next argument; explicit boolean values must use =.
+func NewInputWithArgs(args []string, flags ...Flag) (*Input, error) {
 	input := &Input{
 		Arguments: make([]string, 0),
 		Flags:     make([]InputFlag, 0),
+		flagKinds: make(map[string]FlagKind),
 	}
+
+	for _, flag := range flags {
+		if flag.Long != "" {
+			input.flagKinds[flag.Long] = flag.Kind
+		}
+		if flag.Short != "" {
+			input.flagKinds[flag.Short] = flag.Kind
+		}
+	}
+	input.flagKinds[helpFlagName] = FlagKindBool
+	input.flagKinds["h"] = FlagKindBool
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -64,17 +80,7 @@ func (i *Input) parseLongFlag(args []string, idx *int) error {
 		return i.addFlag(flag[:separator], flag[separator+1:])
 	}
 
-	if next := *idx + 1; next < len(args) && isFlagValue(args[next]) {
-		if err := i.addFlag(flag, args[next]); err != nil {
-			return err
-		}
-
-		*idx = next
-
-		return nil
-	}
-
-	return i.addFlag(flag, "true")
+	return i.addFlagWithOptionalValue(args, idx, flag)
 }
 
 func (i *Input) parseShortFlags(args []string, idx *int) error {
@@ -111,6 +117,10 @@ func (i *Input) parseShortFlags(args []string, idx *int) error {
 }
 
 func (i *Input) addFlagWithOptionalValue(args []string, idx *int, flag string) error {
+	if i.flagKinds[flag] == FlagKindBool {
+		return i.addFlag(flag, "true")
+	}
+
 	if next := *idx + 1; next < len(args) && isFlagValue(args[next]) {
 		if err := i.addFlag(flag, args[next]); err != nil {
 			return err

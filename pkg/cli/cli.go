@@ -62,13 +62,13 @@ func NewCli(options ...Option) *Cli {
 func (c *Cli) Run() {
 	var err error
 
-	if c.input, err = NewInput(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
 	for _, opt := range c.cliOptions {
 		opt(c)
+	}
+
+	if c.input, err = NewInputWithRouter(os.Args[1:], c.Router, c.flags...); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	if hasHelpFlag(c.input) {

@@ -44,7 +44,7 @@ func WithHelp(name string, description string) Option {
 		cli.description = description
 
 		cli.Cmd(Cmd{
-			Name:        "help",
+			Name:        helpFlagName,
 			Description: "help about any command. call help <command> [<subcommand>] for further usage.",
 			AppOptions: []application.Option{
 				application.WithModuleFactory("main", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Module, error) {

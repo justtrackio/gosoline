@@ -425,7 +425,7 @@ func maxHelpEntryWidth(entries []helpEntry) int {
 
 func hasHelpFlag(input *Input) bool {
 	for _, flag := range input.Flags {
-		if flag.Name == "help" || flag.Name == "h" {
+		if flag.Name == helpFlagName || flag.Name == "h" {
 			return true
 		}
 	}

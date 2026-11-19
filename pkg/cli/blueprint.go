@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/justtrackio/gosoline/pkg/application"
 )
@@ -129,6 +130,10 @@ func newBlueprint(cmdArgs []string, args []string, flags []Flag, appOptions []ap
 }
 
 func flagParse(input []InputFlag, flag Flag) (*BlueprintFlag, error) {
+	if flag.Kind == FlagKindBool {
+		return parseBoolFlag(input, flag)
+	}
+
 	parser, ok := flagValueParsers[flag.Kind]
 	if !ok {
 		return nil, fmt.Errorf("unsupported cli flag kind %q for flag %q", flag.Kind, flag.Long)
@@ -190,4 +195,28 @@ var flagValueParsers = map[FlagKind]func(input []InputFlag, flag Flag) (any, boo
 
 		return val, true
 	},
+}
+
+func parseBoolFlag(input []InputFlag, flag Flag) (*BlueprintFlag, error) {
+	value := flag.Default
+	if value == "" {
+		value = "false"
+	}
+	for _, inputFlag := range input {
+		if flagMatches(inputFlag, flag) {
+			value = inputFlag.Value
+		}
+	}
+
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return nil, fmt.Errorf("invalid boolean value %q for flag %q: %w", value, flag.Long, err)
+	}
+
+	return &BlueprintFlag{
+		Key:        flag.Long,
+		CustomKey:  flag.CfgKey,
+		Value:      parsed,
+		AppOptions: flag.AppOptions,
+	}, nil
 }

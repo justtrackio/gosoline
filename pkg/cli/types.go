@@ -101,6 +101,8 @@ const (
 type FlagKind string
 
 const (
+	// FlagKindBool parses a boolean switch; a bare switch is true and explicit values use =.
+	FlagKindBool FlagKind = "bool"
 	// FlagKindString parses a flag as a single string value where the last occurrence wins.
 	FlagKindString FlagKind = "string"
 	// FlagKindList parses every occurrence of a flag into a string slice.
