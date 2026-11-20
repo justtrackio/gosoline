@@ -39,11 +39,13 @@ func (f *mmockFactory) Component(_ cfg.Config, _ log.Logger, containers map[stri
 		baseComponent: baseComponent{name: s.Name},
 		address:       f.getUrl(containers["main"].bindings["main"]),
 	}
+
 	for i, filename := range s.Mocks {
 		data, err := os.ReadFile(filename)
 		if err != nil {
 			return nil, fmt.Errorf("could not read mmock fixture %q: %w", filename, err)
 		}
+
 		name := fmt.Sprintf("%d-%s", i, filepath.Base(filename))
 		if err = f.request(context.Background(), adminAddress, http.MethodPost, "/api/mapping/"+url.PathEscape(name), bytes.NewReader(data)); err != nil {
 			return nil, fmt.Errorf("could not load mmock fixture %q: %w", filename, err)
@@ -96,20 +98,9 @@ func (f *mmockFactory) getUrl(binding ContainerBinding) string {
 
 func (f *mmockFactory) healthCheck() ComponentHealthCheck {
 	return func(container *Container) error {
-		address := f.getUrl(container.bindings["admin"]) + "/api/mapping"
-		client := http.Client{Timeout: 5 * time.Second}
-		resp, err := client.Get(address)
-		if err != nil {
-			return err
-		}
-		if err := resp.Body.Close(); err != nil {
-			return err
-		}
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("mmock did return status '%s'", resp.Status)
-		}
+		address := f.getUrl(container.bindings["admin"])
 
-		return nil
+		return f.request(context.Background(), address, http.MethodGet, "/api/mapping", nil)
 	}
 }
 
@@ -118,16 +109,19 @@ func (f *mmockFactory) request(ctx context.Context, address, method, path string
 	if err != nil {
 		return fmt.Errorf("could not create mmock request: %w", err)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 	client := http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("could not call mmock API: %w", err)
 	}
+
 	data, err := io.ReadAll(resp.Body)
 	if err = errors.Join(err, resp.Body.Close()); err != nil {
 		return fmt.Errorf("could not read mmock response: %w", err)
 	}
+
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return fmt.Errorf("mmock API %s %s returned %s: %s", method, path, resp.Status, data)
 	}
