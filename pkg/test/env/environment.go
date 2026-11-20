@@ -96,6 +96,145 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 	return env, nil
 }
 
+func (e *Environment) Clock() clock.Clock {
+	return clock.Provider
+}
+
+func (e *Environment) Component(typ string, name string) Component {
+	var err error
+	var component Component
+
+	if component, err = e.components.Get(typ, name); err != nil {
+		assert.FailNow(e.t, "can not get component", err.Error())
+	}
+
+	return component
+}
+
+func (e *Environment) Config() cfg.GosoConf {
+	return e.config
+}
+
+func (e *Environment) Context() context.Context {
+	return e.ctx
+}
+
+func (e *Environment) Filesystem() *filesystem {
+	return e.filesystem
+}
+
+func (e *Environment) Kafka(name string) *KafkaComponent {
+	return e.Component(componentKafka, name).(*KafkaComponent)
+}
+
+func (e *Environment) LoadFixtureSet(factory fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) error {
+	return e.LoadFixtureSets([]fixtures.FixtureSetsFactory{factory}, postProcessorFactories...)
+}
+
+func (e *Environment) LoadFixtureSets(factories []fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) error {
+	if len(factories) == 0 {
+		return nil
+	}
+
+	var err error
+	var loader fixtures.FixtureLoader
+	var fixtureSets []fixtures.FixtureSet
+
+	allFixtureSets := map[string][]fixtures.FixtureSet{
+		"default": {},
+	}
+	postProcessors := make([]fixtures.PostProcessor, len(postProcessorFactories))
+
+	for _, factory := range factories {
+		if fixtureSets, err = factory(e.ctx, e.config, e.logger, "default"); err != nil {
+			return fmt.Errorf("failed to create fixture set: %w", err)
+		}
+
+		allFixtureSets["default"] = append(allFixtureSets["default"], fixtureSets...)
+	}
+
+	for i, factory := range postProcessorFactories {
+		if postProcessors[i], err = factory(e.ctx, e.config, e.logger); err != nil {
+			return fmt.Errorf("failed to create post processor: %w", err)
+		}
+	}
+
+	if err := e.runLifeCycle(); err != nil {
+		return fmt.Errorf("can not handle the lifecycle: %w", err)
+	}
+
+	if loader, err = fixtures.NewFixtureLoader(e.ctx, e.config, e.logger, allFixtureSets, postProcessors); err != nil {
+		return fmt.Errorf("failed to create fixture loader: %w", err)
+	}
+
+	if err = loader.Load(e.ctx); err != nil {
+		return fmt.Errorf("failed to load all fixture sets: %w", err)
+	}
+
+	return nil
+}
+
+func (e *Environment) Localstack(name string) *localstackComponent {
+	return e.Component(ComponentLocalstack, name).(*localstackComponent)
+}
+
+func (e *Environment) Logger() log.GosoLogger {
+	return e.logger
+}
+
+func (e *Environment) Logs() LogRecords {
+	return e.logger.Records()
+}
+
+func (e *Environment) Mailpit(name string) *mailpitComponent {
+	return e.Component(componentMailpit, name).(*mailpitComponent)
+}
+
+// Mmock returns the named native Mmock integration-test component.
+func (e *Environment) Mmock(name string) *MmockComponent {
+	return e.Component(componentMmock, name).(*MmockComponent)
+}
+
+func (e *Environment) MySql(name string) *mysqlComponent {
+	return e.Component(componentMySql, name).(*mysqlComponent)
+}
+
+func (e *Environment) Otel(name string) *OtelComponent {
+	return e.Component(componentOtel, name).(*OtelComponent)
+}
+
+func (e *Environment) Redis(name string) *RedisComponent {
+	return e.Component(componentRedis, name).(*RedisComponent)
+}
+
+func (e *Environment) ResetLogs() {
+	e.logger.Reset()
+}
+
+func (e *Environment) Stop() error {
+	return e.containerManager.Stop(e.ctx)
+}
+
+func (e *Environment) StreamInput(name string) *StreamInputComponent {
+	return e.Component(componentStreamInput, name).(*StreamInputComponent)
+}
+
+func (e *Environment) StreamOutput(name string) *streamOutputComponent {
+	return e.Component(componentStreamOutput, name).(*streamOutputComponent)
+}
+
+func (e *Environment) addComponentOption(opt ComponentOption) {
+	e.componentOptions = append(e.componentOptions, opt)
+}
+
+func (e *Environment) addConfigOption(opt ConfigOption) {
+	e.configOptions = append(e.configOptions, opt)
+}
+
+func (e *Environment) addLoggerOption(opt LoggerOption) {
+	e.loggerOptions = append(e.loggerOptions, opt)
+}
+
 func (e *Environment) init(options ...Option) error {
 	ctx := context.Background()
 	start := time.Now()
@@ -149,101 +288,6 @@ func (e *Environment) init(options ...Option) error {
 	return nil
 }
 
-func (e *Environment) addComponentOption(opt ComponentOption) {
-	e.componentOptions = append(e.componentOptions, opt)
-}
-
-func (e *Environment) addConfigOption(opt ConfigOption) {
-	e.configOptions = append(e.configOptions, opt)
-}
-
-func (e *Environment) addLoggerOption(opt LoggerOption) {
-	e.loggerOptions = append(e.loggerOptions, opt)
-}
-
-func (e *Environment) Stop() error {
-	return e.containerManager.Stop(e.ctx)
-}
-
-func (e *Environment) Context() context.Context {
-	return e.ctx
-}
-
-func (e *Environment) Config() cfg.GosoConf {
-	return e.config
-}
-
-func (e *Environment) Logger() log.GosoLogger {
-	return e.logger
-}
-
-func (e *Environment) Logs() LogRecords {
-	return e.logger.Records()
-}
-
-func (e *Environment) ResetLogs() {
-	e.logger.Reset()
-}
-
-func (e *Environment) Clock() clock.Clock {
-	return clock.Provider
-}
-
-func (e *Environment) Filesystem() *filesystem {
-	return e.filesystem
-}
-
-func (e *Environment) Component(typ string, name string) Component {
-	var err error
-	var component Component
-
-	if component, err = e.components.Get(typ, name); err != nil {
-		assert.FailNow(e.t, "can not get component", err.Error())
-	}
-
-	return component
-}
-
-func (e *Environment) Redis(name string) *RedisComponent {
-	return e.Component(componentRedis, name).(*RedisComponent)
-}
-
-func (e *Environment) Kafka(name string) *KafkaComponent {
-	return e.Component(componentKafka, name).(*KafkaComponent)
-}
-
-func (e *Environment) Mailpit(name string) *mailpitComponent {
-	return e.Component(componentMailpit, name).(*mailpitComponent)
-}
-
-func (e *Environment) Localstack(name string) *localstackComponent {
-	return e.Component(ComponentLocalstack, name).(*localstackComponent)
-}
-
-func (e *Environment) MySql(name string) *mysqlComponent {
-	return e.Component(componentMySql, name).(*mysqlComponent)
-}
-
-func (e *Environment) Otel(name string) *OtelComponent {
-	return e.Component(componentOtel, name).(*OtelComponent)
-}
-
-func (e *Environment) Wiremock(name string) *wiremockComponent {
-	return e.Component(componentWiremock, name).(*wiremockComponent)
-}
-
-func (e *Environment) StreamInput(name string) *StreamInputComponent {
-	return e.Component(componentStreamInput, name).(*StreamInputComponent)
-}
-
-func (e *Environment) StreamOutput(name string) *streamOutputComponent {
-	return e.Component(componentStreamOutput, name).(*streamOutputComponent)
-}
-
-func (e *Environment) LoadFixtureSet(factory fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) error {
-	return e.LoadFixtureSets([]fixtures.FixtureSetsFactory{factory}, postProcessorFactories...)
-}
-
 func (e *Environment) runLifeCycle() error {
 	if err := e.resManager.Create(e.ctx); err != nil {
 		return fmt.Errorf("can not handle the create lifecycle: %w", err)
@@ -259,49 +303,6 @@ func (e *Environment) runLifeCycle() error {
 
 	if err := e.resManager.Purge(e.ctx); err != nil {
 		return fmt.Errorf("can not handle the purge lifecycle: %w", err)
-	}
-
-	return nil
-}
-
-func (e *Environment) LoadFixtureSets(factories []fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) error {
-	if len(factories) == 0 {
-		return nil
-	}
-
-	var err error
-	var loader fixtures.FixtureLoader
-	var fixtureSets []fixtures.FixtureSet
-
-	allFixtureSets := map[string][]fixtures.FixtureSet{
-		"default": {},
-	}
-	postProcessors := make([]fixtures.PostProcessor, len(postProcessorFactories))
-
-	for _, factory := range factories {
-		if fixtureSets, err = factory(e.ctx, e.config, e.logger, "default"); err != nil {
-			return fmt.Errorf("failed to create fixture set: %w", err)
-		}
-
-		allFixtureSets["default"] = append(allFixtureSets["default"], fixtureSets...)
-	}
-
-	for i, factory := range postProcessorFactories {
-		if postProcessors[i], err = factory(e.ctx, e.config, e.logger); err != nil {
-			return fmt.Errorf("failed to create post processor: %w", err)
-		}
-	}
-
-	if err := e.runLifeCycle(); err != nil {
-		return fmt.Errorf("can not handle the lifecycle: %w", err)
-	}
-
-	if loader, err = fixtures.NewFixtureLoader(e.ctx, e.config, e.logger, allFixtureSets, postProcessors); err != nil {
-		return fmt.Errorf("failed to create fixture loader: %w", err)
-	}
-
-	if err = loader.Load(e.ctx); err != nil {
-		return fmt.Errorf("failed to load all fixture sets: %w", err)
 	}
 
 	return nil

@@ -55,12 +55,18 @@ func TestMySuite(t *testing.T) {
 Use `suite.WithAppOptions(...)` to configure applications under test with application options, such as
 `application.WithLoggerContextFieldsMessageEncoder` for global logger context propagation through stream messages.
 
+Container health checks use a 100 ms initial retry backoff. Override it with `test.container_manager.health_check.initial_interval` when needed.
+
 | Helper | Package | Purpose |
 |--------|---------|--------|
-| `env/` | LocalStack, Redis, MySQL | Docker container management |
+| `env/` | LocalStack, Redis, MySQL, Mmock | Docker container management |
 | `assert/` | Custom assertions | Extended testify assertions |
 
 ## Tips
 - Keep helper APIs backward compatible—every package imports `pkg/test`.
 - Avoid leaking goroutines from env helpers; always shut down containers in `TearDownSuite`.
 - Document new env variables or required binaries in this file so other agents can reproduce setups.
+
+## HTTP integration mocks
+
+Use `Env().Mmock(name)` with `test.components.mmock.<name>.mocks`, a list of files containing one native Mmock API definition each, including its required `URI`. The default image is declared in `env/config.default.yml`. `Address()` serves application traffic. The component holds only its string address; the factory handles container configuration, health checks and fixture loading through the private admin API.
