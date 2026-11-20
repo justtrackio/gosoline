@@ -72,12 +72,4 @@ func (s *FixturesTestSuite) TestSuccess(app suite.AppUnderTest) {
 
 	s.NoError(err)
 	s.Equal(exp, act)
-
-	requests, err := s.Env().Mmock("default").Requests(s.T().Context())
-	s.Require().NoError(err)
-	s.Require().Len(requests, 1)
-	s.Equal("/path/to/fixture/data", requests[0].Path)
-	s.Equal([]string{"3"}, requests[0].QueryStringParameters["dataset_id"])
-	s.Equal([]string{"justtrack.gosoline.management.testModel"}, requests[0].QueryStringParameters["model_id"])
-	s.Equal([]string{"0"}, requests[0].QueryStringParameters["version"])
 }

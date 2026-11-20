@@ -67,4 +67,4 @@ Use `suite.WithAppOptions(...)` to configure applications under test with applic
 
 ## HTTP integration mocks
 
-Use `Env().Mmock(name)` with `test.components.mmock.<name>.mocks`, a list of files containing one native Mmock API definition each, including its required `URI`. The default image is declared in `env/config.default.yml`. `Address()` serves application traffic; `AdminAddress()` exposes the native API and UI. `Requests(ctx)` and `ResetRequests(ctx)` support standard assertions on captured bodies and headers without client-side request matching. Reset history between cases sharing an environment; it preserves mappings.
+Use `Env().Mmock(name)` with `test.components.mmock.<name>.mocks`, a list of files containing one native Mmock API definition each, including its required `URI`. The default image is declared in `env/config.default.yml`. `Address()` serves application traffic. The component holds only its string address; the factory handles container configuration, health checks and fixture loading through the private admin API.

@@ -1,5 +1,0 @@
-{
-  "URI": "status.json",
-  "request": {"method": "GET", "path": "/status"},
-  "response": {"statusCode": 200, "body": "ready"}
-}
