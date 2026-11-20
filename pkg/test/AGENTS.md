@@ -51,23 +51,21 @@ func TestMySuite(t *testing.T) {
 }
 ```
 
-## Environment helpers
+## Test helpers
 Use `suite.WithAppOptions(...)` to configure applications under test with application options, such as
 `application.WithLoggerContextFieldsMessageEncoder` for global logger context propagation through stream messages.
 
 Use `Env().LoadAdditionalFixtureSets(...)` to load more fixtures into initialized resources during a test.
 Unlike `LoadFixtureSets`, it skips the resource lifecycle, including the purge step.
 
-| Helper | Package | Purpose |
-|--------|---------|--------|
-| `env/` | LocalStack, Redis, MySQL, Mmock | Docker container management |
-| `assert/` | Custom assertions | Extended testify assertions |
+| Helper | Purpose |
+|--------|---------|
+| `assert/` | Testify assertions and SQL table/column checks. |
+| `env/` | Container-backed test environments and dependency configuration. |
+| `matcher/` | Testify mock argument matching for `context.Context`. |
+| `suite/` | Application and integration test suites, fixtures, and lifecycle hooks. |
 
 ## Tips
 - Keep helper APIs backward compatible—every package imports `pkg/test`.
 - Avoid leaking goroutines from env helpers; always shut down containers in `TearDownSuite`.
 - Document new env variables or required binaries in this file so other agents can reproduce setups.
-
-## HTTP integration mocks
-
-Use `Env().Mmock(name)` with `test.components.mmock.<name>.mocks`, a list of files containing one native Mmock API definition each, including its required `URI`. The default image is declared in `env/config.default.yml`. `Address()` serves application traffic. The component holds only its string address; the factory handles container configuration, health checks and fixture loading through the private admin API.

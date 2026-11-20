@@ -96,9 +96,20 @@ func (f *mmockFactory) getUrl(binding ContainerBinding) string {
 
 func (f *mmockFactory) healthCheck() ComponentHealthCheck {
 	return func(container *Container) error {
-		address := f.getUrl(container.bindings["admin"])
+		address := f.getUrl(container.bindings["admin"]) + "/api/mapping"
+		client := http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Get(address)
+		if err != nil {
+			return err
+		}
+		if err := resp.Body.Close(); err != nil {
+			return err
+		}
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("mmock did return status '%s'", resp.Status)
+		}
 
-		return f.request(context.Background(), address, http.MethodGet, "/api/mapping", nil)
+		return nil
 	}
 }
 
