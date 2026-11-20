@@ -60,10 +60,14 @@ Unlike `LoadFixtureSets`, it skips the resource lifecycle, including the purge s
 
 | Helper | Package | Purpose |
 |--------|---------|--------|
-| `env/` | LocalStack, Redis, MySQL | Docker container management |
+| `env/` | LocalStack, Redis, MySQL, Mmock | Docker container management |
 | `assert/` | Custom assertions | Extended testify assertions |
 
 ## Tips
 - Keep helper APIs backward compatible—every package imports `pkg/test`.
 - Avoid leaking goroutines from env helpers; always shut down containers in `TearDownSuite`.
 - Document new env variables or required binaries in this file so other agents can reproduce setups.
+
+## HTTP integration mocks
+
+Use `Env().Mmock(name)` with `test.components.mmock.<name>.mocks`, a list of files containing one native Mmock API definition each, including its required `URI`. The default image is declared in `env/config.default.yml`. `Address()` serves application traffic; `AdminAddress()` exposes the native API and UI. `Requests(ctx)` and `ResetRequests(ctx)` support standard assertions on captured bodies and headers without client-side request matching. Reset history between cases sharing an environment; it preserves mappings.

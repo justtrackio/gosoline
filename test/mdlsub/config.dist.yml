@@ -30,7 +30,7 @@ mdlsub:
 
 test:
   components:
-    wiremock:
+    mmock:
       default:
         expire_after: 10m
         mocks:

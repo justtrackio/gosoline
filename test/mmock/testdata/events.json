@@ -1,0 +1,15 @@
+{
+  "URI": "events.json",
+  "request": {
+    "method": "POST",
+    "path": "/events",
+    "queryStringParameters": {"token": ["^test$"]},
+    "headers": {"Content-Type": ["application/json"]},
+    "body": "{\"event\":\"^install$\"}"
+  },
+  "response": {
+    "statusCode": 200,
+    "headers": {"Content-Type": ["application/json"]},
+    "body": "{\"accepted\":true}"
+  }
+}
