@@ -62,6 +62,10 @@ func PartitionMap[S ~[]T, T, K comparable, V any, F func(T) (K, V)](inp S, keyer
 
 // Chunk splits sl into consecutive chunks of at most size elements.
 // It returns nil for non-positive sizes and an empty slice for empty input.
+//
+// Deprecated: Use slices.Chunk(sl, size), or slices.Collect(slices.Chunk(sl, size))
+// to collect the chunks. The standard library returns views into sl instead of copies
+// and panics for non-positive sizes. Collect returns nil for empty input.
 func Chunk[S ~[]T, T any](sl S, size int) [][]T {
 	if size <= 0 {
 		return nil
@@ -97,6 +101,9 @@ func ChunkIntoBuckets[S ~[]T, T any](sl S, numOfBuckets int) [][]T {
 }
 
 // Concat appends all provided slices into a new slice in argument order.
+//
+// Deprecated: Use slices.Concat instead, available since Go 1.22.
+// Concat returns a non-nil empty slice when the result is empty; slices.Concat returns nil.
 func Concat[T any](sl ...[]T) []T {
 	final := make([]T, 0)
 
@@ -108,6 +115,9 @@ func Concat[T any](sl ...[]T) []T {
 }
 
 // Contains reports whether in contains an element deeply equal to elem.
+//
+// Deprecated: Use slices.Contains for comparable elements, or slices.ContainsFunc
+// with reflect.DeepEqual for deep equality.
 func Contains[T any](in []T, elem T) bool {
 	equalTo := equal(elem)
 
@@ -126,6 +136,8 @@ func ContainsAll[T any](in []T, elements []T) bool {
 }
 
 // ContainsFunc reports whether any element in sl satisfies pred.
+//
+// Deprecated: Use slices.ContainsFunc instead, available since Go 1.21.
 func ContainsFunc[S ~[]T, T any](sl S, pred func(T) bool) bool {
 	_, ok := FindFirstFunc(sl, pred)
 
@@ -180,6 +192,9 @@ func Filter[S ~[]T, T any](sl S, pred func(T) bool) []T {
 }
 
 // FindFirst returns the first element in sl equal to el and whether such an element was found.
+//
+// Deprecated: Use slices.Index(sl, el), which returns an index instead of a value
+// and presence flag. Read sl[i] only when the returned index i is non-negative.
 func FindFirst[S ~[]T, T comparable](sl S, el T) (out T, ok bool) {
 	for _, item := range sl {
 		if item == el {
@@ -191,6 +206,9 @@ func FindFirst[S ~[]T, T comparable](sl S, el T) (out T, ok bool) {
 }
 
 // FindFirstFunc returns the first element in sl satisfying pred and whether such an element was found.
+//
+// Deprecated: Use slices.IndexFunc(sl, pred), which returns an index instead of a value
+// and presence flag. Read sl[i] only when the returned index i is non-negative.
 func FindFirstFunc[S ~[]T, T any](sl S, pred func(T) bool) (out T, ok bool) {
 	for _, item := range sl {
 		if pred(item) {
@@ -211,6 +229,9 @@ func First[S ~[]T, T any](sl S) (out T, ok bool) {
 }
 
 // Flatten concatenates a slice of slices into a single slice.
+//
+// Deprecated: Use slices.Concat(sl...) instead, available since Go 1.22.
+// Flatten returns a non-nil empty slice when the result is empty; slices.Concat returns nil.
 func Flatten[S ~[]T, T any](sl []S) []T {
 	result := make([]T, 0)
 	for _, items := range sl {
@@ -221,6 +242,9 @@ func Flatten[S ~[]T, T any](sl []S) []T {
 }
 
 // Index returns the first index of an element deeply equal to e, or -1 if none exists.
+//
+// Deprecated: Use slices.Index for comparable elements, or slices.IndexFunc
+// with reflect.DeepEqual for deep equality.
 func Index[T any](sl []T, e T) int {
 	for i, v := range sl {
 		equalTo := equal(e)
@@ -314,6 +338,9 @@ func SliceToSet[S ~[]T, T comparable](sl S) Set[T] {
 
 // Repeat returns a slice containing el repeated times times.
 // It returns nil for negative times and an empty slice for zero times.
+//
+// Deprecated: Use slices.Repeat([]T{el}, times) instead. The standard library panics
+// for negative counts.
 func Repeat[T any](el T, times int) []T {
 	if times < 0 {
 		return nil
@@ -333,6 +360,9 @@ func Repeat[T any](el T, times int) []T {
 }
 
 // Reverse returns a new slice with the elements of sl in reverse order.
+//
+// Deprecated: Use slices.Reverse instead, which reverses in place. To reverse a copy,
+// clone the input with slices.Clone first; Clone preserves nil inputs.
 func Reverse[S ~[]T, T any](sl S) S {
 	out := make(S, len(sl))
 	for i, j := 0, len(sl)-1; i < len(sl) && j >= 0; i, j = i+1, j-1 {
@@ -411,6 +441,8 @@ func equal[T any](expected T) func(actualValue T) bool {
 }
 
 // Any reports whether any element in inp satisfies pred.
+//
+// Deprecated: Use slices.ContainsFunc instead, available since Go 1.21.
 func Any[S ~[]T, T any, F func(T) bool](inp S, pred F) bool {
 	_, ok := FindFirstFunc(inp, pred)
 
@@ -423,7 +455,17 @@ func None[S ~[]T, T any, F func(T) bool](inp S, pred F) bool {
 }
 
 // All reports whether every element in inp satisfies pred.
+//
+// Deprecated: Use AllMatch instead.
 func All[S ~[]T, T any, F func(T) bool](inp S, pred F) bool {
+	return AllMatch(inp, pred)
+}
+
+// AllMatch reports whether every element in inp satisfies pred.
+// It returns true for empty input and stops at the first element that does not match.
+// The standard library's slices.All returns an iterator over indices and elements;
+// it does not evaluate a predicate.
+func AllMatch[S ~[]T, T any, F func(T) bool](inp S, pred F) bool {
 	return None(inp, func(i T) bool { return !pred(i) })
 }
 
