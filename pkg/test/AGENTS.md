@@ -55,6 +55,8 @@ func TestMySuite(t *testing.T) {
 Use `suite.WithAppOptions(...)` to configure applications under test with application options, such as
 `application.WithLoggerContextFieldsMessageEncoder` for global logger context propagation through stream messages.
 
+Container health checks use a 100 ms initial retry backoff. Override it with `test.container_manager.health_check.initial_interval` when needed.
+
 | Helper | Package | Purpose |
 |--------|---------|--------|
 | `env/` | LocalStack, Redis, MySQL, Mmock | Docker container management |
