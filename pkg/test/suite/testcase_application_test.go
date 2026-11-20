@@ -26,6 +26,7 @@ func TestApplicationTestSuite(t *testing.T) {
 func (s *ApplicationTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithLogLevel("info"),
+		suite.WithoutAutoDetectedComponents("floci"),
 		suite.WithModule("testModule", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return s, nil
 		}),

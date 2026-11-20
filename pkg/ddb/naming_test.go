@@ -1,6 +1,8 @@
 package ddb_test
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -132,4 +134,53 @@ func (s *TableNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
 	}
 
 	s.Equal("producer-event", name)
+}
+
+func (s *TableNameTestSuite) TestTableNameLengthLimit() {
+	s.setupConfig(map[string]any{
+		"cloud.aws.dynamodb.clients.default.naming.table_pattern": "{app.name}-{name}",
+	})
+
+	for _, length := range []int{254, 255, 256, 1000} {
+		s.Run(fmt.Sprint(length), func() {
+			s.settings.ModelId.Name = strings.Repeat("a", length-len("producer-"))
+			original := "producer-" + s.settings.ModelId.Name
+			name, err := ddb.GetTableName(s.config, s.settings)
+			s.Require().NoError(err)
+			if length <= 255 {
+				s.Equal(original, name)
+
+				return
+			}
+			s.Len(name, 255)
+			s.True(strings.HasPrefix(name, "producer-"))
+			repeated, err := ddb.GetTableName(s.config, s.settings)
+			s.Require().NoError(err)
+			s.Equal(name, repeated)
+		})
+	}
+}
+
+func (s *TableNameTestSuite) TestLongTableNamesRemainDistinct() {
+	s.setupConfig(map[string]any{
+		"cloud.aws.dynamodb.clients.default.naming.table_pattern": "{name}",
+	})
+	s.settings.ModelId.Name = strings.Repeat("a", 255) + "a"
+	first, err := ddb.GetTableName(s.config, s.settings)
+	s.Require().NoError(err)
+	s.settings.ModelId.Name = strings.Repeat("a", 255) + "b"
+	second, err := ddb.GetTableName(s.config, s.settings)
+	s.Require().NoError(err)
+	s.Len(first, 255)
+	s.Len(second, 255)
+	s.NotEqual(first, second)
+}
+
+func (s *TableNameTestSuite) TestInvalidPattern() {
+	s.setupConfig(map[string]any{
+		"cloud.aws.dynamodb.clients.default.naming.table_pattern": "{unknown}",
+	})
+	name, err := ddb.GetTableName(s.config, s.settings)
+	s.Error(err)
+	s.Empty(name)
 }

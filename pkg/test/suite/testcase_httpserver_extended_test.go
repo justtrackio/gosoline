@@ -55,6 +55,7 @@ func TestGatewayTestSuite(t *testing.T) {
 func (s *GatewayTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithLogLevel("info"),
+		suite.WithoutAutoDetectedComponents("floci"),
 		suite.WithSharedEnvironment(),
 	}
 }

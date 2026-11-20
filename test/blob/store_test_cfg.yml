@@ -13,17 +13,9 @@ blob:
   foo:
     bucket: foo
 
-cloud:
-  aws:
-    credentials:
-      access_key_id: AKID
-      secret_access_key: SECRET_KEY
-      session_token: TOKEN
-
-    defaults:
-      region: bla
-
+test:
+  auto_detect:
+    enabled: false
+  components:
     s3:
-      clients:
-        default: ~
-
+      default: {}

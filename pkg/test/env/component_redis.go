@@ -9,6 +9,7 @@ type RedisComponent struct {
 	baseComponent
 	address string
 	client  *baseRedis.Client
+	db      int
 }
 
 func (c *RedisComponent) CfgOptions() []cfg.Option {
@@ -17,6 +18,7 @@ func (c *RedisComponent) CfgOptions() []cfg.Option {
 			"default": map[string]any{
 				"dialer":  "tcp",
 				"address": c.address,
+				"db":      c.db,
 			},
 		}),
 	}
