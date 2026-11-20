@@ -67,10 +67,15 @@ jobs:
         with:
           go-version: "1.25"
 
+      - name: Set up mise tools
+        uses: jdx/mise-action@v2
+        with:
+          install_args: github:justtrackio/go-linters
+
       - name: Static code analysis (golangci-lint)
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.10.1
+          install-mode: none
           only-new-issues: true
           args: -v
 
