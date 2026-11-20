@@ -34,10 +34,10 @@ type mmockSettings struct {
 
 func (f *mmockFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*Container, settings any) (Component, error) {
 	s := settings.(*mmockSettings)
-	adminAddress := "http://" + containers["main"].bindings["admin"].getAddress()
+	adminAddress := f.getUrl(containers["main"].bindings["admin"])
 	component := &MmockComponent{
 		baseComponent: baseComponent{name: s.Name},
-		address:       "http://" + containers["main"].bindings["main"].getAddress(),
+		address:       f.getUrl(containers["main"].bindings["main"]),
 	}
 	for i, filename := range s.Mocks {
 		data, err := os.ReadFile(filename)
@@ -90,9 +90,13 @@ func (f *mmockFactory) configureContainer(settings *mmockSettings) *ContainerCon
 	}
 }
 
+func (f *mmockFactory) getUrl(binding ContainerBinding) string {
+	return "http://" + binding.getAddress()
+}
+
 func (f *mmockFactory) healthCheck() ComponentHealthCheck {
 	return func(container *Container) error {
-		address := "http://" + container.bindings["admin"].getAddress()
+		address := f.getUrl(container.bindings["admin"])
 
 		return f.request(context.Background(), address, http.MethodGet, "/api/mapping", nil)
 	}
