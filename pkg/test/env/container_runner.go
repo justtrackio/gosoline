@@ -3,6 +3,7 @@ package env
 import (
 	"context"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -77,13 +78,16 @@ type Container struct {
 	internalBindings map[string]ContainerBinding // For container-to-container communication
 }
 
-type ContainerBinding struct {
-	host string
-	port string
-}
+// Address returns the host:port of a published binding or an error if it does not exist.
+func (c *Container) Address(name string) (string, error) {
+	var ok bool
+	var binding ContainerBinding
 
-func (b ContainerBinding) getAddress() string {
-	return fmt.Sprintf("%s:%s", b.host, b.port)
+	if binding, ok = c.bindings[name]; !ok {
+		return "", fmt.Errorf("container %q has no port binding %q", c.name, name)
+	}
+
+	return net.JoinHostPort(binding.host, binding.port), nil
 }
 
 // getInternalAddress returns the address that should be used for container-to-container
@@ -99,6 +103,15 @@ func (c *Container) getInternalAddress(bindingName string) string {
 	}
 
 	return ""
+}
+
+type ContainerBinding struct {
+	host string
+	port string
+}
+
+func (b ContainerBinding) getAddress() string {
+	return fmt.Sprintf("%s:%s", b.host, b.port)
 }
 
 type authSettings struct {
