@@ -9,7 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var componentFactories = map[string]componentFactory{}
+var componentFactories = map[string]ComponentFactory{}
+
+// RegisterComponentFactory makes a component type available to test environments.
+func RegisterComponentFactory(typ string, factory ComponentFactory) {
+	componentFactories[typ] = factory
+}
 
 type ComponentContainerDescription struct {
 	ContainerConfig  *ContainerConfig
@@ -19,7 +24,8 @@ type ComponentContainerDescription struct {
 
 type ComponentContainerDescriptions map[string]*ComponentContainerDescription
 
-type componentFactory interface {
+// ComponentFactory configures and builds test components and their containers.
+type ComponentFactory interface {
 	Detect(config cfg.Config, manager *ComponentsConfigManager) error
 	GetSettingsSchema() ComponentBaseSettingsAware
 	DescribeContainers(settings any) ComponentContainerDescriptions

@@ -26,7 +26,7 @@ type kafkaSettings struct {
 	SchemaRegistryPort int `cfg:"schema_registry_port" default:"0"`
 }
 
-var _ componentFactory = &kafkaFactory{}
+var _ ComponentFactory = &kafkaFactory{}
 
 func (f *kafkaFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
 	if !config.IsSet("test.components.kafka") {

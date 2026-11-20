@@ -60,6 +60,14 @@ Use `suite.WithAppOptions(...)` to configure applications under test with applic
 | `env/` | LocalStack, Redis, MySQL | Docker container management |
 | `assert/` | Custom assertions | Extended testify assertions |
 
+### Custom test components
+
+Implement `env.ComponentFactory` and register it in `init()` with
+`env.RegisterComponentFactory("myservice", factory)`. Configure an instance under
+`test.components.myservice.default` or through `suite.WithComponent`.
+Use `Container.Address(bindingName)` in the factory to resolve a published
+port. Access the component in the suite with `s.Env().Component("myservice", "default")`.
+
 ## Tips
 - Keep helper APIs backward compatible—every package imports `pkg/test`.
 - Avoid leaking goroutines from env helpers; always shut down containers in `TearDownSuite`.
