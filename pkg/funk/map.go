@@ -147,7 +147,7 @@ func (m *maper[K, V]) MergeWith(combine func(V, V) V, other ...Maper[K, V]) Mape
 func (m *maper[K, V]) Intersect(other ...Maper[K, V]) Maper[K, V] {
 	intersection := NewMaper[K, V]()
 	for key := range m.KeySet() {
-		if All(other, func(item Maper[K, V]) bool {
+		if AllMatch(other, func(item Maper[K, V]) bool {
 			return item.ContainsKey(key)
 		}) {
 			value, _ := m.Get(key)

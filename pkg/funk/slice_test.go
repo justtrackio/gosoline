@@ -788,7 +788,7 @@ func TestAny(t *testing.T) {
 	}
 }
 
-func TestAll(t *testing.T) {
+func TestAllMatch(t *testing.T) {
 	tests := map[string]struct {
 		In  []int
 		Out bool
@@ -817,7 +817,7 @@ func TestAll(t *testing.T) {
 
 	for name, data := range tests {
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, data.Out, funk.All(data.In, biggerThenZero))
+			assert.Equal(t, data.Out, funk.AllMatch(data.In, biggerThenZero))
 		})
 	}
 }

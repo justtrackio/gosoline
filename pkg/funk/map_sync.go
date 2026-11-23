@@ -123,7 +123,7 @@ func (m *mapSynced[K, V]) MergeWith(combine func(V, V) V, other ...Maper[K, V]) 
 func (m *mapSynced[K, V]) Intersect(other ...Maper[K, V]) Maper[K, V] {
 	intersection := NewMapSynced[K, V]()
 	for key := range m.KeySet() {
-		if All(other, func(item Maper[K, V]) bool {
+		if AllMatch(other, func(item Maper[K, V]) bool {
 			return item.ContainsKey(key)
 		}) {
 			value, _ := m.Get(key)
