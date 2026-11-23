@@ -97,7 +97,7 @@ func (r *containerRunnerLocal) RunContainer(ctx context.Context, request Contain
 	}
 
 	containerAuth := config.Auth
-	authConfig := r.getAuthConfig(containerAuth)
+	authConfig := r.getAuthConfig(containerAuth, config.Repository)
 
 	envs := make([]string, 0, len(config.Env))
 	for k, v := range config.Env {
@@ -182,7 +182,7 @@ func (r *containerRunnerLocal) pullContainerImage(description *ComponentContaine
 	}
 
 	containerAuth := description.ContainerConfig.Auth
-	authConfig := r.getAuthConfig(containerAuth)
+	authConfig := r.getAuthConfig(containerAuth, config.Repository)
 
 	err = r.pool.Client.PullImage(pullImageOptions, authConfig)
 	if err != nil {
@@ -192,12 +192,32 @@ func (r *containerRunnerLocal) pullContainerImage(description *ComponentContaine
 	return nil
 }
 
-func (r *containerRunnerLocal) getAuthConfig(containerAuth authSettings) docker.AuthConfiguration {
+func (r *containerRunnerLocal) getAuthConfig(containerAuth authSettings, repository string) docker.AuthConfiguration {
 	if !containerAuth.IsEmpty() {
 		return containerAuth.GetAuthConfig()
 	}
 
-	return r.runnerSettings.Auth.GetAuthConfig()
+	auth := r.runnerSettings.Auth
+	if auth.ServerAddress != "" && registryHost(auth.ServerAddress) != registryHost(repository) {
+		return docker.AuthConfiguration{}
+	}
+
+	return auth.GetAuthConfig()
+}
+
+func registryHost(address string) string {
+	address = strings.TrimPrefix(strings.TrimPrefix(address, "https://"), "http://")
+	host, _, _ := strings.Cut(address, "/")
+	if !strings.ContainsAny(host, ".:") && host != "localhost" {
+		return "docker.io"
+	}
+
+	switch host {
+	case "index.docker.io", "registry-1.docker.io":
+		return "docker.io"
+	default:
+		return host
+	}
 }
 
 func (r *containerRunnerLocal) getTmpfsConfig(settings []TmpfsSettings) map[string]string {
