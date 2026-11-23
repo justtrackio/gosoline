@@ -11,12 +11,14 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/conc/ddb"
 	ddbRepo "github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 type DdbLockTestSuite struct {
@@ -31,7 +33,8 @@ func (s *DdbLockTestSuite) SetupSuite() []suite.Option {
 	s.clock = clock.NewFakeClockAt(time.Now().UTC())
 
 	return []suite.Option{
-		suite.WithClockProvider(s.clock),
+		// AWS request deadlines must keep real time while the lock's clock advances.
+		suite.WithClockProvider(clock.NewRealClock()),
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("./config.dist.yml"),
 		suite.WithSharedEnvironment(),
@@ -45,7 +48,7 @@ func (s *DdbLockTestSuite) SetupTest() error {
 	}
 
 	s.domain = fmt.Sprintf("test%d", s.clock.Now().UnixNano())
-	s.provider, err = ddb.NewDdbLockProvider(s.Env().Context(), s.Env().Config(), s.Env().Logger(), conc.DistributedLockSettings{
+	settings := conc.DistributedLockSettings{
 		Identity: identity,
 		Backoff: exec.BackoffSettings{
 			CancelDelay:     0,
@@ -56,9 +59,6 @@ func (s *DdbLockTestSuite) SetupTest() error {
 		},
 		DefaultLockTime: time.Minute * 10,
 		Domain:          s.domain,
-	})
-	if err != nil {
-		return err
 	}
 
 	s.repo, err = ddbRepo.NewRepository(s.Env().Context(), s.Env().Config(), s.Env().Logger(), &ddbRepo.Settings{
@@ -71,9 +71,20 @@ func (s *DdbLockTestSuite) SetupTest() error {
 		Main: ddbRepo.MainSettings{
 			Model: &ddb.DdbLockItem{},
 		},
+	}, func(config *dynamodb.ClientConfig) {
+		config.Settings.Backoff.CancelDelay = 0
 	})
+	if err != nil {
+		return err
+	}
 
-	return err
+	executor := exec.NewBackoffExecutor(s.Env().Logger(), &exec.ExecutableResource{
+		Type: "ddbLock",
+		Name: s.domain,
+	}, &settings.Backoff, []exec.ErrorChecker{ddb.CheckDdbLockError})
+	s.provider = ddb.NewDdbLockProviderWithInterfaces(s.Env().Logger(), s.repo, executor, s.clock, uuid.New(), settings)
+
+	return nil
 }
 
 func (s *DdbLockTestSuite) TestLockAndRelease() {
@@ -98,6 +109,8 @@ func (s *DdbLockTestSuite) TestAcquireTwiceFails() {
 
 func (s *DdbLockTestSuite) TestAcquireRenewWorks() {
 	// Case 3: Acquire a lock, renew it, verify the stored ttl changed and the renewed lease remains effective.
+	// Container startup must not offset the fake clock and hide request-deadline failures.
+	s.clock.Advance(time.Since(s.clock.Now()))
 	ctx := s.T().Context()
 	resource := s.T().Name()
 	fullResource := fmt.Sprintf("%s-%s", s.domain, resource)
