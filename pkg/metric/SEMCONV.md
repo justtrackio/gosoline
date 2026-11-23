@@ -83,6 +83,9 @@ as `api_request`, without a `gosoline.` prefix. Its unit is expressed on the ins
 concatenates the canonical namespace and leaf in PascalCase and does not add a metric-name prefix; its
 CloudWatch namespace identifies the application.
 
+The metric daemon aggregates CloudWatch samples by default. Set
+`metric.writer_settings.cloudwatch.aggregate` to `false` to send individual samples instead.
+
 For a custom datum whose `Kind` is unset, writers infer the instrument kind consistently from its
 unit: `UnitCount` becomes a counter; seconds, milliseconds, and microseconds become histograms; other
 units become gauges. Explicit `KindSummary` preserves Prometheus Summary behavior; OpenTelemetry records it as a Histogram.
