@@ -46,12 +46,6 @@ func newRetryAfterFunc(settings Settings) resty.RetryAfterFunc {
 		}
 
 		retryAfter = jitterRetryAfter(retryAfter, settings.RetryAfterSettings.JitterMin, settings.RetryAfterSettings.JitterMax)
-		if retryAfter == 0 {
-			retryAfter = defaultRetryWaitTime(settings, response.Request.Attempt)
-		} else {
-			// Resty clamps a nonzero callback delay to its configured bounds.
-			retryAfter = max(settings.RetryWaitTime, min(retryAfter, getRetryMaxWaitTime(settings)))
-		}
 
 		if err := ensureRetryWaitFitsContext(response.Request.Context(), retryAfter); err != nil {
 			return 0, err

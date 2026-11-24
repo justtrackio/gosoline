@@ -199,28 +199,41 @@ func TestClient_GetRetriesAfterDefaultOnMissingHeader(t *testing.T) {
 }
 
 func TestClient_GetReturnsResponseWhenRetryAfterExceedsRequestTimeout(t *testing.T) {
-	attempts := atomic.Int64{}
-	testServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, req *netHttp.Request) {
-		assert.Equal(t, netHttp.MethodGet, req.Method)
-		attempts.Add(1)
-		res.Header().Set("Retry-After", "60")
-		res.WriteHeader(netHttp.StatusServiceUnavailable)
-		_, _ = res.Write([]byte("try again later"))
-	}))
-	defer testServer.Close()
+	for _, tc := range []struct {
+		name           string
+		requestTimeout time.Duration
+		callerTimeout  time.Duration
+	}{
+		{name: "request timeout", requestTimeout: 5 * time.Second, callerTimeout: 10 * time.Second},
+		{name: "caller deadline with capped retry", requestTimeout: 0, callerTimeout: 2 * time.Second},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			attempts := atomic.Int64{}
+			testServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, req *netHttp.Request) {
+				assert.Equal(t, netHttp.MethodGet, req.Method)
+				attempts.Add(1)
+				res.Header().Set("Retry-After", "60")
+				res.WriteHeader(netHttp.StatusServiceUnavailable)
+				_, _ = res.Write([]byte("try again later"))
+			}))
+			defer testServer.Close()
 
-	client := getRetryAfterClient(t, 1, 5*time.Second, time.Millisecond)
-	request := client.NewRequest().WithUrl(testServer.URL)
+			client := getRetryAfterClient(t, 1, tc.requestTimeout, time.Millisecond)
+			request := client.NewRequest().WithUrl(testServer.URL)
+			ctx, cancel := context.WithTimeout(t.Context(), tc.callerTimeout)
+			defer cancel()
 
-	startedAt := time.Now()
-	response, err := client.Get(t.Context(), request)
+			startedAt := time.Now()
+			response, err := client.Get(ctx, request)
 
-	require.NoError(t, err)
-	require.NotNil(t, response)
-	assert.Equal(t, netHttp.StatusServiceUnavailable, response.StatusCode)
-	assert.Equal(t, "try again later", string(response.Body))
-	assert.Equal(t, int64(1), attempts.Load())
-	assert.Less(t, time.Since(startedAt), 3*time.Second)
+			require.NoError(t, err)
+			require.NotNil(t, response)
+			assert.Equal(t, netHttp.StatusServiceUnavailable, response.StatusCode)
+			assert.Equal(t, "try again later", string(response.Body))
+			assert.Equal(t, int64(1), attempts.Load())
+			assert.Less(t, time.Since(startedAt), 3*time.Second)
+		})
+	}
 }
 
 func TestClient_GetReturnsResponseWhenNoHeaderRetryDelayExceedsRequestTimeout(t *testing.T) {
