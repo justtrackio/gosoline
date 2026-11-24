@@ -46,6 +46,10 @@ func newRetryAfterFunc(settings Settings) resty.RetryAfterFunc {
 		}
 
 		retryAfter = jitterRetryAfter(retryAfter, settings.RetryAfterSettings.JitterMin, settings.RetryAfterSettings.JitterMax)
+		if retryAfter == 0 {
+			// Resty treats zero as a request for its ordinary jittered backoff.
+			retryAfter = restyRetryWaitTime(settings, response.Request.Attempt)
+		}
 
 		if err := ensureRetryWaitFitsContext(response.Request.Context(), retryAfter); err != nil {
 			return 0, err
@@ -69,6 +73,26 @@ func defaultRetryWaitTime(settings Settings, attempt int) time.Duration {
 	temp := min(float64(maxWaitTime), float64(minWaitTime)*math.Exp2(float64(attempt)))
 	center := max(time.Duration(temp/2), time.Nanosecond)
 	waitTime := center + time.Duration(rand.Int63n(int64(center)))
+
+	return max(minWaitTime, waitTime)
+}
+
+func restyRetryWaitTime(settings Settings, attempt int) time.Duration {
+	minWaitTime := settings.RetryWaitTime
+	maxWaitTime := getRetryMaxWaitTime(settings)
+	if maxWaitTime < 0 {
+		maxWaitTime = 1<<31 - 1
+	}
+
+	attempt = max(0, attempt-1)
+	temp := min(float64(maxWaitTime), float64(minWaitTime)*math.Exp2(float64(attempt)))
+	center := time.Duration(temp / 2)
+	if center <= 0 {
+		// Leave zero and invalid bounds to Resty's existing fallback behavior.
+		return 0
+	}
+
+	waitTime := time.Duration(math.Abs(float64(int64(center) + rand.Int63n(int64(center)))))
 
 	return max(minWaitTime, waitTime)
 }

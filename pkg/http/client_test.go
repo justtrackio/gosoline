@@ -237,6 +237,48 @@ func TestClient_GetReturnsResponseWhenRetryAfterExceedsRequestTimeout(t *testing
 	}
 }
 
+func TestClient_GetReturnsResponseWhenZeroRetryAfterFallbackExceedsRequestTimeout(t *testing.T) {
+	attempts := atomic.Int64{}
+	testServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, _ *netHttp.Request) {
+		attempts.Add(1)
+		res.Header().Set("Retry-After", "0")
+		res.WriteHeader(netHttp.StatusServiceUnavailable)
+		_, err := res.Write([]byte("try again later"))
+		assert.NoError(t, err)
+	}))
+	defer testServer.Close()
+
+	client := getRetryAfterClient(t, 1, 5*time.Second, time.Millisecond, 10*time.Second)
+	startedAt := time.Now()
+	response, err := client.Get(t.Context(), client.NewRequest().WithUrl(testServer.URL))
+
+	require.NoError(t, err)
+	require.NotNil(t, response)
+	assert.Equal(t, netHttp.StatusServiceUnavailable, response.StatusCode)
+	assert.Equal(t, "try again later", string(response.Body))
+	assert.Equal(t, int64(1), attempts.Load())
+	assert.Less(t, time.Since(startedAt), 3*time.Second)
+}
+
+func TestClient_OverBudgetRetryPreservesRedirectError(t *testing.T) {
+	attempts := atomic.Int64{}
+	testServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, req *netHttp.Request) {
+		attempts.Add(1)
+		res.Header().Set("Retry-After", "60")
+		netHttp.Redirect(res, req, "/next", netHttp.StatusFound)
+	}))
+	defer testServer.Close()
+
+	client := getRetryAfterClient(t, 1, 5*time.Second, time.Millisecond)
+	client.SetRedirectValidator(func(_ *netHttp.Request) bool { return false })
+	response, err := client.Get(t.Context(), client.NewRequest().WithUrl(testServer.URL))
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not allowed by the redirect validator")
+	assert.Nil(t, response)
+	assert.Equal(t, int64(1), attempts.Load())
+}
+
 func TestClient_GetReturnsResponseWhenNoHeaderRetryDelayExceedsRequestTimeout(t *testing.T) {
 	for _, status := range []int{netHttp.StatusServiceUnavailable, netHttp.StatusTooManyRequests} {
 		t.Run(netHttp.StatusText(status), func(t *testing.T) {
