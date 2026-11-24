@@ -10,9 +10,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/encoding/yaml"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -44,6 +47,15 @@ func (f *mmockFactory) Component(_ cfg.Config, _ log.Logger, containers map[stri
 		data, err := os.ReadFile(filename)
 		if err != nil {
 			return nil, fmt.Errorf("could not read mmock fixture %q: %w", filename, err)
+		}
+		if ext := strings.ToLower(filepath.Ext(filename)); ext == ".yaml" || ext == ".yml" {
+			var definition map[string]any
+			if err = yaml.Unmarshal(data, &definition); err != nil {
+				return nil, fmt.Errorf("could not parse mmock fixture %q: %w", filename, err)
+			}
+			if data, err = json.Marshal(definition); err != nil {
+				return nil, fmt.Errorf("could not encode mmock fixture %q: %w", filename, err)
+			}
 		}
 
 		name := fmt.Sprintf("%d-%s", i, filepath.Base(filename))

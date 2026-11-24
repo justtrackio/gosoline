@@ -34,4 +34,4 @@ test:
       default:
         expire_after: 10m
         mocks:
-          - testdata/mocks/fixture_requests.json
+          - testdata/mocks/fixture_requests.yaml

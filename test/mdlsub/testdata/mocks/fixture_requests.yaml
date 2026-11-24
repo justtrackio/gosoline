@@ -1,0 +1,31 @@
+URI: fixture_requests.yaml
+request:
+  method: GET
+  path: /path/to/fixture/data
+  queryStringParameters:
+    dataset_id:
+      - ^3$
+    model_id:
+      - ^justtrack\.gosoline\.management\.testModel$
+    version:
+      - ^0$
+response:
+  statusCode: 200
+  headers:
+    Content-Type:
+      - application/json
+    Version:
+      - "0"
+  body: |-
+    {
+      "data": [
+        {
+          "id": 1,
+          "name": "foo"
+        },
+        {
+          "id": 2,
+          "name": "bar"
+        }
+      ]
+    }
