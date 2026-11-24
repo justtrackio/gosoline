@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -20,6 +21,8 @@ type RetryAfterSettings struct {
 	JitterMin       float64       `cfg:"jitter_min" default:"1" validate:"min=1"`
 	JitterMax       float64       `cfg:"jitter_max" default:"1.5" validate:"min=1"`
 }
+
+var errRetryWaitExceedsContext = errors.New("retry wait exceeds remaining request time")
 
 func newRetryAfterFunc(settings Settings) resty.RetryAfterFunc {
 	return func(_ *resty.Client, response *resty.Response) (time.Duration, error) {
@@ -43,6 +46,12 @@ func newRetryAfterFunc(settings Settings) resty.RetryAfterFunc {
 		}
 
 		retryAfter = jitterRetryAfter(retryAfter, settings.RetryAfterSettings.JitterMin, settings.RetryAfterSettings.JitterMax)
+		if retryAfter == 0 {
+			retryAfter = defaultRetryWaitTime(settings, response.Request.Attempt)
+		} else {
+			// Resty clamps a nonzero callback delay to its configured bounds.
+			retryAfter = max(settings.RetryWaitTime, min(retryAfter, getRetryMaxWaitTime(settings)))
+		}
 
 		if err := ensureRetryWaitFitsContext(response.Request.Context(), retryAfter); err != nil {
 			return 0, err
@@ -113,7 +122,7 @@ func ensureRetryWaitFitsContext(ctx context.Context, retryAfter time.Duration) e
 		return nil
 	}
 
-	return fmt.Errorf("retry wait duration %s exceeds remaining request time %s", retryAfter, remaining)
+	return fmt.Errorf("%w: wait duration %s, remaining request time %s", errRetryWaitExceedsContext, retryAfter, remaining)
 }
 
 func getRetryMaxWaitTime(settings Settings) time.Duration {

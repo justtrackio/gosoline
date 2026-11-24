@@ -53,6 +53,11 @@ func init() {
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Client
+
+// Client returns HTTP responses, including error status codes, without an error.
+// If a retry delay cannot fit within a live request context, the last received
+// HTTP response is returned instead of retrying. Context and transport failures
+// are returned as errors.
 type Client interface {
 	Delete(ctx context.Context, request *Request) (*Response, error)
 	Get(ctx context.Context, request *Request) (*Response, error)
@@ -624,6 +629,14 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	})
 	resp, err := req.Execute(method, url)
 	totalDuration := c.clock.Now().Sub(start)
+
+	if errors.Is(err, errRetryWaitExceedsContext) {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			err = ctxErr
+		} else if resp != nil && resp.RawResponse != nil {
+			err = nil
+		}
+	}
 
 	if errors.Is(err, context.Canceled) {
 		c.writeRequestCounter(ctx, metricClientCompletedRequests, metric.Dimensions{
