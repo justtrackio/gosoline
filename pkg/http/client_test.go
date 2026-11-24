@@ -214,7 +214,8 @@ func TestClient_GetReturnsResponseWhenRetryAfterExceedsRequestTimeout(t *testing
 				attempts.Add(1)
 				res.Header().Set("Retry-After", "60")
 				res.WriteHeader(netHttp.StatusServiceUnavailable)
-				_, _ = res.Write([]byte("try again later"))
+				_, err := res.Write([]byte("try again later"))
+				assert.NoError(t, err)
 			}))
 			defer testServer.Close()
 
@@ -244,7 +245,8 @@ func TestClient_GetReturnsResponseWhenNoHeaderRetryDelayExceedsRequestTimeout(t 
 				assert.Equal(t, netHttp.MethodGet, req.Method)
 				attempts.Add(1)
 				res.WriteHeader(status)
-				_, _ = res.Write([]byte("retry unavailable"))
+				_, err := res.Write([]byte("retry unavailable"))
+				assert.NoError(t, err)
 			}))
 			defer testServer.Close()
 
@@ -277,6 +279,7 @@ func TestClient_CancellationBeforeRetryWaitRemainsAnError(t *testing.T) {
 	client := getClient(t, 1, time.Second)
 	client.AddRetryCondition(func(_ *http.Response, _ error) bool {
 		cancel()
+
 		return true
 	})
 
@@ -294,6 +297,7 @@ func TestClient_OverBudgetRetryPreservesTransportError(t *testing.T) {
 		transport.Proxy = nil
 		transport.DialContext = func(context.Context, string, string) (net.Conn, error) {
 			attempts.Add(1)
+
 			return nil, transportErr
 		}
 
