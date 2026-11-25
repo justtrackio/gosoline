@@ -77,12 +77,13 @@ type Group struct {
 
 // Cmd defines an executable command with help metadata, flags, and application options.
 type Cmd struct {
-	Name        string
-	Description string
-	Arguments   CmdArguments
-	Examples    []CmdExample
-	Flags       []Flag
-	AppOptions  []application.Option
+	Name         string
+	Description  string
+	Arguments    CmdArguments
+	Examples     []CmdExample
+	Flags        []Flag
+	AppOptions   []application.Option
+	ValidateArgs func([]string) error
 }
 
 // CmdArguments identifies whether a CLI command accepts positional arguments.

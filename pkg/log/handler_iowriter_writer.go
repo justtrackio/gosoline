@@ -11,6 +11,7 @@ import (
 type IoWriterWriterFactory func(config cfg.Config, configKey string) (io.Writer, error)
 
 var ioWriterFactories = map[string]IoWriterWriterFactory{
+	"stderr": ioWriterStdErrFactory,
 	"stdout": ioWriterStdOutFactory,
 }
 
@@ -18,6 +19,10 @@ var ioWriterFactories = map[string]IoWriterWriterFactory{
 // This allows for extending the "iowriter" handler with custom write destinations.
 func AddHandlerIoWriterFactory(typ string, factory IoWriterWriterFactory) {
 	ioWriterFactories[typ] = factory
+}
+
+func ioWriterStdErrFactory(_ cfg.Config, _ string) (io.Writer, error) {
+	return os.Stderr, nil
 }
 
 func ioWriterStdOutFactory(_ cfg.Config, _ string) (io.Writer, error) {
