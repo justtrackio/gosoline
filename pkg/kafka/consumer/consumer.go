@@ -473,8 +473,15 @@ func (c *consumer) logRecordsAffectedByExpiredProcessingDeadline(ctx context.Con
 		totalCount += len(records)
 	}
 
-	c.logger.Error(ctx, "processing deadline expired while processing records: %d of %d records were handed to the callback (%d of them failed) and are committed regardless, the remaining %d were skipped and are consumed again",
-		processedCount, totalCount, result.failedCount(), totalCount-processedCount)
+	// A consumer group commits the offsets of every record handed to the callback, a share group only accepts the
+	// records whose processing succeeded and releases the failed ones for redelivery.
+	outcome := "are committed regardless"
+	if c.settings.GroupType == GroupTypeShare {
+		outcome = "are acknowledged by their result"
+	}
+
+	c.logger.Error(ctx, "processing deadline expired while processing records: %d of %d records were handed to the callback (%d of them failed) and %s, the remaining %d were skipped and are consumed again",
+		processedCount, totalCount, result.failedCount(), outcome, totalCount-processedCount)
 }
 
 func (c *consumer) processRecordWorkUnit(ctx, processingCtx context.Context, records []*kgo.Record, process func(ctx context.Context, record *kgo.Record) bool, result *recordBatchResult) error {

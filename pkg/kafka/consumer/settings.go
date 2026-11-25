@@ -136,12 +136,18 @@ func (s *Settings) GetBalancers() []kgo.GroupBalancer {
 // express these rules, as they combine several fields.
 func (s *Settings) validateGroupType() error {
 	switch s.GroupType {
+	case "", GroupTypeClassic:
 	case GroupTypeConsumer:
 		// franz-go silently falls back to the classic protocol if the first balancer has no server side counterpart.
 		if len(s.Balancers) > 0 && s.Balancers[0] == RoundRobinBalancer {
 			return fmt.Errorf("group_type %s needs cooperative-sticky, sticky or range as first balancer, got %s", s.GroupType, s.Balancers[0])
 		}
 	case GroupTypeShare:
+		// A share group client only fetches while a poll waits, see shareReader.PollRecords.
+		if s.IdleWaitTime <= 0 {
+			return fmt.Errorf("group_type %s needs a positive idle_wait_time", s.GroupType)
+		}
+
 		// franz-go needs a positive bound for its share fetches, see newShareReader.
 		if s.MaxPollRecords < 1 || s.MaxPollRecords > math.MaxInt32 {
 			return fmt.Errorf("group_type %s needs max_poll_records between 1 and %d, got %d", s.GroupType, math.MaxInt32, s.MaxPollRecords)
@@ -156,6 +162,8 @@ func (s *Settings) validateGroupType() error {
 		if s.ConsumeDelay > 0 {
 			return fmt.Errorf("group_type %s does not support consume_delay", s.GroupType)
 		}
+	default:
+		return fmt.Errorf("unknown group_type %q", s.GroupType)
 	}
 
 	return nil

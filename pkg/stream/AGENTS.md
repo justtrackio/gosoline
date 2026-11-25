@@ -231,12 +231,15 @@ consumer that fetched it until it is acknowledged:
 
 - A record the callback processed successfully is accepted. A failed record is released and delivered again, to this or
   another consumer; once the broker's `group.share.delivery.count.limit` (default 5) is reached it is archived instead.
-  Records a shutdown kept from being processed are released.
+  Records a shutdown kept from being processed are released. Kafka owns these retries, so a single-record consumer
+  skips its configured retry handler, as for SQS.
+- A batch consumer acknowledges a record once it enters the batch buffer, as with consumer groups. Kafka accepts it at
+  that point; a failed batch goes to the batch retry handler, and a crash before the batch ran loses its records.
 - Records are processed without any ordering, across and within partitions. `processing_mode: ordered` and
   `consume_delay` are rejected.
 - The broker redelivers a record whose processing takes longer than its lock (`group.share.record.lock.duration.ms`,
   default 30s), so the callback has to be idempotent. Each fetch locks at most `max_poll_records` records to keep
-  records from waiting, locked, in the client buffer.
+  records from waiting, locked, in the client buffer, and only runs while a poll waits up to `idle_wait_time`.
 - Share groups have no transactions or exactly-once delivery, and a share group can not take over the `group_id` of a
   consumer group: pick a new `group_id` when switching an input to `share`.
 - The broker decides where a new share group starts reading (group config `share.auto.offset.reset`, default

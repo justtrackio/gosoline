@@ -41,6 +41,13 @@ func TestGroupTypeValidation(t *testing.T) {
 			settings.GroupType = consumer.GroupTypeShare
 			settings.ConsumeDelay = time.Second
 		},
+		"unknown group type": func(settings *consumer.Settings) {
+			settings.GroupType = "streams"
+		},
+		"share group without idle wait": func(settings *consumer.Settings) {
+			settings.GroupType = consumer.GroupTypeShare
+			settings.IdleWaitTime = 0
+		},
 		"share group without poll limit": func(settings *consumer.Settings) {
 			settings.GroupType = consumer.GroupTypeShare
 			settings.MaxPollRecords = 0
@@ -207,7 +214,7 @@ func groupTypeTestSettings(groupType consumer.GroupType) *consumer.Settings {
 		MaxPollRecords:   100,
 		RebalanceTimeout: 10 * time.Second,
 		SessionTimeout:   10 * time.Second,
-		IdleWaitTime:     10 * time.Millisecond,
+		IdleWaitTime:     500 * time.Millisecond,
 		GraceTime:        5 * time.Second,
 		RunnerCount:      2,
 		ProcessingMode:   consumer.ProcessingModeUnordered,
