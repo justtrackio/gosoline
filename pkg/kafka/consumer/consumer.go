@@ -303,8 +303,14 @@ func (c *consumer) pollRecords(ctx context.Context) (any, error) {
 
 	c.healthCheckTimer.MarkHealthy()
 
-	//nolint:staticcheck // We pass a nil context to prevent PollRecords from blocking when waiting for new messages.
-	fetches := c.reader.PollRecords(nil, c.settings.MaxPollRecords)
+	// A nil context keeps a consumer group poll from blocking when waiting for new messages. A share group poll has
+	// to wait for its fetch (see shareReader.PollRecords) and gets ctx, so a shutdown ends the wait right away.
+	var pollCtx context.Context
+	if c.settings.GroupType == GroupTypeShare {
+		pollCtx = ctx
+	}
+
+	fetches := c.reader.PollRecords(pollCtx, c.settings.MaxPollRecords)
 
 	if fetches.IsClientClosed() || exec.IsRequestCanceled(fetches.Err0()) {
 		return fetches, nil

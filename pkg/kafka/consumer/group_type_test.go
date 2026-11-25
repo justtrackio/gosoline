@@ -319,3 +319,37 @@ func runGroupTypeTestConsumer(t *testing.T, cons consumer.Consumer, process func
 	require.NoError(t, cons.Run(ctx, process))
 	require.NoError(t, ctx.Err(), "the consumer should have been stopped before the timeout")
 }
+
+// TestGroupTypeShareCommitWithoutRecordsReleasesThem covers a shutdown which stops the consumer after a poll but before
+// any record was handed to the callback: committing nothing has to release the polled records, not accept them.
+func TestGroupTypeShareCommitWithoutRecordsReleasesThem(t *testing.T) {
+	cluster := newGroupTypeTestCluster(t, 1)
+	setShareGroupStartAtEarliest(t, cluster)
+	produceGroupTypeTestRecords(t, cluster, 2)
+
+	settings := groupTypeTestSettings(consumer.GroupTypeShare)
+	config := groupTypeTestConfig(cluster.ListenAddrs()[0])
+
+	pollAll := func() []*kgo.Record {
+		reader, err := consumer.NewReader(t.Context(), config, log.NewLogger(), settings, nil, "test-consumer")
+		require.NoError(t, err)
+		defer reader.CloseAllowingRebalance()
+
+		var records []*kgo.Record
+		deadline := time.Now().Add(10 * time.Second)
+
+		for len(records) < 2 && time.Now().Before(deadline) {
+			records = append(records, reader.PollRecords(t.Context(), settings.MaxPollRecords).Records()...)
+		}
+
+		require.NoError(t, reader.CommitRecords(t.Context()))
+
+		return records
+	}
+
+	require.Len(t, pollAll(), 2)
+
+	redelivered := pollAll()
+	require.Len(t, redelivered, 2, "the records should have been released and delivered again")
+	assert.Equal(t, int32(2), redelivered[0].DeliveryCount())
+}

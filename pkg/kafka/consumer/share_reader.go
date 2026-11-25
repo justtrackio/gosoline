@@ -64,7 +64,11 @@ func (r *shareReader) CloseAllowingRebalance() {
 // A record has to be settled before the next poll, as franz-go accepts every record of the previous poll that is still
 // unacknowledged at that point.
 func (r *shareReader) CommitRecords(ctx context.Context, records ...*kgo.Record) error {
-	r.client.MarkAcks(kgo.AckAccept, records...)
+	// Without records, MarkAcks would accept every pending record of the last poll instead.
+	if len(records) > 0 {
+		r.client.MarkAcks(kgo.AckAccept, records...)
+	}
+
 	r.client.MarkAcks(kgo.AckRelease)
 
 	if err := r.client.FlushAcks(ctx); err != nil {
@@ -74,12 +78,16 @@ func (r *shareReader) CommitRecords(ctx context.Context, records ...*kgo.Record)
 	return nil
 }
 
-// PollRecords waits up to IdleWaitTime for records. Unlike a consumer group client, a share group client with strict
-// record limits only fetches while a poll is waiting, so the non-blocking poll the consumer asks for would never see a
-// record. The wait is bounded to keep the consumer's shutdown and health checks responsive; running out of time is not
-// an error but an empty poll.
-func (r *shareReader) PollRecords(_ context.Context, maxPollRecords int) kgo.Fetches {
-	ctx, cancel := context.WithTimeout(r.ctx, r.pollTimeout)
+// PollRecords waits up to IdleWaitTime for records, or until ctx is cancelled. Unlike a consumer group client, a share
+// group client with strict record limits only fetches while a poll is waiting, so a non-blocking poll would never see a
+// record. The wait is bounded to keep the consumer's health check responsive; running out of time is not an error but
+// an empty poll. A nil ctx waits on the reader's context.
+func (r *shareReader) PollRecords(ctx context.Context, maxPollRecords int) kgo.Fetches {
+	if ctx == nil {
+		ctx = r.ctx
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, r.pollTimeout)
 	defer cancel()
 
 	fetches := r.client.PollRecords(ctx, maxPollRecords)
