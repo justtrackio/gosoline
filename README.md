@@ -8,6 +8,72 @@ challenges like configuration, logging, structured code execution, handling
 http requests, asynchronous message processing, writing integration tests and 
 much more.
 
+## Requirements and upgrade compatibility
+
+Gosoline requires **Go 1.26.11 or newer**. Upgrade application builders, CI and
+container toolchains together; Go 1.25 is no longer supported. A newer release
+line must also include its security fixes: Go 1.27 users need at least 1.27.4.
+
+The dependency-security update includes intentional compatibility changes:
+
+- **CrateDB support is removed.** `db.DriverNameCrateDb` and
+  `db.NewCrateDbDriver`, built-in driver registration, DSN generation and the
+  CrateDB migration adapter no longer exist. Configuring `driver: cratedb`
+  fails with `no driver factory defined for cratedb`. Migrate those applications
+  before upgrading; MySQL and Redshift remain supported.
+- **Avro uses `github.com/iskorotkov/avro/v2` instead of Hamba.** The existing
+  constructor uses the fork's default codec, without an added map-allocation
+  limit. Applications can opt into `stream.NewAvroEncoderWithCodec(schema, codec)`
+  to supply their own limits, type registrations and converters. No Gosoline
+  defaults or configuration settings are added. Update application imports and
+  global registrations to the fork; reused nested-map values now merge rather
+  than replace. **GO-2026-5048 remains unmitigated with the default codec, even
+  though the fork version clears the scanner advisory.** See the
+  [caller-supplied codec example and compatibility caveats](pkg/stream/AGENTS.md#avro-encoding).
+- **S3 adopts the AWS SDK checksum defaults.** Supported uploads calculate
+  CRC32 and downloads request checksum validation. S3-compatible services and
+  proxies must support the resulting headers and HTTPS trailing-checksum
+  encoding. Fully consume and check response-body read errors: validation can
+  fail after `GetObject` succeeds. Plaintext non-seekable uploads remain
+  unsupported; their error stage/message can change. Newly recognized invalid
+  `AWS_REQUEST_CHECKSUM_CALCULATION` or `AWS_RESPONSE_CHECKSUM_VALIDATION`
+  values can fail shared AWS configuration loading.
+- **OpenTelemetry uses core, trace, metric and log SDK 1.47, with OTLP log
+  exporters 0.23.** Resource schema URLs advance from 1.41.0 to 1.43.0.
+  Direct consumers of the log value/attribute API must migrate to
+  `otel/attribute`. Composite span and log attribute values now have a default
+  maximum depth of 64, and configured string length limits count valid U+FFFD
+  characters. Baggage property parsing uses bounded intermediate storage.
+  Review zero log-attribute limits, environment TLS certificates, HTTP
+  `Retry-After` handling and shutdown/flush errors before upgrading.
+- **Compression dependencies are updated.** Brotli rejects invalid streams
+  earlier, and Zstandard and related decoders validate malformed frames more
+  strictly. Zstandard limits initial preallocation from a declared frame size,
+  but this is not a complete safety cap for untrusted data. Compressed bytes
+  may change; consumers must not depend on byte-for-byte equality.
+  An empty payload now produces a valid Zstandard frame rather than empty
+  bytes. This can affect an opt-in SQS FIFO queue using content-based
+  deduplication without an explicit ID; content-based deduplication defaults
+  to false. In an owned LocalStack test, identical old/old and new/new messages
+  each produced one delivery, while old/new produced two. This is not a live
+  AWS or production-use claim. The normal producer-daemon path does not use
+  this empty-Zstandard encoding. Where deduplication must survive serialization
+  changes, supply a stable explicit logical deduplication ID. No queue or
+  publisher settings are changed automatically.
+- **HTML parsing and rendering use `golang.org/x/net` v0.62.0.** The parser
+  coalesces text without quadratic copying, and the renderer checks all
+  ancestor namespace transitions before treating text as literal. Applications
+  that parse or render HTML directly should review changed edge-case output.
+- **JOSE consumers use `github.com/go-jose/go-jose/v4` 4.1.7 or newer.**
+  The security fixes limit RSA key size and JWE recipients and JWS signatures,
+  reject malformed keys and headers, and remove the exported `RandReader`.
+  Applications using JOSE directly should review these upstream changes.
+
+Security fixes can also reject previously accepted malformed protocol input and
+change compressed bytes, parsing, logging and authentication edge cases. The
+security-update pull request records the complete dependency/version inventory,
+upstream compatibility references, exercised checks and remaining limitations.
+
 ## Why use it?
 
 - Provides an all-in-one solution for the primary use cases
