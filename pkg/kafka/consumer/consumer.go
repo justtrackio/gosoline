@@ -237,7 +237,9 @@ func (c *consumer) runLoop(runCtx context.Context, process func(ctx context.Cont
 
 func (c *consumer) poll(ctx context.Context) (kgo.Fetches, float64, error) {
 	start := c.clock.Now()
-	result, err := c.executorPolling.Execute(ctx, c.pollRecords)
+	result, err := c.executorPolling.Execute(ctx, func(execCtx context.Context) (any, error) {
+		return c.pollRecords(execCtx, ctx)
+	})
 	if err != nil {
 		return kgo.Fetches{}, 0, fmt.Errorf("failed to poll records: %w", err)
 	}
@@ -294,7 +296,9 @@ func (c *consumer) allowRebalance() {
 	c.healthCheckTimer.MarkHealthy()
 }
 
-func (c *consumer) pollRecords(ctx context.Context) (any, error) {
+// pollRecords polls once. ctx is the executor's context, which may outlive runCtx by the backoff cancel delay; a share
+// group poll waits on runCtx instead, so a shutdown ends it right away.
+func (c *consumer) pollRecords(ctx context.Context, runCtx context.Context) (any, error) {
 	select {
 	case <-ctx.Done():
 		return kgo.Fetches{}, ctx.Err()
@@ -304,10 +308,10 @@ func (c *consumer) pollRecords(ctx context.Context) (any, error) {
 	c.healthCheckTimer.MarkHealthy()
 
 	// A nil context keeps a consumer group poll from blocking when waiting for new messages. A share group poll has
-	// to wait for its fetch (see shareReader.PollRecords) and gets ctx, so a shutdown ends the wait right away.
+	// to wait for its fetch (see shareReader.PollRecords).
 	var pollCtx context.Context
 	if c.settings.GroupType == GroupTypeShare {
-		pollCtx = ctx
+		pollCtx = runCtx
 	}
 
 	fetches := c.reader.PollRecords(pollCtx, c.settings.MaxPollRecords)

@@ -87,11 +87,12 @@ func (r *shareReader) PollRecords(ctx context.Context, maxPollRecords int) kgo.F
 		ctx = r.ctx
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, r.pollTimeout)
+	pollCtx, cancel := context.WithTimeout(ctx, r.pollTimeout)
 	defer cancel()
 
-	fetches := r.client.PollRecords(ctx, maxPollRecords)
-	if fetches.NumRecords() == 0 && errors.Is(fetches.Err0(), context.DeadlineExceeded) {
+	// Only the bounded wait running out is an empty poll, an expired ctx is reported to the caller.
+	fetches := r.client.PollRecords(pollCtx, maxPollRecords)
+	if fetches.NumRecords() == 0 && ctx.Err() == nil && errors.Is(fetches.Err0(), context.DeadlineExceeded) {
 		return nil
 	}
 
