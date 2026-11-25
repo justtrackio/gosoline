@@ -23,3 +23,10 @@ globalFlags...)`, then `NewBlueprint(router, input, globalFlags...)`. For a flat
 set of flag definitions, use `NewInputWithArgs(args, flags...)`. Calls without flag
 definitions preserve the existing string parsing behavior; built-in help switches
 are always boolean.
+
+## Positional argument validation
+
+Set `Cmd.ValidateArgs` to check the selected command's positional arguments.
+`NewBlueprint` calls it after flag parsing and returns its error if validation
+fails. `Cli.Run` reports the error on stderr without starting the application.
+Help requests skip validation. `Cmd.Arguments` only controls help text.
