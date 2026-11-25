@@ -239,8 +239,10 @@ consumer that fetched it until it is acknowledged:
   `consume_delay` are rejected.
 - The broker redelivers a record that is not acknowledged within its lock (`group.share.record.lock.duration.ms`,
   default 30s), so the callback has to be idempotent. The lock starts when the poll fetches the record, so the whole
-  batch has to fit: keep `max_poll_records` × callback duration ÷ `runner_count` well below the lock duration. Each fetch locks at most `max_poll_records` records to keep
-  records from waiting, locked, in the client buffer, and only runs while a poll waits up to `idle_wait_time`.
+  batch has to fit: keep ⌈`max_poll_records` ÷ `runner_count`⌉ × worst-case callback duration well below the lock
+  duration, leaving time for the acknowledgements to reach the broker. Each fetch locks at most `max_poll_records`
+  records to keep records from waiting, locked, in the client buffer, and only runs while a poll waits up to
+  `idle_wait_time`.
 - Share groups have no transactions or exactly-once delivery, and a share group can not take over the `group_id` of a
   consumer group: pick a new `group_id` when switching an input to `share`.
 - The broker decides where a new share group starts reading (group config `share.auto.offset.reset`, default
