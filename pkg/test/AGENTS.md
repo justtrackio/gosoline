@@ -55,6 +55,9 @@ func TestMySuite(t *testing.T) {
 Use `suite.WithAppOptions(...)` to configure applications under test with application options, such as
 `application.WithLoggerContextFieldsMessageEncoder` for global logger context propagation through stream messages.
 
+Use `Env().LoadAdditionalFixtureSets(...)` to load more fixtures into initialized resources during a test.
+Unlike `LoadFixtureSets`, it skips the resource lifecycle, including the purge step.
+
 | Helper | Package | Purpose |
 |--------|---------|--------|
 | `env/` | LocalStack, Redis, MySQL | Docker container management |
