@@ -16,9 +16,11 @@ import (
 // to the processing callback right after processing it (see consumer.acknowledge), so committing a batch only has to
 // settle the records which were never handed over and to wait until the broker received all acknowledgements.
 type shareReader struct {
-	ctx         context.Context
-	client      *kgo.Client
-	pollTimeout time.Duration
+	ctx          context.Context
+	logger       log.Logger
+	client       *kgo.Client
+	pollTimeout  time.Duration
+	flushTimeout time.Duration
 }
 
 func newShareReader(ctx context.Context, logger log.Logger, settings *Settings, groupId string, opts []kgo.Opt) (Reader, error) {
@@ -45,7 +47,13 @@ func newShareReader(ctx context.Context, logger log.Logger, settings *Settings, 
 		return nil, fmt.Errorf("can not create franz-go share group client: %w", err)
 	}
 
-	return &shareReader{ctx: ctx, client: client, pollTimeout: settings.IdleWaitTime}, nil
+	return &shareReader{
+		ctx:          ctx,
+		logger:       logger,
+		client:       client,
+		pollTimeout:  settings.IdleWaitTime,
+		flushTimeout: settings.GraceTime,
+	}, nil
 }
 
 // AllowRebalance is a no-op, a share group does not block assignment changes while records are processed.
@@ -71,11 +79,22 @@ func (r *shareReader) CommitRecords(ctx context.Context, records ...*kgo.Record)
 
 	r.client.MarkAcks(kgo.AckRelease)
 
-	if err := r.client.FlushAcks(ctx); err != nil {
-		return fmt.Errorf("failed to flush share group acknowledgements: %w", err)
-	}
+	// FlushAcks only returns once its context ends, so it gets its own bound. Acknowledgements which miss it are still
+	// sent in the background; reporting the timeout as an error would read as a shutdown (see exec.IsRequestCanceled).
+	flushCtx, cancel := context.WithTimeout(ctx, r.flushTimeout)
+	defer cancel()
 
-	return nil
+	err := r.client.FlushAcks(flushCtx)
+	switch {
+	case err == nil:
+		return nil
+	case ctx.Err() != nil:
+		return fmt.Errorf("failed to flush share group acknowledgements: %w", err)
+	default:
+		r.logger.Warn(ctx, "share group acknowledgements did not reach the broker within %v, they are still sent in the background", r.flushTimeout)
+
+		return nil
+	}
 }
 
 // PollRecords waits up to IdleWaitTime for records, or until ctx is cancelled. Unlike a consumer group client, a share

@@ -325,7 +325,9 @@ func runGroupTypeTestConsumer(t *testing.T, cons consumer.Consumer, process func
 func TestGroupTypeShareCommitWithoutRecordsReleasesThem(t *testing.T) {
 	cluster := newGroupTypeTestCluster(t, 1)
 	setShareGroupStartAtEarliest(t, cluster)
-	produceGroupTypeTestRecords(t, cluster, 2)
+	// A single batch is fetched at once, so one poll gets both records: a second poll would accept the first one's.
+	producer := newGroupTypeTestClient(t, cluster)
+	require.NoError(t, producer.ProduceSync(t.Context(), kgo.StringRecord("record-0"), kgo.StringRecord("record-1")).FirstErr())
 
 	settings := groupTypeTestSettings(consumer.GroupTypeShare)
 	config := groupTypeTestConfig(cluster.ListenAddrs()[0])
@@ -338,8 +340,8 @@ func TestGroupTypeShareCommitWithoutRecordsReleasesThem(t *testing.T) {
 		var records []*kgo.Record
 		deadline := time.Now().Add(10 * time.Second)
 
-		for len(records) < 2 && time.Now().Before(deadline) {
-			records = append(records, reader.PollRecords(t.Context(), settings.MaxPollRecords).Records()...)
+		for len(records) == 0 && time.Now().Before(deadline) {
+			records = reader.PollRecords(t.Context(), settings.MaxPollRecords).Records()
 		}
 
 		require.NoError(t, reader.CommitRecords(t.Context()))

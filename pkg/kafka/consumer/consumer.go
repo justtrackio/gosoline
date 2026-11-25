@@ -264,7 +264,8 @@ func (c *consumer) process(ctx context.Context, fetches kgo.Fetches, process fun
 // waitForRecords idles for IdleWaitTime if the last poll returned nothing, so an empty topic does not turn the
 // poll loop into a busy loop. It returns early once runCtx is cancelled.
 func (c *consumer) waitForRecords(runCtx context.Context, fetches kgo.Fetches) error {
-	if fetches.NumRecords() > 0 {
+	// A share group poll already waited for records (see shareReader.PollRecords), and it only fetches while it waits.
+	if fetches.NumRecords() > 0 || c.settings.GroupType == GroupTypeShare {
 		return nil
 	}
 

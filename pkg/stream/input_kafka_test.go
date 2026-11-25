@@ -41,6 +41,7 @@ func TestKafkaInputShareGroupOwnsRetries(t *testing.T) {
 				GroupType:      groupType,
 				MaxPollRecords: 100,
 				IdleWaitTime:   time.Second,
+				GraceTime:      time.Second,
 				Healthcheck:    health.HealthCheckSettings{Timeout: time.Minute},
 			}
 

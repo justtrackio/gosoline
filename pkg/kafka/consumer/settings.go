@@ -144,8 +144,9 @@ func (s *Settings) validateGroupType() error {
 		}
 	case GroupTypeShare:
 		// A share group client only fetches while a poll waits, see shareReader.PollRecords.
-		if s.IdleWaitTime <= 0 {
-			return fmt.Errorf("group_type %s needs a positive idle_wait_time", s.GroupType)
+		// grace_time also bounds the acknowledgement flush after every batch, see shareReader.CommitRecords.
+		if s.IdleWaitTime <= 0 || s.GraceTime <= 0 {
+			return fmt.Errorf("group_type %s needs a positive idle_wait_time and grace_time", s.GroupType)
 		}
 
 		// franz-go needs a positive bound for its share fetches, see newShareReader.
