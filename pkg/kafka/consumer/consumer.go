@@ -85,6 +85,12 @@ type consumer struct {
 }
 
 func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, name string) (Consumer, error) {
+	// NewReader validates as well, but only once the consumer runs. Checking here reports a misconfiguration while the
+	// application is still being assembled.
+	if err := settings.validateGroupType(); err != nil {
+		return nil, fmt.Errorf("invalid kafka consumer settings: %w", err)
+	}
+
 	conn, err := connection.ParseSettings(config, settings.Connection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse kafka connection settings for connection name %q: %w", settings.Connection, err)
@@ -485,16 +491,34 @@ func (c *consumer) processRecordWorkUnit(ctx, processingCtx context.Context, rec
 			return nil
 		}
 
-		if ok := c.processWithRecovery(processingCtx, record, process); !ok {
+		ok := c.processWithRecovery(processingCtx, record, process)
+		if !ok {
 			result.markFailed()
 		}
 
+		c.acknowledge(record, ok)
 		result.addProcessed(record)
 
 		c.healthCheckTimer.MarkHealthy()
 	}
 
 	return nil
+}
+
+// acknowledge settles a share group record as soon as it was processed: a succeeded record is accepted, a failed one is
+// released so the broker delivers it again, to this or another consumer. Consumer groups commit offsets per batch instead
+// (see commitRecords), so this is a no-op for them.
+func (c *consumer) acknowledge(record *kgo.Record, ok bool) {
+	if c.settings.GroupType != GroupTypeShare {
+		return
+	}
+
+	status := kgo.AckAccept
+	if !ok {
+		status = kgo.AckRelease
+	}
+
+	record.Ack(status)
 }
 
 // delayConsume waits until the given record is at least ConsumeDelay old, so downstream consumers only see data after a

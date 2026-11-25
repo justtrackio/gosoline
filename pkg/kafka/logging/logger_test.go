@@ -32,28 +32,28 @@ func (s *LoggerTestSuite) SetupTest() {
 
 func (s *LoggerTestSuite) TestError() {
 	s.baseLogger.EXPECT().WithFields(log.Fields{}).Return(s.baseLogger).Once()
-	s.baseLogger.EXPECT().Error(matcher.Context, "some error")
+	s.baseLogger.EXPECT().Error(matcher.Context, "%s", "some error")
 
 	s.logger.Log(kgo.LogLevelError, "some error")
 }
 
 func (s *LoggerTestSuite) TestWarn() {
 	s.baseLogger.EXPECT().WithFields(log.Fields{}).Return(s.baseLogger).Once()
-	s.baseLogger.EXPECT().Warn(matcher.Context, "some error")
+	s.baseLogger.EXPECT().Warn(matcher.Context, "%s", "some error")
 
 	s.logger.Log(kgo.LogLevelWarn, "some error")
 }
 
 func (s *LoggerTestSuite) TestInfo() {
 	s.baseLogger.EXPECT().WithFields(log.Fields{}).Return(s.baseLogger).Once()
-	s.baseLogger.EXPECT().Info(matcher.Context, "some error")
+	s.baseLogger.EXPECT().Info(matcher.Context, "%s", "some error")
 
 	s.logger.Log(kgo.LogLevelInfo, "some error")
 }
 
 func (s *LoggerTestSuite) TestDebug() {
 	s.baseLogger.EXPECT().WithFields(log.Fields{}).Return(s.baseLogger).Once()
-	s.baseLogger.EXPECT().Debug(matcher.Context, "some error")
+	s.baseLogger.EXPECT().Debug(matcher.Context, "%s", "some error")
 
 	s.logger.Log(kgo.LogLevelDebug, "some error")
 }
@@ -64,7 +64,7 @@ func (s *LoggerTestSuite) TestFields() {
 		"field_2": "2",
 		"field_3": 3.0,
 	}).Return(s.baseLogger).Once()
-	s.baseLogger.EXPECT().Error(matcher.Context, "some error")
+	s.baseLogger.EXPECT().Error(matcher.Context, "%s", "some error")
 
 	s.logger.Log(kgo.LogLevelError, "some error", "field_1", 1, "field_2", "2", "field_3", 3.0)
 }
@@ -75,14 +75,14 @@ func (s *LoggerTestSuite) TestFields_DropTrailingFieldWithoutValue() {
 		"field_2": "2",
 		"field_3": 3.0,
 	}).Return(s.baseLogger).Once()
-	s.baseLogger.EXPECT().Error(matcher.Context, "some error")
+	s.baseLogger.EXPECT().Error(matcher.Context, "%s", "some error")
 
 	s.logger.Log(kgo.LogLevelError, "some error", "field_1", 1, "field_2", "2", "field_3", 3.0, "field_4")
 }
 
 func (s *LoggerTestSuite) TestFields_OneKeyNoValue() {
 	s.baseLogger.EXPECT().WithFields(log.Fields{}).Return(s.baseLogger).Once()
-	s.baseLogger.EXPECT().Error(matcher.Context, "some error")
+	s.baseLogger.EXPECT().Error(matcher.Context, "%s", "some error")
 
 	s.logger.Log(kgo.LogLevelError, "some error", "field_1")
 }
@@ -93,7 +93,7 @@ func (s *LoggerTestSuite) TestLogGroupManageLoopErrorAsWarning() {
 	s.baseLogger.EXPECT().WithFields(log.Fields{
 		"err": connRefusedErr,
 	}).Return(s.baseLogger).Once()
-	s.baseLogger.EXPECT().Warn(matcher.Context, logging.KgoGroupManageLoopError)
+	s.baseLogger.EXPECT().Warn(matcher.Context, "%s", logging.KgoGroupManageLoopError)
 
 	s.logger.Log(kgo.LogLevelError, logging.KgoGroupManageLoopError, "err", connRefusedErr)
 }
