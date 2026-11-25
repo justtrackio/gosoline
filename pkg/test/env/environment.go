@@ -37,6 +37,7 @@ type Environment struct {
 
 func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 	var err error
+	var componentConfigManager *ComponentsConfigManager
 
 	env := &Environment{
 		t: t,
@@ -49,8 +50,8 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 	var skeletons []*componentSkeleton
 	var component Component
 	components := NewComponentsContainer()
-	componentConfigManager, err := NewComponentsConfigManager(env.config)
-	if err != nil {
+
+	if componentConfigManager, err = NewComponentsConfigManager(env.config); err != nil {
 		return nil, fmt.Errorf("can not create component config manager: %w", err)
 	}
 
@@ -108,6 +109,7 @@ func (e *Environment) init(options ...Option) error {
 	if err = yaml.Unmarshal(configDefault, &defaults); err != nil {
 		return fmt.Errorf("can not read default configurion: %w", err)
 	}
+
 	options = append([]Option{WithConfigMap(defaults)}, options...)
 
 	for _, opt := range options {
@@ -244,6 +246,88 @@ func (e *Environment) LoadFixtureSet(factory fixtures.FixtureSetsFactory, postPr
 	return e.LoadFixtureSets([]fixtures.FixtureSetsFactory{factory}, postProcessorFactories...)
 }
 
+// LoadFixtureSets runs the resource lifecycle before loading the fixture sets.
+func (e *Environment) LoadFixtureSets(factories []fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) error {
+	var err error
+	var fixtureSets map[string][]fixtures.FixtureSet
+	var postProcessors []fixtures.PostProcessor
+
+	if len(factories) == 0 {
+		return nil
+	}
+
+	if fixtureSets, postProcessors, err = e.prepareFixtureSets(factories, postProcessorFactories); err != nil {
+		return err
+	}
+
+	if err := e.runLifeCycle(); err != nil {
+		return fmt.Errorf("can not handle the lifecycle: %w", err)
+	}
+
+	return e.loadFixtureSets(fixtureSets, postProcessors)
+}
+
+// LoadAdditionalFixtureSets loads fixture sets into existing resources without running
+// the resource lifecycle or purging existing data. Fixture writers can still replace rows.
+func (e *Environment) LoadAdditionalFixtureSets(factories []fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) error {
+	var err error
+	var fixtureSets map[string][]fixtures.FixtureSet
+	var postProcessors []fixtures.PostProcessor
+
+	if len(factories) == 0 {
+		return nil
+	}
+
+	if fixtureSets, postProcessors, err = e.prepareFixtureSets(factories, postProcessorFactories); err != nil {
+		return err
+	}
+
+	return e.loadFixtureSets(fixtureSets, postProcessors)
+}
+
+func (e *Environment) prepareFixtureSets(factories []fixtures.FixtureSetsFactory, postProcessorFactories []fixtures.PostProcessorFactory) (map[string][]fixtures.FixtureSet, []fixtures.PostProcessor, error) {
+	const group = "default"
+
+	var err error
+	var fixtureSets []fixtures.FixtureSet
+
+	allFixtureSets := map[string][]fixtures.FixtureSet{
+		group: {},
+	}
+	postProcessors := make([]fixtures.PostProcessor, len(postProcessorFactories))
+
+	for _, factory := range factories {
+		if fixtureSets, err = factory(e.ctx, e.config, e.logger, group); err != nil {
+			return nil, nil, fmt.Errorf("failed to create fixture set: %w", err)
+		}
+
+		allFixtureSets[group] = append(allFixtureSets[group], fixtureSets...)
+	}
+
+	for i, factory := range postProcessorFactories {
+		if postProcessors[i], err = factory(e.ctx, e.config, e.logger); err != nil {
+			return nil, nil, fmt.Errorf("failed to create post processor: %w", err)
+		}
+	}
+
+	return allFixtureSets, postProcessors, nil
+}
+
+func (e *Environment) loadFixtureSets(fixtureSets map[string][]fixtures.FixtureSet, postProcessors []fixtures.PostProcessor) error {
+	var err error
+	var loader fixtures.FixtureLoader
+
+	if loader, err = fixtures.NewFixtureLoader(e.ctx, e.config, e.logger, fixtureSets, postProcessors); err != nil {
+		return fmt.Errorf("failed to create fixture loader: %w", err)
+	}
+
+	if err = loader.Load(e.ctx); err != nil {
+		return fmt.Errorf("failed to load all fixture sets: %w", err)
+	}
+
+	return nil
+}
+
 func (e *Environment) runLifeCycle() error {
 	if err := e.resManager.Create(e.ctx); err != nil {
 		return fmt.Errorf("can not handle the create lifecycle: %w", err)
@@ -259,49 +343,6 @@ func (e *Environment) runLifeCycle() error {
 
 	if err := e.resManager.Purge(e.ctx); err != nil {
 		return fmt.Errorf("can not handle the purge lifecycle: %w", err)
-	}
-
-	return nil
-}
-
-func (e *Environment) LoadFixtureSets(factories []fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) error {
-	if len(factories) == 0 {
-		return nil
-	}
-
-	var err error
-	var loader fixtures.FixtureLoader
-	var fixtureSets []fixtures.FixtureSet
-
-	allFixtureSets := map[string][]fixtures.FixtureSet{
-		"default": {},
-	}
-	postProcessors := make([]fixtures.PostProcessor, len(postProcessorFactories))
-
-	for _, factory := range factories {
-		if fixtureSets, err = factory(e.ctx, e.config, e.logger, "default"); err != nil {
-			return fmt.Errorf("failed to create fixture set: %w", err)
-		}
-
-		allFixtureSets["default"] = append(allFixtureSets["default"], fixtureSets...)
-	}
-
-	for i, factory := range postProcessorFactories {
-		if postProcessors[i], err = factory(e.ctx, e.config, e.logger); err != nil {
-			return fmt.Errorf("failed to create post processor: %w", err)
-		}
-	}
-
-	if err := e.runLifeCycle(); err != nil {
-		return fmt.Errorf("can not handle the lifecycle: %w", err)
-	}
-
-	if loader, err = fixtures.NewFixtureLoader(e.ctx, e.config, e.logger, allFixtureSets, postProcessors); err != nil {
-		return fmt.Errorf("failed to create fixture loader: %w", err)
-	}
-
-	if err = loader.Load(e.ctx); err != nil {
-		return fmt.Errorf("failed to load all fixture sets: %w", err)
 	}
 
 	return nil

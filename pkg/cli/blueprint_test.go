@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -93,14 +94,24 @@ func (s *BlueprintTestSuite) TestNestedGroups() {
 }
 
 func (s *BlueprintTestSuite) TestGroupCommandWithArgs() {
+	var checkedArgs []string
+
 	router := cli.NewRouter(nil)
 	apiGroup := router.Group(cli.Group{Name: "api"})
-	apiGroup.Cmd(cli.Cmd{Name: "get"})
+	apiGroup.Cmd(cli.Cmd{
+		Name: "get",
+		ValidateArgs: func(args []string) error {
+			checkedArgs = args
+
+			return nil
+		},
+	})
 
 	bp := s.newBlueprint(router, s.newInput([]string{"api", "get", "users", "123"}, nil))
 
 	s.Equal([]string{"api", "get"}, bp.Cmd)
 	s.Equal([]string{"users", "123"}, bp.Args)
+	s.Equal(bp.Args, checkedArgs)
 	s.Empty(bp.Flags)
 }
 
@@ -127,6 +138,21 @@ func (s *BlueprintTestSuite) TestDefaultCommandAppOptions() {
 
 	s.Require().Len(bp.AppOptions, 1)
 	s.Equal(reflect.ValueOf(cmdOption).Pointer(), reflect.ValueOf(bp.AppOptions[0]).Pointer())
+}
+
+func (s *BlueprintTestSuite) TestDefaultCommandArgumentValidation() {
+	router := cli.NewRouter(nil)
+	apiGroup := router.Group(cli.Group{Name: "api"})
+	apiGroup.DefaultCmd(cli.Cmd{
+		Name: "default",
+		ValidateArgs: func(args []string) error {
+			s.Empty(args)
+
+			return errors.New("arguments rejected")
+		},
+	})
+
+	s.assertBlueprintError(router, s.newInput([]string{"api"}, nil), "arguments rejected")
 }
 
 func (s *BlueprintTestSuite) TestNoMatchingCommand() {

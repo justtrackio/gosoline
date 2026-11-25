@@ -29,18 +29,14 @@ func NewBlueprint(router *Router, input *Input, globalFlags ...Flag) (*Blueprint
 		return nil, err
 	}
 
-	var selectedCmd Cmd
-
 	cmdArgs := make([]string, 0)
 	args := make([]string, 0)
 	flags := append([]Flag(nil), globalFlags...)
 	appOptions := make([]application.Option, 0)
-	defaultCmd := router.defaultCmd
 
 	for i, arg := range input.Arguments {
 		if group, ok := router.groups[arg]; ok {
 			router = group.child
-			defaultCmd = router.defaultCmd
 			cmdArgs = append(cmdArgs, arg)
 			flags = append(flags, group.Flags...)
 			appOptions = append(appOptions, group.AppOptions...)
@@ -49,16 +45,13 @@ func NewBlueprint(router *Router, input *Input, globalFlags ...Flag) (*Blueprint
 		}
 
 		if cmd, ok := router.cmds[arg]; ok {
-			selectedCmd = cmd
 			cmdArgs = append(cmdArgs, arg)
-			flags = append(flags, cmd.Flags...)
-			appOptions = append(appOptions, cmd.AppOptions...)
 
 			if next := i + 1; next < len(input.Arguments) {
 				args = input.Arguments[next:]
 			}
 
-			return newBlueprint(cmdArgs, args, flags, appOptions, input)
+			return newBlueprint(cmd, cmdArgs, args, flags, appOptions, input)
 		}
 
 		unknownCmd := append(append([]string(nil), cmdArgs...), arg)
@@ -69,11 +62,7 @@ func NewBlueprint(router *Router, input *Input, globalFlags ...Flag) (*Blueprint
 		}
 	}
 
-	selectedCmd = defaultCmd
-	flags = append(flags, selectedCmd.Flags...)
-	appOptions = append(appOptions, selectedCmd.AppOptions...)
-
-	return newBlueprint(cmdArgs, args, flags, appOptions, input)
+	return newBlueprint(router.defaultCmd, cmdArgs, args, flags, appOptions, input)
 }
 
 func validateRouter(router *Router) error {
@@ -104,15 +93,19 @@ func invalidCliNameError(kind string, value string) error {
 	return fmt.Errorf("invalid cli %s %q: must contain only alphanumeric characters, hyphens, or underscores", kind, value)
 }
 
-func newBlueprint(cmdArgs []string, args []string, flags []Flag, appOptions []application.Option, input *Input) (*Blueprint, error) {
+func newBlueprint(cmd Cmd, cmdArgs []string, args []string, flags []Flag, appOptions []application.Option, input *Input) (*Blueprint, error) {
+	var err error
+	var bf *BlueprintFlag
+
+	flags = append(flags, cmd.Flags...)
 	blueFlags := make([]BlueprintFlag, 0)
+
 	for _, flag := range flags {
 		if flag.Kind == "" {
 			flag.Kind = FlagKindString
 		}
 
-		bf, err := flagParse(input.Flags, flag)
-		if err != nil {
+		if bf, err = flagParse(input.Flags, flag); err != nil {
 			return nil, err
 		}
 
@@ -121,11 +114,17 @@ func newBlueprint(cmdArgs []string, args []string, flags []Flag, appOptions []ap
 		}
 	}
 
+	if cmd.ValidateArgs != nil {
+		if err := cmd.ValidateArgs(args); err != nil {
+			return nil, err
+		}
+	}
+
 	return &Blueprint{
 		Cmd:        cmdArgs,
 		Args:       args,
 		Flags:      blueFlags,
-		AppOptions: appOptions,
+		AppOptions: append(appOptions, cmd.AppOptions...),
 	}, nil
 }
 

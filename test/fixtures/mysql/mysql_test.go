@@ -41,6 +41,7 @@ func (s *MysqlTestSuite) TestOrmFixturesMysql() {
 	if err := s.Env().LoadFixtureSet(s.provideMysqlOrmFixtures()); err != nil {
 		s.FailNow(err.Error())
 	}
+
 	envClient := s.Env().MySql("default").Client()
 
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), envClient, "mysql_test_models")
@@ -51,10 +52,20 @@ func (s *MysqlTestSuite) TestPlainFixturesMysql() {
 	if err := s.Env().LoadFixtureSet(s.provideMysqlPlainFixtures()); err != nil {
 		s.FailNow(err.Error())
 	}
+
 	envClient := s.Env().MySql("default").Client()
 
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), envClient, "mysql_plain_writer_test")
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), envClient, "mysql_plain_writer_test", "name", "testName3")
+}
+
+func (s *MysqlTestSuite) TestAdditionalFixturesMysql() {
+	s.Require().NoError(s.Env().LoadFixtureSet(s.provideMysqlPlainFixtures()))
+	s.Require().NoError(s.Env().LoadAdditionalFixtureSets([]fixtures.FixtureSetsFactory{s.provideMysqlOrmFixtures()}))
+
+	envClient := s.Env().MySql("default").Client()
+	gosoAssert.SqlColumnHasSpecificValue(s.T(), envClient, "mysql_plain_writer_test", "name", "testName3")
+	gosoAssert.SqlColumnHasSpecificValue(s.T(), envClient, "mysql_test_models", "name", "testName")
 }
 
 var MysqlTestModelMetadata = db_repo.Metadata{
@@ -71,8 +82,10 @@ var MysqlTestModelMetadata = db_repo.Metadata{
 
 func (s *MysqlTestSuite) provideMysqlOrmFixtures() fixtures.FixtureSetsFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
-		writer, err := db_repo.NewMysqlOrmFixtureWriter(s.Env().Context(), s.Env().Config(), s.Env().Logger(), &MysqlTestModelMetadata)
-		if err != nil {
+		var err error
+		var writer fixtures.FixtureWriter
+
+		if writer, err = db_repo.NewMysqlOrmFixtureWriter(s.Env().Context(), s.Env().Config(), s.Env().Logger(), &MysqlTestModelMetadata); err != nil {
 			return nil, fmt.Errorf("failed to create mysql plain fixture writer: %w", err)
 		}
 
@@ -95,10 +108,15 @@ func (s *MysqlTestSuite) provideMysqlOrmFixtures() fixtures.FixtureSetsFactory {
 
 func (s *MysqlTestSuite) provideMysqlPlainFixtures() fixtures.FixtureSetsFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
-		writer, err := db.NewMysqlPlainFixtureWriter(s.Env().Context(), s.Env().Config(), s.Env().Logger(), &db.MysqlPlainMetaData{
-			TableName: "mysql_plain_writer_test",
-			Columns:   []string{"id", "name"},
-		})
+		writer, err := db.NewMysqlPlainFixtureWriter(
+			s.Env().Context(),
+			s.Env().Config(),
+			s.Env().Logger(),
+			&db.MysqlPlainMetaData{
+				TableName: "mysql_plain_writer_test",
+				Columns:   []string{"id", "name"},
+			},
+		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create mysql plain fixture writer: %w", err)
 		}

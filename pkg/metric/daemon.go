@@ -85,7 +85,7 @@ func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) 
 
 	for _, typ := range settings.Writers {
 		metricWriterAggrCnfKey := metricWriterAggrKey(typ)
-		aggWriter, err := config.GetBool(metricWriterAggrCnfKey, false)
+		aggWriter, err := config.GetBool(metricWriterAggrCnfKey, typ == WriterTypeCloudwatch)
 		if err != nil {
 			return nil, fmt.Errorf("can not get bool from config at %s: %w", metricWriterAggrCnfKey, err)
 		}
