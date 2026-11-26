@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -21,30 +22,39 @@ type RetryAfterSettings struct {
 	JitterMax       float64       `cfg:"jitter_max" default:"1.5" validate:"min=1"`
 }
 
+var errRetryWaitExceedsContext = errors.New("retry wait exceeds remaining request time")
+
 func newRetryAfterFunc(settings Settings) resty.RetryAfterFunc {
-	return func(_ *resty.Client, response *resty.Response) (time.Duration, error) {
+	return func(client *resty.Client, response *resty.Response) (time.Duration, error) {
 		if response == nil || response.Request == nil {
 			return 0, nil
 		}
 
 		retryAfterHeader := strings.TrimSpace(response.Header().Get(httpHeaders.RetryAfter))
-		if retryAfterHeader == "" && response.StatusCode() != stdHttp.StatusServiceUnavailable {
-			retryAfter := defaultRetryWaitTime(settings, response.Request.Attempt)
-			if err := ensureRetryWaitFitsContext(response.Request.Context(), retryAfter); err != nil {
-				return 0, err
+		useRetryAfter := retryAfterHeader != "" || response.StatusCode() == stdHttp.StatusServiceUnavailable
+
+		var retryAfter time.Duration
+		if useRetryAfter {
+			delay, err := parseRetryAfter(retryAfterHeader, time.Now())
+			if err != nil {
+				delay = settings.RetryAfterSettings.DefaultWaitTime
 			}
 
-			return retryAfter, nil
+			retryAfter = jitterRetryAfter(delay, settings.RetryAfterSettings.JitterMin, settings.RetryAfterSettings.JitterMax)
 		}
 
-		retryAfter, err := parseRetryAfter(retryAfterHeader, time.Now())
-		if err != nil {
-			retryAfter = settings.RetryAfterSettings.DefaultWaitTime
+		if retryAfter == 0 {
+			// Resolve the fallback before budgeting it; a zero return delegates it to Resty.
+			maxWaitTime := client.RetryMaxWaitTime
+			if !useRetryAfter && client.RetryWaitTime > 0 && settings.RetryMaxWaitTime > 0 {
+				// Ordinary retries use Gosoline's configured cap, not Resty's wider cap.
+				maxWaitTime = settings.RetryMaxWaitTime
+			}
+
+			retryAfter = jitterRetryWaitTime(client.RetryWaitTime, maxWaitTime, response.Request.Attempt)
 		}
 
-		retryAfter = jitterRetryAfter(retryAfter, settings.RetryAfterSettings.JitterMin, settings.RetryAfterSettings.JitterMax)
-
-		if err := ensureRetryWaitFitsContext(response.Request.Context(), retryAfter); err != nil {
+		if err := ensureRetryWaitFitsContext(response.Request.Context(), retryAfter, client.RetryWaitTime); err != nil {
 			return 0, err
 		}
 
@@ -52,19 +62,22 @@ func newRetryAfterFunc(settings Settings) resty.RetryAfterFunc {
 	}
 }
 
-func defaultRetryWaitTime(settings Settings, attempt int) time.Duration {
-	minWaitTime := settings.RetryWaitTime
-	maxWaitTime := settings.RetryMaxWaitTime
-
-	if minWaitTime <= 0 || maxWaitTime <= 0 {
-		return 0
+func jitterRetryWaitTime(minWaitTime, maxWaitTime time.Duration, attempt int) time.Duration {
+	// Match the pinned Resty's cap for a negative maximum.
+	if maxWaitTime < 0 {
+		maxWaitTime = 1<<31 - 1
 	}
 
 	// Resty increments Request.Attempt before executing. Its backoff receives a zero-based retry attempt.
 	attempt = max(0, attempt-1)
 
 	temp := min(float64(maxWaitTime), float64(minWaitTime)*math.Exp2(float64(attempt)))
-	center := max(time.Duration(temp/2), time.Nanosecond)
+	center := time.Duration(temp / 2)
+	if center <= 0 {
+		// A zero callback result invokes Resty's jitter, which panics on a zero range.
+		return max(minWaitTime, time.Nanosecond)
+	}
+
 	waitTime := center + time.Duration(rand.Int63n(int64(center)))
 
 	return max(minWaitTime, waitTime)
@@ -98,7 +111,7 @@ func jitterRetryAfter(retryAfter time.Duration, jitterMin float64, jitterMax flo
 	return time.Duration(float64(retryAfter) * jitter)
 }
 
-func ensureRetryWaitFitsContext(ctx context.Context, retryAfter time.Duration) error {
+func ensureRetryWaitFitsContext(ctx context.Context, retryAfter, minWaitTime time.Duration) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -108,12 +121,16 @@ func ensureRetryWaitFitsContext(ctx context.Context, retryAfter time.Duration) e
 		return nil
 	}
 
+	// Resty floors the wait at minWaitTime. Still check the requested delay
+	// before any cap so that a long Retry-After can stop the retry.
+	retryAfter = max(retryAfter, minWaitTime)
+
 	remaining := time.Until(deadline)
 	if retryAfter <= remaining {
 		return nil
 	}
 
-	return fmt.Errorf("retry wait duration %s exceeds remaining request time %s", retryAfter, remaining)
+	return fmt.Errorf("%w: wait duration %s, remaining request time %s", errRetryWaitExceedsContext, retryAfter, remaining)
 }
 
 func getRetryMaxWaitTime(settings Settings) time.Duration {
