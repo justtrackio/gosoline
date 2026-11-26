@@ -10,28 +10,60 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRetryAfterRejectsOverBudgetBackoffWhenConfiguredMaximumIsZero(t *testing.T) {
-	settings := Settings{
-		RequestTimeout:     time.Minute,
-		RetryWaitTime:      10 * time.Second,
-		RetryMaxWaitTime:   0,
-		RetryAfterSettings: RetryAfterSettings{JitterMax: 1},
-	}
-	// On the third attempt, Resty's fallback is at least 20s, even though
-	// the configured minimum wait of 10s fits within the caller's budget.
-	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
-	defer cancel()
+func TestRetryAfterBudget(t *testing.T) {
+	const minWaitTime = 10 * time.Second
+	const budget = 15 * time.Second
 
-	client := resty.New()
-	request := client.R().SetContext(ctx)
-	request.Attempt = 3
-	response := &resty.Response{
-		Request:     request,
-		RawResponse: &stdHttp.Response{StatusCode: stdHttp.StatusTooManyRequests},
-	}
+	for _, tc := range []struct {
+		name            string
+		status          int
+		header          string
+		defaultWaitTime time.Duration
+		configuredMax   time.Duration
+		budget          time.Duration
+		wantWait        time.Duration
+	}{
+		{name: "zero Retry-After uses Resty fallback", status: stdHttp.StatusServiceUnavailable, header: "0", configuredMax: minWaitTime, budget: budget},
+		{name: "503 default exceeds budget", status: stdHttp.StatusServiceUnavailable, defaultWaitTime: 30 * time.Second, budget: budget},
+		{name: "503 minimum exceeds budget", status: stdHttp.StatusServiceUnavailable, defaultWaitTime: time.Second, budget: 5 * time.Second},
+		{name: "ordinary backoff exceeds budget", status: stdHttp.StatusTooManyRequests, configuredMax: 40 * time.Second, budget: budget},
+		{name: "ordinary backoff uses configured cap", status: stdHttp.StatusTooManyRequests, configuredMax: minWaitTime, budget: budget, wantWait: minWaitTime},
+		{name: "zero configured cap uses Resty fallback", status: stdHttp.StatusTooManyRequests, budget: budget},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			settings := Settings{
+				RequestTimeout:   time.Minute,
+				RetryWaitTime:    minWaitTime,
+				RetryMaxWaitTime: tc.configuredMax,
+				RetryAfterSettings: RetryAfterSettings{
+					DefaultWaitTime: tc.defaultWaitTime,
+					JitterMin:       1,
+					JitterMax:       1,
+				},
+			}
+			client := resty.New().SetRetryWaitTime(settings.RetryWaitTime).SetRetryMaxWaitTime(getRetryMaxWaitTime(settings))
+			ctx, cancel := context.WithTimeout(t.Context(), tc.budget)
+			defer cancel()
 
-	_, err := newRetryAfterFunc(settings)(client, response)
-	require.ErrorIs(t, err, errRetryWaitExceedsContext)
+			request := client.R().SetContext(ctx)
+			// The third attempt's fallback is at least 20s, even though the 10s minimum fits.
+			request.Attempt = 3
+			rawResponse := &stdHttp.Response{StatusCode: tc.status, Header: make(stdHttp.Header)}
+			if tc.header != "" {
+				rawResponse.Header.Set("Retry-After", tc.header)
+			}
+
+			wait, err := newRetryAfterFunc(settings)(client, &resty.Response{Request: request, RawResponse: rawResponse})
+			if tc.wantWait == 0 {
+				require.ErrorIs(t, err, errRetryWaitExceedsContext)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tc.wantWait, wait)
+		})
+	}
 }
 
 func TestRetryAfterAllowsRetryWithZeroEffectiveMaximum(t *testing.T) {
@@ -41,7 +73,10 @@ func TestRetryAfterAllowsRetryWithZeroEffectiveMaximum(t *testing.T) {
 				RetryWaitTime:      minWaitTime,
 				RetryAfterSettings: RetryAfterSettings{JitterMax: 1},
 			}
-			client := resty.New().SetRetryAfter(newRetryAfterFunc(settings))
+			client := resty.New().
+				SetRetryWaitTime(settings.RetryWaitTime).
+				SetRetryMaxWaitTime(getRetryMaxWaitTime(settings)).
+				SetRetryAfter(newRetryAfterFunc(settings))
 			request := client.R().SetContext(t.Context())
 			attempts := 0
 			err := resty.Backoff(func() (*resty.Response, error) {
@@ -56,7 +91,7 @@ func TestRetryAfterAllowsRetryWithZeroEffectiveMaximum(t *testing.T) {
 					Request:     request,
 					RawResponse: &stdHttp.Response{StatusCode: status},
 				}, nil
-			}, resty.Retries(1), resty.WaitTime(settings.RetryWaitTime), resty.MaxWaitTime(getRetryMaxWaitTime(settings)),
+			}, resty.Retries(1), resty.WaitTime(client.RetryWaitTime), resty.MaxWaitTime(client.RetryMaxWaitTime),
 				resty.RetryConditions([]resty.RetryConditionFunc{func(resp *resty.Response, _ error) bool {
 					return resp.StatusCode() == stdHttp.StatusTooManyRequests
 				}}))

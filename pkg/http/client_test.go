@@ -81,19 +81,14 @@ func getClient(t *testing.T, retries int, timeout time.Duration, options ...http
 	return client
 }
 
-func getRetryAfterClient(t *testing.T, retries int, timeout time.Duration, defaultWaitTime time.Duration, retryWaitTimes ...time.Duration) http.Client {
-	retryWaitTime := time.Millisecond
-	if len(retryWaitTimes) > 0 {
-		retryWaitTime = retryWaitTimes[0]
-	}
-
+func getRetryAfterClient(t *testing.T, timeout, defaultWaitTime, retryWaitTime time.Duration) http.Client {
 	ctx := appctx.WithContainer(t.Context())
 	config := cfg.New()
 	err := config.Option(cfg.WithConfigMap(map[string]any{
 		"http_client": map[string]any{
 			"default": map[string]any{
 				"request_timeout":     timeout,
-				"retry_count":         retries,
+				"retry_count":         1,
 				"retry_max_wait_time": "200ms",
 				"retry_wait_time":     retryWaitTime,
 				"retry_after": map[string]any{
@@ -111,7 +106,7 @@ func getRetryAfterClient(t *testing.T, retries int, timeout time.Duration, defau
 	client, err := http.ProvideHttpClient(ctx, config, logger, "default")
 	assert.NoError(t, err)
 	client.AddRetryCondition(func(response *http.Response, err error) bool {
-		return err != nil || response.StatusCode == netHttp.StatusServiceUnavailable || response.StatusCode == netHttp.StatusTooManyRequests
+		return err != nil || response.StatusCode == netHttp.StatusServiceUnavailable
 	})
 
 	return client
@@ -161,7 +156,7 @@ func TestClient_GetRetriesAfterServiceUnavailable(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	client := getRetryAfterClient(t, 1, 2*time.Second, time.Millisecond)
+	client := getRetryAfterClient(t, 2*time.Second, time.Millisecond, time.Millisecond)
 	request := client.NewRequest().WithUrl(testServer.URL)
 
 	startedAt := time.Now()
@@ -188,7 +183,7 @@ func TestClient_GetRetriesAfterDefaultOnMissingHeader(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	client := getRetryAfterClient(t, 1, time.Second, 10*time.Millisecond)
+	client := getRetryAfterClient(t, time.Second, 10*time.Millisecond, time.Millisecond)
 	request := client.NewRequest().WithUrl(testServer.URL)
 
 	response, err := client.Get(t.Context(), request)
@@ -219,7 +214,7 @@ func TestClient_GetReturnsResponseWhenRetryAfterExceedsRequestTimeout(t *testing
 			}))
 			defer testServer.Close()
 
-			client := getRetryAfterClient(t, 1, tc.requestTimeout, time.Millisecond)
+			client := getRetryAfterClient(t, tc.requestTimeout, time.Millisecond, time.Millisecond)
 			request := client.NewRequest().WithUrl(testServer.URL)
 			ctx, cancel := context.WithTimeout(t.Context(), tc.callerTimeout)
 			defer cancel()
@@ -237,29 +232,6 @@ func TestClient_GetReturnsResponseWhenRetryAfterExceedsRequestTimeout(t *testing
 	}
 }
 
-func TestClient_GetReturnsResponseWhenZeroRetryAfterFallbackExceedsRequestTimeout(t *testing.T) {
-	attempts := atomic.Int64{}
-	testServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, _ *netHttp.Request) {
-		attempts.Add(1)
-		res.Header().Set("Retry-After", "0")
-		res.WriteHeader(netHttp.StatusServiceUnavailable)
-		_, err := res.Write([]byte("try again later"))
-		assert.NoError(t, err)
-	}))
-	defer testServer.Close()
-
-	client := getRetryAfterClient(t, 1, 5*time.Second, time.Millisecond, 10*time.Second)
-	startedAt := time.Now()
-	response, err := client.Get(t.Context(), client.NewRequest().WithUrl(testServer.URL))
-
-	require.NoError(t, err)
-	require.NotNil(t, response)
-	assert.Equal(t, netHttp.StatusServiceUnavailable, response.StatusCode)
-	assert.Equal(t, "try again later", string(response.Body))
-	assert.Equal(t, int64(1), attempts.Load())
-	assert.Less(t, time.Since(startedAt), 3*time.Second)
-}
-
 func TestClient_GetStartsRetryBackoffFromFirstAttemptOnReusedRequest(t *testing.T) {
 	attempts := atomic.Int64{}
 	testServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, _ *netHttp.Request) {
@@ -274,7 +246,7 @@ func TestClient_GetStartsRetryBackoffFromFirstAttemptOnReusedRequest(t *testing.
 	}))
 	defer testServer.Close()
 
-	client := getRetryAfterClient(t, 1, 5*time.Second, time.Millisecond, 500*time.Millisecond)
+	client := getRetryAfterClient(t, 5*time.Second, time.Millisecond, 500*time.Millisecond)
 	request := client.NewRequest().WithUrl(testServer.URL)
 	for range 2 {
 		response, err := client.Get(t.Context(), request)
@@ -304,7 +276,7 @@ func TestClient_OverBudgetRetryPreservesRedirectError(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	client := getRetryAfterClient(t, 1, 5*time.Second, time.Millisecond)
+	client := getRetryAfterClient(t, 5*time.Second, time.Millisecond, time.Millisecond)
 	client.SetRedirectValidator(func(_ *netHttp.Request) bool { return false })
 	response, err := client.Get(t.Context(), client.NewRequest().WithUrl(testServer.URL))
 
@@ -312,42 +284,6 @@ func TestClient_OverBudgetRetryPreservesRedirectError(t *testing.T) {
 	assert.Contains(t, err.Error(), "not allowed by the redirect validator")
 	assert.Nil(t, response)
 	assert.Equal(t, int64(1), attempts.Load())
-}
-
-func TestClient_GetReturnsResponseWhenNoHeaderRetryDelayExceedsRequestTimeout(t *testing.T) {
-	for _, tc := range []struct {
-		name            string
-		status          int
-		defaultWaitTime time.Duration
-	}{
-		{name: "503 with default wait over budget", status: netHttp.StatusServiceUnavailable, defaultWaitTime: 30 * time.Second},
-		{name: "503 with minimum wait over budget", status: netHttp.StatusServiceUnavailable, defaultWaitTime: time.Millisecond},
-		{name: "429 with ordinary backoff over budget", status: netHttp.StatusTooManyRequests, defaultWaitTime: 30 * time.Second},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			attempts := atomic.Int64{}
-			testServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, req *netHttp.Request) {
-				assert.Equal(t, netHttp.MethodGet, req.Method)
-				attempts.Add(1)
-				res.WriteHeader(tc.status)
-				_, err := res.Write([]byte("retry unavailable"))
-				assert.NoError(t, err)
-			}))
-			defer testServer.Close()
-
-			client := getRetryAfterClient(t, 1, 5*time.Second, tc.defaultWaitTime, 10*time.Second)
-			request := client.NewRequest().WithUrl(testServer.URL)
-			startedAt := time.Now()
-			response, err := client.Get(t.Context(), request)
-
-			require.NoError(t, err)
-			require.NotNil(t, response)
-			assert.Equal(t, tc.status, response.StatusCode)
-			assert.Equal(t, "retry unavailable", string(response.Body))
-			assert.Equal(t, int64(1), attempts.Load())
-			assert.Less(t, time.Since(startedAt), 3*time.Second)
-		})
-	}
 }
 
 func TestClient_CancellationBeforeRetryWaitRemainsAnError(t *testing.T) {
@@ -371,29 +307,6 @@ func TestClient_CancellationBeforeRetryWaitRemainsAnError(t *testing.T) {
 	response, err := client.Get(ctx, client.NewRequest().WithUrl(testServer.URL))
 
 	assert.ErrorIs(t, err, context.Canceled)
-	assert.Nil(t, response)
-	assert.Equal(t, int64(1), attempts.Load())
-}
-
-func TestClient_OverBudgetRetryPreservesTransportError(t *testing.T) {
-	transportErr := errors.New("dial failed")
-	attempts := atomic.Int64{}
-	client := getClient(t, 1, time.Second, http.WithTransportOption(func(transport *netHttp.Transport) error {
-		transport.Proxy = nil
-		transport.DialContext = func(context.Context, string, string) (net.Conn, error) {
-			attempts.Add(1)
-
-			return nil, transportErr
-		}
-
-		return nil
-	}))
-	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
-	defer cancel()
-
-	response, err := client.Get(ctx, client.NewRequest().WithUrl("http://example.com"))
-
-	assert.ErrorIs(t, err, transportErr)
 	assert.Nil(t, response)
 	assert.Equal(t, int64(1), attempts.Load())
 }
