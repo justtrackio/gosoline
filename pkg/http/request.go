@@ -3,22 +3,25 @@ package http
 import (
 	"io"
 	"net/url"
+	"strings"
 	"sync"
 
 	httpHeaders "github.com/go-http-utils/headers"
 	"github.com/go-resty/resty/v2"
 	"github.com/google/go-querystring/query"
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/spf13/cast"
 )
 
 type Request struct {
-	errs           error
-	outputFile     *string
-	queryParams    url.Values
-	restyRequest   *resty.Request
-	url            *url.URL
-	forwardTraceId bool
+	errs               error
+	outputFile         *string
+	queryParams        url.Values
+	restyRequest       *resty.Request
+	url                *url.URL
+	forwardTraceId     bool
+	confidentialValues []string
 }
 
 var r struct {
@@ -61,7 +64,7 @@ func NewXmlRequest(client Client) *Request {
 func (r *Request) WithUrl(rawUrl string) *Request {
 	parsedUrl, err := url.Parse(rawUrl)
 	if err != nil {
-		r.errs = multierror.Append(r.errs, err)
+		r.errs = multierror.Append(r.errs, log.RedactError(err, rawUrl))
 
 		return r
 	}
@@ -122,20 +125,59 @@ func (r *Request) WithQueryMap(values any) *Request {
 
 func (r *Request) WithBasicAuth(username string, password string) *Request {
 	r.restyRequest.SetBasicAuth(username, password)
+	r.WithSensitiveValues(password, username+":"+password)
 
 	return r
 }
 
 func (r *Request) WithAuthToken(token string) *Request {
 	r.restyRequest.SetAuthToken(token)
+	r.WithSensitiveValues(token)
 
 	return r
 }
 
 func (r *Request) WithHeader(key string, value string) *Request {
 	r.restyRequest.SetHeader(key, value)
+	if log.IsSensitiveField(key) {
+		r.WithSensitiveValues(value)
+		if strings.EqualFold(key, "Authorization") {
+			if _, credential, ok := strings.Cut(value, " "); ok {
+				r.WithSensitiveValues(credential)
+			}
+		}
+	}
 
 	return r
+}
+
+// WithSensitiveValues protects application-specific request credentials when an
+// error is returned. It never changes values sent to the remote service.
+func (r *Request) WithSensitiveValues(values ...string) *Request {
+	r.confidentialValues = append(r.confidentialValues, values...)
+
+	return r
+}
+
+func (r *Request) protectError(err error, requestURL string) error {
+	values := append([]string{requestURL}, r.confidentialValues...)
+	if r.url.User != nil {
+		if password, ok := r.url.User.Password(); ok {
+			values = append(values, password)
+		}
+	}
+	for key, items := range r.url.Query() {
+		if log.IsSensitiveField(key) {
+			values = append(values, items...)
+		}
+	}
+	for key, items := range r.queryParams {
+		if log.IsSensitiveField(key) {
+			values = append(values, items...)
+		}
+	}
+
+	return log.RedactError(err, values...)
 }
 
 func (r *Request) WithBody(body any) *Request {
