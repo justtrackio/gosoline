@@ -22,6 +22,12 @@
 - `go test ./pkg/cfg` is mandatory after any change.
 - For naming work, ensure downstream packages pass: `go test ./pkg/{cloud/aws/sqs,cloud/aws/sns,cloud/aws/kinesis,kafka,redis,...}`.
 
+## Settings validation
+
+- `GetSettings` calls `SettingsValidator.Validate() error` after unmarshalling and struct tag validation.
+- Value and pointer receivers are supported. A nil error accepts the settings; any error rejects them.
+- This hook applies only to the top-level settings returned by `GetSettings`, not `GetDefaults` or direct `UnmarshalKey` calls.
+
 ## Identity
 
 `Identity` replaces the legacy `AppId` struct with a dynamic tag-based system.

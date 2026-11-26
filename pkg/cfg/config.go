@@ -803,11 +803,33 @@ func GetDefaults[T any](c Config, additionalDefaults ...UnmarshalDefaults) (T, e
 	return settings, err
 }
 
+// SettingsValidator provides custom validation for settings loaded by GetSettings.
+type SettingsValidator interface {
+	// Validate returns nil when the settings are valid.
+	Validate() error
+}
+
 // GetSettings unmarshals the config values under the given key into a new value of type T.
 // Additional defaults can be passed to override individual keys.
+// After unmarshalling and struct tag validation, it calls Validate if T or *T implements SettingsValidator.
 func GetSettings[T any](c Config, key string, additionalDefaults ...UnmarshalDefaults) (T, error) {
+	var ok bool
 	var settings T
-	err := c.UnmarshalKey(key, &settings, additionalDefaults...)
+	var validator SettingsValidator
 
-	return settings, err
+	if err := c.UnmarshalKey(key, &settings, additionalDefaults...); err != nil {
+		return settings, err
+	}
+
+	if validator, ok = any(&settings).(SettingsValidator); !ok {
+		validator, ok = any(settings).(SettingsValidator)
+	}
+
+	if ok {
+		if err := validator.Validate(); err != nil {
+			return settings, fmt.Errorf("validation failed for key: %s: %w", key, err)
+		}
+	}
+
+	return settings, nil
 }
