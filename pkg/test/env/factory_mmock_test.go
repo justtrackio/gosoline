@@ -35,9 +35,14 @@ func TestMmockFactoryLoadsFixtures(t *testing.T) {
 			defer server.Close()
 			host, port, err := net.SplitHostPort(strings.TrimPrefix(server.URL, "http://"))
 			require.NoError(t, err)
-			containers := map[string]*Container{"main": {bindings: map[string]ContainerBinding{"admin": {host: host, port: port}}}}
-			_, err = new(mmockFactory).Component(nil, nil, containers, &mmockSettings{Mocks: []string{filename}})
+			containers := map[string]*Container{"main": {bindings: map[string]ContainerBinding{
+				"admin": {host: host, port: port},
+				"main":  {host: "localhost", port: "8083"},
+			}}}
+			component, err := new(mmockFactory).Component(nil, nil, containers, &mmockSettings{Mocks: []string{filename}})
 			require.NoError(t, err)
+			assert.Equal(t, "http://localhost:8083", component.(*MmockComponent).Address())
+			assert.Equal(t, server.URL, component.(*MmockComponent).AdminAddress())
 		})
 	}
 }

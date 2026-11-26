@@ -46,6 +46,7 @@ response:
 	}))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, environment.Stop()) })
+	require.NoError(t, new(mmockFactory).request(t.Context(), environment.Mmock("default").AdminAddress(), http.MethodGet, "/api/mapping", http.NoBody))
 	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, environment.Mmock("default").Address()+"/report", http.NoBody)
 	require.NoError(t, err)
 	// Keep the compressed wire bytes so this checks the file transfer itself.

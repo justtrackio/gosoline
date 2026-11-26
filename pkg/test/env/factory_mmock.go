@@ -42,6 +42,7 @@ func (f *mmockFactory) Component(_ cfg.Config, _ log.Logger, containers map[stri
 	component := &MmockComponent{
 		baseComponent: baseComponent{name: s.Name},
 		address:       f.getUrl(containers["main"].bindings["main"]),
+		adminAddress:  adminAddress,
 	}
 
 	for i, filename := range s.Mocks {

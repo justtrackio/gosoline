@@ -58,6 +58,9 @@ Use `suite.WithAppOptions(...)` to configure applications under test with applic
 Use `Env().LoadAdditionalFixtureSets(...)` to load more fixtures into initialized resources during a test.
 Unlike `LoadFixtureSets`, it skips the resource lifecycle, including the purge step.
 
+Use `Env().Mmock(name).AdminAddress()` for direct Mmock admin API calls, such as reading and resetting the request
+journal in golden tests. `Address()` remains the base URL for application requests.
+
 For Mmock binary responses, `test.components.mmock.<name>.files` accepts a list of `source` (local fixture file) and
 `target` (absolute container path) pairs.
 The local Docker runner copies these files before health checks and mock registration, including when using Docker-in-Docker.
