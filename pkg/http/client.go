@@ -627,6 +627,8 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	c.writeRequestCounter(ctx, metricClientRequests, metric.Dimensions{
 		dimensionMethod: method,
 	})
+	// Resty increments Attempt without resetting it when a request is reused.
+	req.Attempt = 0
 	resp, err := req.Execute(method, url)
 	totalDuration := c.clock.Now().Sub(start)
 

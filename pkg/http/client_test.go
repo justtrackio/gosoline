@@ -260,6 +260,41 @@ func TestClient_GetReturnsResponseWhenZeroRetryAfterFallbackExceedsRequestTimeou
 	assert.Less(t, time.Since(startedAt), 3*time.Second)
 }
 
+func TestClient_GetStartsRetryBackoffFromFirstAttemptOnReusedRequest(t *testing.T) {
+	attempts := atomic.Int64{}
+	testServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, _ *netHttp.Request) {
+		if attempts.Add(1) == 3 {
+			res.Header().Set("Retry-After", "0")
+			res.WriteHeader(netHttp.StatusServiceUnavailable)
+
+			return
+		}
+
+		res.WriteHeader(netHttp.StatusOK)
+	}))
+	defer testServer.Close()
+
+	client := getRetryAfterClient(t, 1, 5*time.Second, time.Millisecond, 500*time.Millisecond)
+	request := client.NewRequest().WithUrl(testServer.URL)
+	for range 2 {
+		response, err := client.Get(t.Context(), request)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		require.Equal(t, netHttp.StatusOK, response.StatusCode)
+	}
+
+	// The first retry waits 500ms. If the prior executions count as attempts,
+	// the fallback waits at least 1s and the response is returned without retrying.
+	ctx, cancel := context.WithTimeout(t.Context(), 900*time.Millisecond)
+	defer cancel()
+	response, err := client.Get(ctx, request)
+
+	require.NoError(t, err)
+	require.NotNil(t, response)
+	assert.Equal(t, netHttp.StatusOK, response.StatusCode)
+	assert.Equal(t, int64(4), attempts.Load())
+}
+
 func TestClient_OverBudgetRetryPreservesRedirectError(t *testing.T) {
 	attempts := atomic.Int64{}
 	testServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, req *netHttp.Request) {
