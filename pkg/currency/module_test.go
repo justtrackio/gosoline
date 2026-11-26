@@ -41,10 +41,12 @@ func (p *leaseProvider) Acquire(ctx context.Context, resource string) (conc.Dist
 
 	if err := ctx.Err(); err != nil {
 		p.mu.Unlock()
+
 		return nil, err
 	}
 	if lease, ok := p.leases[resource]; ok && time.Now().Before(lease.expires) {
 		p.mu.Unlock()
+
 		return nil, conc.ErrLockOwned
 	}
 	p.next++
@@ -57,6 +59,7 @@ func (p *leaseProvider) Acquire(ctx context.Context, resource string) (conc.Dist
 	if p.afterAcquire != nil {
 		p.afterAcquire(ctx)
 	}
+
 	return lock, nil
 }
 
@@ -91,6 +94,7 @@ func (l *testLease) Renew(ctx context.Context, duration time.Duration) error {
 	}
 	lease.expires = time.Now().Add(duration)
 	l.provider.leases[l.resource] = lease
+
 	return nil
 }
 
@@ -102,6 +106,7 @@ func (l *testLease) Release() error {
 	if ok && lease.token == l.token && time.Now().Before(lease.expires) {
 		delete(l.provider.leases, l.resource)
 	}
+
 	return nil
 }
 
@@ -160,6 +165,7 @@ func TestUpdateExchangeRatesConfirmsSlowAcquire(t *testing.T) {
 					result <- module.updateExchangeRates(t.Context(), lockResourceRecentExchangeRates, func(context.Context) error {
 						close(started)
 						<-finish
+
 						return nil
 					})
 				}()
@@ -179,6 +185,7 @@ func TestUpdateExchangeRatesConfirmsSlowAcquire(t *testing.T) {
 					default:
 						t.Fatal("expired acquire did not fail")
 					}
+
 					return
 				}
 
@@ -204,6 +211,7 @@ func TestUpdateExchangeRatesReportsInFlightRenewalTimeout(t *testing.T) {
 		provider := &leaseProvider{beforeRenew: func(ctx context.Context) error {
 			close(renewStarted)
 			<-ctx.Done()
+
 			return ctx.Err()
 		}}
 		module := Module{lockProvider: provider}
@@ -212,6 +220,7 @@ func TestUpdateExchangeRatesReportsInFlightRenewalTimeout(t *testing.T) {
 		go func() {
 			result <- module.updateExchangeRates(t.Context(), lockResourceRecentExchangeRates, func(context.Context) error {
 				<-finish
+
 				return nil
 			})
 		}()
@@ -268,11 +277,13 @@ type recordingStore struct {
 func (s *recordingStore) Get(context.Context, any, *float64) (bool, error) { return false, nil }
 func (s *recordingStore) Put(context.Context, any, float64) error {
 	s.writes++
+
 	return nil
 }
 
 func (s *recordingStore) PutBatch(context.Context, any) error {
 	s.writes++
+
 	return nil
 }
 
@@ -310,10 +321,12 @@ func TestRunStopsHistoricalRefreshWhenLeaseIsLost(t *testing.T) {
 					if returnSuccess {
 						return map[time.Time][]Rate{dates[0]: {{Currency: "USD", Rate: 1.25}}}, nil
 					}
+
 					return nil, ctx.Err()
 				}}
 				fallback := historicalTestProvider{fetch: func(context.Context, []time.Time) (map[time.Time][]Rate, error) {
 					fallbackCalled = true
+
 					return nil, nil
 				}}
 				now := time.Date(2021, 5, 27, 0, 0, 0, 0, time.UTC)
