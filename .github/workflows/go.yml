@@ -126,7 +126,7 @@ jobs:
         run: go get -v -t -d ./...
 
       - name: Integration tests
-        run: go test -p 2 --tags='integration,fixtures' ./test/...
+        run: go test -p 2 --tags='integration,fixtures' ./test/... ./pkg/test/env
         env:
           TEST_COMPONENTS_DDB_DEFAULT_IMAGE_AUTH_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           TEST_COMPONENTS_DDB_DEFAULT_IMAGE_AUTH_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
@@ -157,7 +157,7 @@ jobs:
         run: go get -v -t -d ./...
 
       - name: Integration tests (race)
-        run: go test -p 2 -race --tags='integration,fixtures' ./test/...
+        run: go test -p 2 -race --tags='integration,fixtures' ./test/... ./pkg/test/env
         env:
           TEST_COMPONENTS_DDB_DEFAULT_IMAGE_AUTH_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           TEST_COMPONENTS_DDB_DEFAULT_IMAGE_AUTH_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}

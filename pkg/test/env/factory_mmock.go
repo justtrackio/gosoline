@@ -30,9 +30,10 @@ type mmockFactory struct{}
 type mmockSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	AdminPort int      `cfg:"admin_port" default:"0"`
-	Mocks     []string `cfg:"mocks"`
-	Port      int      `cfg:"port" default:"0"`
+	AdminPort int             `cfg:"admin_port" default:"0"`
+	Files     []ContainerFile `cfg:"files"`
+	Mocks     []string        `cfg:"mocks"`
+	Port      int             `cfg:"port" default:"0"`
 }
 
 func (f *mmockFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*Container, settings any) (Component, error) {
@@ -96,6 +97,7 @@ func (f *mmockFactory) configureContainer(settings *mmockSettings) *ContainerCon
 		Tag:        settings.Image.Tag,
 		Tmpfs:      tmpfs,
 		Env:        map[string]string{"LOG_LEVEL": "ERROR"},
+		Files:      settings.Files,
 		PortBindings: PortBindings{
 			"admin": {ContainerPort: 8082, HostPort: settings.AdminPort, Protocol: "tcp"},
 			"main":  {ContainerPort: 8083, HostPort: settings.Port, Protocol: "tcp"},

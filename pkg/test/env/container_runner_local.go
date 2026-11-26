@@ -1,6 +1,7 @@
 package env
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -77,11 +78,16 @@ func (r *containerRunnerLocal) RunContainer(ctx context.Context, request Contain
 	var container *Container
 	var err error
 
+	config := request.ContainerDescription.ContainerConfig
+	files, err := archiveContainerFiles(config.Files)
+	if err != nil {
+		return nil, fmt.Errorf("could not prepare container files: %w", err)
+	}
+
 	if err = r.pullContainerImage(request.ContainerDescription); err != nil {
 		return nil, fmt.Errorf("could not pull container image %q: %w", request.ContainerDescription.ContainerConfig, err)
 	}
 
-	config := request.ContainerDescription.ContainerConfig
 	containerFqn := fmt.Sprintf("%s-%s-%s-%s", r.managerSettings.NamePrefix, r.id, request.id(), request.ContainerName)
 
 	r.logger.Debug(ctx, "run container %s %s:%s %s", request.ComponentType, config.Repository, config.Tag, containerFqn)
@@ -117,14 +123,14 @@ func (r *containerRunnerLocal) RunContainer(ctx context.Context, request Contain
 	}
 
 	resourceId := fmt.Sprintf("%s-%s", request.id(), request.ContainerName)
-	if container, err = r.runContainer(request, runOptions, resourceId); err != nil {
+	if container, err = r.runContainer(ctx, request, runOptions, resourceId, files); err != nil {
 		return nil, err
 	}
 
 	return container, nil
 }
 
-func (r *containerRunnerLocal) runContainer(request ContainerRequest, options *dockertest.RunOptions, resourceId string) (*Container, error) {
+func (r *containerRunnerLocal) runContainer(ctx context.Context, request ContainerRequest, options *dockertest.RunOptions, resourceId string, files []byte) (*Container, error) {
 	var resourceContainer *Container
 
 	config := request.ContainerDescription.ContainerConfig
@@ -144,6 +150,17 @@ func (r *containerRunnerLocal) runContainer(request ContainerRequest, options *d
 
 	if err = r.expireAfter(resource, request.ExpireAfter); err != nil {
 		return nil, fmt.Errorf("could not set expiry on container %s: %w", options.Name, err)
+	}
+
+	if len(files) > 0 {
+		if err = r.pool.Client.UploadToContainer(resource.Container.ID, docker.UploadToContainerOptions{
+			InputStream:          bytes.NewReader(files),
+			Path:                 "/",
+			NoOverwriteDirNonDir: true,
+			Context:              ctx,
+		}); err != nil {
+			return nil, fmt.Errorf("could not copy container files: %w", err)
+		}
 	}
 
 	resolvedBindings, err := r.resolveBindings(resource, config.PortBindings)
