@@ -65,6 +65,12 @@ func (f *mmockFactory) Component(_ cfg.Config, _ log.Logger, containers map[stri
 		}
 	}
 
+	if len(s.Mocks) > 0 {
+		// Mmock's 100 ms file watcher reloads API-written mappings non-atomically.
+		// Let the final reload finish before applications can send requests.
+		time.Sleep(250 * time.Millisecond)
+	}
+
 	return component, nil
 }
 
