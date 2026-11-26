@@ -65,14 +65,7 @@ func defaultRetryWaitTime(settings Settings, attempt int) time.Duration {
 		return 0
 	}
 
-	// Resty increments Request.Attempt before executing. Its backoff receives a zero-based retry attempt.
-	attempt = max(0, attempt-1)
-
-	temp := min(float64(maxWaitTime), float64(minWaitTime)*math.Exp2(float64(attempt)))
-	center := max(time.Duration(temp/2), time.Nanosecond)
-	waitTime := center + time.Duration(rand.Int63n(int64(center)))
-
-	return max(minWaitTime, waitTime)
+	return jitterRetryWaitTime(minWaitTime, maxWaitTime, attempt)
 }
 
 func restyRetryWaitTime(settings Settings, attempt int) time.Duration {
@@ -82,15 +75,21 @@ func restyRetryWaitTime(settings Settings, attempt int) time.Duration {
 		maxWaitTime = 1<<31 - 1
 	}
 
+	return jitterRetryWaitTime(minWaitTime, maxWaitTime, attempt)
+}
+
+func jitterRetryWaitTime(minWaitTime, maxWaitTime time.Duration, attempt int) time.Duration {
+	// Resty increments Request.Attempt before executing. Its backoff receives a zero-based retry attempt.
 	attempt = max(0, attempt-1)
+
 	temp := min(float64(maxWaitTime), float64(minWaitTime)*math.Exp2(float64(attempt)))
 	center := time.Duration(temp / 2)
 	if center <= 0 {
-		// Leave zero and invalid bounds to Resty's existing fallback behavior.
-		return 0
+		// A zero callback result invokes Resty's jitter, which panics on a zero range.
+		return max(minWaitTime, time.Nanosecond)
 	}
 
-	waitTime := time.Duration(math.Abs(float64(int64(center) + rand.Int63n(int64(center)))))
+	waitTime := center + time.Duration(rand.Int63n(int64(center)))
 
 	return max(minWaitTime, waitTime)
 }
