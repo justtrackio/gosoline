@@ -84,7 +84,7 @@ func newConsumerBase(
 	var samplingDecider smpl.Decider
 
 	consumerLogger := logger.WithChannel(fmt.Sprintf("consumer-%s", name))
-	metricWriter := metric.NewWriter(metricNamespace, getConsumerDefaultMetrics(name)...)
+	metricWriter := metric.NewWriter(metricNamespace)
 
 	if _, err := cfg.GetAppIdentity(config); err != nil {
 		return nil, fmt.Errorf("can not get app identity from config: %w", err)

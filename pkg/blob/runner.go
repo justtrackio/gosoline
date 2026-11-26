@@ -76,8 +76,7 @@ func NewBatchRunner(ctx context.Context, config cfg.Config, logger log.Logger, n
 		return nil, err
 	}
 
-	defaultMetrics := getDefaultRunnerMetrics()
-	metricWriter := metric.NewWriter(metricNamespace, defaultMetrics...)
+	metricWriter := metric.NewWriter(metricNamespace)
 
 	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, settings.ClientName)
 	if err != nil {
@@ -266,25 +265,7 @@ func (r *batchRunner) writeMetric(ctx context.Context, operation string) {
 			dimensionOperation: operation,
 		},
 		Value: 1.0,
+		Unit:  metric.UnitCount,
+		Kind:  metric.KindCounter.Build(),
 	})
-}
-
-func getDefaultRunnerMetrics() []*metric.Datum {
-	operations := []string{operationRead, operationWrite, operationCopy, operationDelete}
-	defaults := make([]*metric.Datum, 0, len(operations))
-
-	for _, operation := range operations {
-		defaults = append(defaults, &metric.Datum{
-			MetricName: metricName,
-			Priority:   metric.PriorityHigh,
-			Dimensions: map[string]string{
-				dimensionOperation: operation,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
-		})
-	}
-
-	return defaults
 }

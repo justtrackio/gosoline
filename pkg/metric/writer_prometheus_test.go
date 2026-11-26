@@ -118,7 +118,6 @@ func Test_promWriter_Write(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		initFunc func()
 		data     metric.Data
 		expected fields
 	}{
@@ -154,42 +153,26 @@ func Test_promWriter_Write(t *testing.T) {
 			},
 		},
 		{
-			name: "multiple with default",
-			initFunc: func() {
-				metric.NewWriter("", &metric.Datum{
+			name: "zero-valued observation",
+			data: metric.Data{
+				&metric.Datum{
 					Priority:   metric.PriorityHigh,
 					MetricName: "counter",
 					Value:      0,
 					Unit:       metric.UnitCount,
-				})
-			},
-			data: metric.Data{
-				&metric.Datum{
-					MetricName: "counter",
-					Value:      1,
-				},
-				&metric.Datum{
-					MetricName: "counter",
-					Value:      1,
-				},
-				&metric.Datum{
-					MetricName: "counter",
-					Value:      1,
+					Kind:       metric.KindCounter.Build(),
 				},
 			},
 			expected: fields{
 				unit:  "Count",
 				name:  "gosoline_counter_total",
-				count: 3,
+				count: 0,
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.initFunc != nil {
-				tt.initFunc()
-			}
-
 			registry := prometheus.NewRegistry()
 			w := metric.NewPrometheusWriterWithInterfaces(logger, registry, 1000, writeGraceTime)
 			w.Write(t.Context(), tt.data)
@@ -410,20 +393,8 @@ func Test_promWriter_RendersDottedDimensionKeys(t *testing.T) {
 	assert.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expected), "gosoline_http_server_rejected_requests_total"))
 }
 
-func Test_promWriter_UsesCanonicalDefaultsBeforeNormalization(t *testing.T) {
+func Test_promWriter_NormalizesExplicitDatumBeforeRendering(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
-	defaultDimensions := metric.Dimensions{
-		"consumer.name": "batch",
-		"error.type":    metric.DimensionDefault,
-	}
-	metric.NewWriter("stream", &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: "consumed.messages",
-		Dimensions: defaultDimensions,
-		Unit:       metric.UnitCount,
-		Kind:       metric.KindCounter.Build(),
-	})
-
 	inputDimensions := metric.Dimensions{
 		"consumer.name": "batch",
 		"error.type":    metric.DimensionDefault,
@@ -434,6 +405,8 @@ func Test_promWriter_UsesCanonicalDefaultsBeforeNormalization(t *testing.T) {
 		MetricName: "consumed.messages",
 		Dimensions: inputDimensions,
 		Value:      3,
+		Unit:       metric.UnitCount,
+		Kind:       metric.KindCounter.Build(),
 	}
 	registry := prometheus.NewRegistry()
 	w := metric.NewPrometheusWriterWithInterfaces(logger, registry, 1000, writeGraceTime)
@@ -456,10 +429,11 @@ func Test_promWriter_UsesCanonicalDefaultsBeforeNormalization(t *testing.T) {
 	for _, label := range family.Metric[0].Label {
 		labels[label.GetName()] = label.GetValue()
 	}
+	assert.Equal(t, "batch", labels["consumer_name"])
 	assert.Equal(t, "", labels["error_type"])
 	assert.Equal(t, 3.0, family.Metric[0].GetCounter().GetValue())
-	assert.Empty(t, input.Unit)
-	assert.Equal(t, metric.Kind{}, input.Kind)
+	assert.Equal(t, metric.UnitCount, input.Unit)
+	assert.Equal(t, metric.KindCounter.Build(), input.Kind)
 	assert.Equal(t, inputDimensions, input.Dimensions)
 }
 

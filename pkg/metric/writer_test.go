@@ -71,7 +71,7 @@ func TestWriterStampsTimestamp(t *testing.T) {
 }
 
 // TestDatumIdSeparatesNamespaces pins down that the datum id distinguishes the same leaf in two
-// namespaces, so metric defaults and daemon batching never merge two different metrics.
+// namespaces, so daemon batching never merges two different metrics.
 func TestDatumIdSeparatesNamespaces(t *testing.T) {
 	consumer := &Datum{
 		Namespace:  "stream",

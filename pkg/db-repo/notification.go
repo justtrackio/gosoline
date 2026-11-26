@@ -42,8 +42,7 @@ type notifier struct {
 }
 
 func newNotifier(logger log.Logger, modelId mdl.ModelId, version int) notifier {
-	defaults := getDefaultNotifierMetrics(modelId)
-	mtr := metric.NewWriter(metricNamespace, defaults...)
+	mtr := metric.NewWriter(metricNamespace)
 
 	return notifier{
 		logger:  logger,
@@ -72,20 +71,4 @@ func (n *notifier) writeMetric(ctx context.Context, err error) {
 	}
 
 	n.metric.WriteOne(ctx, datum)
-}
-
-func getDefaultNotifierMetrics(modelId mdl.ModelId) []*metric.Datum {
-	return []*metric.Datum{
-		{
-			Priority:   metric.PriorityHigh,
-			MetricName: metricNameModelEventNotifications,
-			Dimensions: map[string]string{
-				metric.DimensionModelId:   modelId.String(),
-				metric.DimensionErrorType: metric.DimensionDefault,
-			},
-			Unit:  metric.UnitCount,
-			Value: 0.0,
-			Kind:  metric.KindCounter.Build(),
-		},
-	}
 }

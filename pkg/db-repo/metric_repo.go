@@ -28,9 +28,7 @@ type metricRepository struct {
 }
 
 func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRepository {
-	modelIdString := repo.GetModelId()
-	defaults := getDefaultRepositoryMetrics(modelIdString)
-	output := metric.NewWriter(metricNamespace, defaults...)
+	output := metric.NewWriter(metricNamespace)
 
 	return &metricRepository{
 		Repository: repo,
@@ -93,10 +91,8 @@ func (r metricRepository) writeMetric(ctx context.Context, op string, err error,
 		MetricName: MetricNameDbOperationDuration,
 		Dimensions: dbOperationDimensions(op, modelId, errorType),
 		Value:      latencyMillisecond,
-	}
-	if err != nil {
-		datum.Unit = metric.UnitMillisecondsAverage
-		datum.Kind = metric.KindHistogram.WithDatabaseDurationBuckets().Build()
+		Unit:       metric.UnitMillisecondsAverage,
+		Kind:       metric.KindHistogram.WithDatabaseDurationBuckets().Build(),
 	}
 
 	r.output.WriteOne(ctx, datum)
@@ -122,39 +118,4 @@ func dbOperationDimensions(op string, modelId string, errorType string) map[stri
 		metric.DimensionModelId:   modelId,
 		metric.DimensionErrorType: errorType,
 	}
-}
-
-func getDefaultRepositoryMetrics(modelIdString string) []*metric.Datum {
-	defaults := make([]*metric.Datum, 0, len(operations)*3)
-
-	for _, op := range operations {
-		defaults = append(defaults, &metric.Datum{
-			Priority:   metric.PriorityLow,
-			MetricName: MetricNameDbOperationDuration,
-			Dimensions: dbOperationDimensions(op, modelIdString, ""),
-			Unit:       metric.UnitMillisecondsAverage,
-			Value:      0.0,
-			Kind:       metric.KindHistogram.WithDatabaseDurationBuckets().Build(),
-		})
-		defaults = append(defaults,
-			&metric.Datum{
-				Priority:   metric.PriorityHigh,
-				MetricName: metricNameDbOperations,
-				Dimensions: dbOperationDimensions(op, modelIdString, ""),
-				Unit:       metric.UnitCount,
-				Value:      0.0,
-				Kind:       metric.KindCounter.Build(),
-			},
-			&metric.Datum{
-				Priority:   metric.PriorityHigh,
-				MetricName: metricNameDbOperations,
-				Dimensions: dbOperationDimensions(op, modelIdString, errorTypeOperationFailed),
-				Unit:       metric.UnitCount,
-				Value:      0.0,
-				Kind:       metric.KindCounter.Build(),
-			},
-		)
-	}
-
-	return defaults
 }

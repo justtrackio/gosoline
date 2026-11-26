@@ -6,7 +6,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
@@ -28,8 +27,7 @@ type metricRepository struct {
 }
 
 func NewMetricRepository(config cfg.Config, logger log.Logger, repo Repository) (*metricRepository, error) {
-	defaults := getDefaultMetrics(repo.GetModelId())
-	output := metric.NewWriter(metricNamespace, defaults...)
+	output := metric.NewWriter(metricNamespace)
 
 	return &metricRepository{
 		Repository: repo,
@@ -60,10 +58,8 @@ func (r metricRepository) writeMetric(ctx context.Context, op string, err error,
 		MetricName: MetricNameOperationDuration,
 		Dimensions: operationDimensions(op, modelId, errorType),
 		Value:      latencyMillisecond,
-	}
-	if err != nil {
-		datum.Unit = metric.UnitMillisecondsAverage
-		datum.Kind = metric.KindHistogram.WithDatabaseDurationBuckets().Build()
+		Unit:       metric.UnitMillisecondsAverage,
+		Kind:       metric.KindHistogram.WithDatabaseDurationBuckets().Build(),
 	}
 
 	r.metric.WriteOne(ctx, datum)
@@ -89,40 +85,4 @@ func operationDimensions(op string, modelId string, errorType string) map[string
 		metric.DimensionModelId:   modelId,
 		metric.DimensionErrorType: errorType,
 	}
-}
-
-func getDefaultMetrics(mId mdl.ModelId) metric.Data {
-	model := mId.String()
-	defaults := make([]*metric.Datum, 0, 3)
-
-	for _, op := range []string{OpSave} {
-		defaults = append(defaults, &metric.Datum{
-			Priority:   metric.PriorityLow,
-			MetricName: MetricNameOperationDuration,
-			Dimensions: operationDimensions(op, model, ""),
-			Unit:       metric.UnitMillisecondsAverage,
-			Value:      0.0,
-			Kind:       metric.KindHistogram.WithDatabaseDurationBuckets().Build(),
-		})
-		defaults = append(defaults,
-			&metric.Datum{
-				Priority:   metric.PriorityHigh,
-				MetricName: metricNameOperations,
-				Dimensions: operationDimensions(op, model, ""),
-				Unit:       metric.UnitCount,
-				Value:      0.0,
-				Kind:       metric.KindCounter.Build(),
-			},
-			&metric.Datum{
-				Priority:   metric.PriorityHigh,
-				MetricName: metricNameOperations,
-				Dimensions: operationDimensions(op, model, errorTypeOperationFailed),
-				Unit:       metric.UnitCount,
-				Value:      0.0,
-				Kind:       metric.KindCounter.Build(),
-			},
-		)
-	}
-
-	return defaults
 }

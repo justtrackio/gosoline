@@ -115,8 +115,6 @@ func (w *otelWriter) Write(ctx context.Context, batch Data) {
 			continue
 		}
 
-		amendFromDefault(datum)
-
 		// total metrics exist only to support CloudWatch cross-dimension sums; not needed for OTEL.
 		if datum.Kind.kind == KindTotal.kind {
 			continue
