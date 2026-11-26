@@ -33,7 +33,7 @@ func newRetryAfterFunc(settings Settings) resty.RetryAfterFunc {
 		retryAfterHeader := strings.TrimSpace(response.Header().Get(httpHeaders.RetryAfter))
 		if retryAfterHeader == "" && response.StatusCode() != stdHttp.StatusServiceUnavailable {
 			retryAfter := defaultRetryWaitTime(settings, response.Request.Attempt)
-			if err := ensureRetryWaitFitsContext(response.Request.Context(), retryAfter); err != nil {
+			if err := ensureRetryWaitFitsContext(response.Request.Context(), retryAfter, settings.RetryWaitTime); err != nil {
 				return 0, err
 			}
 
@@ -51,7 +51,7 @@ func newRetryAfterFunc(settings Settings) resty.RetryAfterFunc {
 			retryAfter = restyRetryWaitTime(settings, response.Request.Attempt)
 		}
 
-		if err := ensureRetryWaitFitsContext(response.Request.Context(), retryAfter); err != nil {
+		if err := ensureRetryWaitFitsContext(response.Request.Context(), retryAfter, settings.RetryWaitTime); err != nil {
 			return 0, err
 		}
 
@@ -125,7 +125,7 @@ func jitterRetryAfter(retryAfter time.Duration, jitterMin float64, jitterMax flo
 	return time.Duration(float64(retryAfter) * jitter)
 }
 
-func ensureRetryWaitFitsContext(ctx context.Context, retryAfter time.Duration) error {
+func ensureRetryWaitFitsContext(ctx context.Context, retryAfter, minWaitTime time.Duration) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -134,6 +134,10 @@ func ensureRetryWaitFitsContext(ctx context.Context, retryAfter time.Duration) e
 	if !ok {
 		return nil
 	}
+
+	// Resty floors the wait at minWaitTime. Still check the requested delay
+	// before any cap so that a long Retry-After can stop the retry.
+	retryAfter = max(retryAfter, minWaitTime)
 
 	remaining := time.Until(deadline)
 	if retryAfter <= remaining {

@@ -280,26 +280,34 @@ func TestClient_OverBudgetRetryPreservesRedirectError(t *testing.T) {
 }
 
 func TestClient_GetReturnsResponseWhenNoHeaderRetryDelayExceedsRequestTimeout(t *testing.T) {
-	for _, status := range []int{netHttp.StatusServiceUnavailable, netHttp.StatusTooManyRequests} {
-		t.Run(netHttp.StatusText(status), func(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		status          int
+		defaultWaitTime time.Duration
+	}{
+		{name: "503 with default wait over budget", status: netHttp.StatusServiceUnavailable, defaultWaitTime: 30 * time.Second},
+		{name: "503 with minimum wait over budget", status: netHttp.StatusServiceUnavailable, defaultWaitTime: time.Millisecond},
+		{name: "429 with ordinary backoff over budget", status: netHttp.StatusTooManyRequests, defaultWaitTime: 30 * time.Second},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			attempts := atomic.Int64{}
 			testServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, req *netHttp.Request) {
 				assert.Equal(t, netHttp.MethodGet, req.Method)
 				attempts.Add(1)
-				res.WriteHeader(status)
+				res.WriteHeader(tc.status)
 				_, err := res.Write([]byte("retry unavailable"))
 				assert.NoError(t, err)
 			}))
 			defer testServer.Close()
 
-			client := getRetryAfterClient(t, 1, 5*time.Second, 30*time.Second, 10*time.Second)
+			client := getRetryAfterClient(t, 1, 5*time.Second, tc.defaultWaitTime, 10*time.Second)
 			request := client.NewRequest().WithUrl(testServer.URL)
 			startedAt := time.Now()
 			response, err := client.Get(t.Context(), request)
 
 			require.NoError(t, err)
 			require.NotNil(t, response)
-			assert.Equal(t, status, response.StatusCode)
+			assert.Equal(t, tc.status, response.StatusCode)
 			assert.Equal(t, "retry unavailable", string(response.Body))
 			assert.Equal(t, int64(1), attempts.Load())
 			assert.Less(t, time.Since(startedAt), 3*time.Second)
