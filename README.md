@@ -13,7 +13,7 @@ much more.
 - Provides an all-in-one solution for the primary use cases
 - Out-of-the-box solutions for many AWS services
 - Reduces a lot of needed glue and boilerplate code
-- Uses a lot of sane default values to to just run code from the IDE (e.g. uses localstack instead of AWS)
+- Uses a lot of sane default values to to just run code from the IDE (e.g. uses floci instead of AWS)
 - Makes it easy to build a microservice-based architecture which uses a lot of asynchronous event processing
 
 ## Key Features

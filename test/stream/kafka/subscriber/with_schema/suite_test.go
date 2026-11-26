@@ -60,7 +60,7 @@ func (s *testSuite) SetupTest() (err error) {
 		return err
 	}
 
-	s.repo, err = s.Env().Localstack("default").DdbRepository(&ddb.Settings{
+	s.repo, err = s.Env().Floci("default").DdbRepository(&ddb.Settings{
 		ModelId: mdl.ModelId{
 			Name: "testModel",
 			Env:  "test",

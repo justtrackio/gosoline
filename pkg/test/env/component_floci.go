@@ -15,16 +15,18 @@ import (
 	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
-type localstackComponent struct {
+type flociComponent struct {
 	baseComponent
 	config          cfg.Config
 	logger          log.Logger
 	endpointAddress string
 	region          string
 	toxiproxy       *toxiproxy.Proxy
+	dynamodb        *dynamoDbComponent
+	s3              *s3Component
 }
 
-func (c *localstackComponent) CfgOptions() []cfg.Option {
+func (c *flociComponent) CfgOptions() []cfg.Option {
 	options := []cfg.Option{
 		cfg.WithConfigMap(map[string]any{
 			"cloud.aws": map[string]any{
@@ -37,37 +39,25 @@ func (c *localstackComponent) CfgOptions() []cfg.Option {
 					"region":   c.region,
 					"endpoint": c.Address(),
 				},
-				"dynamodb": map[string]any{
-					"clients": map[string]any{
-						"default": map[string]any{
-							"purge_type": "drop_table",
-						},
-					},
-				},
 			},
 		}),
 	}
 
+	options = append(options, c.dynamodb.CfgOptions()...)
+	options = append(options, c.s3.CfgOptions()...)
+
 	return options
 }
 
-func (c *localstackComponent) Address() string {
+func (c *flociComponent) Address() string {
 	return fmt.Sprintf("http://%s", c.endpointAddress)
 }
 
-func (c *localstackComponent) DdbClient() *dynamodb.Client {
-	return dynamodb.NewFromConfig(
-		aws.Config{
-			Region:      "eu-central-1",
-			Credentials: GetDefaultStaticCredentials(),
-		},
-		func(options *dynamodb.Options) {
-			options.BaseEndpoint = gosoAws.NilIfEmpty(c.Address())
-		},
-	)
+func (c *flociComponent) DdbClient() *dynamodb.Client {
+	return c.dynamodb.DdbClient()
 }
 
-func (c *localstackComponent) DdbRepository(settings *ddb.Settings) (ddb.Repository, error) {
+func (c *flociComponent) DdbRepository(settings *ddb.Settings) (ddb.Repository, error) {
 	tracer := tracing.NewLocalTracer()
 	client := c.DdbClient()
 
@@ -83,22 +73,14 @@ func (c *localstackComponent) DdbRepository(settings *ddb.Settings) (ddb.Reposit
 	return ddb.NewWithInterfaces(c.logger, tracer, client, metadataFactory)
 }
 
-func (c *localstackComponent) S3Client() *s3.Client {
-	awsCfg := aws.Config{
-		Region:      "eu-central-1",
-		Credentials: GetDefaultStaticCredentials(),
-	}
-
-	return s3.NewFromConfig(awsCfg, func(o *s3.Options) {
-		o.UsePathStyle = true
-		o.BaseEndpoint = gosoAws.NilIfEmpty(c.Address())
-	})
+func (c *flociComponent) S3Client() *s3.Client {
+	return c.s3.S3Client()
 }
 
-func (c *localstackComponent) SnsClient() *sns.Client {
+func (c *flociComponent) SnsClient() *sns.Client {
 	return sns.NewFromConfig(
 		aws.Config{
-			Region:      "eu-central-1",
+			Region:      c.region,
 			Credentials: GetDefaultStaticCredentials(),
 		},
 		func(options *sns.Options) {
@@ -107,6 +89,6 @@ func (c *localstackComponent) SnsClient() *sns.Client {
 	)
 }
 
-func (c *localstackComponent) Toxiproxy() *toxiproxy.Proxy {
+func (c *flociComponent) Toxiproxy() *toxiproxy.Proxy {
 	return c.toxiproxy
 }

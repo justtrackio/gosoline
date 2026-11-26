@@ -26,7 +26,7 @@ stream:
 
 test:
   components:
-    localstack:
+    floci:
       default:
         services: sqs
         expire_after: 5m

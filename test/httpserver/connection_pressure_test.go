@@ -27,7 +27,7 @@ func (s *ConnectionPressureTestSuite) SetupSuite() []suite.Option {
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("./config.dist.connectionPressure.yml"),
 		suite.WithSharedEnvironment(),
-		suite.WithoutAutoDetectedComponents("localstack"),
+		suite.WithoutAutoDetectedComponents("floci"),
 	}
 }
 
