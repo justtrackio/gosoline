@@ -31,21 +31,19 @@ func newRetryAfterFunc(settings Settings) resty.RetryAfterFunc {
 		}
 
 		retryAfterHeader := strings.TrimSpace(response.Header().Get(httpHeaders.RetryAfter))
+
+		var retryAfter time.Duration
 		if retryAfterHeader == "" && response.StatusCode() != stdHttp.StatusServiceUnavailable {
-			retryAfter := defaultRetryWaitTime(settings, response.Request.Attempt)
-			if err := ensureRetryWaitFitsContext(response.Request.Context(), retryAfter, settings.RetryWaitTime); err != nil {
-				return 0, err
+			retryAfter = defaultRetryWaitTime(settings, response.Request.Attempt)
+		} else {
+			delay, err := parseRetryAfter(retryAfterHeader, time.Now())
+			if err != nil {
+				delay = settings.RetryAfterSettings.DefaultWaitTime
 			}
 
-			return retryAfter, nil
+			retryAfter = jitterRetryAfter(delay, settings.RetryAfterSettings.JitterMin, settings.RetryAfterSettings.JitterMax)
 		}
 
-		retryAfter, err := parseRetryAfter(retryAfterHeader, time.Now())
-		if err != nil {
-			retryAfter = settings.RetryAfterSettings.DefaultWaitTime
-		}
-
-		retryAfter = jitterRetryAfter(retryAfter, settings.RetryAfterSettings.JitterMin, settings.RetryAfterSettings.JitterMax)
 		if retryAfter == 0 {
 			// Resty treats zero as a request for its ordinary jittered backoff.
 			retryAfter = restyRetryWaitTime(settings, response.Request.Attempt)
