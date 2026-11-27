@@ -214,6 +214,14 @@ func (r *containerRunnerLocal) getTmpfsConfig(settings []TmpfsSettings) map[stri
 			params = append(params, fmt.Sprintf("mode=%s", setting.Mode))
 		}
 
+		if setting.UID != nil {
+			params = append(params, fmt.Sprintf("uid=%d", *setting.UID))
+		}
+
+		if setting.GID != nil {
+			params = append(params, fmt.Sprintf("gid=%d", *setting.GID))
+		}
+
 		config[setting.Path] = strings.Join(params, ",")
 	}
 

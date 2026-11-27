@@ -19,6 +19,8 @@
 - `go test ./pkg/test/...` must stay green; it is cheap to run and catches regressions fast.
 - When env changes require Docker, run targeted integration suites (e.g., `go test -tags integration,fixtures ./test/...`).
 
+For a MySQL image that starts as a non-root user, set `TEST_COMPONENTS_MYSQL_DEFAULT_TMPFS_0_UID` and `TEST_COMPONENTS_MYSQL_DEFAULT_TMPFS_0_GID` to the numeric IDs of the MySQL process in the image. The local Docker runner uses these settings for `/var/lib/mysql` with mode `0700`. Replace `DEFAULT` with the configured component name for a named MySQL component.
+
 ## Common matchers
 ```go
 import "github.com/justtrackio/gosoline/pkg/test/matcher"
