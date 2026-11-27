@@ -50,11 +50,13 @@ func (f *mmockFactory) Component(_ cfg.Config, _ log.Logger, containers map[stri
 		if err != nil {
 			return nil, fmt.Errorf("could not read mmock fixture %q: %w", filename, err)
 		}
+
 		if ext := strings.ToLower(filepath.Ext(filename)); ext == ".yaml" || ext == ".yml" {
 			var definition map[string]any
 			if err = yaml.Unmarshal(data, &definition); err != nil {
 				return nil, fmt.Errorf("could not parse mmock fixture %q: %w", filename, err)
 			}
+
 			if data, err = json.Marshal(definition); err != nil {
 				return nil, fmt.Errorf("could not encode mmock fixture %q: %w", filename, err)
 			}

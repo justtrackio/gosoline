@@ -1,11 +1,14 @@
 package env
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"path"
 	"regexp"
 	"runtime"
 	"strings"
@@ -79,11 +82,6 @@ func (r *containerRunnerLocal) RunContainer(ctx context.Context, request Contain
 	var err error
 
 	config := request.ContainerDescription.ContainerConfig
-	files, err := archiveContainerFiles(config.Files)
-	if err != nil {
-		return nil, fmt.Errorf("could not prepare container files: %w", err)
-	}
-
 	if err = r.pullContainerImage(request.ContainerDescription); err != nil {
 		return nil, fmt.Errorf("could not pull container image %q: %w", request.ContainerDescription.ContainerConfig, err)
 	}
@@ -123,14 +121,14 @@ func (r *containerRunnerLocal) RunContainer(ctx context.Context, request Contain
 	}
 
 	resourceId := fmt.Sprintf("%s-%s", request.id(), request.ContainerName)
-	if container, err = r.runContainer(ctx, request, runOptions, resourceId, files); err != nil {
+	if container, err = r.runContainer(ctx, request, runOptions, resourceId); err != nil {
 		return nil, err
 	}
 
 	return container, nil
 }
 
-func (r *containerRunnerLocal) runContainer(ctx context.Context, request ContainerRequest, options *dockertest.RunOptions, resourceId string, files []byte) (*Container, error) {
+func (r *containerRunnerLocal) runContainer(ctx context.Context, request ContainerRequest, options *dockertest.RunOptions, resourceId string) (*Container, error) {
 	var resourceContainer *Container
 
 	config := request.ContainerDescription.ContainerConfig
@@ -152,15 +150,8 @@ func (r *containerRunnerLocal) runContainer(ctx context.Context, request Contain
 		return nil, fmt.Errorf("could not set expiry on container %s: %w", options.Name, err)
 	}
 
-	if len(files) > 0 {
-		if err = r.pool.Client.UploadToContainer(resource.Container.ID, docker.UploadToContainerOptions{
-			InputStream:          bytes.NewReader(files),
-			Path:                 "/",
-			NoOverwriteDirNonDir: true,
-			Context:              ctx,
-		}); err != nil {
-			return nil, fmt.Errorf("could not copy container files: %w", err)
-		}
+	if err = r.copyFiles(ctx, resource, config.Files); err != nil {
+		return nil, fmt.Errorf("could not copy files to container %s: %w", options.Name, err)
 	}
 
 	resolvedBindings, err := r.resolveBindings(resource, config.PortBindings)
@@ -257,6 +248,23 @@ func (r *containerRunnerLocal) getTmpfsConfig(settings []TmpfsSettings) map[stri
 	return config
 }
 
+func (r *containerRunnerLocal) copyFiles(ctx context.Context, resource *dockertest.Resource, files []ContainerFile) error {
+	if len(files) == 0 {
+		return nil
+	}
+	archive, err := archiveContainerFiles(files)
+	if err != nil {
+		return fmt.Errorf("could not prepare container files: %w", err)
+	}
+
+	return r.pool.Client.UploadToContainer(resource.Container.ID, docker.UploadToContainerOptions{
+		InputStream:          bytes.NewReader(archive),
+		Path:                 "/",
+		NoOverwriteDirNonDir: true,
+		Context:              ctx,
+	})
+}
+
 func (r *containerRunnerLocal) expireAfter(resource *dockertest.Resource, expireAfter time.Duration) error {
 	if err := resource.Expire(uint(expireAfter.Seconds())); err != nil {
 		return err
@@ -346,4 +354,40 @@ func (r *containerRunnerLocal) Stop(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func archiveContainerFiles(files []ContainerFile) ([]byte, error) {
+	if len(files) == 0 {
+		return nil, nil
+	}
+
+	var buffer bytes.Buffer
+	archive := tar.NewWriter(&buffer)
+	for _, file := range files {
+		target := file.Target
+		if !path.IsAbs(target) || target == "/" || path.Clean(target) != target {
+			return nil, fmt.Errorf("container file target %q must be a clean absolute file path", target)
+		}
+
+		data, err := os.ReadFile(file.Source)
+		if err != nil {
+			return nil, fmt.Errorf("could not read container file %q: %w", file.Source, err)
+		}
+
+		if err = archive.WriteHeader(&tar.Header{
+			Name: strings.TrimPrefix(target, "/"),
+			Mode: 0o644,
+			Size: int64(len(data)),
+		}); err != nil {
+			return nil, fmt.Errorf("could not archive container file %q: %w", target, err)
+		}
+		if _, err = archive.Write(data); err != nil {
+			return nil, fmt.Errorf("could not archive container file content %q: %w", target, err)
+		}
+	}
+	if err := archive.Close(); err != nil {
+		return nil, fmt.Errorf("could not close container file archive: %w", err)
+	}
+
+	return buffer.Bytes(), nil
 }

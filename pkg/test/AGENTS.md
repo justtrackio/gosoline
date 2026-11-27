@@ -61,14 +61,6 @@ Unlike `LoadFixtureSets`, it skips the resource lifecycle, including the purge s
 Use `Env().Mmock(name).AdminAddress()` for direct Mmock admin API calls, such as reading and resetting the request
 journal in golden tests. `Address()` remains the base URL for application requests.
 
-For Mmock binary responses, `test.components.mmock.<name>.files` accepts a list of `source` (local fixture file) and
-`target` (absolute container path) pairs.
-The local Docker runner copies these files before health checks and mock registration, including when using Docker-in-Docker.
-Reference them from a native mapping with `{{file.contents(/tmp/mmock/response.csv.gz)}}`. File copies require the local runner;
-the remote container-runner protocol does not transfer local files.
-Use `Content-Type: application/gzip` for precompressed assets: upstream Mmock otherwise compresses text responses again
-when a request accepts gzip, even if the mapping already sets `Content-Encoding: gzip`.
-
 | Helper | Purpose |
 |--------|---------|
 | `assert/` | Testify assertions and SQL table/column checks. |
