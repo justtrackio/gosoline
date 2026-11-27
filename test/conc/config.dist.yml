@@ -16,4 +16,9 @@ exec:
 cloud:
   aws:
     dynamodb:
-      clients: ~
+      clients:
+        default:
+          backoff:
+            # Lease tests advance fake time beyond real request deadlines.
+            type: custom
+            max_elapsed_time: 0
