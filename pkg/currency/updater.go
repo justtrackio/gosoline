@@ -101,7 +101,7 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 
 	now := s.clock.Now()
 	for _, rate := range rates {
-		err := s.store.Put(ctx, rate.Currency, rate.Rate)
+		err := s.put(ctx, rate.Currency, rate.Rate)
 		if err != nil {
 			return fmt.Errorf("error setting exchange rate: %w", err)
 		}
@@ -109,7 +109,7 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 		s.logger.Info(ctx, "currency: %s, rate: %f", rate.Currency, rate.Rate)
 
 		historicalRateKey := historicalRateKey(now, rate.Currency)
-		err = s.store.Put(ctx, historicalRateKey, rate.Rate)
+		err = s.put(ctx, historicalRateKey, rate.Rate)
 		if err != nil {
 			return fmt.Errorf("error setting historical exchange rate, key: %s %w", historicalRateKey, err)
 		}
@@ -117,7 +117,7 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 
 	newTime := float64(s.clock.Now().Unix())
 
-	err = s.store.Put(ctx, ExchangeRateDateKey, newTime)
+	err = s.put(ctx, ExchangeRateDateKey, newTime)
 	if err != nil {
 		return fmt.Errorf("error setting refresh date %w", err)
 	}
@@ -125,6 +125,14 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 	s.logger.Info(ctx, "new exchange rates are set")
 
 	return nil
+}
+
+func (s *updaterService) put(ctx context.Context, key string, value float64) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	return s.store.Put(ctx, key, value)
 }
 
 func (s *updaterService) needsRefresh(ctx context.Context) bool {
@@ -160,6 +168,10 @@ func (s *updaterService) getCurrencyRates(ctx context.Context) ([]Rate, error) {
 	rateMap := make(funk.Set[string])
 
 	for _, provider := range s.providers {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+
 		rates, err := provider.FetchLatestRates(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("error getting rates from %s: %w", provider.Name(), err)
@@ -187,6 +199,9 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 	datesToUpdate := generateDateRange(*updateFromDate, s.clock.Now())
 
 	providerResults := s.fetchHistoricalProviderResults(ctx, datesToUpdate)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	dayCurrencyRates := mergeProviderResults(datesToUpdate, providerResults)
 
@@ -197,13 +212,16 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 
 	s.logger.Info(ctx, "updating %d historical exchange rates", len(keyValues))
 
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	err := s.store.PutBatch(ctx, keyValues)
 	if err != nil {
 		return fmt.Errorf("error setting historical exchange rates: %w", err)
 	}
 
 	newTime := float64(s.clock.Now().Unix())
-	err = s.store.Put(ctx, HistoricalExchangeRateDateKey, newTime)
+	err = s.put(ctx, HistoricalExchangeRateDateKey, newTime)
 	if err != nil {
 		return fmt.Errorf("error setting historical refresh date %w", err)
 	}
@@ -216,6 +234,10 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 func (s *updaterService) fetchHistoricalProviderResults(ctx context.Context, datesToUpdate []time.Time) []map[time.Time][]Rate {
 	providerResults := make([]map[time.Time][]Rate, len(s.providers))
 	for i, provider := range s.providers {
+		if ctx.Err() != nil {
+			break
+		}
+
 		result, err := provider.FetchHistoricalRates(ctx, datesToUpdate)
 		if err != nil {
 			s.logger.Error(ctx, "error fetching historical rates from provider %s: %w", provider.Name(), err)
