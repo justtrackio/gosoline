@@ -51,17 +51,22 @@ func TestMySuite(t *testing.T) {
 }
 ```
 
-## Environment helpers
+## Test helpers
 Use `suite.WithAppOptions(...)` to configure applications under test with application options, such as
 `application.WithLoggerContextFieldsMessageEncoder` for global logger context propagation through stream messages.
 
 Use `Env().LoadAdditionalFixtureSets(...)` to load more fixtures into initialized resources during a test.
 Unlike `LoadFixtureSets`, it skips the resource lifecycle, including the purge step.
 
-| Helper | Package | Purpose |
-|--------|---------|--------|
-| `env/` | LocalStack, Redis, MySQL | Docker container management |
-| `assert/` | Custom assertions | Extended testify assertions |
+Use `Env().Mmock(name).AdminAddress()` for direct Mmock admin API calls, such as reading and resetting the request
+journal in golden tests. `Address()` remains the base URL for application requests.
+
+| Helper | Purpose |
+|--------|---------|
+| `assert/` | Testify assertions and SQL table/column checks. |
+| `env/` | Container-backed test environments and dependency configuration. |
+| `matcher/` | Testify mock argument matching for `context.Context`. |
+| `suite/` | Application and integration test suites, fixtures, and lifecycle hooks. |
 
 ## Tips
 - Keep helper APIs backward compatible—every package imports `pkg/test`.

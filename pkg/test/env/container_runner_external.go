@@ -2,6 +2,7 @@ package env
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -31,6 +32,10 @@ func NewContainerRunnerExternal(_ cfg.Config, logger log.Logger, _ *ContainerMan
 
 func (r *containerRunnerExternal) RunContainer(ctx context.Context, request ContainerRequest) (*Container, error) {
 	config := request.ContainerDescription.ContainerConfig
+	if len(config.Files) > 0 {
+		return nil, fmt.Errorf("container fixture files require the local Docker runner")
+	}
+
 	r.logger.Debug(ctx, "using external container %s %s", request.ComponentType, request.ComponentName)
 
 	container := &Container{

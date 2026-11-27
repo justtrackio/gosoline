@@ -28,7 +28,7 @@ type DdbLockTestSuite struct {
 }
 
 func (s *DdbLockTestSuite) SetupSuite() []suite.Option {
-	s.clock = clock.NewFakeClockAt(time.Now().UTC())
+	s.clock = clock.NewFakeClockAt(time.Date(2100, time.January, 1, 0, 0, 0, 0, time.UTC))
 
 	return []suite.Option{
 		suite.WithClockProvider(s.clock),

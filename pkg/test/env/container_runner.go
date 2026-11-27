@@ -49,9 +49,16 @@ type ContainerConfig struct {
 	Tmpfs        []TmpfsSettings
 	Tag          string
 	Env          map[string]string
+	Files        []ContainerFile
 	Cmd          []string
 	PortBindings PortBindings
 	ExposedPorts []string
+}
+
+// ContainerFile copies a local fixture to an absolute path in a container.
+type ContainerFile struct {
+	Source string `cfg:"source"`
+	Target string `cfg:"target"`
 }
 
 func (c ContainerConfig) String() string {

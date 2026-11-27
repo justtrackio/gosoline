@@ -108,6 +108,10 @@ func NewContainerRunnerRemote(config cfg.Config, logger log.Logger, managerSetti
 
 func (r *containerRunnerRemote) RunContainer(ctx context.Context, request ContainerRequest) (*Container, error) {
 	config := request.ContainerDescription.ContainerConfig
+	if len(config.Files) > 0 {
+		return nil, fmt.Errorf("container fixture files require the local Docker runner")
+	}
+
 	r.logger.Debug(ctx, "run container %s %s:%s", request.ComponentType, config.Repository, config.Tag)
 
 	input := &ContainerStartInput{

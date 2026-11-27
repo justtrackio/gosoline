@@ -10,6 +10,9 @@ test:
       mailpit:
         repository: "axllent/mailpit"
         tag: "v1.23.2"
+      mmock:
+        repository: "jordimartin/mmock"
+        tag: "v4.3.13"
       mysql:
         repository: "mysql"
         tag: "8.0.42"
@@ -19,6 +22,3 @@ test:
       redis:
         repository: "redis"
         tag: "7-alpine"
-      wiremock:
-        repository: "wiremock/wiremock"
-        tag: "3.4.1"

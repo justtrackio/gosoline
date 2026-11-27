@@ -28,11 +28,11 @@ func (s *FixturesTestSuite) SetupSuite() []suite.Option {
 		suite.WithModuleFactory(mdlsub.NewSubscriberFactory(transformers)),
 		suite.WithFixtureSetFactory(mdlsub.FixtureSetFactory(transformers)),
 		suite.WithEnvSetup(func() error {
-			wiremockAddress := s.Env().Wiremock("default").Address()
+			mmockAddress := s.Env().Mmock("default").Address()
 			config := s.Env().Config()
 
 			return config.Option(cfg.WithConfigMap(map[string]any{
-				"fixtures.providers.default.host": wiremockAddress,
+				"fixtures.providers.default.host": mmockAddress,
 			}))
 		}),
 	}

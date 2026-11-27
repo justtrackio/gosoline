@@ -230,8 +230,9 @@ func (e *Environment) Otel(name string) *OtelComponent {
 	return e.Component(componentOtel, name).(*OtelComponent)
 }
 
-func (e *Environment) Wiremock(name string) *wiremockComponent {
-	return e.Component(componentWiremock, name).(*wiremockComponent)
+// Mmock returns the named native Mmock integration-test component.
+func (e *Environment) Mmock(name string) *MmockComponent {
+	return e.Component(componentMmock, name).(*MmockComponent)
 }
 
 func (e *Environment) StreamInput(name string) *StreamInputComponent {
