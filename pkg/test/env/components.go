@@ -75,10 +75,13 @@ type ComponentContainerSettings struct {
 	Tmpfs []TmpfsSettings        `cfg:"tmpfs"`
 }
 
+// TmpfsSettings configures a tmpfs mount for the local Docker runner.
 type TmpfsSettings struct {
-	Path string `cfg:"path"`
-	Size string `cfg:"size"`
-	Mode string `cfg:"mode"`
+	Path string  `cfg:"path"`
+	Size string  `cfg:"size"`
+	Mode string  `cfg:"mode"`
+	UID  *uint32 `cfg:"uid"`
+	GID  *uint32 `cfg:"gid"`
 }
 
 type Component interface {

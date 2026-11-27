@@ -1,6 +1,7 @@
 package env
 
 import (
+	"cmp"
 	"database/sql"
 	"fmt"
 	"net/url"
@@ -141,10 +142,12 @@ func (f *mysqlFactory) configureContainer(settings any) *ContainerConfig {
 	}
 
 	if len(s.Tmpfs) == 0 {
-		s.Tmpfs = append(s.Tmpfs, TmpfsSettings{
-			Path: "/var/lib/mysql",
-			Mode: "1777",
-		})
+		s.Tmpfs = []TmpfsSettings{{}}
+	}
+
+	if mount := &s.Tmpfs[0]; mount.Path == "" {
+		mount.Path = "/var/lib/mysql"
+		mount.Mode = cmp.Or(mount.Mode, "0700")
 	}
 
 	return &ContainerConfig{
