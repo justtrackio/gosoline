@@ -22,6 +22,10 @@ type Reader interface {
 }
 
 func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, partitionManager *PartitionManager, name string) (Reader, error) {
+	if err := settings.validateGroupType(); err != nil {
+		return nil, fmt.Errorf("invalid kafka consumer settings: %w", err)
+	}
+
 	topicName, err := kafka.BuildFullTopicName(config, settings.ToIdentity(), settings.TopicId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build full kafka topic name: %w", err)
@@ -35,13 +39,29 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 	metricsHook := kafka.NewMetricsHook(metric.NewWriter(metricNamespaceKafka), kafka.ClientTypeConsumer, name)
 
 	opts := []kgo.Opt{
-		kgo.ConsumeResetOffset(settings.GetStartOffset()),
-		kgo.ConsumeStartOffset(settings.GetStartOffset()),
 		kgo.ConsumeTopics(topicName),
 		// Keep retryable fetch errors so that errors like UNKNOWN_TOPIC_OR_PARTITION are surfaced to
 		// PollRecords instead of being silently stripped by franz-go. This lets us detect a consumer
 		// that is configured for a topic which does not exist and fail fast instead of idling forever.
 		kgo.KeepRetryableFetchErrors(),
+		kgo.WithContext(ctx),
+		kgo.WithHooks(metricsHook),
+		kgo.WithLogger(logging.NewKafkaLogger(ctx, logger)),
+	}
+
+	connOpts, err := connection.BuildConnectionOptions(config, settings.Connection)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build connection options: %w", err)
+	}
+	opts = append(opts, connOpts...)
+
+	if settings.GroupType == GroupTypeShare {
+		return newShareReader(ctx, logger, settings, consumerGroupId, opts)
+	}
+
+	opts = append(opts,
+		kgo.ConsumeResetOffset(settings.GetStartOffset()),
+		kgo.ConsumeStartOffset(settings.GetStartOffset()),
 		kgo.FetchIsolationLevel(settings.GetFetchIsolationLevel()),
 		kgo.HeartbeatInterval(settings.HeartbeatInterval),
 		kgo.RebalanceTimeout(settings.RebalanceTimeout),
@@ -53,16 +73,11 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 		kgo.OnPartitionsAssigned(partitionManager.OnPartitionsAssigned),
 		kgo.OnPartitionsRevoked(partitionManager.OnPartitionsLostOrRevoked),
 		kgo.OnPartitionsLost(partitionManager.OnPartitionsLostOrRevoked),
-		kgo.WithContext(ctx),
-		kgo.WithHooks(metricsHook),
-		kgo.WithLogger(logging.NewKafkaLogger(ctx, logger)),
-	}
+	)
 
-	connOpts, err := connection.BuildConnectionOptions(config, settings.Connection)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build connection options: %w", err)
+	if settings.GroupType == GroupTypeConsumer {
+		opts = append(opts, kgo.ServerSideBalancer())
 	}
-	opts = append(opts, connOpts...)
 
 	client, err := kgo.NewClient(opts...)
 	if err != nil {

@@ -17,7 +17,17 @@ type kafkaInput struct {
 	schemaRegistryService schemaRegistry.Service
 }
 
-var _ SchemaRegistryAwareInput = &kafkaInput{}
+// kafkaShareInput is a kafkaInput reading from a share group. Kafka redelivers every record whose processing failed,
+// so it owns retries the way SQS does: a configured retry handler would put a second copy of each failed record into
+// its retry queue.
+type kafkaShareInput struct {
+	*kafkaInput
+}
+
+var (
+	_ SchemaRegistryAwareInput = &kafkaInput{}
+	_ RetryingInput            = &kafkaShareInput{}
+)
 
 func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *kafkaConsumer.Settings, name string) (Input, error) {
 	consumer, err := kafkaConsumer.NewConsumer(ctx, config, logger, settings, name)
@@ -35,7 +45,12 @@ func NewKafkaInput(ctx context.Context, config cfg.Config, logger log.Logger, se
 		return nil, fmt.Errorf("can not create schema registry service: %w", err)
 	}
 
-	return NewKafkaInputWithInterfaces(consumer, schemaRegistryService), nil
+	input := NewKafkaInputWithInterfaces(consumer, schemaRegistryService)
+	if settings.GroupType == kafkaConsumer.GroupTypeShare {
+		return &kafkaShareInput{kafkaInput: input.(*kafkaInput)}, nil
+	}
+
+	return input, nil
 }
 
 func NewKafkaInputWithInterfaces(consumer kafkaConsumer.Consumer, schemaRegistryService schemaRegistry.Service) Input {
@@ -63,4 +78,9 @@ func (i *kafkaInput) IsHealthy() bool {
 
 func (i *kafkaInput) InitSchemaRegistry(ctx context.Context, settings SchemaSettingsWithEncoding) (MessageBodyEncoder, error) {
 	return InitKafkaSchemaRegistry(ctx, settings, i.schemaRegistryService)
+}
+
+// GetRetryHandler leaves retries to Kafka: a failed record is released and delivered again.
+func (i *kafkaShareInput) GetRetryHandler() (Input, RetryHandler) {
+	return NewNoopInput(), NewRetryHandlerNoopWithInterfaces()
 }

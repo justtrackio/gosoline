@@ -85,6 +85,12 @@ type consumer struct {
 }
 
 func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, name string) (Consumer, error) {
+	// NewReader validates as well, but only once the consumer runs. Checking here reports a misconfiguration while the
+	// application is still being assembled.
+	if err := settings.validateGroupType(); err != nil {
+		return nil, fmt.Errorf("invalid kafka consumer settings: %w", err)
+	}
+
 	conn, err := connection.ParseSettings(config, settings.Connection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse kafka connection settings for connection name %q: %w", settings.Connection, err)
@@ -231,7 +237,9 @@ func (c *consumer) runLoop(runCtx context.Context, process func(ctx context.Cont
 
 func (c *consumer) poll(ctx context.Context) (kgo.Fetches, float64, error) {
 	start := c.clock.Now()
-	result, err := c.executorPolling.Execute(ctx, c.pollRecords)
+	result, err := c.executorPolling.Execute(ctx, func(execCtx context.Context) (any, error) {
+		return c.pollRecords(execCtx, ctx)
+	})
 	if err != nil {
 		return kgo.Fetches{}, 0, fmt.Errorf("failed to poll records: %w", err)
 	}
@@ -256,7 +264,10 @@ func (c *consumer) process(ctx context.Context, fetches kgo.Fetches, process fun
 // waitForRecords idles for IdleWaitTime if the last poll returned nothing, so an empty topic does not turn the
 // poll loop into a busy loop. It returns early once runCtx is cancelled.
 func (c *consumer) waitForRecords(runCtx context.Context, fetches kgo.Fetches) error {
-	if fetches.NumRecords() > 0 {
+	// An empty share group poll already waited for records (see shareReader.PollRecords), and the share client only
+	// fetches while a poll waits, so waiting again would only delay the next fetch. A poll whose errors pollRecords
+	// logged and ignored still waits, as for other groups, so it does not retry at broker round trip speed.
+	if fetches.NumRecords() > 0 || (c.settings.GroupType == GroupTypeShare && len(fetches.Errors()) == 0) {
 		return nil
 	}
 
@@ -288,7 +299,9 @@ func (c *consumer) allowRebalance() {
 	c.healthCheckTimer.MarkHealthy()
 }
 
-func (c *consumer) pollRecords(ctx context.Context) (any, error) {
+// pollRecords polls once. ctx is the executor's context, which may outlive runCtx by the backoff cancel delay; a share
+// group poll waits on runCtx instead, so a shutdown ends it right away.
+func (c *consumer) pollRecords(ctx context.Context, runCtx context.Context) (any, error) {
 	select {
 	case <-ctx.Done():
 		return kgo.Fetches{}, ctx.Err()
@@ -297,8 +310,14 @@ func (c *consumer) pollRecords(ctx context.Context) (any, error) {
 
 	c.healthCheckTimer.MarkHealthy()
 
-	//nolint:staticcheck // We pass a nil context to prevent PollRecords from blocking when waiting for new messages.
-	fetches := c.reader.PollRecords(nil, c.settings.MaxPollRecords)
+	// A nil context keeps a consumer group poll from blocking when waiting for new messages. A share group poll has
+	// to wait for its fetch (see shareReader.PollRecords).
+	var pollCtx context.Context
+	if c.settings.GroupType == GroupTypeShare {
+		pollCtx = runCtx
+	}
+
+	fetches := c.reader.PollRecords(pollCtx, c.settings.MaxPollRecords)
 
 	if fetches.IsClientClosed() || exec.IsRequestCanceled(fetches.Err0()) {
 		return fetches, nil
@@ -467,8 +486,15 @@ func (c *consumer) logRecordsAffectedByExpiredProcessingDeadline(ctx context.Con
 		totalCount += len(records)
 	}
 
-	c.logger.Error(ctx, "processing deadline expired while processing records: %d of %d records were handed to the callback (%d of them failed) and are committed regardless, the remaining %d were skipped and are consumed again",
-		processedCount, totalCount, result.failedCount(), totalCount-processedCount)
+	// A consumer group commits the offsets of every record handed to the callback, a share group only accepts the
+	// records whose processing succeeded and releases the failed ones for redelivery.
+	outcome := "are committed regardless"
+	if c.settings.GroupType == GroupTypeShare {
+		outcome = "are acknowledged by their result"
+	}
+
+	c.logger.Error(ctx, "processing deadline expired while processing records: %d of %d records were handed to the callback (%d of them failed) and %s, the remaining %d were skipped and are consumed again",
+		processedCount, totalCount, result.failedCount(), outcome, totalCount-processedCount)
 }
 
 func (c *consumer) processRecordWorkUnit(ctx, processingCtx context.Context, records []*kgo.Record, process func(ctx context.Context, record *kgo.Record) bool, result *recordBatchResult) error {
@@ -485,16 +511,34 @@ func (c *consumer) processRecordWorkUnit(ctx, processingCtx context.Context, rec
 			return nil
 		}
 
-		if ok := c.processWithRecovery(processingCtx, record, process); !ok {
+		ok := c.processWithRecovery(processingCtx, record, process)
+		if !ok {
 			result.markFailed()
 		}
 
+		c.acknowledge(record, ok)
 		result.addProcessed(record)
 
 		c.healthCheckTimer.MarkHealthy()
 	}
 
 	return nil
+}
+
+// acknowledge settles a share group record as soon as it was processed: a succeeded record is accepted, a failed one is
+// released so the broker delivers it again, to this or another consumer. Consumer groups commit offsets per batch instead
+// (see commitRecords), so this is a no-op for them.
+func (c *consumer) acknowledge(record *kgo.Record, ok bool) {
+	if c.settings.GroupType != GroupTypeShare {
+		return
+	}
+
+	status := kgo.AckAccept
+	if !ok {
+		status = kgo.AckRelease
+	}
+
+	record.Ack(status)
 }
 
 // delayConsume waits until the given record is at least ConsumeDelay old, so downstream consumers only see data after a

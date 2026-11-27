@@ -1,6 +1,8 @@
 package consumer
 
 import (
+	"fmt"
+	"math"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -12,6 +14,7 @@ import (
 type (
 	Balancer            string
 	FetchIsolationLevel string
+	GroupType           string
 	ProcessingMode      string
 	StartOffset         string
 )
@@ -30,6 +33,14 @@ const (
 
 	ProcessingModeUnordered ProcessingMode = "unordered"
 	ProcessingModeOrdered   ProcessingMode = "ordered"
+
+	// GroupTypeClassic joins a consumer group with the classic protocol, where the group leader assigns partitions.
+	GroupTypeClassic GroupType = "classic"
+	// GroupTypeConsumer joins a consumer group with the KIP-848 protocol, where the broker assigns partitions.
+	GroupTypeConsumer GroupType = "consumer"
+	// GroupTypeShare joins a KIP-932 share group, where many members consume the same partition and acknowledge every
+	// record on its own.
+	GroupTypeShare GroupType = "share"
 )
 
 type Settings struct {
@@ -39,6 +50,15 @@ type Settings struct {
 	TopicId string `cfg:"topic_id" validate:"required"`
 	// GroupId is an optional identifier that can be used as part of the consumer group naming pattern
 	GroupId string `cfg:"group_id"`
+	// GroupType selects how the consumer joins its group, named after the group types Kafka reports:
+	//
+	//   - classic (default): a consumer group with the classic rebalance protocol.
+	//   - consumer: a consumer group with the KIP-848 protocol (Kafka 4.0+, 4.3+ recommended by franz-go). The broker
+	//     assigns partitions and owns session_timeout and heartbeat_interval; the first balancer has to be
+	//     cooperative-sticky, sticky or range. On a broker without KIP-848 support franz-go falls back to classic.
+	//   - share: a KIP-932 share group (Kafka 4.2+ with share groups enabled). Every record is acknowledged on its own
+	//     and many consumers can read the same partition, so records are processed without any ordering.
+	GroupType GroupType `cfg:"group_type" default:"classic" validate:"oneof=classic consumer share"`
 
 	StartOffset         StartOffset         `cfg:"start_offset"          default:"last"               validate:"oneof=first last"`
 	FetchIsolationLevel FetchIsolationLevel `cfg:"fetch_isolation_level" default:"read_uncommitted"   validate:"oneof=read_committed read_uncommitted"`
@@ -110,4 +130,42 @@ func (s *Settings) GetBalancers() []kgo.GroupBalancer {
 	}
 
 	return balancers
+}
+
+// validateGroupType rejects settings which the configured group type can not honour. The tag based validation can not
+// express these rules, as they combine several fields.
+func (s *Settings) validateGroupType() error {
+	switch s.GroupType {
+	case "", GroupTypeClassic:
+	case GroupTypeConsumer:
+		// franz-go silently falls back to the classic protocol if the first balancer has no server side counterpart.
+		if len(s.Balancers) > 0 && s.Balancers[0] == RoundRobinBalancer {
+			return fmt.Errorf("group_type %s needs cooperative-sticky, sticky or range as first balancer, got %s", s.GroupType, s.Balancers[0])
+		}
+	case GroupTypeShare:
+		// A share group client only fetches while a poll waits, see shareReader.PollRecords.
+		// grace_time also bounds the acknowledgement flush after every batch, see shareReader.CommitRecords.
+		if s.IdleWaitTime <= 0 || s.GraceTime <= 0 {
+			return fmt.Errorf("group_type %s needs a positive idle_wait_time and grace_time", s.GroupType)
+		}
+
+		// franz-go needs a positive bound for its share fetches, see newShareReader.
+		if s.MaxPollRecords < 1 || s.MaxPollRecords > math.MaxInt32 {
+			return fmt.Errorf("group_type %s needs max_poll_records between 1 and %d, got %d", s.GroupType, math.MaxInt32, s.MaxPollRecords)
+		}
+
+		if s.ProcessingMode == ProcessingModeOrdered {
+			return fmt.Errorf("group_type %s can not process records in order, use processing_mode %s", s.GroupType, ProcessingModeUnordered)
+		}
+
+		// The delay holds records which the share group already locked for this consumer, so a delay close to the
+		// record lock duration would hand them to another consumer while they are still waiting here.
+		if s.ConsumeDelay > 0 {
+			return fmt.Errorf("group_type %s does not support consume_delay", s.GroupType)
+		}
+	default:
+		return fmt.Errorf("unknown group_type %q", s.GroupType)
+	}
+
+	return nil
 }

@@ -38,7 +38,7 @@ func newGooseLogger(ctx context.Context, logger log.Logger) goose.Logger {
 }
 
 func (g gooseLogger) Fatal(v ...any) {
-	g.logger.Error(g.ctx, fmt.Sprint(v...))
+	g.logger.Error(g.ctx, "%s", fmt.Sprint(v...))
 }
 
 func (g gooseLogger) Fatalf(format string, v ...any) {

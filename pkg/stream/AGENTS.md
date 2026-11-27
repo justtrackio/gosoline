@@ -210,6 +210,45 @@ A shutdown ends an ongoing wait early. Kafka then still processes the record if 
 because that record is committed either way (see the offset gap invariant in `processRecordWorkUnits`); Kinesis leaves
 the record for redelivery.
 
+### Kafka group types
+
+`stream.input.<name>.group_type` selects how a Kafka input joins its group. It defaults to `classic`.
+
+| Value | Kafka feature | Delivery |
+|-------|---------------|----------|
+| `classic` | Consumer group, classic rebalance protocol | Each partition has one consumer; offsets are committed per batch. |
+| `consumer` | Consumer group, KIP-848 protocol (Kafka 4.0+) | As `classic`, but the broker assigns partitions, so rebalances do not stop the whole group. |
+| `share` | Share group, KIP-932 (Kafka 4.2+ with share groups enabled) | Many consumers read the same partition; every record is acknowledged on its own. |
+
+With `consumer`, the broker owns the session timeout and heartbeat interval (`group.consumer.*` broker configs), so
+`session_timeout` and `heartbeat_interval` have no effect, and the first balancer has to be `cooperative-sticky`,
+`sticky` or `range`. franz-go recommends Kafka 4.3+ and falls back to the classic protocol on a broker without KIP-848
+support. A group can switch between `classic` and `consumer` while it keeps its `group_id` and committed offsets, as
+long as the broker's `group.consumer.migration.policy` allows it.
+
+`share` suits a work queue that needs more consumers than the topic has partitions. Each record is locked for the
+consumer that fetched it until it is acknowledged:
+
+- A record the callback processed successfully is accepted. A failed record is released and delivered again, to this or
+  another consumer; once the broker's `group.share.delivery.count.limit` (default 5) is reached it is archived instead.
+  Records a shutdown kept from being processed are released. Kafka owns these retries, so a single-record consumer
+  skips its configured retry handler, as for SQS; drain an existing retry queue before switching an input to `share`.
+- A batch consumer acknowledges a record once it enters the batch buffer, as with consumer groups. Kafka accepts it at
+  that point; a failed batch goes to the batch retry handler, and a crash before the batch ran loses its records.
+- Records are processed without any ordering, across and within partitions. `processing_mode: ordered` and
+  `consume_delay` are rejected.
+- The broker redelivers a record that is not acknowledged within its lock (`group.share.record.lock.duration.ms`,
+  default 30s), so the callback has to be idempotent. The lock starts when the poll fetches the record, so the whole
+  batch has to fit: keep ⌈`max_poll_records` ÷ `runner_count`⌉ × worst-case callback duration + `grace_time` (how long
+  the consumer waits for the acknowledgements after the batch) well below the lock duration, which already runs while
+  the fetch is delivered. Each fetch locks at most `max_poll_records`
+  records to keep records from waiting, locked, in the client buffer, and only runs while a poll waits up to
+  `idle_wait_time`.
+- Share groups have no transactions or exactly-once delivery, and a share group can not take over the `group_id` of a
+  consumer group: pick a new `group_id` when switching an input to `share`.
+- The broker decides where a new share group starts reading (group config `share.auto.offset.reset`, default
+  `latest`); `start_offset`, `fetch_isolation_level`, the balancers and the rebalance settings do not apply.
+
 ### Shutdown draining
 
 There are two kinds of grace time and they belong to different layers:
