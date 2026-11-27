@@ -2,12 +2,15 @@ package exec_test
 
 import (
 	"errors"
+	"fmt"
 	"net"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/sys/unix"
 )
 
 func TestIsMaxElapsedTimeError(t *testing.T) {
@@ -22,6 +25,18 @@ func TestIsMaxElapsedTimeError(t *testing.T) {
 	assert.Equal(t, "sent request to resource gosoline/resource failed after 3 retries in 1s: retry max duration 1m0s exceeded: something went sideways", err.Error())
 	assert.False(t, exec.IsErrMaxElapsedTimeExceeded(err.Unwrap()))
 	assert.EqualError(t, err.Unwrap(), "something went sideways")
+}
+
+func TestIsConnectionErrorAddressNotAvailable(t *testing.T) {
+	err := fmt.Errorf("query failed: %w", &net.OpError{
+		Op:  "dial",
+		Net: "tcp",
+		Err: &os.SyscallError{Syscall: "connect", Err: unix.EADDRNOTAVAIL},
+	})
+
+	assert.True(t, exec.IsConnectionError(unix.EADDRNOTAVAIL))
+	assert.True(t, exec.IsConnectionError(err))
+	assert.Equal(t, exec.ErrorTypeRetryable, exec.CheckConnectionError(nil, err))
 }
 
 func TestIsConnectionResetError(t *testing.T) {
